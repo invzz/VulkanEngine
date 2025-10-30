@@ -1,0 +1,42 @@
+#pragma once
+
+#include <memory>
+
+#include "Device.hpp"
+#include "Pipeline.hpp"
+#include "SwapChain.hpp"
+#include "Window.hpp"
+
+namespace engine {
+
+    class App
+    {
+      public:
+        static constexpr int WIDTH  = 1280;
+        static constexpr int HEIGHT = 720;
+
+        App();
+        ~App();
+        // delete copy operations
+        App(const App&)            = delete;
+        App& operator=(const App&) = delete;
+
+        void run();
+
+      private:
+        void createPipeline();
+        void createPipelineLayout();
+        void createCommandBuffers();
+        void drawFrame();
+
+        Window    window{WIDTH, HEIGHT, "Engine App"};
+        Device    device{window};
+        SwapChain swapChain{device, window.getExtent()};
+
+        std::unique_ptr<Pipeline> pipeline;
+
+        VkPipelineLayout             pipelineLayout;
+        std::vector<VkCommandBuffer> commandBuffers;
+    };
+
+} // namespace engine

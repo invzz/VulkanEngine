@@ -1,0 +1,31 @@
+[
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/app.cpp.o", "src/app.cpp"],
+  "file": "src/app.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/main.cpp.o", "src/main.cpp"],
+  "file": "src/main.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/Device.cpp.o", "src/Device.cpp"],
+  "file": "src/Device.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/Window.cpp.o", "src/Window.cpp"],
+  "file": "src/Window.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/Pipeline.cpp.o", "src/Pipeline.cpp"],
+  "file": "src/Pipeline.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/SwapChain.cpp.o", "src/SwapChain.cpp"],
+  "file": "src/SwapChain.cpp"
+}]

@@ -1,0 +1,89 @@
+---
+BasedOnStyle: LLVM
+Language: Cpp
+
+# General formatting
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+ContinuationIndentWidth: 8
+AccessModifierOffset: -2
+NamespaceIndentation: All        # ✅ Indent everything inside namespaces
+AlignAfterOpenBracket: Align
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# Spacing
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+#SpacesBeforeTrailingComments: 1
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# Alignment and wrapping
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
+AlignConsecutiveMacros: true
+AlignOperands: Align
+AlignTrailingComments: true
+BinPackArguments: false
+BinPackParameters: false
+PenaltyBreakAssignment: 10
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# Includes
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^<.*\.h>'
+    Priority: 1
+  - Regex: '^<'
+    Priority: 2
+  - Regex: '.*'
+    Priority: 3
+SortIncludes: true
+IncludeIsMainRegex: '([-_](test|unittest))?$'
+
+# Modern C++ features
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+Standard: Latest
+
+# Comments and documentation
+ReflowComments: true
+SpacesBeforeTrailingComments: 1
+CommentPragmas: '^ IWYU pragma:'
+
+# Style extras
+SortUsingDeclarations: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+InsertTrailingCommas: Wrapped
+...
