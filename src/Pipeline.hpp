@@ -9,18 +9,23 @@ namespace engine {
 
     struct PipelineConfigInfo
     {
-        VkViewport viewport;
-        VkRect2D   scissor;
+        // delete copy operations
+        PipelineConfigInfo(const PipelineConfigInfo&)            = delete;
+        PipelineConfigInfo& operator=(const PipelineConfigInfo&) = delete;
 
+        VkPipelineViewportStateCreateInfo      viewportInfo;
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
         VkPipelineRasterizationStateCreateInfo rasterizationInfo;
         VkPipelineMultisampleStateCreateInfo   multisampleInfo;
         VkPipelineColorBlendAttachmentState    colorBlendAttachment;
         VkPipelineColorBlendStateCreateInfo    colorBlendInfo;
         VkPipelineDepthStencilStateCreateInfo  depthStencilInfo;
-        VkPipelineLayout                       pipelineLayout = VK_NULL_HANDLE;
-        VkRenderPass                           renderPass     = VK_NULL_HANDLE;
-        uint32_t                               subpass        = 0;
+        std::vector<VkDynamicState>            dynamicStateEnables;
+        VkPipelineDynamicStateCreateInfo       dynamicStateInfo;
+
+        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+        VkRenderPass     renderPass     = VK_NULL_HANDLE;
+        uint32_t         subpass        = 0;
     };
 
     class Pipeline
@@ -45,7 +50,7 @@ namespace engine {
         Pipeline(const Pipeline&) = delete;
 
         // static function to get default config
-        static PipelineConfigInfo defaultPipelineConfigInfo(uint32_t width, uint32_t height);
+        static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
 
         // function to bind pipeline to command buffer
         void bind(VkCommandBuffer commandBuffer);

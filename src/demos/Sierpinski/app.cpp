@@ -45,8 +45,9 @@ namespace engine {
 
     void App::createPipeline()
     {
-        auto pipelineConfig =
-                Pipeline::defaultPipelineConfigInfo(swapChain->width(), swapChain->height());
+        PipelineConfigInfo pipelineConfig{};
+        Pipeline::defaultPipelineConfigInfo(pipelineConfig);
+
         pipelineConfig.renderPass     = swapChain->getRenderPass();
         pipelineConfig.pipelineLayout = pipelineLayout;
         pipeline                      = std::make_unique<Pipeline>(device,
@@ -168,6 +169,23 @@ namespace engine {
                 .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                 .pClearValues    = clearValues.data(),
         };
+
+        VkViewport viewport{
+                .x        = 0.0f,
+                .y        = 0.0f,
+                .width    = static_cast<float>(swapChain->getSwapChainExtent().width),
+                .height   = static_cast<float>(swapChain->getSwapChainExtent().height),
+                .minDepth = 0.0f,
+                .maxDepth = 1.0f,
+        };
+
+        VkRect2D scissor{
+                .offset = {0, 0},
+                .extent = swapChain->getSwapChainExtent(),
+        };
+
+        vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+        vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
 
         vkCmdBeginRenderPass(commandBuffers[imageIndex],
                              &renderPassInfo,

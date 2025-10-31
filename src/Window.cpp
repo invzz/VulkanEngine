@@ -1,13 +1,13 @@
 #include "Window.hpp"
 
 #include <iostream>
-#include <stdexcept>
 
+#include "Exceptions.hpp"
 #include "ansi_colors.hpp"
 
 namespace engine {
 
-    Window::Window(int width, int height, std::string title)
+    Window::Window(int width, int height, const std::string& title)
         : width(width), height(height), title(title)
     {
         initWindow();
@@ -51,7 +51,7 @@ namespace engine {
     {
         if (auto result = glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create window surface!");
+            throw WindowSurfaceCreationException("failed to create window surface!");
         }
     }
 

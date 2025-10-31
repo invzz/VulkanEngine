@@ -9,7 +9,7 @@ namespace engine {
     class Window
     {
       public:
-        Window(int width, int height, std::string title);
+        Window(int width, int height, const std::string& title);
         ~Window();
 
         // avoid dangling pointers
@@ -34,7 +34,7 @@ namespace engine {
         // Flag to indicate if the framebuffer has been resized
         bool framebufferResized = false;
 
-        std::string title;
+        const std::string title;
     };
 
 } // namespace engine

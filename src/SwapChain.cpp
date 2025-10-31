@@ -1,3 +1,4 @@
+
 /**
  * @class engine::SwapChain
  * @brief Manages Vulkan swapchain, image views, framebuffers, render pass, depth resources, and
@@ -33,6 +34,8 @@
 #include <limits>
 #include <set>
 #include <stdexcept>
+
+#include "Exceptions.hpp"
 
 namespace engine {
 
@@ -84,17 +87,17 @@ namespace engine {
         }
 
         // cleanup per-image synchronization objects
-        for (size_t i = 0; i < imageAvailableSemaphores.size(); i++)
+        for (auto semaphore : imageAvailableSemaphores)
         {
-            vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
+            vkDestroySemaphore(device.device(), semaphore, nullptr);
         }
-        for (size_t i = 0; i < renderFinishedSemaphores.size(); i++)
+        for (auto semaphore : renderFinishedSemaphores)
         {
-            vkDestroySemaphore(device.device(), renderFinishedSemaphores[i], nullptr);
+            vkDestroySemaphore(device.device(), semaphore, nullptr);
         }
-        for (size_t i = 0; i < inFlightFences.size(); i++)
+        for (auto fence : inFlightFences)
         {
-            vkDestroyFence(device.device(), inFlightFences[i], nullptr);
+            vkDestroyFence(device.device(), fence, nullptr);
         }
     }
 
@@ -145,7 +148,7 @@ namespace engine {
         if (vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) !=
             VK_SUCCESS)
         {
-            throw std::runtime_error("failed to submit draw command buffer!");
+            throw CommandBufferSubmissionException("failed to submit draw command buffer!");
         }
 
         VkPresentInfoKHR presentInfo = {};
@@ -208,10 +211,10 @@ namespace engine {
             createInfo.queueFamilyIndexCount = 0;       // Optional
             createInfo.pQueueFamilyIndices   = nullptr; // Optional
         }
-
-        createInfo.preTransform   = swapChainSupport.capabilities.currentTransform;
-        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-
+        if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+        {
+            throw SwapChainCreationException("failed to create swap chain!");
+        }
         createInfo.presentMode = presentMode;
         createInfo.clipped     = VK_TRUE;
 
@@ -219,7 +222,7 @@ namespace engine {
 
         if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create swap chain!");
+            throw SwapChainCreationException("failed to create swap chain!");
         }
 
         // we only specified a minimum number of images in the swap chain, so the implementation is
@@ -253,7 +256,7 @@ namespace engine {
             if (vkCreateImageView(device.device(), &viewInfo, nullptr, &swapChainImageViews[i]) !=
                 VK_SUCCESS)
             {
-                throw std::runtime_error("failed to create texture image view!");
+                throw ImageViewCreationException("failed to create texture image view!");
             }
         }
     }
@@ -318,7 +321,7 @@ namespace engine {
         if (vkCreateRenderPass(device.device(), &renderPassInfo, nullptr, &renderPass) !=
             VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create render pass!");
+            throw RenderPassCreationException("failed to create render pass!");
         }
     }
 
@@ -329,14 +332,14 @@ namespace engine {
         {
             std::array<VkImageView, 2> attachments = {swapChainImageViews[i], depthImageViews[i]};
 
-            VkExtent2D              swapChainExtent = getSwapChainExtent();
+            VkExtent2D              swce            = getSwapChainExtent();
             VkFramebufferCreateInfo framebufferInfo = {};
             framebufferInfo.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebufferInfo.renderPass              = renderPass;
             framebufferInfo.attachmentCount         = static_cast<uint32_t>(attachments.size());
             framebufferInfo.pAttachments            = attachments.data();
-            framebufferInfo.width                   = swapChainExtent.width;
-            framebufferInfo.height                  = swapChainExtent.height;
+            framebufferInfo.width                   = swce.width;
+            framebufferInfo.height                  = swce.height;
             framebufferInfo.layers                  = 1;
 
             if (vkCreateFramebuffer(device.device(),
@@ -344,15 +347,15 @@ namespace engine {
                                     nullptr,
                                     &swapChainFramebuffers[i]) != VK_SUCCESS)
             {
-                throw std::runtime_error("failed to create framebuffer!");
+                throw FramebufferCreationException("failed to create framebuffer!");
             }
         }
     }
 
     void SwapChain::createDepthResources()
     {
-        VkFormat   depthFormat     = findDepthFormat();
-        VkExtent2D swapChainExtent = getSwapChainExtent();
+        VkFormat   depthFormat = findDepthFormat();
+        VkExtent2D swce        = getSwapChainExtent();
 
         depthImages.resize(imageCount());
         depthImageMemorys.resize(imageCount());
@@ -363,8 +366,8 @@ namespace engine {
             VkImageCreateInfo imageInfo{};
             imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
             imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-            imageInfo.extent.width  = swapChainExtent.width;
-            imageInfo.extent.height = swapChainExtent.height;
+            imageInfo.extent.width  = swce.width;
+            imageInfo.extent.height = swce.height;
             imageInfo.extent.depth  = 1;
             imageInfo.mipLevels     = 1;
             imageInfo.arrayLayers   = 1;
@@ -395,7 +398,7 @@ namespace engine {
             if (vkCreateImageView(device.device(), &viewInfo, nullptr, &depthImageViews[i]) !=
                 VK_SUCCESS)
             {
-                throw std::runtime_error("failed to create texture image view!");
+                throw ImageViewCreationException("failed to create texture image view!");
             }
         }
     }
@@ -427,7 +430,7 @@ namespace engine {
                                   nullptr,
                                   &renderFinishedSemaphores[i]) != VK_SUCCESS)
             {
-                throw std::runtime_error("failed to create per-image semaphores!");
+                throw SemaphoreCreationException("failed to create per-image semaphores!");
             }
         }
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -435,7 +438,7 @@ namespace engine {
             if (vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) !=
                 VK_SUCCESS)
             {
-                throw std::runtime_error("failed to create in-flight fence!");
+                throw InFlightFenceException("failed to create in-flight fence!");
             }
         }
     }
@@ -471,7 +474,6 @@ namespace engine {
         {
             if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
             {
-                std::cout << "Present mode: Immediate" << std::endl;
                 return availablePresentMode;
             }
         }
