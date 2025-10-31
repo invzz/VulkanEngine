@@ -176,6 +176,8 @@ namespace engine {
         VkPhysicalDeviceProperties properties;
 
       private:
+        bool                     checkValidationLayerSupport() const;
+        std::vector<const char*> getRequiredExtensions() const;
         /**
          * @brief Creates the Vulkan instance and checks required extensions.
          */
@@ -243,17 +245,7 @@ namespace engine {
          * @param device Vulkan physical device handle.
          * @return true if all required extensions are supported, false otherwise.
          */
-        bool     checkDeviceExtensionSupport(VkPhysicalDevice device) const;
-        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags);
-        void     createBuffer(VkDeviceSize          size,
-                              VkBufferUsageFlags    usage,
-                              VkMemoryPropertyFlags memoryPropertyFlags,
-                              VkBuffer&             buffer,
-                              VkDeviceMemory&       bufferMemory);
-        void     createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                     VkMemoryPropertyFlags    memoryPropertyFlags,
-                                     VkImage&                 image,
-                                     VkDeviceMemory&          imageMemory);
+        bool checkDeviceExtensionSupport(VkPhysicalDevice device) const;
 
         /**
          * @brief Queries swapchain support details for a physical device.
