@@ -39,7 +39,7 @@ namespace engine {
         };
 
         // not copyable
-        void operator=(const Pipeline&) = delete;
+        Pipeline& operator=(const Pipeline&) = delete;
 
         // prevent copies
         Pipeline(const Pipeline&) = delete;

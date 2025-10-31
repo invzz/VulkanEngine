@@ -31,12 +31,13 @@ namespace engine {
         void createCommandBuffers();
         void drawFrame();
 
-        Window    window{WIDTH, HEIGHT, "Engine App"};
-        Device    device{window};
-        SwapChain swapChain{device, window.getExtent()};
+        void recreateSwapChain();
+        void recordCommandBuffer(int imageIndex);
 
-        std::unique_ptr<Pipeline> pipeline;
-
+        Window                       window{WIDTH, HEIGHT, "Engine App"};
+        Device                       device{window};
+        std::unique_ptr<SwapChain>   swapChain;
+        std::unique_ptr<Pipeline>    pipeline;
         VkPipelineLayout             pipelineLayout;
         std::vector<VkCommandBuffer> commandBuffers;
         std::unique_ptr<Model>       model;

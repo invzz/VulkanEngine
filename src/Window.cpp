@@ -20,22 +20,30 @@ namespace engine {
         glfwTerminate();
     }
 
+    void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+    {
+        auto win                = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        win->framebufferResized = true;
+        win->width              = width;
+        win->height             = height;
+    }
+
     void Window::initWindow()
     {
         // Initialize the GLFW window here
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-        // Get the primary monitor and its video mode
-        GLFWmonitor*       monitor = glfwGetPrimaryMonitor();
-        const GLFWvidmode* mode    = glfwGetVideoMode(monitor);
-
-        std::cout << "[" BLUE "Monitor resolution: " RESET "]" << mode->width << "x" << mode->height
-                  << std::endl;
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
         // Create the window first
         window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+
+        // Set the user pointer to this instance
+        glfwSetWindowUserPointer(window, this);
+
+        // Set the framebuffer size callback
+        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
         if (!window) return;
     }
 
