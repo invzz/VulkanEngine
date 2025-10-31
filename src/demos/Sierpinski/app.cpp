@@ -2,6 +2,8 @@
 
 #include <array>
 #include <stdexcept>
+
+#include "Exceptions.hpp"
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
 // Ensure depth range is [0, 1] for Vulkan
@@ -91,7 +93,7 @@ namespace engine {
                                    nullptr,
                                    &pipelineLayout) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create pipeline layout!");
+            throw engine::RuntimeException("failed to create pipeline layout!");
         }
     }
 
@@ -108,7 +110,7 @@ namespace engine {
             vkAllocateCommandBuffers(device.device(), &allocInfo, commandBuffers.data()) !=
             VK_SUCCESS)
         {
-            throw std::runtime_error("failed to allocate command buffers!");
+            throw engine::RuntimeException("failed to allocate command buffers!");
         }
     }
 
@@ -125,7 +127,7 @@ namespace engine {
 
         if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {
-            throw std::runtime_error("failed to acquire swap chain image!");
+            throw engine::RuntimeException("failed to acquire swap chain image!");
         }
 
         recordCommandBuffer(imageIndex);
@@ -199,7 +201,7 @@ namespace engine {
             };
             vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to begin recording command buffer!");
+            throw engine::RuntimeException("failed to begin recording command buffer!");
         }
 
         std::array<VkClearValue, 2> clearValues = {};
@@ -247,8 +249,9 @@ namespace engine {
         for (int i = 0; i < 3; i++)
         {
             SimplePushConstantData push{};
-            push.offset = {-0.5f + frame * 0.001f, -0.4f + i * 0.25f};
-            push.color  = {0.0f, 0.0f, 0.2f + i * 0.2f};
+            push.offset = {-0.5f + static_cast<float>(frame) * 0.001f,
+                           -0.4f + static_cast<float>(i) * 0.25f};
+            push.color  = {0.0f, 0.0f, 0.2f + static_cast<float>(i) * 0.2f};
 
             vkCmdPushConstants(commandBuffers[imageIndex],
                                pipelineLayout,
@@ -263,7 +266,7 @@ namespace engine {
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to record command buffer!");
+            throw engine::RuntimeException("failed to record command buffer!");
         }
     }
 

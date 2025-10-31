@@ -91,7 +91,7 @@ namespace engine {
          * @param properties Required memory property flags.
          * @return Index of suitable memory type.
          */
-        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags);
 
         /**
          * @brief Finds graphics and present queue families for the current physical device.
@@ -168,7 +168,7 @@ namespace engine {
          * @param imageMemory Reference to memory handle to be allocated.
          */
         void createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                 VkMemoryPropertyFlags    properties,
+                                 VkMemoryPropertyFlags    memoryPropertyFlags,
                                  VkImage&                 image,
                                  VkDeviceMemory&          imageMemory);
 
@@ -219,13 +219,6 @@ namespace engine {
          * @brief Gets required Vulkan instance extensions for GLFW and validation layers.
          * @return Vector of required extension names.
          */
-        std::vector<const char*> getRequiredExtensions();
-
-        /**
-         * @brief Checks if requested Vulkan validation layers are available.
-         * @return true if all requested layers are available, false otherwise.
-         */
-        bool checkValidationLayerSupport();
 
         /**
          * @brief Finds graphics and present queue families for a physical device.
@@ -238,7 +231,7 @@ namespace engine {
          * @brief Populates debug messenger creation info for Vulkan validation layers.
          * @param createInfo Reference to debug messenger creation info struct.
          */
-        void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+        void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const;
 
         /**
          * @brief Checks and prints available and required Vulkan instance extensions.
@@ -250,7 +243,17 @@ namespace engine {
          * @param device Vulkan physical device handle.
          * @return true if all required extensions are supported, false otherwise.
          */
-        bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+        bool     checkDeviceExtensionSupport(VkPhysicalDevice device) const;
+        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags);
+        void     createBuffer(VkDeviceSize          size,
+                              VkBufferUsageFlags    usage,
+                              VkMemoryPropertyFlags memoryPropertyFlags,
+                              VkBuffer&             buffer,
+                              VkDeviceMemory&       bufferMemory);
+        void     createImageWithInfo(const VkImageCreateInfo& imageInfo,
+                                     VkMemoryPropertyFlags    memoryPropertyFlags,
+                                     VkImage&                 image,
+                                     VkDeviceMemory&          imageMemory);
 
         /**
          * @brief Queries swapchain support details for a physical device.

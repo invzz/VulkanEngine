@@ -1,5 +1,7 @@
 #pragma once
 #include <exception>
+#include <stdexcept>
+#include <string>
 namespace engine {
     class SwapChainCreationException : public std::exception
     {
@@ -129,5 +131,18 @@ namespace engine {
 
       private:
         const char* msg;
+    };
+
+    /**
+     * @class RuntimeException
+     * @brief Generic runtime error used across the engine instead of std::runtime_error
+     *
+     * Use this for errors that were previously thrown as std::runtime_error to provide a
+     * consistent exception hierarchy under the engine namespace.
+     */
+    class RuntimeException : public std::runtime_error
+    {
+      public:
+        using std::runtime_error::runtime_error;
     };
 } // namespace engine

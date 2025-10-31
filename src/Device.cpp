@@ -1,5 +1,6 @@
 #include "Device.hpp"
 
+#include "Exceptions.hpp"
 #include "ansi_colors.hpp"
 // std headers
 #include <cstring>
@@ -19,7 +20,7 @@ namespace engine {
     debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
                   VkDebugUtilsMessageTypeFlagsEXT             messageType,
                   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                  void*                                       pUserData)
+                  void* /*pUserData*/)
     {
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
         {
@@ -131,7 +132,7 @@ namespace engine {
     {
         if (enableValidationLayers && !checkValidationLayerSupport())
         {
-            throw std::runtime_error("validation layers requested, but not available!");
+            throw engine::RuntimeException("validation layers requested, but not available!");
         }
 
         VkApplicationInfo appInfo = {
@@ -159,7 +160,7 @@ namespace engine {
             createInfo.ppEnabledLayerNames = validationLayers.data();
 
             populateDebugMessengerCreateInfo(debugCreateInfo);
-            createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+            createInfo.pNext = &debugCreateInfo;
         }
         else
         {
@@ -169,7 +170,7 @@ namespace engine {
 
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create instance!");
+            throw engine::RuntimeException("failed to create instance!");
         }
 
         hasGflwRequiredInstanceExtensions();
@@ -185,7 +186,7 @@ namespace engine {
         vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
         if (deviceCount == 0)
         {
-            throw std::runtime_error("failed to find GPUs with Vulkan support!");
+            throw engine::RuntimeException("failed to find GPUs with Vulkan support!");
         }
         std::cout << "Device count: " << deviceCount << std::endl;
         std::vector<VkPhysicalDevice> devices(deviceCount);
@@ -205,7 +206,7 @@ namespace engine {
 
         if (physicalDevice == VK_NULL_HANDLE)
         {
-            throw std::runtime_error("failed to find a suitable GPU!");
+            throw engine::RuntimeException("failed to find a suitable GPU!");
         }
 
         vkGetPhysicalDeviceProperties(physicalDevice, &properties);
@@ -263,7 +264,7 @@ namespace engine {
 
         if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create logical device!");
+            throw engine::RuntimeException("failed to create logical device!");
         }
 
         vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
@@ -286,7 +287,7 @@ namespace engine {
 
         if (vkCreateCommandPool(device_, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create command pool!");
+            throw engine::RuntimeException("failed to create command pool!");
         }
     }
 
@@ -328,7 +329,8 @@ namespace engine {
      * @brief Populates debug messenger creation info for Vulkan validation layers.
      * @param createInfo Reference to debug messenger creation info struct.
      */
-    void Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
+    void
+    Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const
     {
         createInfo                 = {};
         createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -353,7 +355,7 @@ namespace engine {
         if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) !=
             VK_SUCCESS)
         {
-            throw std::runtime_error("failed to set up debug messenger!");
+            throw engine::RuntimeException("failed to set up debug messenger!");
         }
     }
 
@@ -361,7 +363,7 @@ namespace engine {
      * @brief Checks if requested Vulkan validation layers are available.
      * @return true if all requested layers are available, false otherwise.
      */
-    bool Device::checkValidationLayerSupport()
+    bool Device::checkValidationLayerSupport() const
     {
         uint32_t layerCount;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -395,7 +397,7 @@ namespace engine {
      * @brief Gets required Vulkan instance extensions for GLFW and validation layers.
      * @return Vector of required extension names.
      */
-    std::vector<const char*> Device::getRequiredExtensions()
+    std::vector<const char*> Device::getRequiredExtensions() const
     {
         uint32_t     glfwExtensionCount = 0;
         const char** glfwExtensions;
@@ -427,17 +429,19 @@ namespace engine {
         for (const auto& extension : extensions)
         {
             std::cout << "\t" << extension.extensionName << std::endl;
-            available.insert(extension.extensionName);
+            available.emplace(extension.extensionName);
         }
 
         std::cout << "required extensions:" << std::endl;
-        auto requiredExtensions = getRequiredExtensions();
-        for (const auto& required : requiredExtensions)
+        auto                               requiredExtensions = getRequiredExtensions();
+        std::set<std::string, std::less<>> requiredSet(requiredExtensions.begin(),
+                                                       requiredExtensions.end());
+        for (const auto& required : requiredSet)
         {
             std::cout << "\t" << required << std::endl;
             if (available.find(required) == available.end())
             {
-                throw std::runtime_error("Missing required glfw extension");
+                throw engine::RuntimeException("Missing required glfw extension");
             }
         }
     }
@@ -447,7 +451,7 @@ namespace engine {
      * @param device Vulkan physical device handle.
      * @return true if all required extensions are supported, false otherwise.
      */
-    bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device)
+    bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device) const
     {
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -458,7 +462,8 @@ namespace engine {
                                              &extensionCount,
                                              availableExtensions.data());
 
-        std::set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+        std::set<std::string, std::less<>> requiredExtensions(deviceExtensions.begin(),
+                                                              deviceExtensions.end());
 
         for (const auto& extension : availableExtensions)
         {
@@ -573,7 +578,7 @@ namespace engine {
                 return format;
             }
         }
-        throw std::runtime_error("failed to find supported format!");
+        throw engine::RuntimeException("failed to find supported format!");
     }
 
     /**
@@ -583,20 +588,20 @@ namespace engine {
      * @return Index of suitable memory type.
      * @throws std::runtime_error if no suitable memory type is found.
      */
-    uint32_t Device::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    uint32_t Device::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags)
     {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
-            if ((typeFilter & (1 << i)) &&
-                (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
+                                            memoryPropertyFlags) == memoryPropertyFlags)
             {
                 return i;
             }
         }
 
-        throw std::runtime_error("failed to find suitable memory type!");
+        throw engine::RuntimeException("failed to find suitable memory type!");
     }
 
     /**
@@ -610,7 +615,7 @@ namespace engine {
      */
     void Device::createBuffer(VkDeviceSize          size,
                               VkBufferUsageFlags    usage,
-                              VkMemoryPropertyFlags properties,
+                              VkMemoryPropertyFlags memoryPropertyFlags,
                               VkBuffer&             buffer,
                               VkDeviceMemory&       bufferMemory)
     {
@@ -622,20 +627,21 @@ namespace engine {
 
         if (vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create vertex buffer!");
+            throw engine::RuntimeException("failed to create vertex buffer!");
         }
 
         VkMemoryRequirements memRequirements;
         vkGetBufferMemoryRequirements(device_, buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize  = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex =
+                findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
         if (vkAllocateMemory(device_, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to allocate vertex buffer memory!");
+            throw engine::RuntimeException("failed to allocate vertex buffer memory!");
         }
 
         vkBindBufferMemory(device_, buffer, bufferMemory, 0);
@@ -749,31 +755,32 @@ namespace engine {
      * @throws std::runtime_error if image or memory allocation fails.
      */
     void Device::createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                     VkMemoryPropertyFlags    properties,
+                                     VkMemoryPropertyFlags    memoryPropertyFlags,
                                      VkImage&                 image,
                                      VkDeviceMemory&          imageMemory)
     {
         if (vkCreateImage(device_, &imageInfo, nullptr, &image) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to create image!");
+            throw engine::RuntimeException("failed to create image!");
         }
 
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_, image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize  = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+        allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex =
+                findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
         if (vkAllocateMemory(device_, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to allocate image memory!");
+            throw engine::RuntimeException("failed to allocate image memory!");
         }
 
         if (vkBindImageMemory(device_, image, imageMemory, 0) != VK_SUCCESS)
         {
-            throw std::runtime_error("failed to bind image memory!");
+            throw engine::RuntimeException("failed to bind image memory!");
         }
     }
 
