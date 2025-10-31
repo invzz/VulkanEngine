@@ -24,37 +24,36 @@ namespace engine {
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
         {
             // General message
-            std::cerr << "[ " << GREEN "GENERAL" RESET " ] ";
+            std::cerr << "[ " << GREEN "GENERAL" RESET;
         }
         else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
         {
             // Validation message
-            std::cerr << "[ " << YELLOW "VALIDATION" RESET " ] ";
+            std::cerr << "[ " << YELLOW "VALIDATION" RESET;
         }
         else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
         {
             // Performance message
-            std::cerr << "[ " << BLUE "PERFORMANCE" RESET " ] ";
+            std::cerr << "[ " << BLUE "PERFORMANCE" RESET;
         }
         if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
         {
-            std::cerr << "[ " << RED "ERROR" RESET " ] " << pCallbackData->pMessage << std::endl;
+            std::cerr << RED " ERROR" RESET " ] " << pCallbackData->pMessage << std::endl;
             return VK_FALSE;
         }
         else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
         {
-            std::cerr << "[ " << YELLOW "WARNING" RESET " ] " << pCallbackData->pMessage
-                      << std::endl;
+            std::cerr << YELLOW " WARNING" RESET " ] " << pCallbackData->pMessage << std::endl;
             return VK_FALSE;
         }
         else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
         {
-            std::cerr << "[ " << BLUE "INFO" RESET " ] " << pCallbackData->pMessage << std::endl;
+            std::cerr << BLUE " INFO" RESET " ] " << pCallbackData->pMessage << std::endl;
             return VK_FALSE;
         }
         else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
         {
-            std::cerr << "[ " << CYAN "VERBOSE" RESET " ] " << pCallbackData->pMessage << std::endl;
+            std::cerr << CYAN " VERBOSE" RESET " ] " << pCallbackData->pMessage << std::endl;
             return VK_FALSE;
         }
         return VK_FALSE;

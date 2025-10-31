@@ -42,12 +42,17 @@ namespace engine {
     SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent)
         : device{deviceRef}, windowExtent{extent}
     {
-        createSwapChain();
-        createImageViews();
-        createRenderPass();
-        createDepthResources();
-        createFramebuffers();
-        createSyncObjects();
+        Init();
+    }
+    SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::shared_ptr<SwapChain> previous)
+        : device{deviceRef}, windowExtent{extent}, oldSwapChain{previous}
+    {
+        Init();
+
+        if (oldSwapChain != nullptr)
+        {
+            oldSwapChain = nullptr;
+        }
     }
 
     SwapChain::~SwapChain()
@@ -170,6 +175,16 @@ namespace engine {
         return result;
     }
 
+    void SwapChain::Init()
+    {
+        createSwapChain();
+        createImageViews();
+        createRenderPass();
+        createDepthResources();
+        createFramebuffers();
+        createSyncObjects();
+    }
+
     void SwapChain::createSwapChain()
     {
         SwapChainSupportDetails swapChainSupport = device.getSwapChainSupport();
@@ -218,7 +233,8 @@ namespace engine {
         createInfo.presentMode = presentMode;
         createInfo.clipped     = VK_TRUE;
 
-        createInfo.oldSwapchain = VK_NULL_HANDLE;
+        createInfo.oldSwapchain = oldSwapChain == nullptr ? VK_NULL_HANDLE
+                                                          : oldSwapChain->swapChain;
 
         if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS)
         {

@@ -30,7 +30,7 @@ namespace engine {
         void createPipelineLayout();
         void createCommandBuffers();
         void drawFrame();
-
+        void freeCommandBuffers();
         void recreateSwapChain();
         void recordCommandBuffer(int imageIndex);
 

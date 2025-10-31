@@ -40,11 +40,15 @@ namespace engine {
     {
         model = std::make_unique<Model>(
                 device,
-                SierpinskiTriangle::create(2, {-0.5f, -0.5f}, {0.8f, -0.8f}, {0.0f, 0.8f}));
+                SierpinskiTriangle::create(8, {-0.5f, -0.5f}, {0.5f, -0.5f}, {0.0f, 0.5f}));
     }
 
     void App::createPipeline()
     {
+        assert(swapChain != nullptr && "Swap chain must be created before pipeline.");
+        assert(pipelineLayout != VK_NULL_HANDLE &&
+               "Pipeline layout must be created before pipeline.");
+
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
 
@@ -120,6 +124,15 @@ namespace engine {
         }
     }
 
+    void App::freeCommandBuffers()
+    {
+        vkFreeCommandBuffers(device.device(),
+                             device.getCommandPool(),
+                             static_cast<uint32_t>(commandBuffers.size()),
+                             commandBuffers.data());
+        commandBuffers.clear();
+    }
+
     void App::recreateSwapChain()
     {
         VkExtent2D extent = window.getExtent();
@@ -131,6 +144,21 @@ namespace engine {
 
         // Wait for the device to be idle before recreating swap chain
         vkDeviceWaitIdle(device.device());
+
+        if (swapChain != nullptr)
+        {
+            // Pass the old swap chain to the new one for efficient resource reuse
+            swapChain = std::make_unique<SwapChain>(device, extent, std::move(swapChain));
+            if (swapChain->imageCount() != commandBuffers.size())
+            {
+                freeCommandBuffers();
+                createCommandBuffers();
+            }
+        }
+        else
+        {
+            swapChain = std::make_unique<SwapChain>(device, extent);
+        }
 
         // Create a new swap chain with the updated extent
         swapChain = std::make_unique<SwapChain>(device, extent);
