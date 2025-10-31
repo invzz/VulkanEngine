@@ -10,6 +10,14 @@ layout(location = 1) in vec3 color;
 // fragColor is an output variable that will be passed to the fragment shader
 layout(location = 0) out vec3 fragColor;
 
+// push constants are a way to pass a small amount of data to shaders
+layout(push_constant) uniform PushConstants
+{
+    vec2 offset;
+    vec3 color;
+}
+pushConstants;
+
 void main()
 {
     // gl_Position is a built-in output variable that holds the position of the
@@ -26,6 +34,5 @@ void main()
     // gl_VertexIndex ranges from 0 to 2 for the three vertices of the triangle
 
     // we dont need gl_VertexIndex because we are using the position attribute directly
-    gl_Position = vec4(position, 0.0, 1.0);
-    fragColor   = color;
+    gl_Position = vec4(position + pushConstants.offset, 0.0, 1.0);
 }

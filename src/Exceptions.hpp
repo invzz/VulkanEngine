@@ -110,4 +110,24 @@ namespace engine {
       private:
         const char* msg;
     };
+
+    class WindowInitializationException : public std::exception
+    {
+      public:
+        explicit WindowInitializationException(const char* message) : msg(message) {}
+        const char* what() const noexcept override { return msg; }
+
+      private:
+        const char* msg;
+    };
+
+    class WindowCreationException : public std::exception
+    {
+      public:
+        explicit WindowCreationException(const char* message) : msg(message) {}
+        const char* what() const noexcept override { return msg; }
+
+      private:
+        const char* msg;
+    };
 } // namespace engine

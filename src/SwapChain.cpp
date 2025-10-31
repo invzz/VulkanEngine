@@ -477,22 +477,22 @@ namespace engine {
     VkPresentModeKHR SwapChain::chooseSwapPresentMode(
             const std::vector<VkPresentModeKHR>& availablePresentModes) const
     {
-        // for (const auto& availablePresentMode : availablePresentModes)
-        // {
-        //     if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-        //     {
-        //         std::cout << "Present mode: Mailbox" << std::endl;
-        //         return availablePresentMode;
-        //     }
-        // }
-
         for (const auto& availablePresentMode : availablePresentModes)
         {
-            if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+            if (availablePresentMode == VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR)
             {
+                std::cout << "Present mode: Shared Demand Refresh" << std::endl;
                 return availablePresentMode;
             }
         }
+
+        // for (const auto& availablePresentMode : availablePresentModes)
+        // {
+        //     if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+        //     {
+        //         return availablePresentMode;
+        //     }
+        // }
 
         std::cout << "Present mode: V-Sync" << std::endl;
         return VK_PRESENT_MODE_FIFO_KHR;

@@ -2,12 +2,23 @@
 
 #include <array>
 #include <stdexcept>
+// Ensure GLM uses radians for all angle measurements
+#define GLM_FORCE_RADIANS
+// Ensure depth range is [0, 1] for Vulkan
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
 
 #include "Device.hpp"
 #include "SierpinskiTriangle.hpp"
 #include "Window.hpp"
 
 namespace engine {
+
+    struct SimplePushConstantData
+    {
+        glm::vec2 offset;
+        alignas(16) glm::vec3 color;
+    };
 
     App::App()
     {
@@ -40,7 +51,7 @@ namespace engine {
     {
         model = std::make_unique<Model>(
                 device,
-                SierpinskiTriangle::create(8, {-0.5f, -0.5f}, {0.5f, -0.5f}, {0.0f, 0.5f}));
+                SierpinskiTriangle::create(1, {-0.5f, -0.5f}, {0.5f, -0.5f}, {0.0f, 0.5f}));
     }
 
     void App::createPipeline()
@@ -62,12 +73,18 @@ namespace engine {
 
     void App::createPipelineLayout()
     {
+        VkPushConstantRange pushConstantRange{
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                .offset     = 0,
+                .size       = sizeof(SimplePushConstantData),
+        };
+
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{
                 .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
                 .setLayoutCount         = 0,
                 .pSetLayouts            = nullptr,
-                .pushConstantRangeCount = 0,
-                .pPushConstantRanges    = nullptr,
+                .pushConstantRangeCount = 1,
+                .pPushConstantRanges    = &pushConstantRange,
         };
         if (vkCreatePipelineLayout(device.device(),
                                    &pipelineLayoutInfo,
@@ -172,6 +189,10 @@ namespace engine {
 
     void App::recordCommandBuffer(int imageIndex)
     {
+        static int frame = 0;
+
+        frame = (frame + 1) % 1000;
+
         if (VkCommandBufferBeginInfo beginInfo{
                     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                     // .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
@@ -222,7 +243,22 @@ namespace engine {
         pipeline->bind(commandBuffers[imageIndex]);
 
         model->bind(commandBuffers[imageIndex]);
-        model->draw(commandBuffers[imageIndex]);
+
+        for (int i = 0; i < 3; i++)
+        {
+            SimplePushConstantData push{};
+            push.offset = {-0.5f + frame * 0.001f, -0.4f + i * 0.25f};
+            push.color  = {0.0f, 0.0f, 0.2f + i * 0.2f};
+
+            vkCmdPushConstants(commandBuffers[imageIndex],
+                               pipelineLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0,
+                               sizeof(SimplePushConstantData),
+                               &push);
+
+            model->draw(commandBuffers[imageIndex]);
+        }
 
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)

@@ -31,6 +31,9 @@ namespace engine {
         uint32_t    width;
         uint32_t    height;
 
+        // Track if GLFW has been initialized
+        bool glfwInitialized = false;
+
         // Flag to indicate if the framebuffer has been resized
         bool framebufferResized = false;
 

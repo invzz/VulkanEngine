@@ -2,10 +2,8 @@
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
-
 // Ensure depth range is [0, 1] for Vulkan
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-
 #include <glm/glm.hpp>
 #include <vector>
 
