@@ -33,7 +33,7 @@ namespace engine {
         uint32_t presentFamily;
         bool     graphicsFamilyHasValue = false;
         bool     presentFamilyHasValue  = false;
-        bool     isComplete() { return graphicsFamilyHasValue && presentFamilyHasValue; }
+        bool     isComplete() const { return graphicsFamilyHasValue && presentFamilyHasValue; }
     };
 
     /**
@@ -52,7 +52,7 @@ namespace engine {
          * @brief Constructs the Device and initializes Vulkan resources.
          * @param window Reference to the main application window.
          */
-        Device(Window& window);
+        explicit Device(Window& window);
 
         /**
          * @brief Destructor. Cleans up Vulkan resources and device.

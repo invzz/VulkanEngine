@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "Device.hpp"
+#include "Model.hpp"
 #include "Pipeline.hpp"
 #include "SwapChain.hpp"
 #include "Window.hpp"
@@ -24,6 +25,7 @@ namespace engine {
         void run();
 
       private:
+        void loadModels();
         void createPipeline();
         void createPipelineLayout();
         void createCommandBuffers();
@@ -37,6 +39,7 @@ namespace engine {
 
         VkPipelineLayout             pipelineLayout;
         std::vector<VkCommandBuffer> commandBuffers;
+        std::unique_ptr<Model>       model;
     };
 
 } // namespace engine

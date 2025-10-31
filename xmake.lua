@@ -13,8 +13,21 @@ add_requires("glfw")
 add_requires("glm")
 add_requires("vulkan")
 
-target("engine")
+-- demos
+target("sierpinski_triangle")
     set_kind("binary")
+    add_files("src/demos/Sierpinski/**.cpp")
+    add_includedirs("src/demos/Sierpinski")
+    add_includedirs("src")
+    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
+    add_packages("glfw", "glm", "vulkan")
+    add_deps("engine")
+
+
+
+-- static libraries
+target("engine")
+    set_kind("static")
     add_files("src/**.cpp")
     add_includedirs("src")
     add_defines("SHADER_PATH=\"" .. shader_path .. "\"")

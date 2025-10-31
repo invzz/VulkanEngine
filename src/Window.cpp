@@ -1,6 +1,9 @@
 #include "Window.hpp"
 
+#include <iostream>
 #include <stdexcept>
+
+#include "ansi_colors.hpp"
 
 namespace engine {
 
@@ -28,14 +31,12 @@ namespace engine {
         GLFWmonitor*       monitor = glfwGetPrimaryMonitor();
         const GLFWvidmode* mode    = glfwGetVideoMode(monitor);
 
-        // Center the window on the current monitor
-        int xpos = (mode->width - width) / 2;
-        int ypos = (mode->height - height) / 2;
-        window   = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
-        if (window)
-        {
-            glfwSetWindowPos(window, xpos, ypos);
-        }
+        std::cout << "[" BLUE "Monitor resolution: " RESET "]" << mode->width << "x" << mode->height
+                  << std::endl;
+
+        // Create the window first
+        window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+        if (!window) return;
     }
 
     void Window::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface)

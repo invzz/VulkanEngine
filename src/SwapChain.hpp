@@ -25,13 +25,13 @@ namespace engine {
         VkFramebuffer getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
         VkRenderPass  getRenderPass() { return renderPass; }
         VkImageView   getImageView(int index) { return swapChainImageViews[index]; }
-        size_t        imageCount() { return swapChainImages.size(); }
-        VkFormat      getSwapChainImageFormat() { return swapChainImageFormat; }
-        VkExtent2D    getSwapChainExtent() { return swapChainExtent; }
-        uint32_t      width() { return swapChainExtent.width; }
-        uint32_t      height() { return swapChainExtent.height; }
+        size_t        imageCount() const { return swapChainImages.size(); }
+        VkFormat      getSwapChainImageFormat() const { return swapChainImageFormat; }
+        VkExtent2D    getSwapChainExtent() const { return swapChainExtent; }
+        uint32_t      width() const { return swapChainExtent.width; }
+        uint32_t      height() const { return swapChainExtent.height; }
 
-        float extentAspectRatio()
+        float extentAspectRatio() const
         {
             return static_cast<float>(swapChainExtent.width) /
                    static_cast<float>(swapChainExtent.height);
@@ -51,10 +51,10 @@ namespace engine {
 
         // Helper functions
         VkSurfaceFormatKHR
-        chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+        chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
         VkPresentModeKHR
-        chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
-        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+        chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
+        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
 
         VkFormat   swapChainImageFormat;
         VkExtent2D swapChainExtent;
@@ -73,6 +73,7 @@ namespace engine {
 
         VkSwapchainKHR swapChain;
 
+        // Per-image semaphores for swapchain synchronization
         std::vector<VkSemaphore> imageAvailableSemaphores;
         std::vector<VkSemaphore> renderFinishedSemaphores;
         std::vector<VkFence>     inFlightFences;

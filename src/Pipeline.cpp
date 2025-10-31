@@ -1,8 +1,11 @@
 #include "Pipeline.hpp"
 
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+
+#include "Model.hpp"
 
 namespace engine {
 
@@ -177,44 +180,47 @@ namespace engine {
                         .pSpecializationInfo = nullptr,
                 }};
 
+        auto bindingDescriptions   = Model::Vertex::getBindingDescriptions();
+        auto attributeDescriptions = Model::Vertex::getAttributeDescriptions();
+
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{
                 .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-                .vertexBindingDescriptionCount   = 0,
-                .pVertexBindingDescriptions      = nullptr,
-                .vertexAttributeDescriptionCount = 0,
-                .pVertexAttributeDescriptions    = nullptr,
+                .vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size()),
+                .pVertexBindingDescriptions    = bindingDescriptions.data(),
+                .vertexAttributeDescriptionCount =
+                        static_cast<uint32_t>(attributeDescriptions.size()),
+                .pVertexAttributeDescriptions = attributeDescriptions.data(),
         };
 
         VkPipelineViewportStateCreateInfo viewportInfo{
                 .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                .pNext         = nullptr,
+                .flags         = 0,
                 .viewportCount = 1,
                 .pViewports    = &configInfo.viewport,
-                .pNext         = nullptr,
                 .scissorCount  = 1,
                 .pScissors     = &configInfo.scissor,
-                .flags         = 0,
         };
 
-        VkGraphicsPipelineCreateInfo pipelineInfo{
-                .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-                .stageCount          = 2,
-                .pStages             = shaderStages,
-                .pVertexInputState   = &vertexInputInfo,
-                .pInputAssemblyState = &configInfo.inputAssemblyInfo,
-                .pViewportState      = &viewportInfo,
-                .pRasterizationState = &configInfo.rasterizationInfo,
-                .pMultisampleState   = &configInfo.multisampleInfo,
-                .pDepthStencilState  = &configInfo.depthStencilInfo,
-                .pColorBlendState    = &configInfo.colorBlendInfo,
-                .pDynamicState       = nullptr,
-                .layout              = configInfo.pipelineLayout,
-                .renderPass          = configInfo.renderPass,
-                .subpass             = configInfo.subpass,
-                .basePipelineHandle  = VK_NULL_HANDLE,
-                .basePipelineIndex   = -1,
-        };
-
-        if (vkCreateGraphicsPipelines(device.device(),
+        if (VkGraphicsPipelineCreateInfo pipelineInfo{
+                    .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                    .stageCount          = 2,
+                    .pStages             = shaderStages,
+                    .pVertexInputState   = &vertexInputInfo,
+                    .pInputAssemblyState = &configInfo.inputAssemblyInfo,
+                    .pViewportState      = &viewportInfo,
+                    .pRasterizationState = &configInfo.rasterizationInfo,
+                    .pMultisampleState   = &configInfo.multisampleInfo,
+                    .pDepthStencilState  = &configInfo.depthStencilInfo,
+                    .pColorBlendState    = &configInfo.colorBlendInfo,
+                    .pDynamicState       = nullptr,
+                    .layout              = configInfo.pipelineLayout,
+                    .renderPass          = configInfo.renderPass,
+                    .subpass             = configInfo.subpass,
+                    .basePipelineHandle  = VK_NULL_HANDLE,
+                    .basePipelineIndex   = -1,
+            };
+            vkCreateGraphicsPipelines(device.device(),
                                       VK_NULL_HANDLE,
                                       1,
                                       &pipelineInfo,
@@ -235,9 +241,10 @@ namespace engine {
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
         createInfo.codeSize = code.size();
-        // uint32_t and char are different sizes, need to cast
-        // ensure proper alignment with reinterpret_cast
-        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+        // Safely convert std::vector<char> to std::vector<uint32_t>
+        std::vector<uint32_t> codeAligned((code.size() + 3) / 4);
+        std::memcpy(codeAligned.data(), code.data(), code.size());
+        createInfo.pCode = codeAligned.data();
 
         if (vkCreateShaderModule(device.device(), &createInfo, nullptr, shaderModule) != VK_SUCCESS)
         {

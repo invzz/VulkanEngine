@@ -4,12 +4,14 @@
 #include <stdexcept>
 
 #include "Device.hpp"
+#include "SierpinskiTriangle.hpp"
 #include "Window.hpp"
 
 namespace engine {
 
     App::App()
     {
+        loadModels();
         createPipelineLayout();
         createPipeline();
         createCommandBuffers();
@@ -24,12 +26,20 @@ namespace engine {
     {
         while (!window.shouldClose())
         {
-            // Main loop logic here
+            // Poll for window events
             glfwPollEvents();
+            // Render a frame
             drawFrame();
         }
-
+        // Wait for the device to finish operations before exiting
         vkDeviceWaitIdle(device.device());
+    }
+
+    void App::loadModels()
+    {
+        model = std::make_unique<Model>(
+                device,
+                SierpinskiTriangle::create(2, {-0.5f, -0.5f}, {0.8f, -0.8f}, {0.0f, 0.8f}));
     }
 
     void App::createPipeline()
@@ -66,14 +76,13 @@ namespace engine {
     {
         commandBuffers.resize(swapChain.imageCount());
 
-        VkCommandBufferAllocateInfo allocInfo{
-                .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                .commandPool        = device.getCommandPool(),
-                .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                .commandBufferCount = static_cast<uint32_t>(commandBuffers.size()),
-        };
-
-        if (vkAllocateCommandBuffers(device.device(), &allocInfo, commandBuffers.data()) !=
+        if (VkCommandBufferAllocateInfo allocInfo{
+                    .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                    .commandPool        = device.getCommandPool(),
+                    .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                    .commandBufferCount = static_cast<uint32_t>(commandBuffers.size()),
+            };
+            vkAllocateCommandBuffers(device.device(), &allocInfo, commandBuffers.data()) !=
             VK_SUCCESS)
         {
             throw std::runtime_error("failed to allocate command buffers!");
@@ -81,12 +90,11 @@ namespace engine {
 
         for (size_t i = 0; i < commandBuffers.size(); i++)
         {
-            VkCommandBufferBeginInfo beginInfo{
-                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                    // .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
-            };
-
-            if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+            if (VkCommandBufferBeginInfo beginInfo{
+                        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                        // .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT,
+                };
+                vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
             {
                 throw std::runtime_error("failed to begin recording command buffer!");
             }
@@ -112,8 +120,9 @@ namespace engine {
 
             pipeline->bind(commandBuffers[i]);
 
-            // 3 vertices, 1 instance, first vertex 0, first instance 0
-            vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+            model->bind(commandBuffers[i]);
+            model->draw(commandBuffers[i]);
+
             vkCmdEndRenderPass(commandBuffers[i]);
             if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
             {
@@ -125,13 +134,13 @@ namespace engine {
     void App::drawFrame()
     {
         uint32_t imageIndex;
-        auto     result = swapChain.acquireNextImage(&imageIndex);
-        if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        if (auto result = swapChain.acquireNextImage(&imageIndex);
+            result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
         {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
         // submit command buffer and handle synchronization
-        result = swapChain.submitCommandBuffers(&commandBuffers[imageIndex], &imageIndex);
+        auto result = swapChain.submitCommandBuffers(&commandBuffers[imageIndex], &imageIndex);
     }
 
 } // namespace engine

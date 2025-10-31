@@ -1,3 +1,28 @@
+/**
+ * @class engine::SwapChain
+ * @brief Manages Vulkan swapchain, image views, framebuffers, render pass, depth resources, and
+ * synchronization objects.
+ *
+ * The SwapChain class encapsulates all logic for creating and managing the Vulkan swapchain and its
+ * associated resources. It handles:
+ *   - Swapchain creation and destruction
+ *   - Image view creation for swapchain images
+ *   - Render pass setup
+ *   - Depth buffer resources
+ *   - Framebuffer creation
+ *   - Synchronization primitives (semaphores, fences)
+ *   - Image acquisition and presentation
+ *   - Frame synchronization for multiple frames in flight
+ *
+ * Usage:
+ *   - Construct with a valid Device and window extent
+ *   - Call acquireNextImage() before rendering each frame
+ *   - Call submitCommandBuffers() to submit rendering and present the image
+ *
+ * @note This class is designed for onboarding and learning Vulkan best practices. All resource
+ * management is automatic.
+ */
+
 #include "SwapChain.hpp"
 
 // std
@@ -57,6 +82,20 @@ namespace engine {
             vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(device.device(), inFlightFences[i], nullptr);
         }
+
+        // cleanup per-image synchronization objects
+        for (size_t i = 0; i < imageAvailableSemaphores.size(); i++)
+        {
+            vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
+        }
+        for (size_t i = 0; i < renderFinishedSemaphores.size(); i++)
+        {
+            vkDestroySemaphore(device.device(), renderFinishedSemaphores[i], nullptr);
+        }
+        for (size_t i = 0; i < inFlightFences.size(); i++)
+        {
+            vkDestroyFence(device.device(), inFlightFences[i], nullptr);
+        }
     }
 
     VkResult SwapChain::acquireNextImage(uint32_t* imageIndex)
@@ -67,13 +106,13 @@ namespace engine {
                         VK_TRUE,
                         std::numeric_limits<uint64_t>::max());
 
-        VkResult result = vkAcquireNextImageKHR(
-                device.device(),
-                swapChain,
-                std::numeric_limits<uint64_t>::max(),
-                imageAvailableSemaphores[currentFrame], // must be a not signaled semaphore
-                VK_NULL_HANDLE,
-                imageIndex);
+        // Use currentFrame for semaphore
+        VkResult result = vkAcquireNextImageKHR(device.device(),
+                                                swapChain,
+                                                std::numeric_limits<uint64_t>::max(),
+                                                imageAvailableSemaphores[currentFrame],
+                                                VK_NULL_HANDLE,
+                                                imageIndex);
 
         return result;
     }
@@ -363,10 +402,12 @@ namespace engine {
 
     void SwapChain::createSyncObjects()
     {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+        // Per-image semaphores
+        size_t imgCount = imageCount();
+        imageAvailableSemaphores.resize(imgCount);
+        renderFinishedSemaphores.resize(imgCount);
+        imagesInFlight.resize(imgCount, VK_NULL_HANDLE);
         inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-        imagesInFlight.resize(imageCount(), VK_NULL_HANDLE);
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -375,7 +416,7 @@ namespace engine {
         fenceInfo.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        for (size_t i = 0; i < imgCount; i++)
         {
             if (vkCreateSemaphore(device.device(),
                                   &semaphoreInfo,
@@ -384,17 +425,23 @@ namespace engine {
                 vkCreateSemaphore(device.device(),
                                   &semaphoreInfo,
                                   nullptr,
-                                  &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) !=
-                        VK_SUCCESS)
+                                  &renderFinishedSemaphores[i]) != VK_SUCCESS)
             {
-                throw std::runtime_error("failed to create synchronization objects for a frame!");
+                throw std::runtime_error("failed to create per-image semaphores!");
+            }
+        }
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            if (vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) !=
+                VK_SUCCESS)
+            {
+                throw std::runtime_error("failed to create in-flight fence!");
             }
         }
     }
 
-    VkSurfaceFormatKHR
-    SwapChain::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+    VkSurfaceFormatKHR SwapChain::chooseSwapSurfaceFormat(
+            const std::vector<VkSurfaceFormatKHR>& availableFormats) const
     {
         for (const auto& availableFormat : availableFormats)
         {
@@ -408,30 +455,32 @@ namespace engine {
         return availableFormats[0];
     }
 
-    VkPresentModeKHR
-    SwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+    VkPresentModeKHR SwapChain::chooseSwapPresentMode(
+            const std::vector<VkPresentModeKHR>& availablePresentModes) const
     {
+        // for (const auto& availablePresentMode : availablePresentModes)
+        // {
+        //     if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        //     {
+        //         std::cout << "Present mode: Mailbox" << std::endl;
+        //         return availablePresentMode;
+        //     }
+        // }
+
         for (const auto& availablePresentMode : availablePresentModes)
         {
-            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+            if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
             {
-                std::cout << "Present mode: Mailbox" << std::endl;
+                std::cout << "Present mode: Immediate" << std::endl;
                 return availablePresentMode;
             }
         }
-
-        // for (const auto &availablePresentMode : availablePresentModes) {
-        //   if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-        //     std::cout << "Present mode: Immediate" << std::endl;
-        //     return availablePresentMode;
-        //   }
-        // }
 
         std::cout << "Present mode: V-Sync" << std::endl;
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    VkExtent2D SwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+    VkExtent2D SwapChain::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const
     {
         if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         {
