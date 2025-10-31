@@ -592,51 +592,6 @@ namespace engine {
      * @return Index of suitable memory type.
      * @throws std::runtime_error if no suitable memory type is found.
      */
-    uint32_t Device::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags)
-    {
-        VkPhysicalDeviceMemoryProperties memProperties;
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
-                                            memoryPropertyFlags) == memoryPropertyFlags)
-            {
-                return i;
-            }
-        }
-
-        throw engine::RuntimeException("failed to find suitable memory type!");
-    }
-
-    /**
-     * @brief Creates a Vulkan buffer and allocates memory for it.
-     * @param size Size of the buffer in bytes.
-     * @param usage Buffer usage flags.
-     * @param properties Memory property flags.
-     * @param buffer Reference to buffer handle to be created.
-     * @param bufferMemory Reference to memory handle to be allocated.
-
-        {
-            throw engine::RuntimeException("failed to create vertex buffer!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(device_, buffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex =
-                findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
-
-        if (vkAllocateMemory(device_, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-        {
-            throw engine::RuntimeException("failed to allocate vertex buffer memory!");
-        }
-
-        vkBindBufferMemory(device_, buffer, bufferMemory, 0);
-    }
-
     // The memory/buffer helpers have been moved into DeviceMemory helper class.
 
 } // namespace engine

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DeviceMemory.hpp"
 #include "Window.hpp"
 
 // std lib headers
@@ -150,7 +151,6 @@ namespace engine {
          */
         // Accessor that returns the dedicated memory helper which contains
         // buffer/image and single-use command helpers previously on Device.
-        class DeviceMemory;
         DeviceMemory& memory() { return *memory_; }
 
         /** @brief Returns properties of the selected Vulkan physical device. */

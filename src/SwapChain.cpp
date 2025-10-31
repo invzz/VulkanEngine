@@ -395,10 +395,10 @@ namespace engine {
             imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
             imageInfo.flags         = 0;
 
-            device.createImageWithInfo(imageInfo,
-                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                       depthImages[i],
-                                       depthImageMemorys[i]);
+            device.memory().createImageWithInfo(imageInfo,
+                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                depthImages[i],
+                                                depthImageMemorys[i]);
 
             VkImageViewCreateInfo viewInfo{};
             viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
