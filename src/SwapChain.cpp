@@ -84,7 +84,7 @@ namespace engine {
         vkDestroyRenderPass(device.device(), renderPass, nullptr);
 
         // cleanup synchronization objects
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        for (size_t i = 0; i < maxFramesInFlight(); i++)
         {
             vkDestroySemaphore(device.device(), renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
@@ -170,7 +170,7 @@ namespace engine {
 
         auto result = vkQueuePresentKHR(device.presentQueue(), &presentInfo);
 
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        currentFrame = (currentFrame + 1) % static_cast<size_t>(maxFramesInFlight());
 
         return result;
     }
@@ -426,7 +426,7 @@ namespace engine {
         imageAvailableSemaphores.resize(imgCount);
         renderFinishedSemaphores.resize(imgCount);
         imagesInFlight.resize(imgCount, VK_NULL_HANDLE);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+        inFlightFences.resize(static_cast<size_t>(maxFramesInFlight()));
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -449,7 +449,7 @@ namespace engine {
                 throw SemaphoreCreationException("failed to create per-image semaphores!");
             }
         }
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        for (size_t i = 0; i < maxFramesInFlight(); i++)
         {
             if (vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) !=
                 VK_SUCCESS)

@@ -41,6 +41,11 @@
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/DeviceMemory.cpp.o", "src/DeviceMemory.cpp"],
+  "file": "src/DeviceMemory.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
   "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Sierpinski", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/sierpinski_triangle/linux/x86_64/debug/src/demos/Sierpinski/app.cpp.o", "src/demos/Sierpinski/app.cpp"],
   "file": "src/demos/Sierpinski/app.cpp"
 },

@@ -105,6 +105,8 @@ namespace engine {
         pickPhysicalDevice();
         createLogicalDevice();
         createCommandPool();
+        // initialize memory helper (depends on device_ and commandPool being created)
+        memory_ = std::make_unique<DeviceMemory>(*this);
     }
 
     /**
@@ -112,6 +114,8 @@ namespace engine {
      */
     Device::~Device()
     {
+        // ensure helper is destroyed before device/command pool teardown
+        memory_.reset();
         vkDestroyCommandPool(device_, commandPool, nullptr);
         vkDestroyDevice(device_, nullptr);
 
@@ -611,21 +615,7 @@ namespace engine {
      * @param properties Memory property flags.
      * @param buffer Reference to buffer handle to be created.
      * @param bufferMemory Reference to memory handle to be allocated.
-     * @throws std::runtime_error if buffer or memory allocation fails.
-     */
-    void Device::createBuffer(VkDeviceSize          size,
-                              VkBufferUsageFlags    usage,
-                              VkMemoryPropertyFlags memoryPropertyFlags,
-                              VkBuffer&             buffer,
-                              VkDeviceMemory&       bufferMemory)
-    {
-        VkBufferCreateInfo bufferInfo{};
-        bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size        = size;
-        bufferInfo.usage       = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateBuffer(device_, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
         {
             throw engine::RuntimeException("failed to create vertex buffer!");
         }
@@ -647,141 +637,6 @@ namespace engine {
         vkBindBufferMemory(device_, buffer, bufferMemory, 0);
     }
 
-    /**
-     * @brief Begins recording a single-use command buffer.
-     * @return Handle to the allocated command buffer.
-     */
-    VkCommandBuffer Device::beginSingleTimeCommands()
-    {
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool        = commandPool;
-        allocInfo.commandBufferCount = 1;
-
-        VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
-
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-        vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        return commandBuffer;
-    }
-
-    /**
-     * @brief Ends recording and submits a single-use command buffer.
-     * @param commandBuffer Command buffer to end and submit.
-     */
-    void Device::endSingleTimeCommands(VkCommandBuffer commandBuffer)
-    {
-        vkEndCommandBuffer(commandBuffer);
-
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers    = &commandBuffer;
-
-        vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue_);
-
-        vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
-    }
-
-    /**
-     * @brief Copies data from one Vulkan buffer to another.
-     * @param srcBuffer Source buffer handle.
-     * @param dstBuffer Destination buffer handle.
-     * @param size Number of bytes to copy.
-     */
-    void Device::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
-    {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        VkBufferCopy copyRegion{};
-        copyRegion.srcOffset = 0; // Optional
-        copyRegion.dstOffset = 0; // Optional
-        copyRegion.size      = size;
-        vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-
-        endSingleTimeCommands(commandBuffer);
-    }
-
-    /**
-     * @brief Copies buffer data to a Vulkan image.
-     * @param buffer Source buffer handle.
-     * @param image Destination image handle.
-     * @param width Image width.
-     * @param height Image height.
-     * @param layerCount Number of layers in the image.
-     */
-    void Device::copyBufferToImage(VkBuffer buffer,
-                                   VkImage  image,
-                                   uint32_t width,
-                                   uint32_t height,
-                                   uint32_t layerCount)
-    {
-        VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
-        VkBufferImageCopy region{};
-        region.bufferOffset      = 0;
-        region.bufferRowLength   = 0;
-        region.bufferImageHeight = 0;
-
-        region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        region.imageSubresource.mipLevel       = 0;
-        region.imageSubresource.baseArrayLayer = 0;
-        region.imageSubresource.layerCount     = layerCount;
-
-        region.imageOffset = {0, 0, 0};
-        region.imageExtent = {width, height, 1};
-
-        vkCmdCopyBufferToImage(commandBuffer,
-                               buffer,
-                               image,
-                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               1,
-                               &region);
-        endSingleTimeCommands(commandBuffer);
-    }
-
-    /**
-     * @brief Creates a Vulkan image and allocates memory for it.
-     * @param imageInfo Image creation info struct.
-     * @param properties Memory property flags.
-     * @param image Reference to image handle to be created.
-     * @param imageMemory Reference to memory handle to be allocated.
-     * @throws std::runtime_error if image or memory allocation fails.
-     */
-    void Device::createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                     VkMemoryPropertyFlags    memoryPropertyFlags,
-                                     VkImage&                 image,
-                                     VkDeviceMemory&          imageMemory)
-    {
-        if (vkCreateImage(device_, &imageInfo, nullptr, &image) != VK_SUCCESS)
-        {
-            throw engine::RuntimeException("failed to create image!");
-        }
-
-        VkMemoryRequirements memRequirements;
-        vkGetImageMemoryRequirements(device_, image, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex =
-                findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
-
-        if (vkAllocateMemory(device_, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
-        {
-            throw engine::RuntimeException("failed to allocate image memory!");
-        }
-
-        if (vkBindImageMemory(device_, image, imageMemory, 0) != VK_SUCCESS)
-        {
-            throw engine::RuntimeException("failed to bind image memory!");
-        }
-    }
+    // The memory/buffer helpers have been moved into DeviceMemory helper class.
 
 } // namespace engine

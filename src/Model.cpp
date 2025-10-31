@@ -36,14 +36,14 @@ namespace engine {
 
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
 
-        device.createBuffer(bufferSize,
-                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                            // accessible from CPU
-                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                    // ensures data is immediately visible to GPU
-                                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                            vertexBuffer,
-                            vertexBufferMemory);
+        device.memory().createBuffer(bufferSize,
+                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                     // accessible from CPU
+                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                             // ensures data is immediately visible to GPU
+                                             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                     vertexBuffer,
+                                     vertexBufferMemory);
 
         void* data;
         vkMapMemory(device.device(), vertexBufferMemory, 0, bufferSize, 0, &data);

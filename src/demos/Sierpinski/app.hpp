@@ -13,8 +13,8 @@ namespace engine {
     class App
     {
       public:
-        static constexpr int WIDTH  = 1280;
-        static constexpr int HEIGHT = 720;
+        static int width() { return 1280; }
+        static int height() { return 720; }
 
         App();
         ~App();
@@ -34,7 +34,7 @@ namespace engine {
         void recreateSwapChain();
         void recordCommandBuffer(int imageIndex);
 
-        Window                       window{WIDTH, HEIGHT, "Engine App"};
+        Window                       window{width(), height(), "Engine App"};
         Device                       device{window};
         std::unique_ptr<SwapChain>   swapChain;
         std::unique_ptr<Pipeline>    pipeline;

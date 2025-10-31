@@ -3,6 +3,7 @@
 #include "Window.hpp"
 
 // std lib headers
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -85,14 +86,7 @@ namespace engine {
             return querySwapChainSupport(physicalDevice);
         }
 
-        /**
-         * @brief Finds a suitable memory type for Vulkan resource allocation.
-         * @param typeFilter Bitmask of acceptable memory types.
-         * @param properties Required memory property flags.
-         * @return Index of suitable memory type.
-         */
-        uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags);
-
+        // moved memory/buffer helpers into DeviceMemory helper class
         /**
          * @brief Finds graphics and present queue families for the current physical device.
          * @return QueueFamilyIndices struct with found indices.
@@ -130,13 +124,6 @@ namespace engine {
          * @brief Begins recording a single-use command buffer.
          * @return Handle to the allocated command buffer.
          */
-        VkCommandBuffer beginSingleTimeCommands();
-
-        /**
-         * @brief Ends recording and submits a single-use command buffer.
-         * @param commandBuffer Command buffer to end and submit.
-         */
-        void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
         /**
          * @brief Copies data from one Vulkan buffer to another.
@@ -144,7 +131,6 @@ namespace engine {
          * @param dstBuffer Destination buffer handle.
          * @param size Number of bytes to copy.
          */
-        void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 
         /**
          * @brief Copies buffer data to a Vulkan image.
@@ -154,11 +140,6 @@ namespace engine {
          * @param height Image height.
          * @param layerCount Number of layers in the image.
          */
-        void copyBufferToImage(VkBuffer buffer,
-                               VkImage  image,
-                               uint32_t width,
-                               uint32_t height,
-                               uint32_t layerCount);
 
         /**
          * @brief Creates a Vulkan image and allocates memory for it.
@@ -167,13 +148,13 @@ namespace engine {
          * @param image Reference to image handle to be created.
          * @param imageMemory Reference to memory handle to be allocated.
          */
-        void createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                 VkMemoryPropertyFlags    memoryPropertyFlags,
-                                 VkImage&                 image,
-                                 VkDeviceMemory&          imageMemory);
+        // Accessor that returns the dedicated memory helper which contains
+        // buffer/image and single-use command helpers previously on Device.
+        class DeviceMemory;
+        DeviceMemory& memory() { return *memory_; }
 
-        /** @brief Properties of the selected Vulkan physical device. */
-        VkPhysicalDeviceProperties properties;
+        /** @brief Returns properties of the selected Vulkan physical device. */
+        const VkPhysicalDeviceProperties& getProperties() const { return properties; }
 
       private:
         bool                     checkValidationLayerSupport() const;
@@ -254,19 +235,24 @@ namespace engine {
          */
         SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 
-        VkInstance               instance;
-        VkDebugUtilsMessengerEXT debugMessenger;
-        VkPhysicalDevice         physicalDevice = VK_NULL_HANDLE;
-        Window&                  window;
-        VkCommandPool            commandPool;
+        VkInstance instance;
+        /** @brief Properties of the selected Vulkan physical device. */
+        VkPhysicalDeviceProperties properties;
+        VkDebugUtilsMessengerEXT   debugMessenger;
+        VkPhysicalDevice           physicalDevice = VK_NULL_HANDLE;
+        Window&                    window;
+        VkCommandPool              commandPool;
 
-        VkDevice     device_;
-        VkSurfaceKHR surface_;
-        VkQueue      graphicsQueue_;
-        VkQueue      presentQueue_;
-
+        VkDevice                       device_;
+        VkSurfaceKHR                   surface_;
+        VkQueue                        graphicsQueue_;
+        VkQueue                        presentQueue_;
         const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
         const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+        // helper object that owns memory/buffer helper operations
+        std::unique_ptr<DeviceMemory> memory_;
+        friend class DeviceMemory;
     };
 
 } // namespace engine
