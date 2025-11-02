@@ -1,9 +1,11 @@
 #include "app.hpp"
 
 #include <array>
+#include <glm/gtc/constants.hpp>
 #include <stdexcept>
 
 #include "Exceptions.hpp"
+
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
 // Ensure depth range is [0, 1] for Vulkan
@@ -25,7 +27,7 @@ namespace engine {
 
     App::App()
     {
-        loadModels();
+        loadGameObjects();
         createPipelineLayout();
         // Initial swap chain creation and related pipeline and command buffer setup
         recreateSwapChain();
@@ -50,11 +52,22 @@ namespace engine {
         vkDeviceWaitIdle(device.device());
     }
 
-    void App::loadModels()
+    void App::loadGameObjects()
     {
-        model = std::make_unique<Model>(
+        auto model = std::make_shared<Model>(
                 device,
                 SierpinskiTriangle::create(3, {-0.5f, 0.5f}, {0.0f, -0.5f}, {0.5f, 0.5f}));
+
+        auto triangle = GameObject::createGameObjectWithId();
+
+        triangle.model                     = model;
+        triangle.color                     = {1.0f, 1.0f, 0.0f};
+        triangle.transform2d.translation.x = 0.2f;
+        triangle.transform2d.translation.y = 0.0f;
+        triangle.transform2d.rotation      = .25f * glm::two_pi<float>();
+        triangle.transform2d.scale         = {0.8f, 0.2f};
+
+        gameObjects.push_back(std::move(triangle));
     }
 
     void App::createPipeline()
@@ -112,6 +125,28 @@ namespace engine {
             VK_SUCCESS)
         {
             throw engine::RuntimeException("failed to allocate command buffers!");
+        }
+    }
+
+    void App::renderGameObjects(VkCommandBuffer commandBuffer)
+    {
+        pipeline->bind(commandBuffer);
+
+        for (const auto& gameObject : gameObjects)
+        {
+            SimplePushConstantData push{};
+            push.offset    = gameObject.transform2d.translation;
+            push.color     = gameObject.color;
+            push.transform = gameObject.transform2d.mat2();
+
+            vkCmdPushConstants(commandBuffer,
+                               pipelineLayout,
+                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                               0,
+                               sizeof(SimplePushConstantData),
+                               &push);
+            gameObject.model->bind(commandBuffer);
+            gameObject.model->draw(commandBuffer);
         }
     }
 
@@ -215,6 +250,9 @@ namespace engine {
                 .clearValueCount = static_cast<uint32_t>(clearValues.size()),
                 .pClearValues    = clearValues.data(),
         };
+        vkCmdBeginRenderPass(commandBuffers[imageIndex],
+                             &renderPassInfo,
+                             VK_SUBPASS_CONTENTS_INLINE);
 
         VkViewport viewport{
                 .x        = 0.0f,
@@ -233,32 +271,7 @@ namespace engine {
         vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
         vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
 
-        vkCmdBeginRenderPass(commandBuffers[imageIndex],
-                             &renderPassInfo,
-                             VK_SUBPASS_CONTENTS_INLINE);
-
-        pipeline->bind(commandBuffers[imageIndex]);
-
-        model->bind(commandBuffers[imageIndex]);
-
-        for (int i = 0; i < 3; i++)
-        {
-            SimplePushConstantData push{};
-            push.offset = {-0.5f + static_cast<float>(frame) * 0.001f,
-                           -0.4f + static_cast<float>(i) * 0.25f};
-            push.color  = {0.1f * static_cast<float>(frame) * 0.01f,
-                           0.1f,
-                           0.2f + static_cast<float>(i) * 0.2f};
-
-            vkCmdPushConstants(commandBuffers[imageIndex],
-                               pipelineLayout,
-                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                               0,
-                               sizeof(SimplePushConstantData),
-                               &push);
-
-            model->draw(commandBuffers[imageIndex]);
-        }
+        renderGameObjects(commandBuffers[imageIndex]);
 
         vkCmdEndRenderPass(commandBuffers[imageIndex]);
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)

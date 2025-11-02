@@ -3,4 +3,7 @@
     "C_Cpp.enhancedColorization": "enabled",
     "C_Cpp.errorSquiggles": "enabled",
     "sonarlint.pathToCompileCommands": "${workspaceFolder}/.vscode/compile_commands.json",
+    "files.associations": {
+        "memory": "cpp"
+    },
 }

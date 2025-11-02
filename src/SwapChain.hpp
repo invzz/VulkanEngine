@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 // std lib headers
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -84,7 +85,9 @@ namespace engine {
         std::vector<VkSemaphore> renderFinishedSemaphores;
         std::vector<VkFence>     inFlightFences;
         std::vector<VkFence>     imagesInFlight;
-        size_t                   currentFrame = 0;
+        size_t                   currentFrame     = 0;
+        bool                     presentIdEnabled = false;
+        uint64_t                 nextPresentId    = 1;
     };
 
 } // namespace engine

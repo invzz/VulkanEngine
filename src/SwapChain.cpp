@@ -40,12 +40,13 @@
 namespace engine {
 
     SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent)
-        : device{deviceRef}, windowExtent{extent}
+        : device{deviceRef}, windowExtent{extent}, presentIdEnabled{deviceRef.supportsPresentId()}
     {
         Init();
     }
     SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::shared_ptr<SwapChain> previous)
-        : device{deviceRef}, windowExtent{extent}, oldSwapChain{previous}
+        : device{deviceRef}, windowExtent{extent}, oldSwapChain{previous},
+          presentIdEnabled{deviceRef.supportsPresentId()}
     {
         Init();
 
@@ -84,25 +85,26 @@ namespace engine {
         vkDestroyRenderPass(device.device(), renderPass, nullptr);
 
         // cleanup synchronization objects
-        for (size_t i = 0; i < maxFramesInFlight(); i++)
-        {
-            vkDestroySemaphore(device.device(), renderFinishedSemaphores[i], nullptr);
-            vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
-            vkDestroyFence(device.device(), inFlightFences[i], nullptr);
-        }
-
-        // cleanup per-image synchronization objects
-        for (auto semaphore : imageAvailableSemaphores)
-        {
-            vkDestroySemaphore(device.device(), semaphore, nullptr);
-        }
         for (auto semaphore : renderFinishedSemaphores)
         {
-            vkDestroySemaphore(device.device(), semaphore, nullptr);
+            if (semaphore != VK_NULL_HANDLE)
+            {
+                vkDestroySemaphore(device.device(), semaphore, nullptr);
+            }
+        }
+        for (auto semaphore : imageAvailableSemaphores)
+        {
+            if (semaphore != VK_NULL_HANDLE)
+            {
+                vkDestroySemaphore(device.device(), semaphore, nullptr);
+            }
         }
         for (auto fence : inFlightFences)
         {
-            vkDestroyFence(device.device(), fence, nullptr);
+            if (fence != VK_NULL_HANDLE)
+            {
+                vkDestroyFence(device.device(), fence, nullptr);
+            }
         }
     }
 
@@ -145,7 +147,7 @@ namespace engine {
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers    = buffers;
 
-        VkSemaphore signalSemaphores[]  = {renderFinishedSemaphores[currentFrame]};
+        VkSemaphore signalSemaphores[]  = {renderFinishedSemaphores[*imageIndex]};
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores    = signalSemaphores;
 
@@ -167,6 +169,21 @@ namespace engine {
         presentInfo.pSwapchains     = swapChains;
 
         presentInfo.pImageIndices = imageIndex;
+
+        VkPresentIdKHR presentIdInfo{.sType          = VK_STRUCTURE_TYPE_PRESENT_ID_KHR,
+                                     .pNext          = nullptr,
+                                     .swapchainCount = 0,
+                                     .pPresentIds    = nullptr};
+        uint64_t       presentIdValue = 0;
+
+        if (presentIdEnabled)
+        {
+            // Tag each present so validation can correlate semaphore ownership.
+            presentIdValue               = nextPresentId++;
+            presentIdInfo.swapchainCount = 1;
+            presentIdInfo.pPresentIds    = &presentIdValue;
+            presentInfo.pNext            = &presentIdInfo;
+        }
 
         auto result = vkQueuePresentKHR(device.presentQueue(), &presentInfo);
 
@@ -226,18 +243,61 @@ namespace engine {
             createInfo.queueFamilyIndexCount = 0;       // Optional
             createInfo.pQueueFamilyIndices   = nullptr; // Optional
         }
-        if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS)
-        {
-            throw SwapChainCreationException("failed to create swap chain!");
-        }
-        createInfo.presentMode = presentMode;
-        createInfo.clipped     = VK_TRUE;
 
+        // Ensure we use a supported transform; fall back to identity if needed.
+        const VkSurfaceTransformFlagsKHR supportedTransforms =
+                swapChainSupport.capabilities.supportedTransforms;
+        VkSurfaceTransformFlagBitsKHR preTransform = swapChainSupport.capabilities.currentTransform;
+        if (!(supportedTransforms & preTransform))
+        {
+            preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+        }
+        createInfo.preTransform = preTransform;
+
+        // Pick a composite alpha the surface supports, prefer opaque.
+        VkCompositeAlphaFlagsKHR supportedAlpha =
+                swapChainSupport.capabilities.supportedCompositeAlpha;
+        VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        if (!(supportedAlpha & compositeAlpha))
+        {
+            const VkCompositeAlphaFlagBitsKHR candidates[] = {
+                    VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+                    VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+                    VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR};
+            for (auto candidate : candidates)
+            {
+                if (supportedAlpha & candidate)
+                {
+                    compositeAlpha = candidate;
+                    break;
+                }
+            }
+        }
+        createInfo.compositeAlpha = compositeAlpha;
+
+        createInfo.presentMode  = presentMode;
+        createInfo.clipped      = VK_TRUE;
         createInfo.oldSwapchain = oldSwapChain == nullptr ? VK_NULL_HANDLE
                                                           : oldSwapChain->swapChain;
 
-        if (vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+        std::cerr << "Swapchain create request:\n"
+                  << "  minImageCount: " << createInfo.minImageCount << '\n'
+                  << "  imageFormat: " << createInfo.imageFormat << '\n'
+                  << "  imageColorSpace: " << createInfo.imageColorSpace << '\n'
+                  << "  extent: " << createInfo.imageExtent.width << "x"
+                  << createInfo.imageExtent.height << '\n'
+                  << "  preTransform: " << createInfo.preTransform << '\n'
+                  << "  supportedTransforms: " << supportedTransforms << '\n'
+                  << "  compositeAlpha: " << createInfo.compositeAlpha << '\n'
+                  << "  presentMode: " << createInfo.presentMode << '\n'
+                  << "  imageUsage: " << createInfo.imageUsage << std::endl;
+
+        if (VkResult createResult =
+                    vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain);
+            createResult != VK_SUCCESS)
         {
+            std::cerr << "vkCreateSwapchainKHR failed with VkResult "
+                      << static_cast<int32_t>(createResult) << std::endl;
             throw SwapChainCreationException("failed to create swap chain!");
         }
 
@@ -245,9 +305,27 @@ namespace engine {
         // allowed to create a swap chain with more. That's why we'll first query the final number
         // of images with vkGetSwapchainImagesKHR, then resize the container and finally call it
         // again to retrieve the handles.
-        vkGetSwapchainImagesKHR(device.device(), swapChain, &imageCount, nullptr);
-        swapChainImages.resize(imageCount);
-        vkGetSwapchainImagesKHR(device.device(), swapChain, &imageCount, swapChainImages.data());
+        uint32_t actualImageCount = 0;
+        if (VkResult getImagesResult =
+                    vkGetSwapchainImagesKHR(device.device(), swapChain, &actualImageCount, nullptr);
+            getImagesResult != VK_SUCCESS)
+        {
+            std::cerr << "First vkGetSwapchainImagesKHR failed with VkResult "
+                      << static_cast<int32_t>(getImagesResult) << std::endl;
+            throw SwapChainCreationException("failed to query swap chain images!");
+        }
+
+        swapChainImages.resize(actualImageCount);
+        if (VkResult getImagesResult = vkGetSwapchainImagesKHR(device.device(),
+                                                               swapChain,
+                                                               &actualImageCount,
+                                                               swapChainImages.data());
+            getImagesResult != VK_SUCCESS)
+        {
+            std::cerr << "Second vkGetSwapchainImagesKHR failed with VkResult "
+                      << static_cast<int32_t>(getImagesResult) << std::endl;
+            throw SwapChainCreationException("failed to retrieve swap chain images!");
+        }
 
         swapChainImageFormat = surfaceFormat.format;
         swapChainExtent      = extent;
@@ -421,12 +499,15 @@ namespace engine {
 
     void SwapChain::createSyncObjects()
     {
-        // Per-image semaphores
-        size_t imgCount = imageCount();
-        imageAvailableSemaphores.resize(imgCount);
-        renderFinishedSemaphores.resize(imgCount);
-        imagesInFlight.resize(imgCount, VK_NULL_HANDLE);
-        inFlightFences.resize(static_cast<size_t>(maxFramesInFlight()));
+        const auto frameCount = static_cast<size_t>(maxFramesInFlight());
+        imageAvailableSemaphores.assign(frameCount, VK_NULL_HANDLE);
+        inFlightFences.assign(frameCount, VK_NULL_HANDLE);
+        renderFinishedSemaphores.assign(imageCount(), VK_NULL_HANDLE);
+        imagesInFlight.assign(imageCount(), VK_NULL_HANDLE);
+        if (presentIdEnabled)
+        {
+            nextPresentId = 1;
+        }
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
         semaphoreInfo.sType                 = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -435,24 +516,27 @@ namespace engine {
         fenceInfo.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         fenceInfo.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
 
-        for (size_t i = 0; i < imgCount; i++)
+        for (auto& semaphore : imageAvailableSemaphores)
         {
-            if (vkCreateSemaphore(device.device(),
-                                  &semaphoreInfo,
-                                  nullptr,
-                                  &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(device.device(),
-                                  &semaphoreInfo,
-                                  nullptr,
-                                  &renderFinishedSemaphores[i]) != VK_SUCCESS)
+            if (vkCreateSemaphore(device.device(), &semaphoreInfo, nullptr, &semaphore) !=
+                VK_SUCCESS)
             {
-                throw SemaphoreCreationException("failed to create per-image semaphores!");
+                throw SemaphoreCreationException("failed to create image-available semaphore!");
             }
         }
-        for (size_t i = 0; i < maxFramesInFlight(); i++)
+
+        for (auto& semaphore : renderFinishedSemaphores)
         {
-            if (vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) !=
+            if (vkCreateSemaphore(device.device(), &semaphoreInfo, nullptr, &semaphore) !=
                 VK_SUCCESS)
+            {
+                throw SemaphoreCreationException("failed to create render-finished semaphore!");
+            }
+        }
+
+        for (auto& fence : inFlightFences)
+        {
+            if (vkCreateFence(device.device(), &fenceInfo, nullptr, &fence) != VK_SUCCESS)
             {
                 throw InFlightFenceException("failed to create in-flight fence!");
             }

@@ -1,0 +1,63 @@
+#pragma once
+
+#include <memory>
+
+#include "Model.hpp"
+
+namespace engine {
+
+    struct Transform2DComponent
+    {
+        glm::vec2 translation{0.0f, 0.0f}; // position offset
+        glm::vec2 scale{1.0f, 1.0f};       // scaling factors
+        float     rotation{0.0f};          // rotation angle in radians
+
+        glm::mat2 mat2() const
+        {
+            float     s           = std::sin(rotation);
+            float     c           = std::cos(rotation);
+            glm::mat2 rotationMat = {{c, -s}, {s, c}};
+            glm::mat2 scaleMat    = {{
+                                          scale.x,
+                                          0.0f,
+                                  },
+                                     {
+                                          0.0f,
+                                          scale.y,
+                                  }};
+
+            return rotationMat * scaleMat;
+        };
+    };
+
+    class GameObject
+    {
+      public:
+        std::shared_ptr<Model> model{};
+        glm::vec3              color{};
+        Transform2DComponent   transform2d{};
+
+        static GameObject createGameObjectWithId()
+        {
+            static id_t currentId = 0;
+            return GameObject{currentId++};
+        }
+
+        // delete copy operations
+        GameObject(const GameObject&)            = delete;
+        GameObject& operator=(const GameObject&) = delete;
+
+        // default move operations
+        GameObject(GameObject&&)            = default;
+        GameObject& operator=(GameObject&&) = default;
+
+        using id_t = unsigned int;
+
+        id_t getId() const { return id; }
+
+      private:
+        explicit GameObject(id_t objId) : id{objId} {}
+        id_t id;
+    };
+
+} // namespace engine

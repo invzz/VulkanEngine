@@ -11,12 +11,13 @@ layout(location = 1) in vec3 color;
 layout(location = 0) out vec3 fragColor;
 
 // push constants are a way to pass a small amount of data to shaders
-layout(push_constant) uniform PushConstants
+layout(push_constant) uniform push_t
 {
+    mat2 transform;
     vec2 offset;
     vec3 color;
 }
-pushConstants;
+push;
 
 void main()
 {
@@ -34,5 +35,5 @@ void main()
     // gl_VertexIndex ranges from 0 to 2 for the three vertices of the triangle
 
     // we dont need gl_VertexIndex because we are using the position attribute directly
-    gl_Position = vec4(position + pushConstants.offset, 0.0, 1.0);
+    gl_Position = vec4(push.transform * position + push.offset, 0.0, 1.0);
 }

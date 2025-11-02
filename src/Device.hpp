@@ -77,6 +77,8 @@ namespace engine {
         VkQueue graphicsQueue() { return graphicsQueue_; }
         /** @brief Returns the present queue handle. */
         VkQueue presentQueue() { return presentQueue_; }
+        /** @brief Returns true if VK_KHR_present_id was enabled on the logical device. */
+        bool supportsPresentId() const { return presentIdSupported_; }
 
         /**
          * @brief Gets swapchain support details for the current physical device.
@@ -219,7 +221,7 @@ namespace engine {
         /**
          * @brief Checks and prints available and required Vulkan instance extensions.
          */
-        void hasGflwRequiredInstanceExtensions();
+        void hasGflwRequiredInstanceExtensions() const;
 
         /**
          * @brief Checks if a physical device supports required Vulkan device extensions.
@@ -247,8 +249,9 @@ namespace engine {
         VkSurfaceKHR                   surface_;
         VkQueue                        graphicsQueue_;
         VkQueue                        presentQueue_;
-        const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-        const std::vector<const char*> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        const std::vector<const char*> validationLayers    = {"VK_LAYER_KHRONOS_validation"};
+        const std::vector<const char*> deviceExtensions    = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        bool                           presentIdSupported_ = false;
 
         // helper object that owns memory/buffer helper operations
         std::unique_ptr<DeviceMemory> memory_;

@@ -23,7 +23,14 @@ target("sierpinski_triangle")
     add_packages("glfw", "glm", "vulkan")
     add_deps("engine")
 
-
+target("Transform2d")
+    set_kind("binary")
+    add_files("src/demos/Transform2d/**.cpp")
+    add_includedirs("src/demos/Transform2d")
+    add_includedirs("src")
+    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
+    add_packages("glfw", "glm", "vulkan")
+    add_deps("engine")
 
 -- static libraries
 target("engine")

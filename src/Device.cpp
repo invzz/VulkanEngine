@@ -3,6 +3,7 @@
 #include "Exceptions.hpp"
 #include "ansi_colors.hpp"
 // std headers
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <set>
@@ -145,7 +146,7 @@ namespace engine {
                 .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
                 .pEngineName        = "No Engine",
                 .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
-                .apiVersion         = VK_API_VERSION_1_0,
+                .apiVersion         = VK_API_VERSION_1_1,
         };
 
         VkInstanceCreateInfo createInfo = {
@@ -245,14 +246,82 @@ namespace engine {
                 .samplerAnisotropy = VK_TRUE,
         };
 
-        VkDeviceCreateInfo createInfo = {
-                .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-                .queueCreateInfoCount    = static_cast<uint32_t>(queueCreateInfos.size()),
-                .pQueueCreateInfos       = queueCreateInfos.data(),
-                .enabledExtensionCount   = static_cast<uint32_t>(deviceExtensions.size()),
-                .ppEnabledExtensionNames = deviceExtensions.data(),
-                .pEnabledFeatures        = &deviceFeatures,
+        std::vector<const char*> enabledExtensions(deviceExtensions.begin(),
+                                                   deviceExtensions.end());
+
+        uint32_t extensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(physicalDevice,
+                                             nullptr,
+                                             &extensionCount,
+                                             availableExtensions.data());
+
+        const bool presentIdExtensionAvailable =
+                std::any_of(availableExtensions.begin(),
+                            availableExtensions.end(),
+                            [](const VkExtensionProperties& extension) {
+                                return std::strcmp(extension.extensionName,
+                                                   VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0;
+                            });
+
+        static_assert(sizeof(PFN_vkGetPhysicalDeviceFeatures2KHR) == sizeof(PFN_vkVoidFunction),
+                      "Vulkan function pointer sizes must match");
+        PFN_vkGetPhysicalDeviceFeatures2KHR getFeatures2 = nullptr;
+        if (const auto rawGetFeatures2KHR =
+                    vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2KHR");
+            rawGetFeatures2KHR != nullptr)
+        {
+            std::memcpy(&getFeatures2, &rawGetFeatures2KHR, sizeof(getFeatures2));
+        }
+        if (getFeatures2 == nullptr)
+        {
+            if (const auto rawGetFeatures2 =
+                        vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2");
+                rawGetFeatures2 != nullptr)
+            {
+                std::memcpy(&getFeatures2, &rawGetFeatures2, sizeof(getFeatures2));
+            }
+        }
+
+        VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
         };
+        presentIdSupported_ = false;
+
+        if (presentIdExtensionAvailable && getFeatures2 != nullptr)
+        {
+            VkPhysicalDeviceFeatures2 features2 = {
+                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+                    .pNext = &presentIdFeaturesQuery,
+            };
+            getFeatures2(physicalDevice, &features2);
+            if (presentIdFeaturesQuery.presentId == VK_TRUE)
+            {
+                presentIdSupported_ = true;
+                enabledExtensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+            }
+        }
+
+        VkDeviceCreateInfo createInfo = {
+                .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+                .pQueueCreateInfos    = queueCreateInfos.data(),
+                .pEnabledFeatures     = &deviceFeatures,
+        };
+
+        createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensions.size());
+        createInfo.ppEnabledExtensionNames = enabledExtensions.data();
+
+        VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
+                .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
+                .pNext     = nullptr,
+                .presentId = VK_TRUE,
+        };
+        if (presentIdSupported_)
+        {
+            createInfo.pNext = &presentIdFeaturesEnable;
+        }
 
         // might not really be necessary anymore because device specific validation layers
         // have been deprecated
@@ -421,7 +490,7 @@ namespace engine {
      * @brief Checks and prints available and required Vulkan instance extensions.
      * @throws std::runtime_error if a required extension is missing.
      */
-    void Device::hasGflwRequiredInstanceExtensions()
+    void Device::hasGflwRequiredInstanceExtensions() const
     {
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
