@@ -1,8 +1,13 @@
 #include "app.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <array>
+#include <cmath>
+#include <glm/common.hpp>
 #include <glm/gtc/constants.hpp>
 #include <stdexcept>
+#include <unordered_map>
 
 #include "Exceptions.hpp"
 
@@ -54,20 +59,183 @@ namespace engine {
 
     void App::loadGameObjects()
     {
-        auto model = std::make_shared<Model>(
-                device,
-                SierpinskiTriangle::create(3, {-0.5f, 0.5f}, {0.0f, -0.5f}, {0.5f, 0.5f}));
+        gameObjects.clear();
+        animationTracks.clear();
 
-        auto triangle = GameObject::createGameObjectWithId();
+        struct LayerConfig
+        {
+            int       order;
+            float     radius;
+            float     radialPulse;
+            float     radialFrequency;
+            glm::vec2 baseScale;
+            glm::vec2 scalePulse;
+            float     scaleFrequency;
+            float     orbitSpeed;
+            float     phaseOffset;
+            float     baseRotation;
+            float     rotationSpeed;
+            glm::vec3 baseColor;
+            glm::vec3 colorCycle;
+            float     colorFrequency;
+        };
 
-        triangle.model                     = model;
-        triangle.color                     = {1.0f, 1.0f, 0.0f};
-        triangle.transform2d.translation.x = 0.2f;
-        triangle.transform2d.translation.y = 0.0f;
-        triangle.transform2d.rotation      = .25f * glm::two_pi<float>();
-        triangle.transform2d.scale         = {0.8f, 0.2f};
+        // Increase arms and layers to create a dense kaleidoscope. Keep models cached by order.
+        const int armCount                      = 200; // many more repeated arms around the circle
+        const std::array<LayerConfig, 5> layers = {
+                LayerConfig{6,
+                            0.78f,
+                            0.06f,
+                            0.6f,
+                            {0.28f, 0.24f},
+                            {0.06f, 0.05f},
+                            1.2f,
+                            0.28f,
+                            0.0f,
+                            0.0f,
+                            0.9f,
+                            {0.9f, 0.5f, 0.7f},
+                            {0.18f, 0.28f, 0.36f},
+                            0.6f},
+                LayerConfig{5,
+                            0.6f,
+                            0.05f,
+                            0.8f,
+                            {0.24f, 0.2f},
+                            {0.05f, 0.04f},
+                            1.0f,
+                            -0.45f,
+                            glm::quarter_pi<float>() * 0.25f,
+                            glm::quarter_pi<float>() * 0.4f,
+                            1.15f,
+                            {0.4f, 0.9f, 0.76f},
+                            {0.12f, 0.22f, 0.18f},
+                            0.9f},
+                LayerConfig{4,
+                            0.44f,
+                            0.04f,
+                            1.0f,
+                            {0.22f, 0.18f},
+                            {0.05f, 0.035f},
+                            1.25f,
+                            0.6f,
+                            glm::quarter_pi<float>() * 0.5f,
+                            glm::quarter_pi<float>() * -0.2f,
+                            1.35f,
+                            {0.35f, 0.7f, 0.95f},
+                            {0.12f, 0.18f, 0.22f},
+                            1.3f},
+                LayerConfig{3,
+                            0.28f,
+                            0.03f,
+                            1.6f,
+                            {0.18f, 0.15f},
+                            {0.04f, 0.03f},
+                            1.6f,
+                            -0.9f,
+                            glm::half_pi<float>() * 0.25f,
+                            glm::quarter_pi<float>() * 0.1f,
+                            1.75f,
+                            {1.0f, 0.78f, 0.35f},
+                            {0.14f, 0.12f, 0.28f},
+                            1.7f},
+                LayerConfig{2,
+                            0.12f,
+                            0.02f,
+                            2.2f,
+                            {0.14f, 0.12f},
+                            {0.03f, 0.02f},
+                            2.0f,
+                            1.2f,
+                            glm::quarter_pi<float>() * 0.75f,
+                            glm::quarter_pi<float>() * -0.45f,
+                            2.0f,
+                            {1.0f, 0.95f, 0.88f},
+                            {0.08f, 0.06f, 0.05f},
+                            2.1f},
+        };
 
-        gameObjects.push_back(std::move(triangle));
+        std::unordered_map<int, std::shared_ptr<Model>> modelCache;
+
+        auto acquireModel = [&](int order) {
+            auto& cachedModel = modelCache[order];
+            if (cachedModel == nullptr)
+            {
+                cachedModel = std::make_shared<Model>(device,
+                                                      SierpinskiTriangle::create(order,
+                                                                                 {-0.5f, 0.5f},
+                                                                                 {0.0f, -0.5f},
+                                                                                 {0.5f, 0.5f}));
+            }
+            return cachedModel;
+        };
+
+        for (const auto& layer : layers)
+        {
+            for (int arm = 0; arm < armCount; ++arm)
+            {
+                const float    armFraction = static_cast<float>(arm) / static_cast<float>(armCount);
+                AnimationTrack track{};
+                track.armIndex             = arm;
+                track.armCount             = armCount;
+                track.radius               = layer.radius;
+                track.orbitSpeed           = layer.orbitSpeed;
+                track.orbitPhase           = layer.phaseOffset + glm::two_pi<float>() * armFraction;
+                track.radialPulseAmplitude = layer.radialPulse;
+                track.radialPulseFrequency = layer.radialFrequency + 0.15f * armFraction;
+                track.baseScale            = layer.baseScale;
+                track.scalePulseAmplitude  = layer.scalePulse;
+                track.scalePulseFrequency  = layer.scaleFrequency + 0.1f * armFraction;
+                track.baseRotation         = layer.baseRotation;
+                track.rotationSpeed        = layer.rotationSpeed * ((arm % 2 == 0) ? 1.0f : -1.0f);
+                track.mirror               = (arm % 2) == 1;
+                track.baseColor            = layer.baseColor;
+                track.colorCycle           = layer.colorCycle;
+                track.colorFrequency       = layer.colorFrequency + 0.2f * armFraction;
+
+                auto triangle                    = GameObject::createGameObjectWithId();
+                triangle.model                   = acquireModel(0);
+                triangle.color                   = track.baseColor;
+                triangle.transform2d.translation = {0.0f, 0.0f};
+                triangle.transform2d.scale       = track.baseScale;
+                if (track.mirror)
+                {
+                    triangle.transform2d.scale.x *= -1.0f;
+                }
+                triangle.transform2d.rotation = track.baseRotation;
+
+                gameObjects.push_back(std::move(triangle));
+                animationTracks.push_back(track);
+            }
+        }
+
+        AnimationTrack centerTrack{};
+        centerTrack.armIndex             = 0;
+        centerTrack.armCount             = 1;
+        centerTrack.radius               = 0.0f;
+        centerTrack.orbitSpeed           = 0.0f;
+        centerTrack.orbitPhase           = 0.0f;
+        centerTrack.radialPulseAmplitude = 0.05f;
+        centerTrack.radialPulseFrequency = 2.0f;
+        centerTrack.baseScale            = {0.32f, 0.32f};
+        centerTrack.scalePulseAmplitude  = {0.12f, 0.1f};
+        centerTrack.scalePulseFrequency  = 1.8f;
+        centerTrack.baseRotation         = 0.0f;
+        centerTrack.rotationSpeed        = 2.4f;
+        centerTrack.mirror               = false;
+        centerTrack.baseColor            = {0.95f, 0.95f, 0.95f};
+        centerTrack.colorCycle           = {0.25f, 0.35f, 0.45f};
+        centerTrack.colorFrequency       = 3.2f;
+
+        auto center                    = GameObject::createGameObjectWithId();
+        center.model                   = acquireModel(0);
+        center.color                   = centerTrack.baseColor;
+        center.transform2d.translation = {0.0f, 0.0f};
+        center.transform2d.scale       = centerTrack.baseScale;
+        center.transform2d.rotation    = centerTrack.baseRotation;
+
+        gameObjects.push_back(std::move(center));
+        animationTracks.push_back(centerTrack);
     }
 
     void App::createPipeline()
@@ -221,9 +389,8 @@ namespace engine {
 
     void App::recordCommandBuffer(int imageIndex)
     {
-        static int frame = 0;
-
-        frame = (frame + 1) % 1000;
+        const auto timeSeconds = static_cast<float>(glfwGetTime());
+        updateAnimation(timeSeconds);
 
         if (VkCommandBufferBeginInfo beginInfo{
                     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -235,7 +402,7 @@ namespace engine {
         }
 
         std::array<VkClearValue, 2> clearValues = {};
-        clearValues[0].color                    = {0.01f, 0.01f, 0.01f, 1.0f};
+        clearValues[0].color                    = {0.0f, 0.0f, 0.0f, 1.0f};
         clearValues[1].depthStencil             = {1.0f, 0};
 
         VkRenderPassBeginInfo renderPassInfo{
@@ -277,6 +444,49 @@ namespace engine {
         if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS)
         {
             throw engine::RuntimeException("failed to record command buffer!");
+        }
+    }
+
+    void App::updateAnimation(float timeSeconds)
+    {
+        for (size_t i = 0; i < gameObjects.size() && i < animationTracks.size(); ++i)
+        {
+            auto&       object = gameObjects[i];
+            const auto& track  = animationTracks[i];
+
+            const float baseAngle =
+                    (track.armCount > 0)
+                            ? glm::two_pi<float>() * (static_cast<float>(track.armIndex) /
+                                                      static_cast<float>(track.armCount))
+                            : 0.0f;
+            const float orbitAngle = baseAngle + timeSeconds * track.orbitSpeed + track.orbitPhase;
+            const float radialWave =
+                    track.radialPulseAmplitude *
+                    std::sin(timeSeconds * track.radialPulseFrequency + track.orbitPhase);
+            const float radius = track.radius + radialWave;
+
+            glm::vec2 direction{std::cos(orbitAngle), std::sin(orbitAngle)};
+            object.transform2d.translation = direction * radius;
+
+            const float scaleWave =
+                    0.5f *
+                    (std::sin(timeSeconds * track.scalePulseFrequency + track.orbitPhase) + 1.0f);
+            glm::vec2 scale = track.baseScale + track.scalePulseAmplitude * scaleWave;
+            if (track.mirror)
+            {
+                scale.x *= -1.0f;
+            }
+            object.transform2d.scale = scale;
+
+            const float mirrorOffset    = track.mirror ? glm::pi<float>() : 0.0f;
+            const float orbitalDrift    = orbitAngle * 0.5f;
+            object.transform2d.rotation = track.baseRotation + mirrorOffset + orbitalDrift +
+                                          timeSeconds * track.rotationSpeed;
+
+            const float colorWave =
+                    0.5f * (std::sin(timeSeconds * track.colorFrequency + track.orbitPhase) + 1.0f);
+            glm::vec3 color = track.baseColor + track.colorCycle * colorWave;
+            object.color    = glm::clamp(color, glm::vec3(0.0f), glm::vec3(1.0f));
         }
     }
 
