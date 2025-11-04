@@ -35,7 +35,7 @@ namespace engine {
 
     void Renderer::createCommandBuffers()
     {
-        commandBuffers.resize(swapChain->imageCount());
+        commandBuffers.resize(SwapChain::maxFramesInFlight());
 
         if (VkCommandBufferAllocateInfo allocInfo{
                     .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -70,18 +70,19 @@ namespace engine {
 
         vkDeviceWaitIdle(device.device());
 
-        if (swapChain != nullptr)
+        if (swapChain == nullptr)
         {
-            swapChain = std::make_unique<SwapChain>(device, extent, std::move(swapChain));
-            if (swapChain->imageCount() != commandBuffers.size())
-            {
-                freeCommandBuffers();
-                createCommandBuffers();
-            }
+            swapChain = std::make_unique<SwapChain>(device, extent);
         }
         else
         {
-            swapChain = std::make_unique<SwapChain>(device, extent);
+            std::shared_ptr<SwapChain> oldSwapChain = std::move(swapChain);
+            swapChain = std::make_unique<SwapChain>(device, extent, oldSwapChain);
+
+            if (!oldSwapChain->compareSwapFormats(*swapChain))
+            {
+                throw SwapChainCreationException("Swap chain image or depth format has changed!");
+            }
         }
 
         // TODO: recreate other resources dependent on swap chain (e.g., pipelines)
@@ -104,7 +105,7 @@ namespace engine {
             throw SwapChainCreationException("failed to acquire swap chain image!");
         }
 
-        currentFrameIndex             = imageIndex;
+        currentImageIndex             = imageIndex;
         VkCommandBuffer commandBuffer = commandBuffers[currentFrameIndex];
         if (vkResetCommandBuffer(commandBuffer, /*flags=*/0) != VK_SUCCESS)
         {
@@ -132,7 +133,7 @@ namespace engine {
             throw CommandBufferRecordingException("failed to record command buffer!");
         }
 
-        if (auto result = swapChain->submitCommandBuffers(&commandBuffer, &currentFrameIndex);
+        if (auto result = swapChain->submitCommandBuffers(&commandBuffer, &currentImageIndex);
             result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
             window.wasWindowResized())
         {
@@ -144,7 +145,8 @@ namespace engine {
             throw SwapChainCreationException("failed to present swap chain image!");
         }
 
-        isFrameStarted = false;
+        isFrameStarted    = false;
+        currentFrameIndex = (currentFrameIndex + 1) % SwapChain::maxFramesInFlight();
     }
 
     void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer)
@@ -161,7 +163,7 @@ namespace engine {
         VkRenderPassBeginInfo renderPassInfo{
                 .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                 .renderPass  = swapChain->getRenderPass(),
-                .framebuffer = swapChain->getFrameBuffer(currentFrameIndex),
+                .framebuffer = swapChain->getFrameBuffer(currentImageIndex),
                 .renderArea =
                         {
                                 .offset = {0, 0},

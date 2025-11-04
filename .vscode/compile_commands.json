@@ -1,6 +1,21 @@
 [
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Transform2d", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/Transform2d/linux/x86_64/debug/src/demos/Transform2d/app.cpp.o", "src/demos/Transform2d/app.cpp"],
+  "file": "src/demos/Transform2d/app.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Transform2d", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/Transform2d/linux/x86_64/debug/src/demos/Transform2d/main.cpp.o", "src/demos/Transform2d/main.cpp"],
+  "file": "src/demos/Transform2d/main.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Transform2d", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/Transform2d/linux/x86_64/debug/src/demos/Transform2d/SierpinskiTriangle.cpp.o", "src/demos/Transform2d/SierpinskiTriangle.cpp"],
+  "file": "src/demos/Transform2d/SierpinskiTriangle.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
   "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/Window.cpp.o", "src/Window.cpp"],
   "file": "src/Window.cpp"
 },
@@ -51,16 +66,6 @@
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Transform2d", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/Transform2d/linux/x86_64/debug/src/demos/Transform2d/app.cpp.o", "src/demos/Transform2d/app.cpp"],
-  "file": "src/demos/Transform2d/app.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Transform2d", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/Transform2d/linux/x86_64/debug/src/demos/Transform2d/main.cpp.o", "src/demos/Transform2d/main.cpp"],
-  "file": "src/demos/Transform2d/main.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc/demos/Transform2d", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/Transform2d/linux/x86_64/debug/src/demos/Transform2d/SierpinskiTriangle.cpp.o", "src/demos/Transform2d/SierpinskiTriangle.cpp"],
-  "file": "src/demos/Transform2d/SierpinskiTriangle.cpp"
+  "arguments": ["/usr/bin/clang++", "-c", "-Qunused-arguments", "-m64", "-g", "-O0", "-Isrc", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/9265fcc1952d4e478d524048a918b2f0/include", "-o", "build/.objs/engine/linux/x86_64/debug/src/SimpleRenderSystem.cpp.o", "src/SimpleRenderSystem.cpp"],
+  "file": "src/SimpleRenderSystem.cpp"
 }]

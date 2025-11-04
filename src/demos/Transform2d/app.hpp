@@ -9,7 +9,6 @@
 #include "Device.hpp"
 #include "GameObject.hpp"
 #include "Model.hpp"
-#include "Pipeline.hpp"
 #include "Renderer.hpp"
 #include "SwapChain.hpp"
 #include "Window.hpp"
@@ -32,15 +31,10 @@ namespace engine {
         void run();
 
       private:
-        void                      loadGameObjects();
-        void                      createPipeline();
-        void                      createPipelineLayout();
-        void                      renderGameObjects(VkCommandBuffer commandBuffer);
-        Window                    window{width(), height(), "Engine App"};
-        Device                    device{window};
-        std::unique_ptr<Pipeline> pipeline;
-        VkPipelineLayout          pipelineLayout;
-        std::vector<GameObject>   gameObjects;
-        Renderer                  renderer{window, device};
+        void                    loadGameObjects();
+        Window                  window{width(), height(), "Engine App"};
+        Device                  device{window};
+        std::vector<GameObject> gameObjects;
+        Renderer                renderer{window, device};
     };
 } // namespace engine

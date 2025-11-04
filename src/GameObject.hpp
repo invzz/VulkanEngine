@@ -5,6 +5,11 @@
 #include "Model.hpp"
 
 namespace engine {
+    struct RigidBody2dComponent
+    {
+        glm::vec2 velocity;
+        float     mass{1.0f};
+    };
 
     struct Transform2DComponent
     {
@@ -16,7 +21,7 @@ namespace engine {
         {
             float     s           = std::sin(rotation);
             float     c           = std::cos(rotation);
-            glm::mat2 rotationMat = {{c, -s}, {s, c}};
+            glm::mat2 rotationMat = {{c, s}, {-s, c}};
             glm::mat2 scaleMat    = {{
                                           scale.x,
                                           0.0f,
@@ -36,6 +41,7 @@ namespace engine {
         std::shared_ptr<Model> model{};
         glm::vec3              color{};
         Transform2DComponent   transform2d{};
+        RigidBody2dComponent   rigidBody2d{};
 
         static GameObject createGameObjectWithId()
         {

@@ -40,7 +40,14 @@ namespace engine {
             return static_cast<float>(swapChainExtent.width) /
                    static_cast<float>(swapChainExtent.height);
         }
+
         VkFormat findDepthFormat();
+
+        bool compareSwapFormats(const SwapChain& other) const
+        {
+            return other.swapChainDepthFormat == swapChainDepthFormat &&
+                   other.swapChainImageFormat == swapChainImageFormat;
+        }
 
         VkResult acquireNextImage(uint32_t* imageIndex);
         VkResult submitCommandBuffers(const VkCommandBuffer* buffers, uint32_t* imageIndex);
@@ -62,6 +69,7 @@ namespace engine {
         VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
 
         VkFormat   swapChainImageFormat;
+        VkFormat   swapChainDepthFormat;
         VkExtent2D swapChainExtent;
 
         std::vector<VkFramebuffer> swapChainFramebuffers;

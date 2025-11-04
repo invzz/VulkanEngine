@@ -38,6 +38,12 @@ namespace engine {
             return commandBuffers[currentFrameIndex];
         }
 
+        int getFrameIndex() const
+        {
+            assert(isFrameStarted && "Cannot get frame index when frame not in progress");
+            return currentFrameIndex;
+        }
+
       private:
         void createCommandBuffers();
         void freeCommandBuffers();
@@ -47,8 +53,10 @@ namespace engine {
         Device&                      device;
         std::unique_ptr<SwapChain>   swapChain;
         std::vector<VkCommandBuffer> commandBuffers;
-        uint32_t                     currentFrameIndex{0};
-        bool                         isFrameStarted{false};
+        uint32_t                     currentImageIndex{0};
+        // keep track of frame index for syncing [0, maxFramesInFlight]
+        int  currentFrameIndex{0};
+        bool isFrameStarted{false};
     };
 
 } // namespace engine
