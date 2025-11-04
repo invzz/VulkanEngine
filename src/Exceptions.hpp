@@ -113,6 +113,16 @@ namespace engine {
         const char* msg;
     };
 
+    class CommandBufferRecordingException : public std::exception
+    {
+      public:
+        explicit CommandBufferRecordingException(const char* message) : msg(message) {}
+        const char* what() const noexcept override { return msg; }
+
+      private:
+        const char* msg;
+    };
+
     class WindowInitializationException : public std::exception
     {
       public:

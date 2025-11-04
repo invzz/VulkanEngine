@@ -124,15 +124,17 @@ namespace engine {
                                                 VK_NULL_HANDLE,
                                                 imageIndex);
 
+        if ((result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) &&
+            imagesInFlight[*imageIndex] != VK_NULL_HANDLE)
+        {
+            vkWaitForFences(device.device(), 1, &imagesInFlight[*imageIndex], VK_TRUE, UINT64_MAX);
+        }
+
         return result;
     }
 
     VkResult SwapChain::submitCommandBuffers(const VkCommandBuffer* buffers, uint32_t* imageIndex)
     {
-        if (imagesInFlight[*imageIndex] != VK_NULL_HANDLE)
-        {
-            vkWaitForFences(device.device(), 1, &imagesInFlight[*imageIndex], VK_TRUE, UINT64_MAX);
-        }
         imagesInFlight[*imageIndex] = inFlightFences[currentFrame];
 
         VkSubmitInfo submitInfo = {};
