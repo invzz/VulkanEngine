@@ -12,9 +12,9 @@
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <limits>
 #include <stdexcept>
 #include <unordered_map>
-#include <limits>
 
 #include "Device.hpp"
 #include "GameObject.hpp"
@@ -25,6 +25,16 @@
 #include "app.hpp"
 
 namespace engine {
+    namespace {
+        float massFromScale(const Transform2DComponent& transform)
+        {
+            const glm::vec2 absScale = glm::abs(transform.scale);
+            const float     area     = absScale.x * absScale.y;
+            constexpr float density  = 400.0f; // tuned so radius 0.05 discs keep mass ≈ 1
+            return glm::max(area * density, 1e-4f);
+        }
+    } // namespace
+
     class GravityPhysicsSystem
     {
       public:
@@ -115,7 +125,7 @@ namespace engine {
                 vf.transform2d.scale.x =
                         0.005f +
                         0.045f * glm::clamp(glm::log(glm::length(direction) + 1) / 3.f, 0.f, 1.f);
-        vf.transform2d.rotation = glm::atan(direction.y, direction.x);
+                vf.transform2d.rotation = glm::atan(direction.y, direction.x);
 
                 if (totalWeight > std::numeric_limits<float>::epsilon())
                 {
@@ -145,11 +155,11 @@ namespace engine {
     std::unique_ptr<Model> createCircleModel(Device& device, unsigned int numSides)
     {
         std::vector<Model::Vertex> uniqueVertices{};
-    const auto sideCount = static_cast<int>(numSides);
+        const auto                 sideCount = static_cast<int>(numSides);
         for (int i = 0; i < sideCount; i++)
         {
-            float angle = static_cast<float>(i) * glm::two_pi<float>() /
-                          static_cast<float>(sideCount);
+            float angle =
+                    static_cast<float>(i) * glm::two_pi<float>() / static_cast<float>(sideCount);
             uniqueVertices.push_back({{glm::cos(angle), glm::sin(angle)}});
         }
         uniqueVertices.push_back({}); // adds center vertex at 0, 0
@@ -186,24 +196,60 @@ namespace engine {
                                                        // at edge rather than center of square
         std::shared_ptr<Model> circleModel = createCircleModel(device, 64);
 
+        const float          gravityStrength = 0.61f;
+        GravityPhysicsSystem gravitySystem{gravityStrength};
+
         // create physics objects
-        std::vector<GameObject> physicsObjects{};
+        std::vector<GameObject>        physicsObjects{};
+        const float                    orbitRadius   = 0.35f; // circumradius of the setup
+        const auto                     sqrt3         = glm::sqrt(3.0f);
+        const float                    sideLength    = sqrt3 * orbitRadius;
+        const std::array<glm::vec2, 3> basePositions = {
+                glm::vec2{orbitRadius, 0.0f},
+                glm::vec2{-0.5f * orbitRadius, 0.5f * sqrt3 * orbitRadius},
+                glm::vec2{-0.5f * orbitRadius, -0.5f * sqrt3 * orbitRadius},
+        };
+        const std::array<float, 3> scales = {
+                0.036f,
+                0.028f,
+                0.022f,
+        };
+        std::array<float, 3> masses{};
+        glm::vec2            centerOfMass{0.0f};
+        float                totalMass = 0.0f;
+        for (size_t i = 0; i < basePositions.size(); ++i)
+        {
+            Transform2DComponent probe{};
+            probe.scale = glm::vec2{scales[i]};
+            masses[i]   = massFromScale(probe);
+            centerOfMass += masses[i] * basePositions[i];
+            totalMass += masses[i];
+        }
+        if (totalMass > std::numeric_limits<float>::epsilon())
+        {
+            centerOfMass /= totalMass;
+        }
+        const float angularVelocity =
+                glm::sqrt(gravityStrength * totalMass / (sideLength * sideLength * sideLength));
+        const std::array<glm::vec3, 3> colors = {
+                glm::vec3{1.0f, 0.2f, 0.2f},
+                glm::vec3{0.2f, 1.0f, 0.4f},
+                glm::vec3{0.2f, 0.4f, 1.0f},
+        };
 
-        auto red                    = GameObject::createGameObjectWithId();
-        red.transform2d.scale       = glm::vec2{.05f};
-        red.transform2d.translation = {.5f, .5f};
-        red.color                   = {1.f, 0.f, 0.f};
-        red.rigidBody2d.velocity    = {-.5f, .0f};
-        red.model                   = circleModel;
-        physicsObjects.push_back(std::move(red));
-
-        auto blue                    = GameObject::createGameObjectWithId();
-        blue.transform2d.scale       = glm::vec2{.05f};
-        blue.transform2d.translation = {-.45f, -.25f};
-        blue.color                   = {0.f, 0.f, 1.f};
-        blue.rigidBody2d.velocity    = {.5f, .0f};
-        blue.model                   = circleModel;
-        physicsObjects.push_back(std::move(blue));
+        for (size_t i = 0; i < basePositions.size(); ++i)
+        {
+            auto            body         = GameObject::createGameObjectWithId();
+            const glm::vec2 centered     = basePositions[i] - centerOfMass;
+            body.transform2d.scale       = glm::vec2{scales[i]};
+            body.transform2d.translation = centered;
+            const glm::vec2 tangential   = {-centered.y, centered.x};
+            body.rigidBody2d.velocity    = angularVelocity * tangential;
+            body.rigidBody2d.mass        = masses[i];
+            body.color                   = colors[i];
+            body.model                   = circleModel;
+            physicsObjects.push_back(std::move(body));
+        }
 
         // create vector field
         std::vector<GameObject> vectorField{};
@@ -212,12 +258,12 @@ namespace engine {
         {
             for (int j = 0; j < gridCount; j++)
             {
-                auto vf                    = GameObject::createGameObjectWithId();
-                vf.transform2d.scale       = glm::vec2(0.005f);
-                float xPos                 = -1.0f + (static_cast<float>(i) + 0.5f) * 2.0f /
-                                                        static_cast<float>(gridCount);
-                float yPos                 = -1.0f + (static_cast<float>(j) + 0.5f) * 2.0f /
-                                                        static_cast<float>(gridCount);
+                auto vf              = GameObject::createGameObjectWithId();
+                vf.transform2d.scale = glm::vec2(0.005f);
+                float xPos           = -1.0f +
+                             (static_cast<float>(i) + 0.5f) * 2.0f / static_cast<float>(gridCount);
+                float yPos = -1.0f +
+                             (static_cast<float>(j) + 0.5f) * 2.0f / static_cast<float>(gridCount);
                 vf.transform2d.translation = {xPos, yPos};
                 vf.color                   = glm::vec3(1.0f);
                 vf.model                   = squareModel;
@@ -225,8 +271,7 @@ namespace engine {
             }
         }
 
-        GravityPhysicsSystem gravitySystem{0.81f};
-        Vec2FieldSystem      vecFieldSystem{};
+        Vec2FieldSystem vecFieldSystem{};
 
         SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
         while (!window.shouldClose())
@@ -236,6 +281,10 @@ namespace engine {
 
             if (auto commandBuffer = renderer.beginFrame())
             {
+                for (auto& obj : physicsObjects)
+                {
+                    obj.rigidBody2d.mass = massFromScale(obj.transform2d);
+                }
                 // update systems
                 gravitySystem.update(physicsObjects, 1.f / 60, 5);
                 vecFieldSystem.update(gravitySystem, physicsObjects, vectorField);

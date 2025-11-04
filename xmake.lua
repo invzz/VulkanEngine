@@ -14,10 +14,10 @@ add_requires("glm")
 add_requires("vulkan")
 
 
-target("Transform2d")
+target("ThreeBodiesSimulation")
     set_kind("binary")
-    add_files("src/demos/Transform2d/**.cpp")
-    add_includedirs("src/demos/Transform2d")
+    add_files("src/demos/ThreeBodiesSimulation/**.cpp")
+    add_includedirs("src/demos/ThreeBodiesSimulation")
     add_includedirs("src")
     add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
     add_packages("glfw", "glm", "vulkan")
