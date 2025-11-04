@@ -26,12 +26,31 @@
 
 namespace engine {
     namespace {
+        struct BorderSettings
+        {
+            static constexpr float repulsionStart    = 0.78f;
+            static constexpr float dampingStart      = 0.82f;
+            static constexpr float clamp             = 0.97f;
+            static constexpr float repulsionStrength = 12.5f;
+            static constexpr float dampingStrength   = 6.5f;
+            static constexpr float bounceFactor      = -0.25f;
+        };
+
         float massFromScale(const Transform2DComponent& transform)
         {
             const glm::vec2 absScale = glm::abs(transform.scale);
             const float     area     = absScale.x * absScale.y;
             constexpr float density  = 400.0f; // tuned so radius 0.05 discs keep mass ≈ 1
             return glm::max(area * density, 1e-4f);
+        }
+
+        float edgeExposure(const glm::vec2& position)
+        {
+            const float maxAbs = glm::max(glm::abs(position.x), glm::abs(position.y));
+            if (maxAbs <= BorderSettings::repulsionStart) return 0.0f;
+            const float range = BorderSettings::clamp - BorderSettings::repulsionStart;
+            if (range <= std::numeric_limits<float>::epsilon()) return 1.0f;
+            return glm::clamp((maxAbs - BorderSettings::repulsionStart) / range, 0.0f, 1.0f);
         }
     } // namespace
 
@@ -98,12 +117,8 @@ namespace engine {
 
         void applyBoundaryDamping(GameObject& obj, float dt) const
         {
-            constexpr float dampingStart    = 0.82f;
-            constexpr float dampingClamp    = 0.97f;
-            constexpr float dampingStrength = 6.5f;
-            constexpr float boundaryBounce  = -0.25f;
-            auto&           pos             = obj.transform2d.translation;
-            auto&           vel             = obj.rigidBody2d.velocity;
+            auto& pos = obj.transform2d.translation;
+            auto& vel = obj.rigidBody2d.velocity;
 
             for (int axis = 0; axis < 2; ++axis)
             {
@@ -112,21 +127,34 @@ namespace engine {
                 float  absCoord = glm::abs(coord);
                 float  side     = coord >= 0.f ? 1.f : -1.f;
 
-                if (absCoord > dampingStart)
+                if (absCoord > BorderSettings::repulsionStart)
                 {
-                    float t = glm::clamp((absCoord - dampingStart) / (dampingClamp - dampingStart),
+                    float repelT =
+                            glm::clamp((absCoord - BorderSettings::repulsionStart) /
+                                               (BorderSettings::clamp - BorderSettings::repulsionStart),
+                                       0.f,
+                                       1.f);
+                    float repelAccel = BorderSettings::repulsionStrength * (0.25f + 0.75f * repelT);
+                    velocity -= side * repelAccel * dt;
+                }
+
+                if (absCoord > BorderSettings::dampingStart)
+                {
+                    float t = glm::clamp((absCoord - BorderSettings::dampingStart) /
+                                                 (BorderSettings::clamp - BorderSettings::dampingStart),
                                          0.f,
                                          1.f);
-                    float dampingFactor = glm::max(0.f, 1.f - dampingStrength * t * dt);
+                    float dampingFactor =
+                            glm::max(0.f, 1.f - BorderSettings::dampingStrength * t * dt);
                     velocity *= dampingFactor;
                 }
 
-                if (absCoord > dampingClamp)
+                if (absCoord > BorderSettings::clamp)
                 {
-                    coord = side * dampingClamp;
+                    coord = side * BorderSettings::clamp;
                     if (velocity * side > 0.f)
                     {
-                        velocity *= boundaryBounce;
+                        velocity *= BorderSettings::bounceFactor;
                     }
                 }
             }
@@ -255,17 +283,17 @@ namespace engine {
         static constexpr float trailShrinkFactor   = 0.985f;
     };
 
-    void updateColorsAndTrails(std::vector<GameObject>&        physicsObjects,
-                               const std::vector<glm::vec3>&   baseColors,
-                               std::vector<float>&             trailSpawnAccumulator,
-                               TrailSystem&                    trailSystem,
-                               float                           frameDt)
+    void updateColorsAndTrails(std::vector<GameObject>&      physicsObjects,
+                               const std::vector<glm::vec3>& baseColors,
+                               std::vector<float>&           trailSpawnAccumulator,
+                               TrailSystem&                  trailSystem,
+                               float                         frameDt)
     {
-        const float      minIntensity      = 0.35f;
-        const float      intensityMaxSpeed = 1.2f;
-        constexpr float  spawnInterval     = 0.018f;
-        constexpr float  minTrailSpeed     = 0.05f;
-        constexpr float  epsilon           = std::numeric_limits<float>::epsilon();
+        const float     minIntensity      = 0.35f;
+        const float     intensityMaxSpeed = 1.2f;
+        constexpr float spawnInterval     = 0.018f;
+        constexpr float minTrailSpeed     = 0.05f;
+        constexpr float epsilon           = std::numeric_limits<float>::epsilon();
 
         for (size_t i = 0; i < physicsObjects.size(); ++i)
         {
@@ -273,26 +301,28 @@ namespace engine {
             float speed = glm::length(obj.rigidBody2d.velocity);
             float t     = glm::clamp(speed / intensityMaxSpeed, 0.f, 1.f);
             float scale = glm::mix(minIntensity, 1.0f, t);
-            obj.color   = glm::clamp(scale * baseColors[i], glm::vec3(0.0f), glm::vec3(1.0f));
+
+            glm::vec3 pastel     = glm::mix(glm::vec3(0.9f), baseColors[i], 0.4f);
+            glm::vec3 speedTint  = glm::mix(pastel, baseColors[i], t);
+            float      edgeHeat  = glm::pow(edgeExposure(obj.transform2d.translation), 1.2f);
+            glm::vec3 glowTarget = glm::mix(speedTint, glm::vec3(1.0f), edgeHeat);
+            obj.color            =
+                    glm::clamp(scale * glowTarget, glm::vec3(0.0f), glm::vec3(1.0f));
 
             trailSpawnAccumulator[i] += frameDt;
             if (speed <= minTrailSpeed + epsilon)
             {
-                trailSpawnAccumulator[i] =
-                        glm::min(trailSpawnAccumulator[i], spawnInterval);
+                trailSpawnAccumulator[i] = glm::min(trailSpawnAccumulator[i], spawnInterval);
                 continue;
             }
 
-        const auto spawnCount =
-                    static_cast<int>(trailSpawnAccumulator[i] / spawnInterval);
+            const auto spawnCount = static_cast<int>(trailSpawnAccumulator[i] / spawnInterval);
             if (spawnCount <= 0) continue;
 
             trailSpawnAccumulator[i] -= spawnInterval * static_cast<float>(spawnCount);
             for (int emit = 0; emit < spawnCount; ++emit)
             {
-                trailSystem.spawn(obj.transform2d.translation,
-                                  obj.rigidBody2d.velocity,
-                                  obj.color);
+                trailSystem.spawn(obj.transform2d.translation, obj.rigidBody2d.velocity, obj.color);
             }
         }
     }
@@ -334,6 +364,58 @@ namespace engine {
             vertices.push_back(uniqueVertices[sideCount]);
         }
         return std::make_unique<Model>(device, vertices);
+    }
+
+    std::vector<GameObject> buildBorderBands(const std::shared_ptr<Model>& bandModel)
+    {
+        struct BandLayer
+        {
+            float     inner;
+            float     outer;
+            glm::vec3 color;
+        };
+
+        const std::array<BandLayer, 3> layers = {
+                BandLayer{BorderSettings::repulsionStart - 0.02f,
+                          BorderSettings::repulsionStart,
+                          {0.20f, 0.36f, 0.62f}},
+                BandLayer{BorderSettings::repulsionStart,
+                          BorderSettings::dampingStart,
+                          {0.72f, 0.50f, 0.28f}},
+                BandLayer{BorderSettings::dampingStart,
+                          BorderSettings::clamp,
+                          {0.98f, 0.64f, 0.24f}},
+        };
+
+        std::vector<GameObject> bands{};
+        bands.reserve(layers.size() * 4);
+
+        const auto createBand = [&](glm::vec2 translation, glm::vec2 scale, const glm::vec3& color)
+        {
+            GameObject band   = GameObject::createGameObjectWithId();
+            band.model        = bandModel;
+            band.transform2d.translation = translation;
+            band.transform2d.scale       = scale;
+            band.color                   = color;
+            bands.push_back(std::move(band));
+        };
+
+        for (const auto& layer : layers)
+        {
+            const float clampedInner = glm::clamp(layer.inner, -1.0f, BorderSettings::clamp);
+            const float clampedOuter = glm::clamp(layer.outer, -1.0f, BorderSettings::clamp);
+            if (clampedOuter <= clampedInner) continue;
+
+            const float bandThickness = clampedOuter - clampedInner;
+            const float bandCenter    = (clampedOuter + clampedInner) * 0.5f;
+
+            createBand({0.0f, bandCenter}, {2.05f, bandThickness}, layer.color);
+            createBand({0.0f, -bandCenter}, {2.05f, bandThickness}, layer.color);
+            createBand({-bandCenter, 0.0f}, {bandThickness, 2.05f}, layer.color);
+            createBand({bandCenter, 0.0f}, {bandThickness, 2.05f}, layer.color);
+        }
+
+        return bands;
     }
 
     struct SimplePushConstantData
@@ -438,8 +520,9 @@ namespace engine {
             }
         }
 
-        Vec2FieldSystem vecFieldSystem{};
-        TrailSystem     trailSystem{trailQuadModel};
+    Vec2FieldSystem vecFieldSystem{};
+    TrailSystem     trailSystem{trailQuadModel};
+    auto            borderBands = buildBorderBands(trailQuadModel);
 
         SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
         while (!window.shouldClose())
@@ -458,13 +541,20 @@ namespace engine {
                 gravitySystem.update(physicsObjects, frameDt, 5);
                 vecFieldSystem.update(gravitySystem, physicsObjects, vectorField);
 
-        updateColorsAndTrails(
-            physicsObjects, baseColors, trailSpawnAccumulator, trailSystem, frameDt);
+                updateColorsAndTrails(physicsObjects,
+                                      baseColors,
+                                      trailSpawnAccumulator,
+                                      trailSystem,
+                                      frameDt);
 
                 trailSystem.update(frameDt);
 
                 // render system
                 renderer.beginSwapChainRenderPass(commandBuffer);
+                if (!borderBands.empty())
+                {
+                    simpleRenderSystem.renderGameObjects(commandBuffer, borderBands);
+                }
                 simpleRenderSystem.renderGameObjects(commandBuffer, vectorField);
                 if (const auto& trailRenderObjects = trailSystem.renderObjects();
                     !trailRenderObjects.empty())
