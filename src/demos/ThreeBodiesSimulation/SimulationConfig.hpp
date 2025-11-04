@@ -69,8 +69,8 @@ namespace engine {
 
         struct Trails
         {
-            static constexpr float minWidth            = 0.0035f;
-            static constexpr float maxWidth            = 0.0065f;
+            static constexpr float minWidth            = 0.01f;
+            static constexpr float maxWidth            = 0.05f;
             static constexpr float minLength           = 0.010f;
             static constexpr float maxLength           = 0.028f;
             static constexpr float minLifetime         = 0.55f;
@@ -84,7 +84,7 @@ namespace engine {
             static constexpr float minIntensity        = 0.35f;
             static constexpr float intensityMaxSpeed   = 1.2f;
             static constexpr float pastelMix           = 0.4f;
-            static constexpr float edgeGlowExponent    = 1.2f;
+            static constexpr float edgeGlowExponent    = 1.5f;
         };
 
         struct Borders

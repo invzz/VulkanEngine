@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Model.hpp"
+#include "engine/Model.hpp"
 
 namespace engine {
     class SimpleModels

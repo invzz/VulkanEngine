@@ -1,7 +1,7 @@
-#include "Device.hpp"
+#include "engine/Device.hpp"
 
-#include "Exceptions.hpp"
-#include "ansi_colors.hpp"
+#include "engine/Exceptions.hpp"
+#include "engine/ansi_colors.hpp"
 // std headers
 #include <algorithm>
 #include <cstring>
@@ -398,47 +398,9 @@ namespace engine {
                supportedFeatures.samplerAnisotropy;
     }
 
-    /**
-     * @brief Populates debug messenger creation info for Vulkan validation layers.
-     * @param createInfo Reference to debug messenger creation info struct.
-     */
-    void
-    Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const
-    {
-        createInfo                 = {};
-        createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
-        createInfo.pUserData       = nullptr; // Optional
-    }
-
-    /**
-     * @brief Sets up the Vulkan debug messenger for validation layer output.
-     * @throws std::runtime_error if setup fails.
-     */
-    void Device::setupDebugMessenger()
-    {
-        if (!enableValidationLayers) return;
-        VkDebugUtilsMessengerCreateInfoEXT createInfo;
-        populateDebugMessengerCreateInfo(createInfo);
-        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) !=
-            VK_SUCCESS)
-        {
-            throw engine::RuntimeException("failed to set up debug messenger!");
-        }
-    }
-
-    /**
-     * @brief Checks if requested Vulkan validation layers are available.
-     * @return true if all requested layers are available, false otherwise.
-     */
     bool Device::checkValidationLayerSupport() const
     {
-        uint32_t layerCount;
+        uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
         std::vector<VkLayerProperties> availableLayers(layerCount);
@@ -446,18 +408,13 @@ namespace engine {
 
         for (const char* layerName : validationLayers)
         {
-            bool layerFound = false;
-
-            for (const auto& layerProperties : availableLayers)
-            {
-                if (strcmp(layerName, layerProperties.layerName) == 0)
-                {
-                    layerFound = true;
-                    break;
-                }
-            }
-
-            if (!layerFound)
+            const bool found =
+                    std::any_of(availableLayers.begin(),
+                                availableLayers.end(),
+                                [layerName](const VkLayerProperties& layerProps) {
+                                    return std::strcmp(layerName, layerProps.layerName) == 0;
+                                });
+            if (!found)
             {
                 return false;
             }
@@ -466,15 +423,10 @@ namespace engine {
         return true;
     }
 
-    /**
-     * @brief Gets required Vulkan instance extensions for GLFW and validation layers.
-     * @return Vector of required extension names.
-     */
     std::vector<const char*> Device::getRequiredExtensions() const
     {
         uint32_t     glfwExtensionCount = 0;
-        const char** glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+        const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
         std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
@@ -486,47 +438,104 @@ namespace engine {
         return extensions;
     }
 
-    /**
-     * @brief Checks and prints available and required Vulkan instance extensions.
-     * @throws std::runtime_error if a required extension is missing.
-     */
-    void Device::hasGflwRequiredInstanceExtensions() const
+    void Device::setupDebugMessenger()
     {
-        uint32_t extensionCount = 0;
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-        std::vector<VkExtensionProperties> extensions(extensionCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
-
-        std::cout << "available extensions:" << std::endl;
-        std::unordered_set<std::string> available;
-        for (const auto& extension : extensions)
+        if (!enableValidationLayers)
         {
-            std::cout << "\t" << extension.extensionName << std::endl;
-            available.emplace(extension.extensionName);
+            return;
         }
 
-        std::cout << "required extensions:" << std::endl;
-        auto                               requiredExtensions = getRequiredExtensions();
-        std::set<std::string, std::less<>> requiredSet(requiredExtensions.begin(),
-                                                       requiredExtensions.end());
-        for (const auto& required : requiredSet)
+        VkDebugUtilsMessengerCreateInfoEXT createInfo;
+        populateDebugMessengerCreateInfo(createInfo);
+
+        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) !=
+            VK_SUCCESS)
         {
-            std::cout << "\t" << required << std::endl;
-            if (available.find(required) == available.end())
-            {
-                throw engine::RuntimeException("Missing required glfw extension");
-            }
+            throw engine::RuntimeException("failed to set up debug messenger!");
         }
     }
 
-    /**
-     * @brief Checks if a physical device supports required Vulkan device extensions.
-     * @param device Vulkan physical device handle.
-     * @return true if all required extensions are supported, false otherwise.
-     */
+    QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices{};
+
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        uint32_t i = 0;
+        for (const auto& queueFamily : queueFamilies)
+        {
+            if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+            {
+                indices.graphicsFamily         = i;
+                indices.graphicsFamilyHasValue = true;
+            }
+
+            VkBool32 presentSupport = VK_FALSE;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface_, &presentSupport);
+            if (queueFamily.queueCount > 0 && presentSupport == VK_TRUE)
+            {
+                indices.presentFamily         = i;
+                indices.presentFamilyHasValue = true;
+            }
+
+            if (indices.isComplete())
+            {
+                break;
+            }
+
+            ++i;
+        }
+
+        return indices;
+    }
+
+    void
+    Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const
+    {
+        createInfo                 = {};
+        createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                     VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = debugCallback;
+        createInfo.pUserData       = nullptr;
+    }
+
+    void Device::hasGflwRequiredInstanceExtensions() const
+    {
+        uint32_t     glfwExtensionCount = 0;
+        const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+        std::unordered_set<std::string> requiredExtensions(glfwExtensions,
+                                                           glfwExtensions + glfwExtensionCount);
+
+        uint32_t extensionCount = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateInstanceExtensionProperties(nullptr,
+                                               &extensionCount,
+                                               availableExtensions.data());
+
+        for (const auto& extension : availableExtensions)
+        {
+            requiredExtensions.erase(extension.extensionName);
+        }
+
+        if (!requiredExtensions.empty())
+        {
+            throw engine::RuntimeException("missing required GLFW instance extensions");
+        }
+    }
+
     bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device) const
     {
-        uint32_t extensionCount;
+        uint32_t extensionCount = 0;
         vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
         std::vector<VkExtensionProperties> availableExtensions(extensionCount);
@@ -535,8 +544,8 @@ namespace engine {
                                              &extensionCount,
                                              availableExtensions.data());
 
-        std::set<std::string, std::less<>> requiredExtensions(deviceExtensions.begin(),
-                                                              deviceExtensions.end());
+        std::unordered_set<std::string> requiredExtensions(deviceExtensions.begin(),
+                                                           deviceExtensions.end());
 
         for (const auto& extension : availableExtensions)
         {
@@ -546,60 +555,14 @@ namespace engine {
         return requiredExtensions.empty();
     }
 
-    /**
-     * @brief Finds graphics and present queue families for a physical device.
-     * @param device Vulkan physical device handle.
-     * @return QueueFamilyIndices struct with found indices.
-     */
-    QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device)
-    {
-        QueueFamilyIndices indices;
-
-        uint32_t queueFamilyCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-        int i = 0;
-        for (const auto& queueFamily : queueFamilies)
-        {
-            if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                indices.graphicsFamily         = i;
-                indices.graphicsFamilyHasValue = true;
-            }
-            VkBool32 presentSupport = false;
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface_, &presentSupport);
-            if (queueFamily.queueCount > 0 && presentSupport)
-            {
-                indices.presentFamily         = i;
-                indices.presentFamilyHasValue = true;
-            }
-            if (indices.isComplete())
-            {
-                break;
-            }
-
-            i++;
-        }
-
-        return indices;
-    }
-
-    /**
-     * @brief Queries swapchain support details for a physical device.
-     * @param device Vulkan physical device handle.
-     * @return SwapChainSupportDetails struct with capabilities, formats, and present modes.
-     */
     SwapChainSupportDetails Device::querySwapChainSupport(VkPhysicalDevice device)
     {
-        SwapChainSupportDetails details;
+        SwapChainSupportDetails details{};
+
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface_, &details.capabilities);
 
-        uint32_t formatCount;
+        uint32_t formatCount = 0;
         vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, nullptr);
-
         if (formatCount != 0)
         {
             details.formats.resize(formatCount);
@@ -609,9 +572,8 @@ namespace engine {
                                                  details.formats.data());
         }
 
-        uint32_t presentModeCount;
+        uint32_t presentModeCount = 0;
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, nullptr);
-
         if (presentModeCount != 0)
         {
             details.presentModes.resize(presentModeCount);
@@ -620,47 +582,33 @@ namespace engine {
                                                       &presentModeCount,
                                                       details.presentModes.data());
         }
+
         return details;
     }
 
-    /**
-     * @brief Finds a supported Vulkan image format from candidates.
-     * @param candidates List of VkFormat candidates.
-     * @param tiling Desired image tiling.
-     * @param features Required format features.
-     * @return Supported VkFormat.
-     * @throws std::runtime_error if no supported format is found.
-     */
     VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates,
                                          VkImageTiling                tiling,
                                          VkFormatFeatureFlags         features)
     {
         for (VkFormat format : candidates)
         {
-            VkFormatProperties props;
-            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+            VkFormatProperties formatProperties;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
 
             if (tiling == VK_IMAGE_TILING_LINEAR &&
-                (props.linearTilingFeatures & features) == features)
+                (formatProperties.linearTilingFeatures & features) == features)
             {
                 return format;
             }
-            else if (tiling == VK_IMAGE_TILING_OPTIMAL &&
-                     (props.optimalTilingFeatures & features) == features)
+
+            if (tiling == VK_IMAGE_TILING_OPTIMAL &&
+                (formatProperties.optimalTilingFeatures & features) == features)
             {
                 return format;
             }
         }
+
         throw engine::RuntimeException("failed to find supported format!");
     }
-
-    /**
-     * @brief Finds a suitable memory type for Vulkan resource allocation.
-     * @param typeFilter Bitmask of acceptable memory types.
-     * @param properties Required memory property flags.
-     * @return Index of suitable memory type.
-     * @throws std::runtime_error if no suitable memory type is found.
-     */
-    // The memory/buffer helpers have been moved into DeviceMemory helper class.
 
 } // namespace engine

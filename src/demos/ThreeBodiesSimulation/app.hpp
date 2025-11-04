@@ -6,12 +6,12 @@
 #include <memory>
 #include <vector>
 
-#include "Device.hpp"
-#include "GameObject.hpp"
-#include "Model.hpp"
-#include "Renderer.hpp"
-#include "SwapChain.hpp"
-#include "Window.hpp"
+#include "engine/Device.hpp"
+#include "engine/GameObject.hpp"
+#include "engine/Model.hpp"
+#include "engine/Renderer.hpp"
+#include "engine/SwapChain.hpp"
+#include "engine/Window.hpp"
 
 namespace engine {
 

@@ -93,9 +93,13 @@ namespace engine {
         std::vector<VkSemaphore> renderFinishedSemaphores;
         std::vector<VkFence>     inFlightFences;
         std::vector<VkFence>     imagesInFlight;
-        size_t                   currentFrame     = 0;
-        bool                     presentIdEnabled = false;
-        uint64_t                 nextPresentId    = 1;
+        size_t                   currentFrame = 0;
+        struct PresentIdState
+        {
+            bool     enabled = false;
+            uint64_t next    = 1;
+        };
+        PresentIdState presentIdState;
     };
 
 } // namespace engine

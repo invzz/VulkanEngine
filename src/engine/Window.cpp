@@ -1,4 +1,4 @@
-#include "Window.hpp"
+#include "engine/Window.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -12,11 +12,11 @@
 #include <X11/Xlib.h>
 #endif
 
-#include "Exceptions.hpp"
-#include "ansi_colors.hpp"
+#include "engine/Exceptions.hpp"
+#include "engine/ansi_colors.hpp"
 
 // Small helpers to keep initWindow simple and readable.
-namespace {
+namespace window_detail {
 
 #ifdef __linux__
     // Try to get the global cursor position via X11 (useful for XWayland).
@@ -111,7 +111,7 @@ namespace {
         glfwSetWindowPos(window, xpos, ypos);
     }
 
-} // anonymous namespace
+} // namespace window_detail
 
 namespace engine {
 
@@ -167,10 +167,11 @@ namespace engine {
         bool haveCursor = false;
 
 #ifdef __linux__
-        haveCursor = tryGetXCursorPosition(cursorX, cursorY);
+        haveCursor = window_detail::tryGetXCursorPosition(cursorX, cursorY);
 #endif
 
-        GLFWmonitor* targetMonitor = chooseTargetMonitor(haveCursor, cursorX, cursorY);
+        GLFWmonitor* targetMonitor =
+                window_detail::chooseTargetMonitor(haveCursor, cursorX, cursorY);
 
         // Create the window (hidden)
         window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
@@ -203,31 +204,30 @@ namespace engine {
             }
         }
 
-        // Show and give compositor a short time to map and (maybe) honor our position.
-        glfwShowWindow(window);
-        for (int i = 0; i < 8; ++i)
-        {
-            glfwPollEvents();
-            std::this_thread::sleep_for(std::chrono::milliseconds(15));
-        }
+        // Wayland compositors sometimes ignore our initial placement request if made immediately
+        // after creation, so wait briefly for the compositor to react.
+        int posX = 0;
+        int posY = 0;
+        window_detail::waitForWindowStabilize(window, posX, posY);
 
-        // Log final position and size for debugging. Useful to detect compositor overrides.
-        int wx = 0;
-        int wy = 0;
-        int ww = width;
-        int wh = height;
-        glfwGetWindowPos(window, &wx, &wy);
-        glfwGetWindowSize(window, &ww, &wh);
-        std::cout << "Final window virtual position: (" << wx << ", " << wy << "), size: (" << ww
-                  << "x" << wh << ")\n";
+        // Show the window now that we've attempted to position it.
+        glfwShowWindow(window);
+
+        // If the compositor still left us at (0, 0), try centering manually.
+        if (targetMonitor)
+        {
+            glfwGetWindowPos(window, &posX, &posY);
+            if (posX == 0 && posY == 0)
+            {
+                window_detail::centerWindowOnMonitor(window, targetMonitor, width, height);
+            }
+        }
     }
 
     void Window::createWindowSurface(VkInstance instance, VkSurfaceKHR* surface)
     {
-        VkResult result = glfwCreateWindowSurface(instance, window, nullptr, surface);
-        if (result != VK_SUCCESS)
+        if (glfwCreateWindowSurface(instance, window, nullptr, surface) != VK_SUCCESS)
         {
-            std::cerr << "glfwCreateWindowSurface failed: " << result << std::endl;
             throw WindowSurfaceCreationException("failed to create window surface!");
         }
     }

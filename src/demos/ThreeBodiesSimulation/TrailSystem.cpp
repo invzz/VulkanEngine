@@ -107,11 +107,11 @@ namespace engine {
             const float speed = glm::length(obj.rigidBody2d.velocity);
             const float maxScaleComponent =
                     glm::max(glm::abs(obj.transform2d.scale.x), glm::abs(obj.transform2d.scale.y));
-            if (maxScaleComponent < SimulationConfig::Trails::minEmitterScale)
-            {
-                trailSpawnAccumulator[i] = glm::min(trailSpawnAccumulator[i], spawnInterval);
-                continue;
-            }
+            // if (maxScaleComponent < SimulationConfig::Trails::minEmitterScale)
+            // {
+            //     trailSpawnAccumulator[i] = glm::min(trailSpawnAccumulator[i], spawnInterval);
+            //     continue;
+            // }
 
             const float t     = glm::clamp(speed / intensityMaxSpeed, 0.f, 1.f);
             const float scale = glm::mix(minIntensity, 1.0f, t);
@@ -121,7 +121,7 @@ namespace engine {
             const glm::vec3 speedTint  = glm::mix(pastel, baseColors[i], t);
             const float     edgeHeat   = glm::pow(detail::edgeExposure(obj.transform2d.translation),
                                             SimulationConfig::Trails::edgeGlowExponent);
-            const glm::vec3 glowTarget = glm::mix(speedTint, glm::vec3(1.0f), edgeHeat);
+            const glm::vec3 glowTarget = glm::mix(speedTint, glm::vec3(0.1f), edgeHeat);
             obj.color = glm::clamp(scale * glowTarget, glm::vec3(0.0f), glm::vec3(1.0f));
 
             trailSpawnAccumulator[i] += frameDt;

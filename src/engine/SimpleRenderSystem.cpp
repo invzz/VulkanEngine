@@ -1,6 +1,6 @@
-#include "SimpleRenderSystem.hpp"
+#include "engine/SimpleRenderSystem.hpp"
 
-#include "Exceptions.hpp"
+#include "engine/Exceptions.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS

@@ -35,6 +35,8 @@ namespace engine {
         };
     };
 
+    using id_t = unsigned int;
+
     class GameObject
     {
       public:
@@ -42,6 +44,7 @@ namespace engine {
         glm::vec3              color{};
         Transform2DComponent   transform2d{};
         RigidBody2dComponent   rigidBody2d{};
+        id_t                   id{0};
 
         static GameObject createGameObjectWithId()
         {
@@ -54,16 +57,13 @@ namespace engine {
         GameObject& operator=(const GameObject&) = delete;
 
         // default move operations
-        GameObject(GameObject&&)            = default;
-        GameObject& operator=(GameObject&&) = default;
-
-        using id_t = unsigned int;
+        GameObject(GameObject&&) noexcept            = default;
+        GameObject& operator=(GameObject&&) noexcept = default;
 
         id_t getId() const { return id; }
 
       private:
         explicit GameObject(id_t objId) : id{objId} {}
-        id_t id;
     };
 
 } // namespace engine

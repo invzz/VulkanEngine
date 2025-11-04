@@ -1,6 +1,9 @@
 # Xmake cache
 .xmake/
 build/
+assets/shaders/compiled/*.spv
+assets/shaders/compiled/*.spv.json
+assets/shaders/compiled/*.spv.map
 
 # MacOS Cache
 .DS_Store

@@ -1,4 +1,4 @@
-#include "Renderer.hpp"
+#include "engine/Renderer.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <unordered_map>
 
-#include "Exceptions.hpp"
+#include "engine/Exceptions.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -17,8 +17,8 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-#include "Device.hpp"
-#include "Window.hpp"
+#include "engine/Device.hpp"
+#include "engine/Window.hpp"
 
 namespace engine {
 

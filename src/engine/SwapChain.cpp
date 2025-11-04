@@ -24,7 +24,7 @@
  * management is automatic.
  */
 
-#include "SwapChain.hpp"
+#include "engine/SwapChain.hpp"
 
 // std
 #include <array>
@@ -35,19 +35,20 @@
 #include <set>
 #include <stdexcept>
 
-#include "Exceptions.hpp"
+#include "engine/Exceptions.hpp"
 
 namespace engine {
 
     SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent)
-        : device{deviceRef}, windowExtent{extent}, presentIdEnabled{deviceRef.supportsPresentId()}
+        : device{deviceRef}, windowExtent{extent}
     {
+        presentIdState.enabled = deviceRef.supportsPresentId();
         Init();
     }
     SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::shared_ptr<SwapChain> previous)
-        : device{deviceRef}, windowExtent{extent}, oldSwapChain{previous},
-          presentIdEnabled{deviceRef.supportsPresentId()}
+        : device{deviceRef}, windowExtent{extent}, oldSwapChain{previous}
     {
+        presentIdState.enabled = deviceRef.supportsPresentId();
         Init();
 
         if (oldSwapChain != nullptr)
@@ -178,10 +179,10 @@ namespace engine {
                                      .pPresentIds    = nullptr};
         uint64_t       presentIdValue = 0;
 
-        if (presentIdEnabled)
+        if (presentIdState.enabled)
         {
             // Tag each present so validation can correlate semaphore ownership.
-            presentIdValue               = nextPresentId++;
+            presentIdValue               = presentIdState.next++;
             presentIdInfo.swapchainCount = 1;
             presentIdInfo.pPresentIds    = &presentIdValue;
             presentInfo.pNext            = &presentIdInfo;
@@ -509,9 +510,9 @@ namespace engine {
         inFlightFences.assign(frameCount, VK_NULL_HANDLE);
         renderFinishedSemaphores.assign(imageCount(), VK_NULL_HANDLE);
         imagesInFlight.assign(imageCount(), VK_NULL_HANDLE);
-        if (presentIdEnabled)
+        if (presentIdState.enabled)
         {
-            nextPresentId = 1;
+            presentIdState.next = 1;
         }
 
         VkSemaphoreCreateInfo semaphoreInfo = {};
@@ -574,14 +575,6 @@ namespace engine {
                 return availablePresentMode;
             }
         }
-
-        // for (const auto& availablePresentMode : availablePresentModes)
-        // {
-        //     if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
-        //     {
-        //         return availablePresentMode;
-        //     }
-        // }
 
         std::cout << "Present mode: V-Sync" << std::endl;
         return VK_PRESENT_MODE_FIFO_KHR;

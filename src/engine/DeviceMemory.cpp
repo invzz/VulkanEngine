@@ -1,9 +1,9 @@
-#include "DeviceMemory.hpp"
+#include "engine/DeviceMemory.hpp"
 
 #include <stdexcept>
 
-#include "Device.hpp"
-#include "Exceptions.hpp"
+#include "engine/Device.hpp"
+#include "engine/Exceptions.hpp"
 
 namespace engine {
 
