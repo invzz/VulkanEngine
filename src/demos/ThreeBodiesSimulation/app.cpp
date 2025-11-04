@@ -129,21 +129,22 @@ namespace engine {
 
                 if (absCoord > BorderSettings::repulsionStart)
                 {
-                    float repelT =
-                            glm::clamp((absCoord - BorderSettings::repulsionStart) /
-                                               (BorderSettings::clamp - BorderSettings::repulsionStart),
-                                       0.f,
-                                       1.f);
+                    float repelT = glm::clamp(
+                            (absCoord - BorderSettings::repulsionStart) /
+                                    (BorderSettings::clamp - BorderSettings::repulsionStart),
+                            0.f,
+                            1.f);
                     float repelAccel = BorderSettings::repulsionStrength * (0.25f + 0.75f * repelT);
                     velocity -= side * repelAccel * dt;
                 }
 
                 if (absCoord > BorderSettings::dampingStart)
                 {
-                    float t = glm::clamp((absCoord - BorderSettings::dampingStart) /
-                                                 (BorderSettings::clamp - BorderSettings::dampingStart),
-                                         0.f,
-                                         1.f);
+                    float t = glm::clamp(
+                            (absCoord - BorderSettings::dampingStart) /
+                                    (BorderSettings::clamp - BorderSettings::dampingStart),
+                            0.f,
+                            1.f);
                     float dampingFactor =
                             glm::max(0.f, 1.f - BorderSettings::dampingStrength * t * dt);
                     velocity *= dampingFactor;
@@ -304,10 +305,9 @@ namespace engine {
 
             glm::vec3 pastel     = glm::mix(glm::vec3(0.9f), baseColors[i], 0.4f);
             glm::vec3 speedTint  = glm::mix(pastel, baseColors[i], t);
-            float      edgeHeat  = glm::pow(edgeExposure(obj.transform2d.translation), 1.2f);
+            float     edgeHeat   = glm::pow(edgeExposure(obj.transform2d.translation), 1.2f);
             glm::vec3 glowTarget = glm::mix(speedTint, glm::vec3(1.0f), edgeHeat);
-            obj.color            =
-                    glm::clamp(scale * glowTarget, glm::vec3(0.0f), glm::vec3(1.0f));
+            obj.color            = glm::clamp(scale * glowTarget, glm::vec3(0.0f), glm::vec3(1.0f));
 
             trailSpawnAccumulator[i] += frameDt;
             if (speed <= minTrailSpeed + epsilon)
@@ -364,58 +364,6 @@ namespace engine {
             vertices.push_back(uniqueVertices[sideCount]);
         }
         return std::make_unique<Model>(device, vertices);
-    }
-
-    std::vector<GameObject> buildBorderBands(const std::shared_ptr<Model>& bandModel)
-    {
-        struct BandLayer
-        {
-            float     inner;
-            float     outer;
-            glm::vec3 color;
-        };
-
-        const std::array<BandLayer, 3> layers = {
-                BandLayer{BorderSettings::repulsionStart - 0.02f,
-                          BorderSettings::repulsionStart,
-                          {0.20f, 0.36f, 0.62f}},
-                BandLayer{BorderSettings::repulsionStart,
-                          BorderSettings::dampingStart,
-                          {0.72f, 0.50f, 0.28f}},
-                BandLayer{BorderSettings::dampingStart,
-                          BorderSettings::clamp,
-                          {0.98f, 0.64f, 0.24f}},
-        };
-
-        std::vector<GameObject> bands{};
-        bands.reserve(layers.size() * 4);
-
-        const auto createBand = [&](glm::vec2 translation, glm::vec2 scale, const glm::vec3& color)
-        {
-            GameObject band   = GameObject::createGameObjectWithId();
-            band.model        = bandModel;
-            band.transform2d.translation = translation;
-            band.transform2d.scale       = scale;
-            band.color                   = color;
-            bands.push_back(std::move(band));
-        };
-
-        for (const auto& layer : layers)
-        {
-            const float clampedInner = glm::clamp(layer.inner, -1.0f, BorderSettings::clamp);
-            const float clampedOuter = glm::clamp(layer.outer, -1.0f, BorderSettings::clamp);
-            if (clampedOuter <= clampedInner) continue;
-
-            const float bandThickness = clampedOuter - clampedInner;
-            const float bandCenter    = (clampedOuter + clampedInner) * 0.5f;
-
-            createBand({0.0f, bandCenter}, {2.05f, bandThickness}, layer.color);
-            createBand({0.0f, -bandCenter}, {2.05f, bandThickness}, layer.color);
-            createBand({-bandCenter, 0.0f}, {bandThickness, 2.05f}, layer.color);
-            createBand({bandCenter, 0.0f}, {bandThickness, 2.05f}, layer.color);
-        }
-
-        return bands;
     }
 
     struct SimplePushConstantData
@@ -520,9 +468,8 @@ namespace engine {
             }
         }
 
-    Vec2FieldSystem vecFieldSystem{};
-    TrailSystem     trailSystem{trailQuadModel};
-    auto            borderBands = buildBorderBands(trailQuadModel);
+        Vec2FieldSystem vecFieldSystem{};
+        TrailSystem     trailSystem{trailQuadModel};
 
         SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
         while (!window.shouldClose())
@@ -537,7 +484,7 @@ namespace engine {
                     obj.rigidBody2d.mass = massFromScale(obj.transform2d);
                 }
                 // update systems
-                constexpr float frameDt = 1.f / 60.f;
+                constexpr float frameDt = 1.f / 120.f;
                 gravitySystem.update(physicsObjects, frameDt, 5);
                 vecFieldSystem.update(gravitySystem, physicsObjects, vectorField);
 
@@ -551,10 +498,7 @@ namespace engine {
 
                 // render system
                 renderer.beginSwapChainRenderPass(commandBuffer);
-                if (!borderBands.empty())
-                {
-                    simpleRenderSystem.renderGameObjects(commandBuffer, borderBands);
-                }
+
                 simpleRenderSystem.renderGameObjects(commandBuffer, vectorField);
                 if (const auto& trailRenderObjects = trailSystem.renderObjects();
                     !trailRenderObjects.empty())
