@@ -31,7 +31,7 @@ namespace engine {
         void run();
 
       private:
-        void                    loadGameObjects();
+        void                    loadGameObjects() const;
         Window                  window{width(), height(), "Engine App"};
         Device                  device{window};
         std::vector<GameObject> gameObjects;
