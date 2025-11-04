@@ -92,6 +92,43 @@ namespace engine {
             for (auto& obj : physicsObjs)
             {
                 obj.transform2d.translation += dt * obj.rigidBody2d.velocity;
+                applyBoundaryDamping(obj, dt);
+            }
+        }
+
+        void applyBoundaryDamping(GameObject& obj, float dt) const
+        {
+            constexpr float dampingStart    = 0.82f;
+            constexpr float dampingClamp    = 0.97f;
+            constexpr float dampingStrength = 6.5f;
+            constexpr float boundaryBounce  = -0.25f;
+            auto&           pos             = obj.transform2d.translation;
+            auto&           vel             = obj.rigidBody2d.velocity;
+
+            for (int axis = 0; axis < 2; ++axis)
+            {
+                float& coord    = axis == 0 ? pos.x : pos.y;
+                float& velocity = axis == 0 ? vel.x : vel.y;
+                float  absCoord = glm::abs(coord);
+                float  side     = coord >= 0.f ? 1.f : -1.f;
+
+                if (absCoord > dampingStart)
+                {
+                    float t = glm::clamp((absCoord - dampingStart) / (dampingClamp - dampingStart),
+                                         0.f,
+                                         1.f);
+                    float dampingFactor = glm::max(0.f, 1.f - dampingStrength * t * dt);
+                    velocity *= dampingFactor;
+                }
+
+                if (absCoord > dampingClamp)
+                {
+                    coord = side * dampingClamp;
+                    if (velocity * side > 0.f)
+                    {
+                        velocity *= boundaryBounce;
+                    }
+                }
             }
         }
     };
@@ -134,6 +171,131 @@ namespace engine {
             }
         }
     };
+
+    class TrailSystem
+    {
+      public:
+        explicit TrailSystem(std::shared_ptr<Model> model) : trailModel(std::move(model)) {}
+
+        void spawn(const glm::vec2& position, const glm::vec2& velocity, const glm::vec3& color)
+        {
+            const float speed = glm::length(velocity);
+            if (speed < std::numeric_limits<float>::epsilon()) return;
+
+            GameObject particle              = GameObject::createGameObjectWithId();
+            particle.model                   = trailModel;
+            particle.transform2d.translation = position;
+            particle.transform2d.rotation    = glm::atan(velocity.y, velocity.x);
+
+            const float speedRatio     = glm::clamp(speed / speedForMaxScale, 0.f, 1.f);
+            const float length         = glm::mix(minLength, maxLength, speedRatio);
+            const float width          = glm::mix(minWidth, maxWidth, speedRatio);
+            particle.transform2d.scale = {width, length};
+            particle.color             = color;
+
+            particles.push_back(std::move(particle));
+            ages.push_back(0.f);
+            const float lifetimeRatio = glm::clamp(speed / speedForMaxLifetime, 0.f, 1.f);
+            lifetimes.push_back(glm::mix(minLifetime, maxLifetime, lifetimeRatio));
+            baseColors.push_back(color);
+        }
+
+        void update(float dt)
+        {
+            for (size_t i = 0; i < particles.size(); ++i)
+            {
+                ages[i] += dt;
+                float     normalizedAge = glm::clamp(1.f - ages[i] / lifetimes[i], 0.f, 1.f);
+                glm::vec3 fadedColor    = normalizedAge * baseColors[i];
+                particles[i].color      = fadedColor;
+                particles[i].transform2d.scale *= trailShrinkFactor;
+            }
+
+            for (size_t i = particles.size(); i-- > 0;)
+            {
+                if (ages[i] >= lifetimes[i])
+                {
+                    removeAt(i);
+                }
+            }
+        }
+
+        const std::vector<GameObject>& renderObjects() const { return particles; }
+
+      private:
+        void removeAt(size_t index)
+        {
+            particles[index] = std::move(particles.back());
+            particles.pop_back();
+
+            ages[index] = ages.back();
+            ages.pop_back();
+
+            lifetimes[index] = lifetimes.back();
+            lifetimes.pop_back();
+
+            baseColors[index] = baseColors.back();
+            baseColors.pop_back();
+        }
+
+        std::shared_ptr<Model>  trailModel;
+        std::vector<GameObject> particles{};
+        std::vector<float>      ages{};
+        std::vector<float>      lifetimes{};
+        std::vector<glm::vec3>  baseColors{};
+
+        static constexpr float minWidth            = 0.0035f;
+        static constexpr float maxWidth            = 0.0065f;
+        static constexpr float minLength           = 0.010f;
+        static constexpr float maxLength           = 0.028f;
+        static constexpr float minLifetime         = 0.55f;
+        static constexpr float maxLifetime         = 1.65f;
+        static constexpr float speedForMaxScale    = 1.4f;
+        static constexpr float speedForMaxLifetime = 1.1f;
+        static constexpr float trailShrinkFactor   = 0.985f;
+    };
+
+    void updateColorsAndTrails(std::vector<GameObject>&        physicsObjects,
+                               const std::vector<glm::vec3>&   baseColors,
+                               std::vector<float>&             trailSpawnAccumulator,
+                               TrailSystem&                    trailSystem,
+                               float                           frameDt)
+    {
+        const float      minIntensity      = 0.35f;
+        const float      intensityMaxSpeed = 1.2f;
+        constexpr float  spawnInterval     = 0.018f;
+        constexpr float  minTrailSpeed     = 0.05f;
+        constexpr float  epsilon           = std::numeric_limits<float>::epsilon();
+
+        for (size_t i = 0; i < physicsObjects.size(); ++i)
+        {
+            auto& obj   = physicsObjects[i];
+            float speed = glm::length(obj.rigidBody2d.velocity);
+            float t     = glm::clamp(speed / intensityMaxSpeed, 0.f, 1.f);
+            float scale = glm::mix(minIntensity, 1.0f, t);
+            obj.color   = glm::clamp(scale * baseColors[i], glm::vec3(0.0f), glm::vec3(1.0f));
+
+            trailSpawnAccumulator[i] += frameDt;
+            if (speed <= minTrailSpeed + epsilon)
+            {
+                trailSpawnAccumulator[i] =
+                        glm::min(trailSpawnAccumulator[i], spawnInterval);
+                continue;
+            }
+
+        const auto spawnCount =
+                    static_cast<int>(trailSpawnAccumulator[i] / spawnInterval);
+            if (spawnCount <= 0) continue;
+
+            trailSpawnAccumulator[i] -= spawnInterval * static_cast<float>(spawnCount);
+            for (int emit = 0; emit < spawnCount; ++emit)
+            {
+                trailSystem.spawn(obj.transform2d.translation,
+                                  obj.rigidBody2d.velocity,
+                                  obj.color);
+            }
+        }
+    }
 
     std::unique_ptr<Model> createSquareModel(Device& device, glm::vec2 offset)
     {
@@ -194,13 +356,15 @@ namespace engine {
         std::shared_ptr<Model> squareModel =
                 createSquareModel(device, {.5f, .0f}); // offset model by .5 so rotation occurs
                                                        // at edge rather than center of square
-        std::shared_ptr<Model> circleModel = createCircleModel(device, 64);
+        std::shared_ptr<Model> circleModel    = createCircleModel(device, 64);
+        std::shared_ptr<Model> trailQuadModel = createSquareModel(device, {0.0f, 0.0f});
 
         const float          gravityStrength = 0.61f;
         GravityPhysicsSystem gravitySystem{gravityStrength};
 
         // create physics objects
         std::vector<GameObject>        physicsObjects{};
+        std::vector<glm::vec3>         baseColors{};
         const float                    orbitRadius   = 0.35f; // circumradius of the setup
         const auto                     sqrt3         = glm::sqrt(3.0f);
         const float                    sideLength    = sqrt3 * orbitRadius;
@@ -249,7 +413,10 @@ namespace engine {
             body.color                   = colors[i];
             body.model                   = circleModel;
             physicsObjects.push_back(std::move(body));
+            baseColors.push_back(colors[i]);
         }
+
+        std::vector<float> trailSpawnAccumulator(physicsObjects.size(), 0.0f);
 
         // create vector field
         std::vector<GameObject> vectorField{};
@@ -272,6 +439,7 @@ namespace engine {
         }
 
         Vec2FieldSystem vecFieldSystem{};
+        TrailSystem     trailSystem{trailQuadModel};
 
         SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
         while (!window.shouldClose())
@@ -286,13 +454,24 @@ namespace engine {
                     obj.rigidBody2d.mass = massFromScale(obj.transform2d);
                 }
                 // update systems
-                gravitySystem.update(physicsObjects, 1.f / 60, 5);
+                constexpr float frameDt = 1.f / 60.f;
+                gravitySystem.update(physicsObjects, frameDt, 5);
                 vecFieldSystem.update(gravitySystem, physicsObjects, vectorField);
+
+        updateColorsAndTrails(
+            physicsObjects, baseColors, trailSpawnAccumulator, trailSystem, frameDt);
+
+                trailSystem.update(frameDt);
 
                 // render system
                 renderer.beginSwapChainRenderPass(commandBuffer);
-                simpleRenderSystem.renderGameObjects(commandBuffer, physicsObjects);
                 simpleRenderSystem.renderGameObjects(commandBuffer, vectorField);
+                if (const auto& trailRenderObjects = trailSystem.renderObjects();
+                    !trailRenderObjects.empty())
+                {
+                    simpleRenderSystem.renderGameObjects(commandBuffer, trailRenderObjects);
+                }
+                simpleRenderSystem.renderGameObjects(commandBuffer, physicsObjects);
                 renderer.endSwapChainRenderPass(commandBuffer);
                 renderer.endFrame();
             }
