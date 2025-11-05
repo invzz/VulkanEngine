@@ -84,10 +84,7 @@ namespace engine {
          * @brief Gets swapchain support details for the current physical device.
          * @return SwapChainSupportDetails struct.
          */
-        SwapChainSupportDetails getSwapChainSupport()
-        {
-            return querySwapChainSupport(physicalDevice);
-        }
+        SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }
 
         // moved memory/buffer helpers into DeviceMemory helper class
         /**
@@ -103,9 +100,7 @@ namespace engine {
          * @param features Required format features.
          * @return Supported VkFormat.
          */
-        VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates,
-                                     VkImageTiling                tiling,
-                                     VkFormatFeatureFlags         features);
+        VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 
         // Buffer Helper Functions
 
@@ -117,11 +112,8 @@ namespace engine {
          * @param buffer Reference to buffer handle to be created.
          * @param bufferMemory Reference to memory handle to be allocated.
          */
-        void createBuffer(VkDeviceSize          size,
-                          VkBufferUsageFlags    usage,
-                          VkMemoryPropertyFlags properties,
-                          VkBuffer&             buffer,
-                          VkDeviceMemory&       bufferMemory);
+        void
+        createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
         /**
          * @brief Begins recording a single-use command buffer.

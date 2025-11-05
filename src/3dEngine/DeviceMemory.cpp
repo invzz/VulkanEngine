@@ -9,15 +9,13 @@ namespace engine {
 
     DeviceMemory::DeviceMemory(Device& device) : device(device) {}
 
-    uint32_t DeviceMemory::findMemoryType(uint32_t              typeFilter,
-                                          VkMemoryPropertyFlags memoryPropertyFlags)
+    uint32_t DeviceMemory::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags)
     {
         VkPhysicalDeviceMemoryProperties memProperties;
         vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, &memProperties);
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
         {
-            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
-                                            memoryPropertyFlags) == memoryPropertyFlags)
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
             {
                 return i;
             }
@@ -47,10 +45,9 @@ namespace engine {
         vkGetBufferMemoryRequirements(device.device_, buffer, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex =
-                findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
+        allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize  = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
         if (vkAllocateMemory(device.device_, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
         {
@@ -107,11 +104,7 @@ namespace engine {
         endSingleTimeCommands(commandBuffer);
     }
 
-    void DeviceMemory::copyBufferToImage(VkBuffer buffer,
-                                         VkImage  image,
-                                         uint32_t width,
-                                         uint32_t height,
-                                         uint32_t layerCount)
+    void DeviceMemory::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount)
     {
         VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -128,12 +121,7 @@ namespace engine {
         region.imageOffset = {0, 0, 0};
         region.imageExtent = {width, height, 1};
 
-        vkCmdCopyBufferToImage(commandBuffer,
-                               buffer,
-                               image,
-                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                               1,
-                               &region);
+        vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
         endSingleTimeCommands(commandBuffer);
     }
 
@@ -151,10 +139,9 @@ namespace engine {
         vkGetImageMemoryRequirements(device.device_, image, &memRequirements);
 
         VkMemoryAllocateInfo allocInfo{};
-        allocInfo.sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex =
-                findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
+        allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize  = memRequirements.size;
+        allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
         if (vkAllocateMemory(device.device_, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS)
         {

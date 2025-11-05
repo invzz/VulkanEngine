@@ -25,7 +25,7 @@
 #include "app.hpp"
 
 namespace engine {
-
+    static constexpr float frameDt = 1.f / 120.f;
     struct SimplePushConstantData
     {
         glm::mat2 transform{1.0f};
@@ -40,27 +40,71 @@ namespace engine {
 
     App::~App() = default;
 
+    void setUpPerspectiveCamera(Camera& camera, float aspectRatio)
+    {
+        camera.setPerspectiveProjection(glm::radians(45.f), aspectRatio, 0.1f, 10.f);
+    }
+
+    void setUpOrthographicCamera(Camera& camera, float aspectRatio)
+    {
+        float orthoHeight = 1.5f;
+        float orthoWidth  = orthoHeight * aspectRatio;
+        camera.setOrtographicProjection(-orthoWidth, orthoWidth, -orthoHeight, orthoHeight, -10.f, 10.f);
+    }
+
+    void rotateObjectOverTime(GameObject& obj, float deltaTime)
+    {
+        obj.transform.rotation.y += glm::radians(90.f) * deltaTime;
+        if (obj.transform.rotation.y > glm::two_pi<float>())
+        {
+            obj.transform.rotation.y -= glm::two_pi<float>();
+        }
+    }
+
     void App::run()
     {
+        // create a camera
+        Camera camera{};
+        camera.setViewTarget(glm::vec3(-2.f, -2.f, -2.f), glm::vec3(0.f, 0.f, 0.5f), glm::vec3(0.f, -1.f, 0.f));
+
         // instantiate simple render system
         SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
 
         while (!window.shouldClose())
         {
+            // get the time at the start of the frame
+            static float accumulatedTime = 0.f;
+            static float previousTime    = static_cast<float>(glfwGetTime());
+            float        currentTime     = static_cast<float>(glfwGetTime());
+            float        deltaTime       = currentTime - previousTime;
+            previousTime                 = currentTime;
+            accumulatedTime += deltaTime;
             // Poll for window events
             glfwPollEvents();
 
+            float aspectRatio = renderer.getAspectRatio();
+
+            setUpPerspectiveCamera(camera, aspectRatio);
+
+            // make the camera orbit around the origin
+            float radius    = 2.5f;
+            float camX      = sinf(currentTime) * radius;
+            float camZ      = cosf(currentTime) * radius;
+            auto  camPos    = glm::vec3{camX, -2.f, camZ};
+            auto  targetPos = glm::vec3{0.f, 0.f, 0.5f};
+
+            // fixed timestep update loop
+            while (accumulatedTime >= frameDt)
+            {
+                // update game logic here with fixed timestep (frameDt)
+                accumulatedTime -= frameDt;
+                camera.setViewTarget(camPos, targetPos, glm::vec3{0.f, -1.f, 0.f});
+                rotateObjectOverTime(gameObjects[0], frameDt);
+            }
             if (auto commandBuffer = renderer.beginFrame())
             {
-                gameObjects[0].transform.rotation.y =
-                        glm::mod(gameObjects[0].transform.rotation.y + 0.01f, glm::two_pi<float>());
-
-                gameObjects[0].transform.rotation.x =
-                        glm::mod(gameObjects[0].transform.rotation.x + 0.015f,
-                                 glm::two_pi<float>());
-                // render system
                 renderer.beginSwapChainRenderPass(commandBuffer);
-                simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects);
+                simpleRenderSystem.renderGameObjects(commandBuffer, gameObjects, camera);
                 renderer.endSwapChainRenderPass(commandBuffer);
                 renderer.endFrame();
             }
@@ -70,65 +114,6 @@ namespace engine {
         vkDeviceWaitIdle(device.device());
     }
 
-    std::unique_ptr<Model> createCubeModel(Device& device, glm::vec3 offset)
-    {
-        std::vector<Model::Vertex> vertices{
-
-                // left face (white)
-                {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-                {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-                {{-.5f, -.5f, .5f}, {.9f, .9f, .9f}},
-                {{-.5f, -.5f, -.5f}, {.9f, .9f, .9f}},
-                {{-.5f, .5f, -.5f}, {.9f, .9f, .9f}},
-                {{-.5f, .5f, .5f}, {.9f, .9f, .9f}},
-
-                // right face (yellow)
-                {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-                {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-                {{.5f, -.5f, .5f}, {.8f, .8f, .1f}},
-                {{.5f, -.5f, -.5f}, {.8f, .8f, .1f}},
-                {{.5f, .5f, -.5f}, {.8f, .8f, .1f}},
-                {{.5f, .5f, .5f}, {.8f, .8f, .1f}},
-
-                // top face (orange, remember y axis points down)
-                {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-                {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-                {{-.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-                {{-.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-                {{.5f, -.5f, -.5f}, {.9f, .6f, .1f}},
-                {{.5f, -.5f, .5f}, {.9f, .6f, .1f}},
-
-                // bottom face (red)
-                {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-                {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-                {{-.5f, .5f, .5f}, {.8f, .1f, .1f}},
-                {{-.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-                {{.5f, .5f, -.5f}, {.8f, .1f, .1f}},
-                {{.5f, .5f, .5f}, {.8f, .1f, .1f}},
-
-                // nose face (blue)
-                {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
-                {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
-                {{-.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
-                {{-.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
-                {{.5f, -.5f, 0.5f}, {.1f, .1f, .8f}},
-                {{.5f, .5f, 0.5f}, {.1f, .1f, .8f}},
-
-                // tail face (green)
-                {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-                {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-                {{-.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-                {{-.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-                {{.5f, -.5f, -0.5f}, {.1f, .8f, .1f}},
-                {{.5f, .5f, -0.5f}, {.1f, .8f, .1f}},
-
-        };
-        for (auto& v : vertices)
-        {
-            v.position += offset;
-        }
-        return std::make_unique<Model>(device, vertices);
-    }
     void App::loadGameObjects()
     {
         if (!gameObjects.empty())

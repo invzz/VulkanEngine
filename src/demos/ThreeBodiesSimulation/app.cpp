@@ -49,13 +49,10 @@ namespace engine {
     void App::run()
     {
         // create some models
-        std::shared_ptr<Model> squareModel = SimpleModels::createSquareModel(
-                device,
-                {.5f, .0f}); // offset model by .5 so rotation occurs
-                             // at edge rather than center of square
-        std::shared_ptr<Model> circleModel = SimpleModels::createCircleModel(device, 64);
-        std::shared_ptr<Model> trailQuadModel =
-                SimpleModels::createSquareModel(device, {0.0f, 0.0f});
+        std::shared_ptr<Model> squareModel = SimpleModels::createSquareModel(device, {.5f, .0f}); // offset model by .5 so rotation occurs
+                                                                                                  // at edge rather than center of square
+        std::shared_ptr<Model> circleModel    = SimpleModels::createCircleModel(device, 64);
+        std::shared_ptr<Model> trailQuadModel = SimpleModels::createSquareModel(device, {0.0f, 0.0f});
 
         const float          gravityStrength = SimulationConfig::Physics::gravityStrength;
         GravityPhysicsSystem gravitySystem{gravityStrength};
@@ -69,9 +66,8 @@ namespace engine {
         std::array<glm::vec2, bodyCount> basePositions{};
         for (std::size_t i = 0; i < bodyCount; ++i)
         {
-            const float angle =
-                    static_cast<float>(i) * glm::two_pi<float>() / static_cast<float>(bodyCount);
-            basePositions[i] = orbitRadius * glm::vec2{glm::cos(angle), glm::sin(angle)};
+            const float angle = static_cast<float>(i) * glm::two_pi<float>() / static_cast<float>(bodyCount);
+            basePositions[i]  = orbitRadius * glm::vec2{glm::cos(angle), glm::sin(angle)};
         }
 
         const auto& scales = SimulationConfig::InitialBodies::scales;
@@ -96,8 +92,7 @@ namespace engine {
             centerOfMass /= totalMass;
         }
 
-        const float angularVelocity =
-                glm::sqrt(gravityStrength * totalMass / (orbitRadius * orbitRadius * orbitRadius));
+        const float angularVelocity = glm::sqrt(gravityStrength * totalMass / (orbitRadius * orbitRadius * orbitRadius));
 
         const auto& colors = SimulationConfig::InitialBodies::colors;
 
@@ -125,12 +120,10 @@ namespace engine {
         {
             for (int j = 0; j < gridCount; j++)
             {
-                auto vf              = GameObject::createGameObjectWithId();
-                vf.transform2d.scale = glm::vec2{SimulationConfig::VectorField::baseScale};
-                float xPos           = -1.0f +
-                             (static_cast<float>(i) + 0.5f) * 2.0f / static_cast<float>(gridCount);
-                float yPos = -1.0f +
-                             (static_cast<float>(j) + 0.5f) * 2.0f / static_cast<float>(gridCount);
+                auto vf                    = GameObject::createGameObjectWithId();
+                vf.transform2d.scale       = glm::vec2{SimulationConfig::VectorField::baseScale};
+                float xPos                 = -1.0f + (static_cast<float>(i) + 0.5f) * 2.0f / static_cast<float>(gridCount);
+                float yPos                 = -1.0f + (static_cast<float>(j) + 0.5f) * 2.0f / static_cast<float>(gridCount);
                 vf.transform2d.translation = {xPos, yPos};
                 vf.color                   = glm::vec3(1.0f);
                 vf.model                   = squareModel;
@@ -156,17 +149,11 @@ namespace engine {
                 }
                 // update systems
                 constexpr float frameDt = SimulationConfig::Physics::frameDt;
-                gravitySystem.update(physicsObjects,
-                                     frameDt,
-                                     SimulationConfig::Physics::gravitySubsteps);
+                gravitySystem.update(physicsObjects, frameDt, SimulationConfig::Physics::gravitySubsteps);
                 vecFieldSystem.update(gravitySystem, physicsObjects, vectorField);
                 handleCollisions(physicsObjects, baseColors, trailSpawnAccumulator, circleModel);
 
-                updateColorsAndTrails(physicsObjects,
-                                      baseColors,
-                                      trailSpawnAccumulator,
-                                      trailSystem,
-                                      frameDt);
+                updateColorsAndTrails(physicsObjects, baseColors, trailSpawnAccumulator, trailSystem, frameDt);
 
                 trailSystem.update(frameDt);
 
@@ -174,8 +161,7 @@ namespace engine {
                 renderer.beginSwapChainRenderPass(commandBuffer);
 
                 simpleRenderSystem.renderGameObjects(commandBuffer, vectorField);
-                if (const auto& trailRenderObjects = trailSystem.renderObjects();
-                    !trailRenderObjects.empty())
+                if (const auto& trailRenderObjects = trailSystem.renderObjects(); !trailRenderObjects.empty())
                 {
                     simpleRenderSystem.renderGameObjects(commandBuffer, trailRenderObjects);
                 }

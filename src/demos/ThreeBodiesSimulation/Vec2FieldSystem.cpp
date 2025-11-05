@@ -28,13 +28,8 @@ namespace engine {
                 totalWeight += weight;
             }
 
-            const float strength =
-                    glm::clamp(glm::log(glm::length(direction) + 1) /
-                                       SimulationConfig::VectorField::logScaleNormalizer,
-                               0.f,
-                               1.f);
-            vf.transform2d.scale.x = SimulationConfig::VectorField::baseScale +
-                                     SimulationConfig::VectorField::dynamicScale * strength;
+            const float strength    = glm::clamp(glm::log(glm::length(direction) + 1) / SimulationConfig::VectorField::logScaleNormalizer, 0.f, 1.f);
+            vf.transform2d.scale.x  = SimulationConfig::VectorField::baseScale + SimulationConfig::VectorField::dynamicScale * strength;
             vf.transform2d.rotation = glm::atan(direction.y, direction.x);
 
             if (totalWeight > std::numeric_limits<float>::epsilon())

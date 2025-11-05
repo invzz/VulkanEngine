@@ -26,8 +26,7 @@ namespace engine {
         const auto                 sideCount = static_cast<int>(numSides);
         for (int i = 0; i < sideCount; i++)
         {
-            float angle =
-                    static_cast<float>(i) * glm::two_pi<float>() / static_cast<float>(sideCount);
+            float angle = static_cast<float>(i) * glm::two_pi<float>() / static_cast<float>(sideCount);
             uniqueVertices.push_back({{glm::cos(angle), glm::sin(angle)}});
         }
         uniqueVertices.push_back({}); // adds center vertex at 0, 0

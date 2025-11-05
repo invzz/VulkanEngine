@@ -44,10 +44,7 @@ namespace engine {
                 .pushConstantRangeCount = 1,
                 .pPushConstantRanges    = &pushConstantRange,
         };
-        if (vkCreatePipelineLayout(device.device(),
-                                   &pipelineLayoutInfo,
-                                   nullptr,
-                                   &pipelineLayout) != VK_SUCCESS)
+        if (vkCreatePipelineLayout(device.device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
         {
             throw engine::RuntimeException("failed to create pipeline layout!");
         }
@@ -59,8 +56,7 @@ namespace engine {
 
     void SimpleRenderSystem::createPipeline(VkRenderPass renderPass)
     {
-        assert(pipelineLayout != VK_NULL_HANDLE &&
-               "Pipeline layout must be created before pipeline.");
+        assert(pipelineLayout != VK_NULL_HANDLE && "Pipeline layout must be created before pipeline.");
 
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
@@ -73,16 +69,17 @@ namespace engine {
                                               pipelineConfig);
     }
 
-    void SimpleRenderSystem::renderGameObjects(VkCommandBuffer                commandBuffer,
-                                               const std::vector<GameObject>& gameObjects)
+    void SimpleRenderSystem::renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects, Camera& camera)
     {
         pipeline->bind(commandBuffer);
+
+        auto projectionView = camera.getProjectionMatrix() * camera.getViewMatrix();
 
         for (const auto& gameObject : gameObjects)
         {
             SimplePushConstantData push{};
             push.color     = gameObject.color;
-            push.transform = gameObject.transform.mat4();
+            push.transform = projectionView * gameObject.transform.mat4();
 
             vkCmdPushConstants(commandBuffer,
                                pipelineLayout,

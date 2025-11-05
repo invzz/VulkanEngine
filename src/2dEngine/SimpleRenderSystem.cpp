@@ -45,10 +45,7 @@ namespace engine {
                 .pushConstantRangeCount = 1,
                 .pPushConstantRanges    = &pushConstantRange,
         };
-        if (vkCreatePipelineLayout(device.device(),
-                                   &pipelineLayoutInfo,
-                                   nullptr,
-                                   &pipelineLayout) != VK_SUCCESS)
+        if (vkCreatePipelineLayout(device.device(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
         {
             throw engine::RuntimeException("failed to create pipeline layout!");
         }
@@ -60,22 +57,17 @@ namespace engine {
 
     void SimpleRenderSystem::createPipeline(VkRenderPass renderPass)
     {
-        assert(pipelineLayout != VK_NULL_HANDLE &&
-               "Pipeline layout must be created before pipeline.");
+        assert(pipelineLayout != VK_NULL_HANDLE && "Pipeline layout must be created before pipeline.");
 
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
 
         pipelineConfig.renderPass     = renderPass;
         pipelineConfig.pipelineLayout = pipelineLayout;
-        pipeline                      = std::make_unique<Pipeline>(device,
-                                              SHADER_PATH "/simple_shader.vert.spv",
-                                              SHADER_PATH "/simple_shader.frag.spv",
-                                              pipelineConfig);
+        pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/simple_shader.vert.spv", SHADER_PATH "/simple_shader.frag.spv", pipelineConfig);
     }
 
-    void SimpleRenderSystem::renderGameObjects(VkCommandBuffer                commandBuffer,
-                                               const std::vector<GameObject>& gameObjects)
+    void SimpleRenderSystem::renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects)
     {
         pipeline->bind(commandBuffer);
 

@@ -10,9 +10,7 @@ namespace engine {
 
     GravityPhysicsSystem::GravityPhysicsSystem(float strength) : strengthGravity{strength} {}
 
-    void GravityPhysicsSystem::update(std::vector<GameObject>& objs,
-                                      float                    dt,
-                                      unsigned int             substeps) const
+    void GravityPhysicsSystem::update(std::vector<GameObject>& objs, float dt, unsigned int substeps) const
     {
         const float stepDelta = dt / static_cast<float>(substeps);
         for (unsigned int i = 0; i < substeps; ++i)
@@ -30,8 +28,7 @@ namespace engine {
             return {0.0f, 0.0f};
         }
 
-        const float force = strengthGravity * toObj.rigidBody2d.mass * fromObj.rigidBody2d.mass /
-                            distanceSquared;
+        const float force = strengthGravity * toObj.rigidBody2d.mass * fromObj.rigidBody2d.mass / distanceSquared;
         return force * offset / glm::sqrt(distanceSquared);
     }
 
@@ -73,24 +70,16 @@ namespace engine {
             if (absCoord > BorderSettings::repulsionStart)
             {
                 const float repelT =
-                        glm::clamp((absCoord - BorderSettings::repulsionStart) /
-                                           (BorderSettings::clamp - BorderSettings::repulsionStart),
-                                   0.f,
-                                   1.f);
-                const float repelAccel =
-                        BorderSettings::repulsionStrength * (0.25f + 0.75f * repelT);
+                        glm::clamp((absCoord - BorderSettings::repulsionStart) / (BorderSettings::clamp - BorderSettings::repulsionStart), 0.f, 1.f);
+                const float repelAccel = BorderSettings::repulsionStrength * (0.25f + 0.75f * repelT);
                 velocity -= side * repelAccel * dt;
             }
 
             if (absCoord > BorderSettings::dampingStart)
             {
                 const float t =
-                        glm::clamp((absCoord - BorderSettings::dampingStart) /
-                                           (BorderSettings::clamp - BorderSettings::dampingStart),
-                                   0.f,
-                                   1.f);
-                const float dampingFactor =
-                        glm::max(0.f, 1.f - BorderSettings::dampingStrength * t * dt);
+                        glm::clamp((absCoord - BorderSettings::dampingStart) / (BorderSettings::clamp - BorderSettings::dampingStart), 0.f, 1.f);
+                const float dampingFactor = glm::max(0.f, 1.f - BorderSettings::dampingStrength * t * dt);
                 velocity *= dampingFactor;
             }
 

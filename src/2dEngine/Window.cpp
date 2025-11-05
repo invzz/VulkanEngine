@@ -34,7 +34,7 @@ namespace window_detail {
         int          winx  = 0;
         int          winy  = 0;
         unsigned int mask  = 0;
-        const Bool ok = XQueryPointer(dpy, root, &ret, &child, &rootx, &rooty, &winx, &winy, &mask);
+        const Bool   ok    = XQueryPointer(dpy, root, &ret, &child, &rootx, &rooty, &winx, &winy, &mask);
         XCloseDisplay(dpy);
         if (!ok) return false;
         outX = rootx;
@@ -44,8 +44,7 @@ namespace window_detail {
 #endif
 
     // Pick a monitor containing the cursor. If haveCursor is false, returns nullptr.
-    GLFWmonitor*
-    pickMonitorForCursor(GLFWmonitor** monitors, int monitorCount, int cursorX, int cursorY)
+    GLFWmonitor* pickMonitorForCursor(GLFWmonitor** monitors, int monitorCount, int cursorX, int cursorY)
     {
         for (int i = 0; i < monitorCount; ++i)
         {
@@ -105,9 +104,8 @@ namespace window_detail {
         if (!mode) return;
         int xpos = mx + (mode->width - width) / 2;
         int ypos = my + (mode->height - height) / 2;
-        std::cout << "Requested window center on monitor '"
-                  << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown")
-                  << "' at (" << xpos << ", " << ypos << ")\n";
+        std::cout << "Requested window center on monitor '" << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown") << "' at ("
+                  << xpos << ", " << ypos << ")\n";
         glfwSetWindowPos(window, xpos, ypos);
     }
 
@@ -116,8 +114,7 @@ namespace window_detail {
 namespace engine {
 
     Window::Window(int width, int height, const std::string& title)
-        : window(nullptr), width(width), height(height), glfwInitialized(false),
-          framebufferResized(false), title(title)
+        : window(nullptr), width(width), height(height), glfwInitialized(false), framebufferResized(false), title(title)
     {
         initWindow();
     }
@@ -170,8 +167,7 @@ namespace engine {
         haveCursor = window_detail::tryGetXCursorPosition(cursorX, cursorY);
 #endif
 
-        GLFWmonitor* targetMonitor =
-                window_detail::chooseTargetMonitor(haveCursor, cursorX, cursorY);
+        GLFWmonitor* targetMonitor = window_detail::chooseTargetMonitor(haveCursor, cursorX, cursorY);
 
         // Create the window (hidden)
         window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
@@ -197,9 +193,8 @@ namespace engine {
                 int xpos = mx + (mode->width - width) / 2;
                 int ypos = my + (mode->height - height) / 2;
                 std::cout << "Requested window center on monitor '"
-                          << (glfwGetMonitorName(targetMonitor) ? glfwGetMonitorName(targetMonitor)
-                                                                : "unknown")
-                          << "' at (" << xpos << ", " << ypos << ")\n";
+                          << (glfwGetMonitorName(targetMonitor) ? glfwGetMonitorName(targetMonitor) : "unknown") << "' at (" << xpos << ", " << ypos
+                          << ")\n";
                 glfwSetWindowPos(window, xpos, ypos);
             }
         }

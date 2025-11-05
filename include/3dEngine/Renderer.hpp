@@ -44,6 +44,8 @@ namespace engine {
             return currentFrameIndex;
         }
 
+        float getAspectRatio() const { return swapChain->extentAspectRatio(); }
+
       private:
         void createCommandBuffers();
         void freeCommandBuffers();

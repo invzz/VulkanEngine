@@ -25,8 +25,7 @@ namespace engine {
 
     TrailSystem::TrailSystem(std::shared_ptr<Model> model) : trailModel(std::move(model)) {}
 
-    void
-    TrailSystem::spawn(const glm::vec2& position, const glm::vec2& velocity, const glm::vec3& color)
+    void TrailSystem::spawn(const glm::vec2& position, const glm::vec2& velocity, const glm::vec3& color)
     {
         const float speed = glm::length(velocity);
         if (speed < std::numeric_limits<float>::epsilon()) return;
@@ -103,10 +102,9 @@ namespace engine {
 
         for (std::size_t i = 0; i < physicsObjects.size(); ++i)
         {
-            auto&       obj   = physicsObjects[i];
-            const float speed = glm::length(obj.rigidBody2d.velocity);
-            const float maxScaleComponent =
-                    glm::max(glm::abs(obj.transform2d.scale.x), glm::abs(obj.transform2d.scale.y));
+            auto&       obj               = physicsObjects[i];
+            const float speed             = glm::length(obj.rigidBody2d.velocity);
+            const float maxScaleComponent = glm::max(glm::abs(obj.transform2d.scale.x), glm::abs(obj.transform2d.scale.y));
             // if (maxScaleComponent < SimulationConfig::Trails::minEmitterScale)
             // {
             //     trailSpawnAccumulator[i] = glm::min(trailSpawnAccumulator[i], spawnInterval);
@@ -116,13 +114,11 @@ namespace engine {
             const float t     = glm::clamp(speed / intensityMaxSpeed, 0.f, 1.f);
             const float scale = glm::mix(minIntensity, 1.0f, t);
 
-            const glm::vec3 pastel =
-                    glm::mix(glm::vec3(0.9f), baseColors[i], SimulationConfig::Trails::pastelMix);
+            const glm::vec3 pastel     = glm::mix(glm::vec3(0.9f), baseColors[i], SimulationConfig::Trails::pastelMix);
             const glm::vec3 speedTint  = glm::mix(pastel, baseColors[i], t);
-            const float     edgeHeat   = glm::pow(detail::edgeExposure(obj.transform2d.translation),
-                                            SimulationConfig::Trails::edgeGlowExponent);
+            const float     edgeHeat   = glm::pow(detail::edgeExposure(obj.transform2d.translation), SimulationConfig::Trails::edgeGlowExponent);
             const glm::vec3 glowTarget = glm::mix(speedTint, glm::vec3(0.1f), edgeHeat);
-            obj.color = glm::clamp(scale * glowTarget, glm::vec3(0.0f), glm::vec3(1.0f));
+            obj.color                  = glm::clamp(scale * glowTarget, glm::vec3(0.0f), glm::vec3(1.0f));
 
             trailSpawnAccumulator[i] += frameDt;
             if (speed <= minTrailSpeed + epsilon)

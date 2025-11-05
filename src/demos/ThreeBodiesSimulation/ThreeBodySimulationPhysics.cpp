@@ -18,18 +18,14 @@ namespace engine {
     float uniformScaleForMass(float mass)
     {
         const float area =
-                glm::max(mass / SimulationConfig::Physics::massDensity,
-                         SimulationConfig::Physics::minScale * SimulationConfig::Physics::minScale);
+                glm::max(mass / SimulationConfig::Physics::massDensity, SimulationConfig::Physics::minScale * SimulationConfig::Physics::minScale);
         const float scale = glm::sqrt(area);
-        return glm::clamp(scale,
-                          SimulationConfig::Physics::minScale,
-                          SimulationConfig::Physics::maxScale);
+        return glm::clamp(scale, SimulationConfig::Physics::minScale, SimulationConfig::Physics::maxScale);
     }
 
     float minimumSplitMass()
     {
-        return SimulationConfig::Physics::massDensity * SimulationConfig::Physics::minSplitScale *
-               SimulationConfig::Physics::minSplitScale;
+        return SimulationConfig::Physics::massDensity * SimulationConfig::Physics::minSplitScale * SimulationConfig::Physics::minSplitScale;
     }
 
 } // namespace engine

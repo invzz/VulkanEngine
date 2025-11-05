@@ -35,18 +35,13 @@ namespace engine {
         uint32_t      width() const { return swapChainExtent.width; }
         uint32_t      height() const { return swapChainExtent.height; }
 
-        float extentAspectRatio() const
-        {
-            return static_cast<float>(swapChainExtent.width) /
-                   static_cast<float>(swapChainExtent.height);
-        }
+        float extentAspectRatio() const { return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height); }
 
         VkFormat findDepthFormat();
 
         bool compareSwapFormats(const SwapChain& other) const
         {
-            return other.swapChainDepthFormat == swapChainDepthFormat &&
-                   other.swapChainImageFormat == swapChainImageFormat;
+            return other.swapChainDepthFormat == swapChainDepthFormat && other.swapChainImageFormat == swapChainImageFormat;
         }
 
         VkResult acquireNextImage(uint32_t* imageIndex);
@@ -62,11 +57,9 @@ namespace engine {
         void createSyncObjects();
 
         // Helper functions
-        VkSurfaceFormatKHR
-        chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
-        VkPresentModeKHR
-        chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
-        VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
+        VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
+        VkPresentModeKHR   chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
+        VkExtent2D         chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
 
         VkFormat   swapChainImageFormat;
         VkFormat   swapChainDepthFormat;

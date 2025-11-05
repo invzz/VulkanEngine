@@ -6,7 +6,7 @@ Language: Cpp
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
-ColumnLimit: 100
+ColumnLimit: 150
 ContinuationIndentWidth: 8
 AccessModifierOffset: -2
 NamespaceIndentation: All        # ✅ Indent everything inside namespaces

@@ -43,8 +43,7 @@ namespace engine {
                     .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                     .commandBufferCount = static_cast<uint32_t>(commandBuffers.size()),
             };
-            vkAllocateCommandBuffers(device.device(), &allocInfo, commandBuffers.data()) !=
-            VK_SUCCESS)
+            vkAllocateCommandBuffers(device.device(), &allocInfo, commandBuffers.data()) != VK_SUCCESS)
         {
             throw engine::RuntimeException("failed to allocate command buffers!");
         }
@@ -52,10 +51,7 @@ namespace engine {
 
     void Renderer::freeCommandBuffers()
     {
-        vkFreeCommandBuffers(device.device(),
-                             device.getCommandPool(),
-                             static_cast<uint32_t>(commandBuffers.size()),
-                             commandBuffers.data());
+        vkFreeCommandBuffers(device.device(), device.getCommandPool(), static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
         commandBuffers.clear();
     }
 
@@ -77,7 +73,7 @@ namespace engine {
         else
         {
             std::shared_ptr<SwapChain> oldSwapChain = std::move(swapChain);
-            swapChain = std::make_unique<SwapChain>(device, extent, oldSwapChain);
+            swapChain                               = std::make_unique<SwapChain>(device, extent, oldSwapChain);
 
             if (!oldSwapChain->compareSwapFormats(*swapChain))
             {
@@ -115,8 +111,7 @@ namespace engine {
         VkCommandBufferBeginInfo beginInfo{
                 .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         };
-        if (auto beginCommandBufferResult = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-            beginCommandBufferResult != VK_SUCCESS)
+        if (auto beginCommandBufferResult = vkBeginCommandBuffer(commandBuffer, &beginInfo); beginCommandBufferResult != VK_SUCCESS)
         {
             throw CommandBufferRecordingException("failed to begin recording command buffer!");
         }
@@ -134,8 +129,7 @@ namespace engine {
         }
 
         if (auto result = swapChain->submitCommandBuffers(&commandBuffer, &currentImageIndex);
-            result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
-            window.wasWindowResized())
+            result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || window.wasWindowResized())
         {
             window.resetWindowResizedFlag();
             recreateSwapChain();
@@ -152,8 +146,7 @@ namespace engine {
     void Renderer::beginSwapChainRenderPass(VkCommandBuffer commandBuffer)
     {
         assert(isFrameStarted && "Can't begin render pass when frame not in progress");
-        assert(commandBuffer == getCurrentCommandBuffer() &&
-               "Can't begin render pass on a command buffer from a different frame");
+        assert(commandBuffer == getCurrentCommandBuffer() && "Can't begin render pass on a command buffer from a different frame");
 
         VkClearValue clearValues[] = {
                 {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
@@ -195,8 +188,7 @@ namespace engine {
     void Renderer::endSwapChainRenderPass(VkCommandBuffer commandBuffer) const
     {
         assert(isFrameStarted && "Can't end render pass when frame not in progress");
-        assert(commandBuffer == getCurrentCommandBuffer() &&
-               "Can't end render pass on a command buffer from a different frame");
+        assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different frame");
         vkCmdEndRenderPass(commandBuffer);
     }
 

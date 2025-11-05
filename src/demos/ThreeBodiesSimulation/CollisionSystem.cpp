@@ -22,9 +22,7 @@ namespace engine {
     glm::vec3 randomColor()
     {
         static std::mt19937                  rng{std::random_device{}()};
-        static std::uniform_int_distribution dist{
-                0,
-                static_cast<int>(SimulationConfig::InitialBodies::colors.size()) - 1};
+        static std::uniform_int_distribution dist{0, static_cast<int>(SimulationConfig::InitialBodies::colors.size()) - 1};
         return SimulationConfig::InitialBodies::colors[static_cast<std::size_t>(dist(rng))];
     }
 
@@ -42,23 +40,18 @@ namespace engine {
         const float totalMass  = massKeep + massRemove;
         if (totalMass <= std::numeric_limits<float>::epsilon()) return;
 
-        const glm::vec2 newPos = (massKeep * objKeep.transform2d.translation +
-                                  massRemove * objRemove.transform2d.translation) /
-                                 totalMass;
-        const glm::vec2 newVel = (massKeep * objKeep.rigidBody2d.velocity +
-                                  massRemove * objRemove.rigidBody2d.velocity) /
-                                 totalMass;
+        const glm::vec2 newPos = (massKeep * objKeep.transform2d.translation + massRemove * objRemove.transform2d.translation) / totalMass;
+        const glm::vec2 newVel = (massKeep * objKeep.rigidBody2d.velocity + massRemove * objRemove.rigidBody2d.velocity) / totalMass;
 
         const glm::vec3 parentColor = physicsObjects[removeIndex].color;
 
-        objKeep.transform2d.translation = newPos;
-        objKeep.transform2d.scale       = glm::vec2{uniformScaleForMass(totalMass)};
-        objKeep.rigidBody2d.velocity    = newVel;
-        objKeep.rigidBody2d.mass        = totalMass;
-        objKeep.color                   = parentColor;
-        baseColors[keepIndex]           = parentColor;
-        trailSpawnAccumulator[keepIndex] =
-                glm::min(trailSpawnAccumulator[keepIndex], trailSpawnAccumulator[removeIndex]);
+        objKeep.transform2d.translation  = newPos;
+        objKeep.transform2d.scale        = glm::vec2{uniformScaleForMass(totalMass)};
+        objKeep.rigidBody2d.velocity     = newVel;
+        objKeep.rigidBody2d.mass         = totalMass;
+        objKeep.color                    = parentColor;
+        baseColors[keepIndex]            = parentColor;
+        trailSpawnAccumulator[keepIndex] = glm::min(trailSpawnAccumulator[keepIndex], trailSpawnAccumulator[removeIndex]);
 
         physicsObjects.erase(physicsObjects.begin() + removeIndex);
         baseColors.erase(baseColors.begin() + removeIndex);
@@ -116,8 +109,7 @@ namespace engine {
         return true;
     }
 
-    std::optional<std::pair<std::size_t, std::size_t>>
-    findCollisionPair(const std::vector<GameObject>& physicsObjects)
+    std::optional<std::pair<std::size_t, std::size_t>> findCollisionPair(const std::vector<GameObject>& physicsObjects)
     {
         const std::size_t count = physicsObjects.size();
         for (std::size_t i = 0; i < count; ++i)
@@ -127,8 +119,7 @@ namespace engine {
                 const GameObject& objA      = physicsObjects[i];
                 const GameObject& objB      = physicsObjects[j];
                 const float       radiusSum = computeRadius(objA) + computeRadius(objB);
-                const float       distance =
-                        glm::length(objA.transform2d.translation - objB.transform2d.translation);
+                const float       distance  = glm::length(objA.transform2d.translation - objB.transform2d.translation);
                 if (distance < radiusSum)
                 {
                     return std::pair<std::size_t, std::size_t>{i, j};
@@ -156,25 +147,15 @@ namespace engine {
             const auto&       objA = physicsObjects[idxA];
             const auto&       objB = physicsObjects[idxB];
 
-            if (const float relativeSpeed =
-                        glm::length(objA.rigidBody2d.velocity - objB.rigidBody2d.velocity);
-                relativeSpeed > splitSpeedThreshold)
+            if (const float relativeSpeed = glm::length(objA.rigidBody2d.velocity - objB.rigidBody2d.velocity); relativeSpeed > splitSpeedThreshold)
             {
                 const std::size_t higher = glm::max(idxA, idxB);
                 const std::size_t lower  = glm::min(idxA, idxB);
-                if (trySplitBody(higher,
-                                 physicsObjects,
-                                 baseColors,
-                                 trailSpawnAccumulator,
-                                 circleModel))
+                if (trySplitBody(higher, physicsObjects, baseColors, trailSpawnAccumulator, circleModel))
                 {
                     continue;
                 }
-                if (trySplitBody(lower,
-                                 physicsObjects,
-                                 baseColors,
-                                 trailSpawnAccumulator,
-                                 circleModel))
+                if (trySplitBody(lower, physicsObjects, baseColors, trailSpawnAccumulator, circleModel))
                 {
                     continue;
                 }

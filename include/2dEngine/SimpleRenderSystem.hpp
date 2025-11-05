@@ -23,8 +23,7 @@ namespace engine {
         SimpleRenderSystem(const SimpleRenderSystem&)            = delete;
         SimpleRenderSystem& operator=(const SimpleRenderSystem&) = delete;
 
-        void renderGameObjects(VkCommandBuffer                commandBuffer,
-                               const std::vector<GameObject>& gameObjects);
+        void renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects);
 
       private:
         void createPipelineLayout();

@@ -10,10 +10,7 @@
 
 namespace engine {
 
-    Pipeline::Pipeline(Device&                   device,
-                       const std::string&        vertFilePath,
-                       const std::string&        fragFilePath,
-                       const PipelineConfigInfo& configInfo)
+    Pipeline::Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo)
         : device(device)
 
     {
@@ -51,14 +48,14 @@ namespace engine {
         };
 
         configInfo.inputAssemblyInfo = {
-                .sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-                .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                 .primitiveRestartEnable = VK_FALSE,
         };
 
         configInfo.rasterizationInfo = {
-                .sType            = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
-                .depthClampEnable = VK_FALSE,
+                .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+                .depthClampEnable        = VK_FALSE,
                 .rasterizerDiscardEnable = VK_FALSE,
                 .polygonMode             = VK_POLYGON_MODE_FILL,
                 .cullMode                = VK_CULL_MODE_NONE,
@@ -85,8 +82,7 @@ namespace engine {
                 .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
                 .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
                 .alphaBlendOp        = VK_BLEND_OP_ADD,
-                .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+                .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
         };
 
         configInfo.colorBlendInfo = {
@@ -127,15 +123,11 @@ namespace engine {
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
     }
 
-    void Pipeline::createGraphicsPipeline(const std::string&        vertFilePath,
-                                          const std::string&        fragFilePath,
-                                          const PipelineConfigInfo& configInfo)
+    void Pipeline::createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo)
     {
-        assert(configInfo.pipelineLayout != VK_NULL_HANDLE &&
-               "Cannot create graphics pipeline: no pipeline layout provided in configInfo");
+        assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in configInfo");
 
-        assert(configInfo.renderPass != VK_NULL_HANDLE &&
-               "Cannot create graphics pipeline: no render pass provided in configInfo");
+        assert(configInfo.renderPass != VK_NULL_HANDLE && "Cannot create graphics pipeline: no render pass provided in configInfo");
 
         auto vertShaderCode = readFile(vertFilePath);
         auto fragShaderCode = readFile(fragFilePath);
@@ -143,36 +135,34 @@ namespace engine {
         createShaderModule(vertShaderCode, &vertShaderModule);
         createShaderModule(fragShaderCode, &fragShaderModule);
 
-        VkPipelineShaderStageCreateInfo shaderStages[2] = {
-                {
-                        .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                        .pNext               = nullptr,
-                        .flags               = 0,
-                        .stage               = VK_SHADER_STAGE_VERTEX_BIT,
-                        .module              = vertShaderModule,
-                        .pName               = "main",
-                        .pSpecializationInfo = nullptr,
-                },
-                {
-                        .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-                        .pNext               = nullptr,
-                        .flags               = 0,
-                        .stage               = VK_SHADER_STAGE_FRAGMENT_BIT,
-                        .module              = fragShaderModule,
-                        .pName               = "main",
-                        .pSpecializationInfo = nullptr,
-                }};
+        VkPipelineShaderStageCreateInfo shaderStages[2] = {{
+                                                                   .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                                   .pNext               = nullptr,
+                                                                   .flags               = 0,
+                                                                   .stage               = VK_SHADER_STAGE_VERTEX_BIT,
+                                                                   .module              = vertShaderModule,
+                                                                   .pName               = "main",
+                                                                   .pSpecializationInfo = nullptr,
+                                                           },
+                                                           {
+                                                                   .sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                                   .pNext               = nullptr,
+                                                                   .flags               = 0,
+                                                                   .stage               = VK_SHADER_STAGE_FRAGMENT_BIT,
+                                                                   .module              = fragShaderModule,
+                                                                   .pName               = "main",
+                                                                   .pSpecializationInfo = nullptr,
+                                                           }};
 
         auto bindingDescriptions   = Model::Vertex::getBindingDescriptions();
         auto attributeDescriptions = Model::Vertex::getAttributeDescriptions();
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo{
-                .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-                .vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size()),
-                .pVertexBindingDescriptions    = bindingDescriptions.data(),
-                .vertexAttributeDescriptionCount =
-                        static_cast<uint32_t>(attributeDescriptions.size()),
-                .pVertexAttributeDescriptions = attributeDescriptions.data(),
+                .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                .vertexBindingDescriptionCount   = static_cast<uint32_t>(bindingDescriptions.size()),
+                .pVertexBindingDescriptions      = bindingDescriptions.data(),
+                .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+                .pVertexAttributeDescriptions    = attributeDescriptions.data(),
         };
 
         if (VkGraphicsPipelineCreateInfo pipelineInfo{
@@ -193,12 +183,7 @@ namespace engine {
                     .basePipelineHandle  = VK_NULL_HANDLE,
                     .basePipelineIndex   = -1,
             };
-            vkCreateGraphicsPipelines(device.device(),
-                                      VK_NULL_HANDLE,
-                                      1,
-                                      &pipelineInfo,
-                                      nullptr,
-                                      &graphicsPipeline) != VK_SUCCESS)
+            vkCreateGraphicsPipelines(device.device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
         {
             throw GraphicsPipelineCreationException("failed to create graphics pipeline!");
         }
