@@ -14,7 +14,7 @@ namespace engine {
         glm::vec3 rotation{};              // rotation angles in radians
 
         // Matrix corresponding to translate * rotate * scale
-        // optimized version using precomputed sines and cosines
+        // * optimized version : using precomputed sines and cosines
         // Note: rotation order is Y (yaw), X (pitch), Z (roll)
         // Reference: https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
         glm::mat4 mat4() const
