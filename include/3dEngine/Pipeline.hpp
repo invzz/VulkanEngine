@@ -7,76 +7,76 @@
 
 namespace engine {
 
-    struct PipelineConfigInfo
+  struct PipelineConfigInfo
+  {
+    explicit PipelineConfigInfo() = default;
+    // delete copy operations
+    PipelineConfigInfo(const PipelineConfigInfo&)            = delete;
+    PipelineConfigInfo& operator=(const PipelineConfigInfo&) = delete;
+
+    VkPipelineViewportStateCreateInfo      viewportInfo;
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+    VkPipelineRasterizationStateCreateInfo rasterizationInfo;
+    VkPipelineMultisampleStateCreateInfo   multisampleInfo;
+    VkPipelineColorBlendAttachmentState    colorBlendAttachment;
+    VkPipelineColorBlendStateCreateInfo    colorBlendInfo;
+    VkPipelineDepthStencilStateCreateInfo  depthStencilInfo;
+    std::vector<VkDynamicState>            dynamicStateEnables;
+    VkPipelineDynamicStateCreateInfo       dynamicStateInfo;
+
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkRenderPass     renderPass     = VK_NULL_HANDLE;
+    uint32_t         subpass        = 0;
+  };
+
+  class Pipeline
+  {
+  public:
+    Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+
+    ~Pipeline()
     {
-        explicit PipelineConfigInfo() = default;
-        // delete copy operations
-        PipelineConfigInfo(const PipelineConfigInfo&)            = delete;
-        PipelineConfigInfo& operator=(const PipelineConfigInfo&) = delete;
-
-        VkPipelineViewportStateCreateInfo      viewportInfo;
-        VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
-        VkPipelineRasterizationStateCreateInfo rasterizationInfo;
-        VkPipelineMultisampleStateCreateInfo   multisampleInfo;
-        VkPipelineColorBlendAttachmentState    colorBlendAttachment;
-        VkPipelineColorBlendStateCreateInfo    colorBlendInfo;
-        VkPipelineDepthStencilStateCreateInfo  depthStencilInfo;
-        std::vector<VkDynamicState>            dynamicStateEnables;
-        VkPipelineDynamicStateCreateInfo       dynamicStateInfo;
-
-        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-        VkRenderPass     renderPass     = VK_NULL_HANDLE;
-        uint32_t         subpass        = 0;
+      vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
+      vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
+      vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
     };
 
-    class Pipeline
-    {
-      public:
-        Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+    // not copyable
+    Pipeline& operator=(const Pipeline&) = delete;
 
-        ~Pipeline()
-        {
-            vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
-            vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
-            vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
-        };
+    // prevent copies
+    Pipeline(const Pipeline&) = delete;
 
-        // not copyable
-        Pipeline& operator=(const Pipeline&) = delete;
+    // static function to get default config
+    static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
 
-        // prevent copies
-        Pipeline(const Pipeline&) = delete;
+    // function to bind pipeline to command buffer
+    void bind(VkCommandBuffer commandBuffer);
 
-        // static function to get default config
-        static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+  private:
+    static std::vector<char> readFile(const std::string& filePath);
+    void                     createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
 
-        // function to bind pipeline to command buffer
-        void bind(VkCommandBuffer commandBuffer);
+    void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
 
-      private:
-        static std::vector<char> readFile(const std::string& filePath);
-        void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+    // could potentially be memory unsafe, need to ensure device lives
+    // longer than pipeline aggregation relationship
 
-        void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
+    Device& device;
 
-        // could potentially be memory unsafe, need to ensure device lives longer than pipeline
-        // aggregation relationship
+    // handle to the graphics pipeline module
+    // typedef to pointer to opaque struct
+    // always check what the actual type is
+    VkPipeline graphicsPipeline;
 
-        Device& device;
+    // handle to the vertex shader module
+    // typedef to pointer to opaque struct
+    // always check what the actual type is
+    VkShaderModule vertShaderModule;
 
-        // handle to the graphics pipeline module
-        // typedef to pointer to opaque struct
-        // always check what the actual type is
-        VkPipeline graphicsPipeline;
-
-        // handle to the vertex shader module
-        // typedef to pointer to opaque struct
-        // always check what the actual type is
-        VkShaderModule vertShaderModule;
-
-        // handle to the fragment shader module
-        // typedef to pointer to opaque struct
-        // always check what the actual type is
-        VkShaderModule fragShaderModule;
-    };
+    // handle to the fragment shader module
+    // typedef to pointer to opaque struct
+    // always check what the actual type is
+    VkShaderModule fragShaderModule;
+  };
 } // namespace engine

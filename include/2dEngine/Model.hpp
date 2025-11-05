@@ -11,35 +11,35 @@
 
 namespace engine {
 
-    class Model
+  class Model
+  {
+  public:
+    struct Vertex
     {
-      public:
-        struct Vertex
-        {
-            glm::vec2                                             position;
-            glm::vec3                                             color;
-            static std::vector<VkVertexInputBindingDescription>   getBindingDescriptions();
-            static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
-        };
-
-        explicit Model(Device& device, const std::vector<Vertex>& vertices);
-        ~Model();
-
-        // delete copy and move constructors and assignment operators
-        Model(const Model&)            = delete;
-        Model& operator=(const Model&) = delete;
-
-        void bind(VkCommandBuffer commandBuffer) const;
-        void draw(VkCommandBuffer commandBuffer) const;
-
-      private:
-        Device&        device;
-        VkBuffer       vertexBuffer;
-        VkDeviceMemory vertexBufferMemory;
-        uint32_t       vertexCount;
-
-        void createVertexBuffers(const std::vector<Vertex>& vertices);
-        // Additional model data members would go here
+      glm::vec2                                             position;
+      glm::vec3                                             color;
+      static std::vector<VkVertexInputBindingDescription>   getBindingDescriptions();
+      static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
     };
+
+    explicit Model(Device& device, const std::vector<Vertex>& vertices);
+    ~Model();
+
+    // delete copy and move constructors and assignment operators
+    Model(const Model&)            = delete;
+    Model& operator=(const Model&) = delete;
+
+    void bind(VkCommandBuffer commandBuffer) const;
+    void draw(VkCommandBuffer commandBuffer) const;
+
+  private:
+    Device&        device;
+    VkBuffer       vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
+    uint32_t       vertexCount;
+
+    void createVertexBuffers(const std::vector<Vertex>& vertices);
+    // Additional model data members would go here
+  };
 
 } // namespace engine

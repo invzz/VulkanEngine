@@ -3,13 +3,13 @@ BasedOnStyle: LLVM
 Language: Cpp
 
 # General formatting
-IndentWidth: 4
-TabWidth: 4
+IndentWidth: 2
+TabWidth: 2
 UseTab: Never
-ColumnLimit: 150
+ColumnLimit: 160
 ContinuationIndentWidth: 8
 AccessModifierOffset: -2
-NamespaceIndentation: All        # ✅ Indent everything inside namespaces
+NamespaceIndentation: All       
 AlignAfterOpenBracket: Align
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false

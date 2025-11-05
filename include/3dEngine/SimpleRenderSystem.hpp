@@ -14,23 +14,23 @@
 
 namespace engine {
 
-    class SimpleRenderSystem
-    {
-      public:
-        SimpleRenderSystem(Device& device, VkRenderPass renderPass);
-        ~SimpleRenderSystem();
+  class SimpleRenderSystem
+  {
+  public:
+    SimpleRenderSystem(Device& device, VkRenderPass renderPass);
+    ~SimpleRenderSystem();
 
-        // delete copy operations
-        SimpleRenderSystem(const SimpleRenderSystem&)            = delete;
-        SimpleRenderSystem& operator=(const SimpleRenderSystem&) = delete;
+    // delete copy operations
+    SimpleRenderSystem(const SimpleRenderSystem&)            = delete;
+    SimpleRenderSystem& operator=(const SimpleRenderSystem&) = delete;
 
-        void renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects, Camera& camera);
+    void renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects, Camera& camera);
 
-      private:
-        void                      createPipelineLayout();
-        void                      createPipeline(VkRenderPass renderPass);
-        Device&                   device;
-        std::unique_ptr<Pipeline> pipeline;
-        VkPipelineLayout          pipelineLayout;
-    };
+  private:
+    void                      createPipelineLayout();
+    void                      createPipeline(VkRenderPass renderPass);
+    Device&                   device;
+    std::unique_ptr<Pipeline> pipeline;
+    VkPipelineLayout          pipelineLayout;
+  };
 } // namespace engine

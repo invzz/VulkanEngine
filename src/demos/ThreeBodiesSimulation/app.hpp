@@ -15,26 +15,26 @@
 
 namespace engine {
 
-    class App
-    {
-      public:
-        static int width() { return 800; }
-        static int height() { return 600; }
+  class App
+  {
+  public:
+    static int width() { return 800; }
+    static int height() { return 600; }
 
-        App();
-        ~App();
+    App();
+    ~App();
 
-        // delete copy operations
-        App(const App&)            = delete;
-        App& operator=(const App&) = delete;
+    // delete copy operations
+    App(const App&)            = delete;
+    App& operator=(const App&) = delete;
 
-        void run();
+    void run();
 
-      private:
-        void                    loadGameObjects() const;
-        Window                  window{width(), height(), "Engine App"};
-        Device                  device{window};
-        std::vector<GameObject> gameObjects;
-        Renderer                renderer{window, device};
-    };
+  private:
+    void                    loadGameObjects() const;
+    Window                  window{width(), height(), "Engine App"};
+    Device                  device{window};
+    std::vector<GameObject> gameObjects;
+    Renderer                renderer{window, device};
+  };
 } // namespace engine

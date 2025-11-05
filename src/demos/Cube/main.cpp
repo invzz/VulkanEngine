@@ -10,18 +10,18 @@
 
 int main()
 {
-    engine::App app;
+  engine::App app;
 
-    try
-    {
-        app.run();
-    }
-    catch (const std::exception& e)
-    {
-        // Handle exceptions appropriately
-        std::cerr << "Error: " << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
+  try
+  {
+    app.run();
+  }
+  catch (const std::exception& e)
+  {
+    // Handle exceptions appropriately
+    std::cerr << "Error: " << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
 
-    return EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

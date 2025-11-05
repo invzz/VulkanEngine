@@ -46,7 +46,9 @@ target("3dEngine")
     add_packages("glfw", "glm", "vulkan")
 
 before_build(function (target)
+    os.exec("bash " .. os.projectdir() .. "/format_code.sh")
     os.exec("bash " .. os.projectdir() .. "/compile_shaders.sh")
+
 end)
 
 --
