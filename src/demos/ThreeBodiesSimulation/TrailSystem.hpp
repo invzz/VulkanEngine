@@ -5,9 +5,9 @@
 #include <memory>
 #include <vector>
 
+#include "2dEngine/GameObject.hpp"
+#include "2dEngine/Model.hpp"
 #include "SimulationConfig.hpp"
-#include "engine/GameObject.hpp"
-#include "engine/Model.hpp"
 
 namespace engine {
 

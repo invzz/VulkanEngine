@@ -1,7 +1,7 @@
-#include "engine/Device.hpp"
+#include "2dEngine/Device.hpp"
 
-#include "engine/Exceptions.hpp"
-#include "engine/ansi_colors.hpp"
+#include "2dEngine/Exceptions.hpp"
+#include "2dEngine/ansi_colors.hpp"
 // std headers
 #include <algorithm>
 #include <cstring>

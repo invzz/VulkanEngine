@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 
-#include "engine/GameObject.hpp"
+#include "2dEngine/GameObject.hpp"
 
 namespace engine {
 

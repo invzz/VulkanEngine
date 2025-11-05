@@ -1,6 +1,6 @@
-#include "engine/SimpleRenderSystem.hpp"
+#include "3dEngine/SimpleRenderSystem.hpp"
 
-#include "engine/Exceptions.hpp"
+#include "3dEngine/Exceptions.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -19,8 +19,7 @@ namespace engine {
 
     struct SimplePushConstantData
     {
-        glm::mat2 transform{1.0f};
-        glm::vec2 offset;
+        glm::mat4 transform{1.0f};
         alignas(16) glm::vec3 color;
     };
 
@@ -69,8 +68,8 @@ namespace engine {
         pipelineConfig.renderPass     = renderPass;
         pipelineConfig.pipelineLayout = pipelineLayout;
         pipeline                      = std::make_unique<Pipeline>(device,
-                                              SHADER_PATH "/simple_shader.vert.spv",
-                                              SHADER_PATH "/simple_shader.frag.spv",
+                                              SHADER_PATH "/simple_shader_3d.vert.spv",
+                                              SHADER_PATH "/simple_shader_3d.frag.spv",
                                               pipelineConfig);
     }
 
@@ -82,9 +81,8 @@ namespace engine {
         for (const auto& gameObject : gameObjects)
         {
             SimplePushConstantData push{};
-            push.offset    = gameObject.transform2d.translation;
             push.color     = gameObject.color;
-            push.transform = gameObject.transform2d.mat2();
+            push.transform = gameObject.transform.mat4();
 
             vkCmdPushConstants(commandBuffer,
                                pipelineLayout,

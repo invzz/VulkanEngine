@@ -1,4 +1,4 @@
-#include "engine/Window.hpp"
+#include "2dEngine/Window.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -12,8 +12,8 @@
 #include <X11/Xlib.h>
 #endif
 
-#include "engine/Exceptions.hpp"
-#include "engine/ansi_colors.hpp"
+#include "2dEngine/Exceptions.hpp"
+#include "2dEngine/ansi_colors.hpp"
 
 // Small helpers to keep initWindow simple and readable.
 namespace window_detail {

@@ -3,7 +3,7 @@
 #include <glm/vec2.hpp>
 #include <vector>
 
-#include "engine/GameObject.hpp"
+#include "2dEngine/GameObject.hpp"
 
 namespace engine {
 

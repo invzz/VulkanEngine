@@ -3,8 +3,8 @@
 #include <memory>
 #include <vector>
 
-#include "engine/GameObject.hpp"
-#include "engine/Model.hpp"
+#include "2dEngine/GameObject.hpp"
+#include "2dEngine/Model.hpp"
 
 namespace engine {
 

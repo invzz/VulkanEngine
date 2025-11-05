@@ -1,12 +1,12 @@
-#include "engine/Pipeline.hpp"
+#include "3dEngine/Pipeline.hpp"
 
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 
-#include "engine/Exceptions.hpp"
-#include "engine/Model.hpp"
+#include "3dEngine/Exceptions.hpp"
+#include "3dEngine/Model.hpp"
 
 namespace engine {
 

@@ -24,7 +24,7 @@
  * management is automatic.
  */
 
-#include "engine/SwapChain.hpp"
+#include "2dEngine/SwapChain.hpp"
 
 // std
 #include <array>
@@ -35,7 +35,7 @@
 #include <set>
 #include <stdexcept>
 
-#include "engine/Exceptions.hpp"
+#include "2dEngine/Exceptions.hpp"
 
 namespace engine {
 

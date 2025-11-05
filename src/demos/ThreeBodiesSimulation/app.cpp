@@ -1,5 +1,5 @@
 
-#include "engine/Exceptions.hpp"
+#include "2dEngine/Exceptions.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -16,6 +16,11 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#include "2dEngine/Device.hpp"
+#include "2dEngine/GameObject.hpp"
+#include "2dEngine/Model.hpp"
+#include "2dEngine/SimpleRenderSystem.hpp"
+#include "2dEngine/Window.hpp"
 #include "CollisionSystem.hpp"
 #include "GravityPhysicsSystem.hpp"
 #include "SimpleModels.hpp"
@@ -24,11 +29,6 @@
 #include "TrailSystem.hpp"
 #include "Vec2FieldSystem.hpp"
 #include "app.hpp"
-#include "engine/Device.hpp"
-#include "engine/GameObject.hpp"
-#include "engine/Model.hpp"
-#include "engine/SimpleRenderSystem.hpp"
-#include "engine/Window.hpp"
 
 namespace engine {
 

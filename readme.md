@@ -6,9 +6,9 @@ Engine2 is a Vulkan-based playground that drives several small demos. The curren
 
 ## Repository Layout
 
-- `include/engine/`
+- `include/2dEngine/`
   - Public headers for the reusable engine components.
-- `src/engine/`
+- `src/2dEngine/`
   - Engine implementation files (`Device`, `Renderer`, `Pipeline`, etc.).
 - `src/demos/ThreeBodiesSimulation/`
   - Entry point and gameplay systems for the gravity demo.

@@ -6,12 +6,12 @@
 #include <memory>
 #include <vector>
 
-#include "2dEngine/Device.hpp"
-#include "2dEngine/GameObject.hpp"
-#include "2dEngine/Model.hpp"
-#include "2dEngine/Renderer.hpp"
-#include "2dEngine/SwapChain.hpp"
-#include "2dEngine/Window.hpp"
+#include "3dEngine/Device.hpp"
+#include "3dEngine/GameObject.hpp"
+#include "3dEngine/Model.hpp"
+#include "3dEngine/Renderer.hpp"
+#include "3dEngine/SwapChain.hpp"
+#include "3dEngine/Window.hpp"
 
 namespace engine {
 
@@ -31,7 +31,7 @@ namespace engine {
         void run();
 
       private:
-        void                    loadGameObjects() const;
+        void                    loadGameObjects();
         Window                  window{width(), height(), "Engine App"};
         Device                  device{window};
         std::vector<GameObject> gameObjects;

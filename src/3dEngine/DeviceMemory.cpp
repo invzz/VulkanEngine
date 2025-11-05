@@ -1,9 +1,9 @@
-#include "engine/DeviceMemory.hpp"
+#include "3dEngine/DeviceMemory.hpp"
 
 #include <stdexcept>
 
-#include "engine/Device.hpp"
-#include "engine/Exceptions.hpp"
+#include "3dEngine/Device.hpp"
+#include "3dEngine/Exceptions.hpp"
 
 namespace engine {
 
