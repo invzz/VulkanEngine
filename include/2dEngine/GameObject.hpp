@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "Model.hpp"
+#include "2dEngine/Model.hpp"
 
 namespace engine {
   struct RigidBody2dComponent

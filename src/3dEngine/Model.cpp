@@ -1,7 +1,30 @@
 #include "3dEngine/Model.hpp"
 
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
 #include <cassert>
 #include <cstring>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+#include <iostream>
+#include <unordered_map>
+
+#include "3dEngine/Model.hpp"
+#include "3dEngine/ansi_colors.hpp"
+#include "3dEngine/utils.hpp"
+
+namespace std {
+  template <> struct hash<engine::Model::Vertex>
+  {
+    size_t operator()(engine::Model::Vertex const& vertex) const
+    {
+      size_t seed = 0;
+      engine::hashCombine(seed, vertex.position, vertex.color, vertex.normal, vertex.uv);
+      return seed;
+    }
+  };
+} // namespace std
 
 namespace engine {
 
@@ -9,6 +32,16 @@ namespace engine {
   {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
+  }
+
+  std::unique_ptr<Model> Model::createModelFromFile(Device& device, const std::string& filepath)
+  {
+    std::cout << "[" << GREEN << "Model" << RESET << "]: Loading model from file: " << filepath << std::endl;
+    Builder builder;
+    builder.loadModelFromFile(std::string(MODEL_PATH) + filepath);
+    std::cout << "[" << GREEN << "Model" << RESET << "]: " << filepath << " with " << builder.vertices.size() << " vertices " << std::endl;
+    return std::make_unique<Model>(device, builder);
+    return nullptr;
   }
 
   Model::~Model()
@@ -138,7 +171,7 @@ namespace engine {
   std::vector<VkVertexInputAttributeDescription> Model::Vertex::getAttributeDescriptions()
   {
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-    attributeDescriptions.reserve(2);
+    attributeDescriptions.reserve(4);
 
     // Position attribute
     attributeDescriptions.push_back({
@@ -154,8 +187,88 @@ namespace engine {
             .format   = VK_FORMAT_R32G32B32_SFLOAT,
             .offset   = offsetof(Vertex, color),
     });
-
+    // Normal attribute
+    attributeDescriptions.push_back({
+            .location = 2,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset   = offsetof(Vertex, normal),
+    });
+    // UV attribute
+    attributeDescriptions.push_back({
+            .location = 3,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32_SFLOAT,
+            .offset   = offsetof(Vertex, uv),
+    });
     return attributeDescriptions;
+  }
+
+  void engine::Model::Builder::loadModelFromFile(const std::string& filepath)
+  {
+    tinyobj::attrib_t                attrib;
+    std::vector<tinyobj::shape_t>    shapes;
+    std::vector<tinyobj::material_t> materials;
+    std::string                      warn;
+
+    if (std::string err; !tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filepath.c_str()))
+    {
+      throw std::runtime_error(warn + err);
+    }
+
+    std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+    vertices.clear();
+    indices.clear();
+
+    for (const auto& shape : shapes)
+    {
+      for (const auto& index : shape.mesh.indices)
+      {
+        Vertex vertex{};
+
+        if (index.vertex_index >= 0)
+        {
+          vertex.position = {
+                  attrib.vertices[3 * index.vertex_index + 0],
+                  attrib.vertices[3 * index.vertex_index + 1],
+                  attrib.vertices[3 * index.vertex_index + 2],
+          };
+
+          vertex.color = {
+                  attrib.colors[3 * index.vertex_index + 0],
+                  attrib.colors[3 * index.vertex_index + 1],
+                  attrib.colors[3 * index.vertex_index + 2],
+          };
+        }
+
+        else
+        {
+          vertex.color = {1.0f, 1.0f, 1.0f};
+        }
+
+        if (index.normal_index >= 0)
+        {
+          vertex.normal = {
+                  attrib.normals[3 * index.normal_index + 0],
+                  attrib.normals[3 * index.normal_index + 1],
+                  attrib.normals[3 * index.normal_index + 2],
+          };
+        }
+        if (index.texcoord_index >= 0)
+        {
+          vertex.uv = {
+                  attrib.texcoords[2 * index.texcoord_index + 0],
+                  attrib.texcoords[2 * index.texcoord_index + 1], // 1.0f - attrib.texcoords[2 * index.texcoord_index + 1] for flipping
+          };
+        }
+        if (uniqueVertices.count(vertex) == 0)
+        {
+          uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+          vertices.push_back(vertex);
+        }
+        indices.push_back(uniqueVertices[vertex]);
+      }
+    }
   }
 
 } // namespace engine

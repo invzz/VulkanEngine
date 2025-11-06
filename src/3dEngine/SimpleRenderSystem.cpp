@@ -20,7 +20,8 @@ namespace engine {
   struct SimplePushConstantData
   {
     glm::mat4 transform{1.0f};
-    alignas(16) glm::vec3 color;
+    glm::mat4 normalMatrix{1.0f};
+    // alignas(16) glm::vec3 color;
   };
 
   SimpleRenderSystem::SimpleRenderSystem(Device& device, VkRenderPass renderPass) : device(device)
@@ -75,8 +76,11 @@ namespace engine {
     for (const auto& gameObject : gameObjects)
     {
       SimplePushConstantData push{};
-      push.color     = gameObject.color;
-      push.transform = projectionView * gameObject.transform.modelTransform();
+      auto                   modelMatrix = gameObject.transform.modelTransform();
+      push.transform                     = projectionView * modelMatrix;
+
+      // automatic mat3 to mat4 conversion, take upper left 3x3 and complete with zeros and one at the bottom right
+      push.normalMatrix = glm::mat4{gameObject.transform.normalMatrix()};
 
       vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstantData), &push);
       gameObject.model->bind(commandBuffer);

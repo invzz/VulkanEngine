@@ -1,10 +1,8 @@
 
-#include "3dEngine/Exceptions.hpp"
-
-// Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
-// Ensure depth range is [0, 1] for Vulkan
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include "app.hpp"
+
 #include <GLFW/glfw3.h>
 
 #include <chrono>
@@ -14,6 +12,7 @@
 #include "3dEngine/Camera.hpp"
 #include "3dEngine/CameraSystem.hpp"
 #include "3dEngine/Device.hpp"
+#include "3dEngine/Exceptions.hpp"
 #include "3dEngine/GameObject.hpp"
 #include "3dEngine/InputSystem.hpp"
 #include "3dEngine/Keyboard.hpp"
@@ -22,7 +21,6 @@
 #include "3dEngine/SimpleRenderSystem.hpp"
 #include "3dEngine/Window.hpp"
 #include "CubeModel.hpp"
-#include "app.hpp"
 
 namespace engine {
   struct SimplePushConstantData
@@ -32,10 +30,7 @@ namespace engine {
     alignas(16) glm::vec3 color;
   };
 
-  App::App()
-  {
-    loadGameObjects();
-  }
+  App::App() {}
 
   App::~App() = default;
 
@@ -55,7 +50,7 @@ namespace engine {
     cameraObject.transform.translation = {0.0f, 0.0f, -2.5f};
 
     auto currentTime = std::chrono::high_resolution_clock::now();
-
+    loadGameObjects();
     // instantiate simple render system
 
     // Game loop
@@ -90,13 +85,13 @@ namespace engine {
       return;
     }
 
-    std::shared_ptr<Model> cubeModel = createCubeModel(device, {0.0f, 0.0f, 0.0f});
+    std::shared_ptr<Model> cubeModel = Model::createModelFromFile(device, "/flat_vase.obj");
 
     GameObject cube = GameObject::create();
     cube.model      = cubeModel;
 
     cube.transform.translation = {.0f, .0f, 5.f};
-    cube.transform.scale       = {.5f, .5f, .5f};
+    cube.transform.scale       = {3.f, 1.f, 3.f};
 
     gameObjects.push_back(std::move(cube));
   }
