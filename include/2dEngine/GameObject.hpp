@@ -46,7 +46,7 @@ namespace engine {
     RigidBody2dComponent   rigidBody2d{};
     id_t                   id{0};
 
-    static GameObject createGameObjectWithId()
+    static GameObject create()
     {
       static id_t currentId = 0;
       return GameObject{currentId++};

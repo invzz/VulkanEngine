@@ -2,6 +2,7 @@
 
 #include "3dEngine/Exceptions.hpp"
 #include "3dEngine/ansi_colors.hpp"
+
 // std headers
 #include <algorithm>
 #include <cstring>

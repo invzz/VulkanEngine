@@ -26,15 +26,15 @@ namespace engine {
 
   void Model::draw(VkCommandBuffer commandBuffer) const
   {
-    vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
+    vkCmdDraw(commandBuffer, indexCount, 1, 0, 0);
   }
 
   void Model::createVertexBuffers(const std::vector<Vertex>& vertices)
   {
-    vertexCount = static_cast<uint32_t>(vertices.size());
-    assert(vertexCount >= 3 && "Vertex count must be at least 3");
+    indexCount = static_cast<uint32_t>(vertices.size());
+    assert(indexCount >= 3 && "Vertex count must be at least 3");
 
-    VkDeviceSize bufferSize = sizeof(vertices[0]) * vertexCount;
+    VkDeviceSize bufferSize = sizeof(vertices[0]) * indexCount;
 
     device.memory().createBuffer(bufferSize,
                                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,

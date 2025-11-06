@@ -98,7 +98,7 @@ namespace engine {
 
     for (std::size_t i = 0; i < basePositions.size(); ++i)
     {
-      auto            body         = GameObject::createGameObjectWithId();
+      auto            body         = GameObject::create();
       const glm::vec2 centered     = basePositions[i] - centerOfMass;
       body.transform2d.scale       = glm::vec2{scales[i]};
       body.transform2d.translation = centered;
@@ -120,7 +120,7 @@ namespace engine {
     {
       for (int j = 0; j < gridCount; j++)
       {
-        auto vf                    = GameObject::createGameObjectWithId();
+        auto vf                    = GameObject::create();
         vf.transform2d.scale       = glm::vec2{SimulationConfig::VectorField::baseScale};
         float xPos                 = -1.0f + (static_cast<float>(i) + 0.5f) * 2.0f / static_cast<float>(gridCount);
         float yPos                 = -1.0f + (static_cast<float>(j) + 0.5f) * 2.0f / static_cast<float>(gridCount);

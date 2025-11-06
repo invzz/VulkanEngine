@@ -9,7 +9,7 @@ namespace engine {
 
   DeviceMemory::DeviceMemory(Device& device) : device(device) {}
 
-  uint32_t DeviceMemory::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags)
+  uint32_t DeviceMemory::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags) const
   {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, &memProperties);
@@ -57,7 +57,7 @@ namespace engine {
     vkBindBufferMemory(device.device_, buffer, bufferMemory, 0);
   }
 
-  VkCommandBuffer DeviceMemory::beginSingleTimeCommands()
+  VkCommandBuffer DeviceMemory::beginSingleTimeCommands() const
   {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -76,7 +76,7 @@ namespace engine {
     return commandBuffer;
   }
 
-  void DeviceMemory::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+  void DeviceMemory::endSingleTimeCommands(VkCommandBuffer commandBuffer) const
   {
     vkEndCommandBuffer(commandBuffer);
 
@@ -91,20 +91,44 @@ namespace engine {
     vkFreeCommandBuffers(device.device_, device.commandPool, 1, &commandBuffer);
   }
 
-  void DeviceMemory::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+  void DeviceMemory::copyBuffer(VkCommandBuffer      commandBuffer,
+                                VkBuffer             srcBuffer,
+                                VkBuffer             dstBuffer,
+                                VkDeviceSize         size,
+                                VkPipelineStageFlags dstStageMask,
+                                VkAccessFlags        dstAccessMask) const
   {
-    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-
     VkBufferCopy copyRegion{};
     copyRegion.srcOffset = 0; // Optional
     copyRegion.dstOffset = 0; // Optional
     copyRegion.size      = size;
     vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask       = dstAccessMask;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer              = dstBuffer;
+    barrier.offset              = 0;
+    barrier.size                = VK_WHOLE_SIZE;
+
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, dstStageMask, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+  }
+
+  void DeviceMemory::copyBufferImmediate(VkBuffer             srcBuffer,
+                                         VkBuffer             dstBuffer,
+                                         VkDeviceSize         size,
+                                         VkPipelineStageFlags dstStageMask,
+                                         VkAccessFlags        dstAccessMask) const
+  {
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    copyBuffer(commandBuffer, srcBuffer, dstBuffer, size, dstStageMask, dstAccessMask);
     endSingleTimeCommands(commandBuffer);
   }
 
-  void DeviceMemory::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount)
+  void DeviceMemory::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount) const
   {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
@@ -125,8 +149,10 @@ namespace engine {
     endSingleTimeCommands(commandBuffer);
   }
 
-  void
-  DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo, VkMemoryPropertyFlags memoryPropertyFlags, VkImage& image, VkDeviceMemory& imageMemory)
+  void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo,
+                                         VkMemoryPropertyFlags    memoryPropertyFlags,
+                                         VkImage&                 image,
+                                         VkDeviceMemory&          imageMemory) const
   {
     if (vkCreateImage(device.device_, &imageInfo, nullptr, &image) != VK_SUCCESS)
     {

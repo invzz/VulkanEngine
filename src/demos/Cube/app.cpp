@@ -7,26 +7,24 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLFW/glfw3.h>
 
-#include <array>
-#include <cmath>
+#include <chrono>
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
-#include <limits>
-#include <stdexcept>
-#include <unordered_map>
 
 #include "3dEngine/Camera.hpp"
+#include "3dEngine/CameraSystem.hpp"
 #include "3dEngine/Device.hpp"
 #include "3dEngine/GameObject.hpp"
+#include "3dEngine/InputSystem.hpp"
+#include "3dEngine/Keyboard.hpp"
 #include "3dEngine/Model.hpp"
+#include "3dEngine/Mouse.hpp"
 #include "3dEngine/SimpleRenderSystem.hpp"
 #include "3dEngine/Window.hpp"
 #include "CubeModel.hpp"
 #include "app.hpp"
 
 namespace engine {
-  static constexpr float frameDt = 1.f / 120.f;
   struct SimplePushConstantData
   {
     glm::mat2 transform{1.0f};
@@ -41,65 +39,38 @@ namespace engine {
 
   App::~App() = default;
 
-  void setUpPerspectiveCamera(Camera& camera, float aspectRatio)
-  {
-    camera.setPerspectiveProjection(glm::radians(45.f), aspectRatio, 0.1f, 10.f);
-  }
-
-  void setUpOrthographicCamera(Camera& camera, float aspectRatio)
-  {
-    float orthoHeight = 1.5f;
-    float orthoWidth  = orthoHeight * aspectRatio;
-    camera.setOrtographicProjection(-orthoWidth, orthoWidth, -orthoHeight, orthoHeight, -10.f, 10.f);
-  }
-
-  void rotateObjectOverTime(GameObject& obj, float deltaTime)
-  {
-    obj.transform.rotation.y += deltaTime;
-  }
-
   void App::run()
   {
-    // create a camera
-    Camera camera{};
-    camera.setViewTarget(glm::vec3(-2.f, -2.f, -2.f), glm::vec3(0.f, 0.f, 0.5f), glm::vec3(0.f, -1.f, 0.f));
+    // Needs to be here to ensure correct construction order
+    Camera   camera{};
+    Keyboard keyboard{window};
+    Mouse    mouse{window};
 
-    // instantiate simple render system
+    // Systems
+    InputSystem        inputSystem{keyboard, mouse};
+    CameraSystem       cameraSystem{};
     SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
 
+    GameObject cameraObject            = GameObject::create();
+    cameraObject.transform.translation = {0.0f, 0.0f, -2.5f};
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+
+    // instantiate simple render system
+
+    // Game loop
     while (!window.shouldClose())
     {
-      static float accumulatedTime = 0.f;
-
-      auto         currentTime  = static_cast<float>(glfwGetTime());
-      static float previousTime = currentTime;
-      float        deltaTime    = currentTime - previousTime;
-      previousTime              = currentTime;
-      accumulatedTime += deltaTime;
       // Poll for window events
       glfwPollEvents();
 
-      float aspectRatio = renderer.getAspectRatio();
+      auto  newTime   = std::chrono::high_resolution_clock::now();
+      float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
+      currentTime     = newTime;
+      frameTime       = glm::min(frameTime, 0.1f);
 
-      setUpPerspectiveCamera(camera, aspectRatio);
-
-      // make the camera orbit around the origin
-      float radius    = 2.5f;
-      float camX      = sinf(currentTime) * radius;
-      float camZ      = cosf(currentTime) * radius;
-      auto  camPos    = glm::vec3{camX, -2.f, camZ};
-      auto  targetPos = glm::vec3{0.f, 0.f, 0.5f};
-
-      // update camera position
-      camera.setViewTarget(camPos, targetPos, glm::vec3{0.f, -1.f, 0.f});
-
-      // fixed-timestep update loop
-      while (accumulatedTime >= frameDt)
-      {
-        // advance simulation in frameDt-sized steps
-        accumulatedTime -= frameDt;
-        camera.setViewTarget(camPos, targetPos, glm::vec3{0.f, -1.f, 0.f});
-      }
+      inputSystem.update(frameTime, cameraObject);
+      cameraSystem.updatePerspective(camera, cameraObject, renderer.getAspectRatio());
 
       if (auto commandBuffer = renderer.beginFrame())
       {
@@ -109,9 +80,7 @@ namespace engine {
         renderer.endFrame();
       }
     }
-
-    // Wait for the device to finish operations before exiting
-    vkDeviceWaitIdle(device.device());
+    device.WaitIdle();
   }
 
   void App::loadGameObjects()
@@ -123,10 +92,10 @@ namespace engine {
 
     std::shared_ptr<Model> cubeModel = createCubeModel(device, {0.0f, 0.0f, 0.0f});
 
-    GameObject cube = GameObject::createGameObjectWithId();
+    GameObject cube = GameObject::create();
     cube.model      = cubeModel;
 
-    cube.transform.translation = {.0f, .0f, .5f};
+    cube.transform.translation = {.0f, .0f, 5.f};
     cube.transform.scale       = {.5f, .5f, .5f};
 
     gameObjects.push_back(std::move(cube));

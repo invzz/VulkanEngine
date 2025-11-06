@@ -527,9 +527,14 @@ namespace engine {
   {
     for (const auto& availablePresentMode : availablePresentModes)
     {
-      if (availablePresentMode == VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR)
+      if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
       {
-        std::cout << "Present mode: Shared Demand Refresh" << std::endl;
+        std::cout << "Present mode: Immediate" << std::endl;
+        return availablePresentMode;
+      }
+      else if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+      {
+        std::cout << "Present mode: Mailbox" << std::endl;
         return availablePresentMode;
       }
     }

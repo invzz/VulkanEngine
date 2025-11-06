@@ -1,6 +1,46 @@
 [
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Model.cpp.o", "src/2dEngine/Model.cpp"],
+  "file": "src/2dEngine/Model.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Device.cpp.o", "src/2dEngine/Device.cpp"],
+  "file": "src/2dEngine/Device.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/DeviceMemory.cpp.o", "src/2dEngine/DeviceMemory.cpp"],
+  "file": "src/2dEngine/DeviceMemory.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Pipeline.cpp.o", "src/2dEngine/Pipeline.cpp"],
+  "file": "src/2dEngine/Pipeline.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Renderer.cpp.o", "src/2dEngine/Renderer.cpp"],
+  "file": "src/2dEngine/Renderer.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SimpleRenderSystem.cpp.o", "src/2dEngine/SimpleRenderSystem.cpp"],
+  "file": "src/2dEngine/SimpleRenderSystem.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SwapChain.cpp.o", "src/2dEngine/SwapChain.cpp"],
+  "file": "src/2dEngine/SwapChain.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Window.cpp.o", "src/2dEngine/Window.cpp"],
+  "file": "src/2dEngine/Window.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
   "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/3dEngine/linux/x86_64/debug/src/3dEngine/Model.cpp.o", "src/3dEngine/Model.cpp"],
   "file": "src/3dEngine/Model.cpp"
 },
@@ -46,53 +86,23 @@
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/Cube", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/Cube/linux/x86_64/debug/src/demos/Cube/main.cpp.o", "src/demos/Cube/main.cpp"],
-  "file": "src/demos/Cube/main.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/3dEngine/linux/x86_64/debug/src/3dEngine/Keyboard.cpp.o", "src/3dEngine/Keyboard.cpp"],
+  "file": "src/3dEngine/Keyboard.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/Cube", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/Cube/linux/x86_64/debug/src/demos/Cube/app.cpp.o", "src/demos/Cube/app.cpp"],
-  "file": "src/demos/Cube/app.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/3dEngine/linux/x86_64/debug/src/3dEngine/Mouse.cpp.o", "src/3dEngine/Mouse.cpp"],
+  "file": "src/3dEngine/Mouse.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Model.cpp.o", "src/2dEngine/Model.cpp"],
-  "file": "src/2dEngine/Model.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/3dEngine/linux/x86_64/debug/src/3dEngine/InputSystem.cpp.o", "src/3dEngine/InputSystem.cpp"],
+  "file": "src/3dEngine/InputSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Device.cpp.o", "src/2dEngine/Device.cpp"],
-  "file": "src/2dEngine/Device.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/DeviceMemory.cpp.o", "src/2dEngine/DeviceMemory.cpp"],
-  "file": "src/2dEngine/DeviceMemory.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Pipeline.cpp.o", "src/2dEngine/Pipeline.cpp"],
-  "file": "src/2dEngine/Pipeline.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Renderer.cpp.o", "src/2dEngine/Renderer.cpp"],
-  "file": "src/2dEngine/Renderer.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SimpleRenderSystem.cpp.o", "src/2dEngine/SimpleRenderSystem.cpp"],
-  "file": "src/2dEngine/SimpleRenderSystem.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SwapChain.cpp.o", "src/2dEngine/SwapChain.cpp"],
-  "file": "src/2dEngine/SwapChain.cpp"
-},
-{
-  "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Window.cpp.o", "src/2dEngine/Window.cpp"],
-  "file": "src/2dEngine/Window.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/3dEngine/linux/x86_64/debug/src/3dEngine/CameraSystem.cpp.o", "src/3dEngine/CameraSystem.cpp"],
+  "file": "src/3dEngine/CameraSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
@@ -133,4 +143,14 @@
   "directory": "/home/ac/Documents/source/prj/engine2",
   "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/TrailSystem.cpp.o", "src/demos/ThreeBodiesSimulation/TrailSystem.cpp"],
   "file": "src/demos/ThreeBodiesSimulation/TrailSystem.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/Cube", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/Cube/linux/x86_64/debug/src/demos/Cube/main.cpp.o", "src/demos/Cube/main.cpp"],
+  "file": "src/demos/Cube/main.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/Cube", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/Cube/linux/x86_64/debug/src/demos/Cube/app.cpp.o", "src/demos/Cube/app.cpp"],
+  "file": "src/demos/Cube/app.cpp"
 }]

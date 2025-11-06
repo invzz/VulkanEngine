@@ -36,7 +36,7 @@ namespace engine {
     Device&        device;
     VkBuffer       vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
-    uint32_t       vertexCount;
+    uint32_t       indexCount;
 
     void createVertexBuffers(const std::vector<Vertex>& vertices);
     // Additional model data members would go here

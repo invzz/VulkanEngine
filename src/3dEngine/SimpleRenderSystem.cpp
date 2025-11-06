@@ -76,7 +76,7 @@ namespace engine {
     {
       SimplePushConstantData push{};
       push.color     = gameObject.color;
-      push.transform = projectionView * gameObject.transform.mat4();
+      push.transform = projectionView * gameObject.transform.modelTransform();
 
       vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstantData), &push);
       gameObject.model->bind(commandBuffer);

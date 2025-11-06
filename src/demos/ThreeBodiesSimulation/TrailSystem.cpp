@@ -30,7 +30,7 @@ namespace engine {
     const float speed = glm::length(velocity);
     if (speed < std::numeric_limits<float>::epsilon()) return;
 
-    GameObject particle              = GameObject::createGameObjectWithId();
+    GameObject particle              = GameObject::create();
     particle.model                   = trailModel;
     particle.transform2d.translation = position;
     particle.transform2d.rotation    = glm::atan(velocity.y, velocity.x);
@@ -102,15 +102,8 @@ namespace engine {
 
     for (std::size_t i = 0; i < physicsObjects.size(); ++i)
     {
-      auto&       obj               = physicsObjects[i];
-      const float speed             = glm::length(obj.rigidBody2d.velocity);
-      const float maxScaleComponent = glm::max(glm::abs(obj.transform2d.scale.x), glm::abs(obj.transform2d.scale.y));
-      // if (maxScaleComponent <
-      // SimulationConfig::Trails::minEmitterScale)
-      // {
-      //     trailSpawnAccumulator[i] = glm::min(trailSpawnAccumulator[i],
-      //     spawnInterval); continue;
-      // }
+      auto&       obj   = physicsObjects[i];
+      const float speed = glm::length(obj.rigidBody2d.velocity);
 
       const float t     = glm::clamp(speed / intensityMaxSpeed, 0.f, 1.f);
       const float scale = glm::mix(minIntensity, 1.0f, t);

@@ -24,8 +24,13 @@ namespace engine {
     glm::vec3        getPosition() const { return glm::vec3(inverseViewMatrix[3]); }
 
   private:
+    // projection transform : camera to clip
     glm::mat4 projectionMatrix{1.0f};
+
+    // camera transform : world to camera
     glm::mat4 viewMatrix{1.0f};
+
+    // inverse of camera transform : camera to world
     glm::mat4 inverseViewMatrix{1.0f};
   };
 

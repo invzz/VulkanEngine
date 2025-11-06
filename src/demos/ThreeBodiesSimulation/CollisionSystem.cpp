@@ -94,7 +94,7 @@ namespace engine {
     baseColors[index]            = parentColorPrimary;
     trailSpawnAccumulator[index] = 0.0f;
 
-    GameObject fragment              = GameObject::createGameObjectWithId();
+    GameObject fragment              = GameObject::create();
     fragment.model                   = circleModel;
     fragment.transform2d.scale       = glm::vec2{childScale};
     fragment.transform2d.translation = centre - tangent * (childScale * offset);
