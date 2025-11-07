@@ -190,36 +190,38 @@ namespace engine {
     {
       throw engine::RuntimeException("failed to find GPUs with Vulkan support!");
     }
-    std::cout << "Device count: " << deviceCount << std::endl;
+
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+    VkPhysicalDevice           bestDevice = VK_NULL_HANDLE;
+    VkPhysicalDeviceProperties best       = {};
+
     for (const auto& device : devices)
     {
-      std::cout << "[ " << YELLOW "Checking device" RESET " ] " << device << std::endl;
+      if (!isDeviceSuitable(device)) continue;
 
-      if (isDeviceSuitable(device))
+      VkPhysicalDeviceProperties props;
+      vkGetPhysicalDeviceProperties(device, &props);
+
+      if (bestDevice == VK_NULL_HANDLE || props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && best.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
+          props.deviceType == best.deviceType && props.limits.maxImageDimension2D > best.limits.maxImageDimension2D)
       {
-        std::cout << "[ " << GREEN "Device suitable" RESET " ] " << device << std::endl;
-        physicalDevice = device;
-        break;
+        bestDevice = device;
+        best       = props;
       }
     }
 
-    if (physicalDevice == VK_NULL_HANDLE)
+    if (bestDevice == VK_NULL_HANDLE)
     {
       throw engine::RuntimeException("failed to find a suitable GPU!");
     }
 
-    vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+    physicalDevice = bestDevice;
+    properties     = best;
     std::cout << "physical device: " << properties.deviceName << std::endl;
   }
 
-  /**
-   * @brief Creates the Vulkan logical device and retrieves graphics/present
-   * queues.
-   * @throws std::runtime_error if device creation fails.
-   */
   void Device::createLogicalDevice()
   {
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);

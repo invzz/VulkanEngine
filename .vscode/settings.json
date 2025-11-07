@@ -84,6 +84,12 @@
         "valarray": "cpp",
         "variant": "cpp",
         "stack": "cpp",
-        "cassert": "cpp"
+        "cassert": "cpp",
+        "complex": "cpp",
+        "regex": "cpp",
+        "hash_set": "cpp",
+        "future": "cpp",
+        "shared_mutex": "cpp",
+        "cfenv": "cpp"
     },
 }

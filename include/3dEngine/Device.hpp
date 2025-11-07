@@ -46,6 +46,7 @@ namespace engine {
     Device& operator=(Device&&)      = delete;
 
     VkCommandPool getCommandPool() { return commandPool; }
+    DeviceMemory& getMemory() { return *memory_; }
     VkDevice      device() { return device_; }
     VkSurfaceKHR  surface() { return surface_; }
     VkQueue       graphicsQueue() { return graphicsQueue_; }
@@ -57,8 +58,6 @@ namespace engine {
     QueueFamilyIndices findPhysicalQueueFamilies() { return findQueueFamilies(physicalDevice); }
 
     VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
-
-    void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
     DeviceMemory& memory() { return *memory_; }
 

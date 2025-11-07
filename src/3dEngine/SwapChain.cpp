@@ -527,14 +527,9 @@ namespace engine {
   {
     for (const auto& availablePresentMode : availablePresentModes)
     {
-      if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+      if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
       {
-        std::cout << "Present mode: Immediate" << std::endl;
-        return availablePresentMode;
-      }
-      else if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
-      {
-        std::cout << "Present mode: Mailbox" << std::endl;
+        std::cout << "Present mode: FIFO Relaxed" << std::endl;
         return availablePresentMode;
       }
     }
@@ -554,7 +549,6 @@ namespace engine {
       VkExtent2D actualExtent = windowExtent;
       actualExtent.width      = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
       actualExtent.height     = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
-
       return actualExtent;
     }
   }

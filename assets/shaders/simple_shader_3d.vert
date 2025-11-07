@@ -25,7 +25,7 @@ layout(push_constant) uniform push_t
 push;
 
 const vec3  DIRECTION_TO_LIGHT      = normalize(vec3(1.0, -1.0, -1.0));
-const float AMBIENT_LIGHT_INTENSITY = 0.02;
+const float AMBIENT_LIGHT_INTENSITY = 0.2;
 
 void main()
 {

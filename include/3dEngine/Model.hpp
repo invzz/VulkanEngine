@@ -12,6 +12,7 @@
 #include <memory>
 #include <vector>
 
+#include "Buffer.hpp"
 #include "Device.hpp"
 
 namespace engine {
@@ -53,15 +54,13 @@ namespace engine {
   private:
     Device& device;
 
-    VkBuffer       vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    uint32_t       vertexCount;
+    std::unique_ptr<Buffer> vertexBuffer;
+    uint32_t                vertexCount = 0;
 
     bool hasIndexBuffer = false;
 
-    VkBuffer       indexBuffer;
-    VkDeviceMemory indexBufferMemory;
-    uint32_t       indexCount;
+    std::unique_ptr<Buffer> indexBuffer;
+    uint32_t                indexCount = 0;
 
     void createVertexBuffers(const std::vector<Vertex>& vertices);
     void createIndexBuffers(const std::vector<uint32_t>& indices);

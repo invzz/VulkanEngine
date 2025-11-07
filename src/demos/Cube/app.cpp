@@ -85,15 +85,35 @@ namespace engine {
       return;
     }
 
-    std::shared_ptr<Model> cubeModel = Model::createModelFromFile(device, "/flat_vase.obj");
+    std::vector<std::shared_ptr<Model>> models{
+            Model::createModelFromFile(device, "/flat_vase.obj"),
+            Model::createModelFromFile(device, "/smooth_vase.obj"),
+    };
 
-    GameObject cube = GameObject::create();
-    cube.model      = cubeModel;
+    const int   instancesPerModel = 4;
+    const float spacing           = 1.0f;
+    const int   totalInstances    = static_cast<int>(models.size()) * instancesPerModel;
+    const float origin            = 0.5f * static_cast<float>(totalInstances - 1);
 
-    cube.transform.translation = {.0f, .0f, 5.f};
-    cube.transform.scale       = {3.f, 1.f, 3.f};
+    int instanceIndex = 0;
+    for (const auto& model : models)
+    {
+      for (int copy = 0; copy < instancesPerModel; ++copy)
+      {
+        GameObject vase = GameObject::create();
+        vase.model      = model;
 
-    gameObjects.push_back(std::move(cube));
+        vase.transform.translation = {
+                (static_cast<float>(instanceIndex) - origin) * spacing,
+                0.0f,
+                0.0f,
+        };
+        vase.transform.scale = {1.f, 1.f, 1.f};
+
+        gameObjects.push_back(std::move(vase));
+        ++instanceIndex;
+      }
+    }
   }
 
 } // namespace engine
