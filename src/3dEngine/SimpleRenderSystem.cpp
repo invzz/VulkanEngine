@@ -67,11 +67,11 @@ namespace engine {
     pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/simple_shader_3d.vert.spv", SHADER_PATH "/simple_shader_3d.frag.spv", pipelineConfig);
   }
 
-  void SimpleRenderSystem::renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects, Camera& camera)
+  void SimpleRenderSystem::renderGameObjects(FrameInfo& frameInfo, const std::vector<GameObject>& gameObjects)
   {
-    pipeline->bind(commandBuffer);
+    pipeline->bind(frameInfo.commandBuffer);
 
-    auto projectionView = camera.getProjectionMatrix() * camera.getViewMatrix();
+    auto projectionView = frameInfo.camera.getProjectionMatrix() * frameInfo.camera.getViewMatrix();
 
     for (const auto& gameObject : gameObjects)
     {
@@ -82,9 +82,14 @@ namespace engine {
       // automatic mat3 to mat4 conversion, take upper left 3x3 and complete with zeros and one at the bottom right
       push.normalMatrix = glm::mat4{gameObject.transform.normalMatrix()};
 
-      vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SimplePushConstantData), &push);
-      gameObject.model->bind(commandBuffer);
-      gameObject.model->draw(commandBuffer);
+      vkCmdPushConstants(frameInfo.commandBuffer,
+                         pipelineLayout,
+                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0,
+                         sizeof(SimplePushConstantData),
+                         &push);
+      gameObject.model->bind(frameInfo.commandBuffer);
+      gameObject.model->draw(frameInfo.commandBuffer);
     }
   }
 } // namespace engine
