@@ -1,43 +1,43 @@
 [
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Model.cpp.o", "src/2dEngine/Model.cpp"],
-  "file": "src/2dEngine/Model.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/main.cpp.o", "src/demos/ThreeBodiesSimulation/main.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/main.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Device.cpp.o", "src/2dEngine/Device.cpp"],
-  "file": "src/2dEngine/Device.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/ThreeBodySimulationPhysics.cpp.o", "src/demos/ThreeBodiesSimulation/ThreeBodySimulationPhysics.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/ThreeBodySimulationPhysics.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Pipeline.cpp.o", "src/2dEngine/Pipeline.cpp"],
-  "file": "src/2dEngine/Pipeline.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/GravityPhysicsSystem.cpp.o", "src/demos/ThreeBodiesSimulation/GravityPhysicsSystem.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/GravityPhysicsSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Renderer.cpp.o", "src/2dEngine/Renderer.cpp"],
-  "file": "src/2dEngine/Renderer.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/Vec2FieldSystem.cpp.o", "src/demos/ThreeBodiesSimulation/Vec2FieldSystem.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/Vec2FieldSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SimpleRenderSystem.cpp.o", "src/2dEngine/SimpleRenderSystem.cpp"],
-  "file": "src/2dEngine/SimpleRenderSystem.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/CollisionSystem.cpp.o", "src/demos/ThreeBodiesSimulation/CollisionSystem.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/CollisionSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SwapChain.cpp.o", "src/2dEngine/SwapChain.cpp"],
-  "file": "src/2dEngine/SwapChain.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/app.cpp.o", "src/demos/ThreeBodiesSimulation/app.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/app.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Window.cpp.o", "src/2dEngine/Window.cpp"],
-  "file": "src/2dEngine/Window.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/SimpleModels.cpp.o", "src/demos/ThreeBodiesSimulation/SimpleModels.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/SimpleModels.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/DeviceMemory.cpp.o", "src/2dEngine/DeviceMemory.cpp"],
-  "file": "src/2dEngine/DeviceMemory.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/TrailSystem.cpp.o", "src/demos/ThreeBodiesSimulation/TrailSystem.cpp"],
+  "file": "src/demos/ThreeBodiesSimulation/TrailSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
@@ -116,43 +116,48 @@
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/main.cpp.o", "src/demos/ThreeBodiesSimulation/main.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/main.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DMODEL_PATH=\"/home/ac/Documents/source/prj/engine2/assets/models\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-isystem", "/home/ac/.xmake/packages/t/tinyobjloader/v2.0.0rc13/76c0e8629e5a4e488fe3f9054a41adf4/include", "-o", "build/.objs/3dEngine/linux/x86_64/debug/src/3dEngine/Descriptors.cpp.o", "src/3dEngine/Descriptors.cpp"],
+  "file": "src/3dEngine/Descriptors.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/ThreeBodySimulationPhysics.cpp.o", "src/demos/ThreeBodiesSimulation/ThreeBodySimulationPhysics.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/ThreeBodySimulationPhysics.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Model.cpp.o", "src/2dEngine/Model.cpp"],
+  "file": "src/2dEngine/Model.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/GravityPhysicsSystem.cpp.o", "src/demos/ThreeBodiesSimulation/GravityPhysicsSystem.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/GravityPhysicsSystem.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Device.cpp.o", "src/2dEngine/Device.cpp"],
+  "file": "src/2dEngine/Device.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/Vec2FieldSystem.cpp.o", "src/demos/ThreeBodiesSimulation/Vec2FieldSystem.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/Vec2FieldSystem.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Pipeline.cpp.o", "src/2dEngine/Pipeline.cpp"],
+  "file": "src/2dEngine/Pipeline.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/CollisionSystem.cpp.o", "src/demos/ThreeBodiesSimulation/CollisionSystem.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/CollisionSystem.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Renderer.cpp.o", "src/2dEngine/Renderer.cpp"],
+  "file": "src/2dEngine/Renderer.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/app.cpp.o", "src/demos/ThreeBodiesSimulation/app.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/app.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SimpleRenderSystem.cpp.o", "src/2dEngine/SimpleRenderSystem.cpp"],
+  "file": "src/2dEngine/SimpleRenderSystem.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/SimpleModels.cpp.o", "src/demos/ThreeBodiesSimulation/SimpleModels.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/SimpleModels.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/SwapChain.cpp.o", "src/2dEngine/SwapChain.cpp"],
+  "file": "src/2dEngine/SwapChain.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",
-  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Isrc/demos/ThreeBodiesSimulation", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/ThreeBodiesSimulation/linux/x86_64/debug/src/demos/ThreeBodiesSimulation/TrailSystem.cpp.o", "src/demos/ThreeBodiesSimulation/TrailSystem.cpp"],
-  "file": "src/demos/ThreeBodiesSimulation/TrailSystem.cpp"
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/Window.cpp.o", "src/2dEngine/Window.cpp"],
+  "file": "src/2dEngine/Window.cpp"
+},
+{
+  "directory": "/home/ac/Documents/source/prj/engine2",
+  "arguments": ["/usr/bin/g++", "-c", "-m64", "-g", "-O0", "-Iinclude", "-DGLFW_USE_WAYLAND=1", "-DGLFW_INCLUDE_VULKAN", "-DSHADER_PATH=\"/home/ac/Documents/source/prj/engine2/assets/shaders/compiled\"", "-DGLFW_INCLUDE_NONE", "-isystem", "/home/ac/.xmake/packages/g/glfw/3.4/4c3c72af70fd4599a3038fc662af9c28/include", "-o", "build/.objs/2dEngine/linux/x86_64/debug/src/2dEngine/DeviceMemory.cpp.o", "src/2dEngine/DeviceMemory.cpp"],
+  "file": "src/2dEngine/DeviceMemory.cpp"
 },
 {
   "directory": "/home/ac/Documents/source/prj/engine2",

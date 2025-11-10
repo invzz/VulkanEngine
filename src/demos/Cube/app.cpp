@@ -32,6 +32,10 @@ namespace engine {
 
   App::App()
   {
+    globalPool = DescriptorPool::Builder(device)
+                         .setMaxSets(SwapChain::maxFramesInFlight())
+                         .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::maxFramesInFlight())
+                         .build();
     loadGameObjects();
   }
 
@@ -55,6 +59,16 @@ namespace engine {
       buffer->map();
     }
 
+    auto globalSetLayout = DescriptorSetLayout::Builder(device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+
+    std::vector<VkDescriptorSet> globalDescriptorSets(SwapChain::maxFramesInFlight());
+    for (size_t i = 0; i < globalDescriptorSets.size(); i++)
+    {
+      auto bufferInfo = uboBuffers[i]->descriptorInfo();
+
+      DescriptorWriter(*globalSetLayout, *globalPool).writeBuffer(0, &bufferInfo).build(globalDescriptorSets[i]);
+    }
+
     // Needs to be here to ensure correct construction order
     Camera   camera{};
     Keyboard keyboard{window};
@@ -63,7 +77,7 @@ namespace engine {
     // Systems
     InputSystem        inputSystem{keyboard, mouse};
     CameraSystem       cameraSystem{};
-    SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass()};
+    SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout()};
 
     GameObject cameraObject            = GameObject::create();
     cameraObject.transform.translation = {0.0f, 0.0f, -2.5f};
@@ -89,10 +103,11 @@ namespace engine {
         int frameIndex = renderer.getFrameIndex();
 
         FrameInfo frameInfo{
-                .frameIndex    = frameIndex,
-                .frameTime     = frameTime,
-                .commandBuffer = commandBuffer,
-                .camera        = camera,
+                .frameIndex          = frameIndex,
+                .frameTime           = frameTime,
+                .commandBuffer       = commandBuffer,
+                .camera              = camera,
+                .globalDescriptorSet = globalDescriptorSets[frameIndex],
         };
 
         // update uniform buffer object

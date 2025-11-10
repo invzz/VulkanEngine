@@ -19,18 +19,17 @@ namespace engine {
 
   struct SimplePushConstantData
   {
-    glm::mat4 transform{1.0f};
+    glm::mat4 modelMatrix{1.0f};
     glm::mat4 normalMatrix{1.0f};
-    // alignas(16) glm::vec3 color;
   };
 
-  SimpleRenderSystem::SimpleRenderSystem(Device& device, VkRenderPass renderPass) : device(device)
+  SimpleRenderSystem::SimpleRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout) : device(device)
   {
-    createPipelineLayout();
+    createPipelineLayout(globalSetLayout);
     createPipeline(renderPass);
   }
 
-  void SimpleRenderSystem::createPipelineLayout()
+  void SimpleRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
   {
     VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -38,10 +37,12 @@ namespace engine {
             .size       = sizeof(SimplePushConstantData),
     };
 
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
+
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount         = 0,
-            .pSetLayouts            = nullptr,
+            .setLayoutCount         = static_cast<uint32_t>(descriptorSetLayouts.size()),
+            .pSetLayouts            = descriptorSetLayouts.data(),
             .pushConstantRangeCount = 1,
             .pPushConstantRanges    = &pushConstantRange,
     };
@@ -71,15 +72,13 @@ namespace engine {
   {
     pipeline->bind(frameInfo.commandBuffer);
 
-    auto projectionView = frameInfo.camera.getProjectionMatrix() * frameInfo.camera.getViewMatrix();
+    vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
     for (const auto& gameObject : gameObjects)
     {
       SimplePushConstantData push{};
-      auto                   modelMatrix = gameObject.transform.modelTransform();
-      push.transform                     = projectionView * modelMatrix;
 
-      // automatic mat3 to mat4 conversion, take upper left 3x3 and complete with zeros and one at the bottom right
+      push.modelMatrix  = gameObject.transform.modelTransform();
       push.normalMatrix = glm::mat4{gameObject.transform.normalMatrix()};
 
       vkCmdPushConstants(frameInfo.commandBuffer,

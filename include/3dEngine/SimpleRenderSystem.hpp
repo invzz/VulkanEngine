@@ -18,7 +18,7 @@ namespace engine {
   class SimpleRenderSystem
   {
   public:
-    SimpleRenderSystem(Device& device, VkRenderPass renderPass);
+    SimpleRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     ~SimpleRenderSystem();
 
     // delete copy operations
@@ -28,7 +28,7 @@ namespace engine {
     void renderGameObjects(FrameInfo& frameInfo, const std::vector<GameObject>& gameObjects);
 
   private:
-    void                      createPipelineLayout();
+    void                      createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void                      createPipeline(VkRenderPass renderPass);
     Device&                   device;
     std::unique_ptr<Pipeline> pipeline;

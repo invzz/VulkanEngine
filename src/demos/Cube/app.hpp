@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "3dEngine/Descriptors.hpp"
 #include "3dEngine/Device.hpp"
 #include "3dEngine/GameObject.hpp"
 #include "3dEngine/Model.hpp"
@@ -31,10 +32,13 @@ namespace engine {
     void run();
 
   private:
-    void                    loadGameObjects();
-    Window                  window{width(), height(), "Engine App"};
-    Device                  device{window};
-    std::vector<GameObject> gameObjects;
-    Renderer                renderer{window, device};
+    void loadGameObjects();
+
+    Window   window{width(), height(), "Engine App"};
+    Device   device{window};
+    Renderer renderer{window, device};
+
+    std::unique_ptr<DescriptorPool> globalPool;
+    std::vector<GameObject>         gameObjects;
   };
 } // namespace engine
