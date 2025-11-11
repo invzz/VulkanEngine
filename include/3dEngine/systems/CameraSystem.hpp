@@ -1,9 +1,10 @@
 #pragma once
 
+#include "../Camera.hpp"
+#include "../GameObject.hpp"
+
 namespace engine {
 
-  class Camera;
-  class GameObject;
   class CameraSystem
   {
   public:

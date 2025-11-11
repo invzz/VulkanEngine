@@ -107,8 +107,8 @@ namespace window_detail {
     if (!mode) return;
     int xpos = mx + (mode->width - width) / 2;
     int ypos = my + (mode->height - height) / 2;
-    std::cout << "Requested window center on monitor '" << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown") << "' at (" << xpos << ", "
-              << ypos << ")\n";
+    std::cout << "[" << BLUE << "Window" << RESET << "]" << YELLOW << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown") << "' at ("
+              << xpos << ", " << ypos << ")" << RESET << "\n";
     glfwSetWindowPos(window, xpos, ypos);
   }
 
@@ -196,8 +196,10 @@ namespace engine {
       {
         int xpos = mx + (mode->width - width) / 2;
         int ypos = my + (mode->height - height) / 2;
-        std::cout << "Requested window center on monitor '" << (glfwGetMonitorName(targetMonitor) ? glfwGetMonitorName(targetMonitor) : "unknown") << "' at ("
-                  << xpos << ", " << ypos << ")\n";
+
+        auto monitorName = glfwGetMonitorName(targetMonitor);
+        std::cout << "[ " << BLUE << "Window" << RESET << " ] " << YELLOW << (monitorName ? monitorName : "unknown") << BLUE << " position (" << xpos << ", "
+                  << ypos << ")" << RESET << "\n";
         glfwSetWindowPos(window, xpos, ypos);
       }
     }

@@ -1,12 +1,14 @@
 #include "3dEngine/Pipeline.hpp"
 
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 
 #include "3dEngine/Exceptions.hpp"
 #include "3dEngine/Model.hpp"
+#include "3dEngine/ansi_colors.hpp"
 
 namespace engine {
 
@@ -14,6 +16,8 @@ namespace engine {
 
   {
     createGraphicsPipeline(vertFilePath, fragFilePath, configInfo);
+    std::cout << "[" << GREEN << "Pipeline" << RESET << "] vert: " << BLUE << std::filesystem::path(vertFilePath).filename().string() << " frag: " << BLUE
+              << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
   }
 
   std::vector<char> Pipeline::readFile(const std::string& filePath)
@@ -115,6 +119,9 @@ namespace engine {
     configInfo.pipelineLayout = VK_NULL_HANDLE;
     configInfo.renderPass     = VK_NULL_HANDLE;
     configInfo.subpass        = 0;
+
+    configInfo.bindingDescriptions   = Model::Vertex::getBindingDescriptions();
+    configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
   }
 
   void Pipeline::bind(VkCommandBuffer commandBuffer)
@@ -155,8 +162,8 @@ namespace engine {
                                                                .pSpecializationInfo = nullptr,
                                                        }};
 
-    auto bindingDescriptions   = Model::Vertex::getBindingDescriptions();
-    auto attributeDescriptions = Model::Vertex::getAttributeDescriptions();
+    auto& bindingDescriptions   = configInfo.bindingDescriptions;
+    auto& attributeDescriptions = configInfo.attributeDescriptions;
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{
             .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,

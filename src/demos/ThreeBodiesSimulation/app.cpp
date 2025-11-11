@@ -160,12 +160,12 @@ namespace engine {
         // render system
         renderer.beginSwapChainRenderPass(commandBuffer);
 
-        simpleRenderSystem.renderGameObjects(commandBuffer, vectorField);
+        simpleRenderSystem.render(commandBuffer, vectorField);
         if (const auto& trailRenderObjects = trailSystem.renderObjects(); !trailRenderObjects.empty())
         {
-          simpleRenderSystem.renderGameObjects(commandBuffer, trailRenderObjects);
+          simpleRenderSystem.render(commandBuffer, trailRenderObjects);
         }
-        simpleRenderSystem.renderGameObjects(commandBuffer, physicsObjects);
+        simpleRenderSystem.render(commandBuffer, physicsObjects);
         renderer.endSwapChainRenderPass(commandBuffer);
         renderer.endFrame();
       }

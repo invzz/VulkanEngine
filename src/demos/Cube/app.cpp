@@ -8,27 +8,28 @@
 #include <chrono>
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
+#include <iostream>
 
 #include "3dEngine/Camera.hpp"
-#include "3dEngine/CameraSystem.hpp"
 #include "3dEngine/Device.hpp"
 #include "3dEngine/Exceptions.hpp"
 #include "3dEngine/GameObject.hpp"
-#include "3dEngine/InputSystem.hpp"
 #include "3dEngine/Keyboard.hpp"
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Mouse.hpp"
-#include "3dEngine/SimpleRenderSystem.hpp"
 #include "3dEngine/Window.hpp"
+#include "3dEngine/ansi_colors.hpp"
+
+// Systems
+#include "3dEngine/systems/CameraSystem.hpp"
+#include "3dEngine/systems/InputSystem.hpp"
+#include "3dEngine/systems/PointLightSystem.hpp"
+#include "3dEngine/systems/SimpleRenderSystem.hpp"
+
+// Models
 #include "CubeModel.hpp"
 
 namespace engine {
-
-  struct GlobalUbo
-  {
-    glm::mat4 projectionView{1.0f};
-    glm::vec3 lightDirection = glm::normalize(glm::vec3(1.0f, -3.0f, -1.0f));
-  };
 
   App::App()
   {
@@ -38,14 +39,10 @@ namespace engine {
                          .build();
     loadGameObjects();
   }
-
   App::~App() = default;
-
   void App::run()
   {
-    // create a uniform buffer object
-    GlobalUbo ubo{};
-
+    GlobalUbo                            ubo{};
     std::vector<std::unique_ptr<Buffer>> uboBuffers(SwapChain::maxFramesInFlight());
 
     for (auto& buffer : uboBuffers)
@@ -59,13 +56,11 @@ namespace engine {
       buffer->map();
     }
 
-    auto globalSetLayout = DescriptorSetLayout::Builder(device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
-
+    auto globalSetLayout = DescriptorSetLayout::Builder(device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS).build();
     std::vector<VkDescriptorSet> globalDescriptorSets(SwapChain::maxFramesInFlight());
     for (size_t i = 0; i < globalDescriptorSets.size(); i++)
     {
       auto bufferInfo = uboBuffers[i]->descriptorInfo();
-
       DescriptorWriter(*globalSetLayout, *globalPool).writeBuffer(0, &bufferInfo).build(globalDescriptorSets[i]);
     }
 
@@ -78,12 +73,16 @@ namespace engine {
     InputSystem        inputSystem{keyboard, mouse};
     CameraSystem       cameraSystem{};
     SimpleRenderSystem simpleRenderSystem{device, renderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout()};
+    PointLightSystem   pointLightSystem{device, renderer.getSwapChainRenderPass(), globalSetLayout->getDescriptorSetLayout()};
 
     GameObject cameraObject            = GameObject::create();
-    cameraObject.transform.translation = {0.0f, 0.0f, -2.5f};
+    cameraObject.transform.translation = {0.0f, -0.2f, -2.5f};
     auto currentTime                   = std::chrono::high_resolution_clock::now();
 
-    // instantiate simple render system
+    // FPS counter
+    auto   lastFpsTime = currentTime;
+    int    frameCount  = 0;
+    double lastFps     = 0.0;
 
     // Game loop
     while (!window.shouldClose())
@@ -95,6 +94,16 @@ namespace engine {
       currentTime     = newTime;
       frameTime       = glm::min(frameTime, 0.1f);
 
+      // Update FPS every second
+      frameCount++;
+      if (auto elapsed = std::chrono::duration<double>(currentTime - lastFpsTime).count(); elapsed >= 1.0)
+      {
+        lastFps     = frameCount / elapsed;
+        frameCount  = 0;
+        lastFpsTime = currentTime;
+        std::cout << YELLOW << "FPS: " << RESET << static_cast<int>(lastFps) << "\r" << std::flush;
+      }
+
       inputSystem.update(frameTime, cameraObject);
       cameraSystem.updatePerspective(camera, cameraObject, renderer.getAspectRatio());
 
@@ -102,22 +111,25 @@ namespace engine {
       {
         int frameIndex = renderer.getFrameIndex();
 
-        FrameInfo frameInfo{
-                .frameIndex          = frameIndex,
-                .frameTime           = frameTime,
-                .commandBuffer       = commandBuffer,
-                .camera              = camera,
-                .globalDescriptorSet = globalDescriptorSets[frameIndex],
-        };
+        FrameInfo frameInfo{.frameIndex          = frameIndex,
+                            .frameTime           = frameTime,
+                            .commandBuffer       = commandBuffer,
+                            .camera              = camera,
+                            .globalDescriptorSet = globalDescriptorSets[frameIndex],
+                            .gameObjects         = gameObjects};
+
+        pointLightSystem.update(frameInfo, ubo);
 
         // update uniform buffer object
-        ubo.projectionView = camera.getProjection() * camera.getView();
+        ubo.projection = camera.getProjection();
+        ubo.view       = camera.getView();
         uboBuffers[frameIndex]->writeToBuffer(&ubo);
         uboBuffers[frameIndex]->flush();
 
         // render the scene
         renderer.beginSwapChainRenderPass(commandBuffer);
-        simpleRenderSystem.renderGameObjects(frameInfo, gameObjects);
+        simpleRenderSystem.render(frameInfo);
+        pointLightSystem.render(frameInfo);
         renderer.endSwapChainRenderPass(commandBuffer);
         renderer.endFrame();
       }
@@ -133,6 +145,22 @@ namespace engine {
       return;
     }
 
+    std::vector<glm::vec3> lightColors{{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f}, {1.f, 0.f, 1.f}, {0.f, 1.f, 1.f}, {1.f, 1.f, 0.f}
+
+    };
+
+    for (size_t i = 0; i < lightColors.size(); i++)
+    {
+      auto pointLight = GameObject::makePointLightObject(0.2f, lightColors[i], 0.2f);
+
+      float angle  = (2.0f * glm::pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size());
+      float radius = 3.0f;
+
+      pointLight.transform.translation = {radius * std::cos(angle), -1.f, radius * std::sin(angle)};
+
+      gameObjects.try_emplace(pointLight.getId(), std::move(pointLight));
+    }
+
     std::vector<std::shared_ptr<Model>> models{
             Model::createModelFromFile(device, "/flat_vase.obj"),
             Model::createModelFromFile(device, "/smooth_vase.obj"),
@@ -142,6 +170,12 @@ namespace engine {
     const float spacing           = 1.0f;
     const int   totalInstances    = static_cast<int>(models.size()) * instancesPerModel;
     const float origin            = 0.5f * static_cast<float>(totalInstances - 1);
+
+    auto floor                  = GameObject::create();
+    floor.model                 = Model::createModelFromFile(device, "/quad.obj");
+    floor.transform.scale       = {4.0f, 1.f, 4.0f};
+    floor.transform.translation = {0.0f, 0.0f, 0.0f};
+    gameObjects.try_emplace(floor.getId(), std::move(floor));
 
     int instanceIndex = 0;
     for (const auto& model : models)
@@ -159,7 +193,7 @@ namespace engine {
 
         vase.transform.scale = {1.f, 1.f, 1.f};
 
-        gameObjects.push_back(std::move(vase));
+        gameObjects.try_emplace(vase.getId(), std::move(vase));
 
         ++instanceIndex;
       }

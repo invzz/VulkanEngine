@@ -16,11 +16,23 @@ layout(location = 3) in vec2 uv;
 // fragColor is an output variable that will be passed to the fragment shader
 layout(location = 0) out vec3 fragColor;
 
-// uniform buffer object for global data
-layout(set = 0, binding = 0) uniform GlobalUbo
+layout(location = 1) out vec3 fragmentWorldPos;
+
+layout(location = 2) out vec3 fragmentNormalWorld;
+
+struct PointLight
 {
-  mat4 projectionViewMatrix;
-  vec3 directionToLight;
+  vec4 position; // w is ignored
+  vec4 color;    // w component can be used for intensity
+};
+
+layout(set = 0, binding = 0) uniform UBO
+{
+  mat4       proj;
+  mat4       view;
+  vec4       ambientLightColor;
+  PointLight pointLights[16];
+  int        numberOfLights;
 }
 ubo;
 
@@ -32,12 +44,17 @@ layout(push_constant) uniform push_t
 }
 push;
 
-const float AMBIENT_LIGHT_INTENSITY = 0.2;
-
 void main()
 {
-  gl_Position            = ubo.projectionViewMatrix * push.modelMatrix * vec4(position, 1.0);
-  vec3  normalWorldSpace = normalize(mat3(push.normalMatrix) * normal);
-  float lightIntensity   = AMBIENT_LIGHT_INTENSITY + max(dot(normalWorldSpace, ubo.directionToLight), 0.0);
-  fragColor              = lightIntensity * color;
+  // transform vertex position to world space
+  vec4 positionWorld = push.modelMatrix * vec4(position, 1.0);
+  gl_Position        = ubo.proj * ubo.view * positionWorld;
+
+  // transform normal to world space
+  vec3 normalWorldSpace = normalize(mat3(push.normalMatrix) * normal);
+
+  // send color to fragment shader for per fragment lighting
+  fragColor           = color;
+  fragmentWorldPos    = vec3(positionWorld);
+  fragmentNormalWorld = normalWorldSpace;
 }

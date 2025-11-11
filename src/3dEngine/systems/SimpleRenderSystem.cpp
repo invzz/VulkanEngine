@@ -1,4 +1,4 @@
-#include "3dEngine/SimpleRenderSystem.hpp"
+#include "3dEngine/systems/SimpleRenderSystem.hpp"
 
 #include "3dEngine/Exceptions.hpp"
 
@@ -68,14 +68,20 @@ namespace engine {
     pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/simple_shader_3d.vert.spv", SHADER_PATH "/simple_shader_3d.frag.spv", pipelineConfig);
   }
 
-  void SimpleRenderSystem::renderGameObjects(FrameInfo& frameInfo, const std::vector<GameObject>& gameObjects)
+  void SimpleRenderSystem::render(FrameInfo& frameInfo)
   {
     pipeline->bind(frameInfo.commandBuffer);
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
-    for (const auto& gameObject : gameObjects)
+    for (const auto& [id, gameObject] : frameInfo.gameObjects)
     {
+      // skip objects without a model
+      if (!gameObject.model)
+      {
+        continue;
+      }
+
       SimplePushConstantData push{};
 
       push.modelMatrix  = gameObject.transform.modelTransform();

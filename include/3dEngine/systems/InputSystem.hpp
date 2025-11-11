@@ -1,10 +1,10 @@
 #pragma once
 
-namespace engine {
+#include "../GameObject.hpp"
+#include "../Keyboard.hpp"
+#include "../Mouse.hpp"
 
-  class GameObject;
-  class Keyboard;
-  class Mouse;
+namespace engine {
 
   class InputSystem
   {

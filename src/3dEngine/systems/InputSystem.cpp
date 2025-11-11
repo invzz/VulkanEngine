@@ -1,4 +1,4 @@
-#include "3dEngine/InputSystem.hpp"
+#include "3dEngine/systems/InputSystem.hpp"
 
 #include "3dEngine/GameObject.hpp"
 #include "3dEngine/Keyboard.hpp"

@@ -2,6 +2,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <memory>
+#include <unordered_map>
 
 #include "Model.hpp"
 
@@ -24,15 +25,23 @@ namespace engine {
     glm::mat3 normalMatrix() const;
   };
 
-  using id_t = unsigned int;
+  struct PointLightComponent
+  {
+    float intensity{1.0f};
+  };
 
   class GameObject
   {
   public:
-    std::shared_ptr<Model> model{};
-    glm::vec3              color{};
-    TransformComponent     transform{};
-    id_t                   id{0};
+    using id_t = unsigned int;
+    using Map  = std::unordered_map<id_t, GameObject>;
+    TransformComponent transform{};
+    glm::vec3          color{};
+    id_t               id{0};
+
+    // Optional pointer components
+    std::shared_ptr<Model>               model{};
+    std::unique_ptr<PointLightComponent> pointLight = nullptr;
 
     static GameObject create()
     {
@@ -49,6 +58,16 @@ namespace engine {
     GameObject& operator=(GameObject&&) noexcept = default;
 
     id_t getId() const { return id; }
+
+    static GameObject makePointLightObject(float intensity = 10.f, const glm::vec3& color = {1.f, 1.f, 1.f}, float radius = 0.1f)
+    {
+      GameObject obj            = GameObject::create();
+      obj.color                 = color;
+      obj.transform.scale.x     = radius;
+      obj.pointLight            = std::make_unique<PointLightComponent>();
+      obj.pointLight->intensity = intensity;
+      return obj;
+    }
 
   private:
     explicit GameObject(id_t objId) : id{objId} {}

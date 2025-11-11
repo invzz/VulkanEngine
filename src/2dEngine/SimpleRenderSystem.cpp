@@ -67,7 +67,7 @@ namespace engine {
     pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/simple_shader.vert.spv", SHADER_PATH "/simple_shader.frag.spv", pipelineConfig);
   }
 
-  void SimpleRenderSystem::renderGameObjects(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects)
+  void SimpleRenderSystem::render(VkCommandBuffer commandBuffer, const std::vector<GameObject>& gameObjects)
   {
     pipeline->bind(commandBuffer);
 

@@ -5,13 +5,13 @@
 #include <memory>
 #include <vector>
 
-#include "Camera.hpp"
-#include "Device.hpp"
-#include "FrameInfo.hpp"
-#include "GameObject.hpp"
-#include "Model.hpp"
-#include "Pipeline.hpp"
-#include "SwapChain.hpp"
+#include "../Camera.hpp"
+#include "../Device.hpp"
+#include "../FrameInfo.hpp"
+#include "../GameObject.hpp"
+#include "../Model.hpp"
+#include "../Pipeline.hpp"
+#include "../SwapChain.hpp"
 
 namespace engine {
 
@@ -25,7 +25,7 @@ namespace engine {
     SimpleRenderSystem(const SimpleRenderSystem&)            = delete;
     SimpleRenderSystem& operator=(const SimpleRenderSystem&) = delete;
 
-    void renderGameObjects(FrameInfo& frameInfo, const std::vector<GameObject>& gameObjects);
+    void render(FrameInfo& frameInfo);
 
   private:
     void                      createPipelineLayout(VkDescriptorSetLayout globalSetLayout);

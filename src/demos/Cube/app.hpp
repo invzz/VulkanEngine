@@ -38,7 +38,7 @@ namespace engine {
     Device   device{window};
     Renderer renderer{window, device};
 
-    std::unique_ptr<DescriptorPool> globalPool;
-    std::vector<GameObject>         gameObjects;
+    std::unique_ptr<DescriptorPool>                  globalPool;
+    std::unordered_map<GameObject::id_t, GameObject> gameObjects;
   };
 } // namespace engine
