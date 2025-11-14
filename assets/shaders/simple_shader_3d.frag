@@ -23,6 +23,7 @@ layout(set = 0, binding = 0) uniform UBO
   mat4       proj;
   mat4       view;
   vec4       ambientLightColor;
+  vec4       cameraPosition;
   PointLight pointLights[16];
   int        numberOfLights;
 }
@@ -31,6 +32,7 @@ ubo;
 void main()
 {
   vec3 normalizedNormal = normalize(fragmentNormalWorld);
+  vec3 viewDirection    = normalize(ubo.cameraPosition.xyz - fragmentWorldPos);
   vec3 ambientLight     = ubo.ambientLightColor.xyz * ubo.ambientLightColor.w;
   vec3 totalLight       = ambientLight;
 
@@ -43,7 +45,11 @@ void main()
     float diffuseFactor      = max(dot(normalizedNormal, normalizedLightDir), 0.0);
     vec3  lightColor         = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w;
 
-    totalLight += lightColor * (attenuation * diffuseFactor);
+    // Specular reflection (Blinn-Phong)
+    vec3  halfVector     = normalize(normalizedLightDir + viewDirection);
+    float specularFactor = pow(max(dot(normalizedNormal, halfVector), 0.0), 32.0);
+
+    totalLight += lightColor * (attenuation * (diffuseFactor + specularFactor));
   }
 
   outColor = vec4(totalLight * fragColor, 1.0);

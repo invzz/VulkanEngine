@@ -28,18 +28,24 @@ namespace engine {
       int lookLeft  = GLFW_KEY_LEFT;
       int lookRight = GLFW_KEY_RIGHT;
 
+      // object selection
+      int selectNext     = GLFW_KEY_Y;
+      int selectPrevious = GLFW_KEY_U;
+      int selectCamera   = GLFW_KEY_C;
+
       // exit key
       int keyExit = GLFW_KEY_ESCAPE;
     };
 
     void moveInPlaneXZ(float deltaTime, GameObject& gameObject) const;
+    bool isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
+
+    KeyMappings mappings{};
 
   private:
-    Window&     windowRef;
-    KeyMappings mappings{};
-    float       moveSpeed = 3.0f; // units per second
-    float       lookSpeed = 1.5f; // radians per second
-    bool        isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
+    Window& windowRef;
+    float   moveSpeed = 3.0f; // units per second
+    float   lookSpeed = 1.5f; // radians per second
   };
 
 } // namespace engine

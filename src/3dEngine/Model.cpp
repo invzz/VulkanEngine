@@ -3,7 +3,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstring>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
@@ -28,17 +30,96 @@ namespace std {
 
 namespace engine {
 
-  Model::Model(Device& device, const Builder& builder) : device{device}
+  // Helper functions for MTL to PBR conversion
+  namespace {
+
+    PBRMaterial mtlToPBR(const glm::vec3& Kd, const glm::vec3& Ks, float Ns, std::string& matName)
+    {
+      // Convert MTL (Phong) material to PBR material
+      // Note: This conversion is heuristic-based. Future improvements:
+      // - Transparency: Use MTL 'd' parameter for alpha/transmission (HeadlightGlass, Glass)
+      // - Clearcoat: Add second specular layer for car paint (roughness ~0.05)
+      // - Anisotropy: For brushed metals or fabric materials
+
+      PBRMaterial pbr;
+
+      // Roughness from Ns
+      Ns              = glm::clamp(Ns, 1.0f, 1000.0f);
+      float roughness = sqrtf(2.0f / (Ns + 2.0f));
+      roughness       = powf(roughness, 0.5f);
+      roughness       = glm::clamp(roughness, 0.0f, 1.0f);
+
+      float specularIntensity = glm::clamp((Ks.r + Ks.g + Ks.b) / 3.0f, 0.0f, 1.0f);
+      float kdLuminance       = glm::dot(Kd, glm::vec3(0.299f, 0.587f, 0.114f));
+
+      // --- Force metals by name
+      std::string nameLower = matName;
+      std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+      bool forceMetal = (nameLower.find("chrome") != std::string::npos || nameLower.find("mirror") != std::string::npos ||
+                         nameLower.find("aluminum") != std::string::npos || nameLower.find("metal") != std::string::npos);
+
+      if (forceMetal || (glm::length(Kd) < 0.05f && specularIntensity > 0.6f))
+      {
+        pbr.metallic = 1.0f;
+        roughness    = glm::min(roughness, 0.02f); // mirror-like
+
+        // Use specular color for metallic tint (gold, copper, chrome with tint)
+        // This preserves colored reflections for metals
+        pbr.albedo = glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f));
+      }
+      else
+      {
+        // Non-obvious metals
+        float maxKs      = glm::max(glm::max(Ks.r, Ks.g), Ks.b);
+        float minKs      = glm::min(glm::min(Ks.r, Ks.g), Ks.b);
+        float tintAmount = glm::clamp((maxKs - minKs) / glm::max(maxKs, 1e-6f), 0.0f, 1.0f);
+
+        float metallic = glm::smoothstep(0.05f, 0.25f, tintAmount);
+        metallic *= glm::smoothstep(0.05f, 0.0f, kdLuminance);
+        pbr.metallic = glm::clamp(metallic, 0.0f, 1.0f);
+
+        // Blend albedo based on metallic value for partial metals
+        pbr.albedo = glm::mix(Kd, glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f)), pbr.metallic);
+      }
+
+      pbr.roughness = roughness;
+      pbr.ao        = 1.0f;
+
+      // --- Detect clearcoat materials (car paint, lacquered surfaces)
+      bool isCarPaint =
+              (nameLower.find("bmw") != std::string::npos || nameLower.find("carshell") != std::string::npos || nameLower.find("paint") != std::string::npos);
+
+      if (isCarPaint && pbr.metallic < 0.5f) // Dielectric paint with clearcoat
+      {
+        pbr.clearcoat          = 1.0f;  // Full clearcoat layer
+        pbr.clearcoatRoughness = 0.05f; // Smooth glossy finish
+      }
+
+      // --- Detect anisotropic materials (brushed metals)
+      bool isBrushedMetal = (nameLower.find("brushed") != std::string::npos || nameLower.find("aluminum") != std::string::npos ||
+                             nameLower.find("steel") != std::string::npos);
+
+      if (isBrushedMetal)
+      {
+        pbr.anisotropic         = 0.8f; // Strong anisotropic effect
+        pbr.anisotropicRotation = 0.0f; // Aligned with tangent
+      }
+
+      return pbr;
+    }
+  } // namespace
+
+  Model::Model(Device& device, const Builder& builder) : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}
   {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
   }
 
-  std::unique_ptr<Model> Model::createModelFromFile(Device& device, const std::string& filepath)
+  std::unique_ptr<Model> Model::createModelFromFile(Device& device, const std::string& filepath, bool flipX, bool flipY, bool flipZ)
   {
     std::cout << "[" << GREEN << "Model" << RESET << "]: Loading model from file: " << filepath << std::endl;
     Builder builder;
-    builder.loadModelFromFile(std::string(MODEL_PATH) + filepath);
+    builder.loadModelFromFile(std::string(MODEL_PATH) + filepath, flipX, flipY, flipZ);
     std::cout << "[" << GREEN << "Model" << RESET << "]: " << filepath << " with " << builder.vertices.size() << " vertices " << std::endl;
     return std::make_unique<Model>(device, builder);
     return nullptr;
@@ -68,6 +149,25 @@ namespace engine {
     else
     {
       vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
+    }
+  }
+
+  void Model::drawSubMesh(VkCommandBuffer commandBuffer, size_t subMeshIndex) const
+  {
+    if (subMeshIndex >= subMeshes_.size())
+    {
+      return;
+    }
+
+    const auto& subMesh = subMeshes_[subMeshIndex];
+
+    if (hasIndexBuffer)
+    {
+      vkCmdDrawIndexed(commandBuffer, subMesh.indexCount, 1, subMesh.indexOffset, 0, 0);
+    }
+    else
+    {
+      vkCmdDraw(commandBuffer, subMesh.indexCount, 1, subMesh.indexOffset, 0);
     }
   }
 
@@ -181,71 +281,159 @@ namespace engine {
     return attributeDescriptions;
   }
 
-  void engine::Model::Builder::loadModelFromFile(const std::string& filepath)
+  void engine::Model::Builder::loadModelFromFile(const std::string& filepath, bool flipX, bool flipY, bool flipZ)
   {
     tinyobj::attrib_t                attrib;
     std::vector<tinyobj::shape_t>    shapes;
-    std::vector<tinyobj::material_t> materials;
+    std::vector<tinyobj::material_t> tinyMaterials;
     std::string                      warn;
+    std::string                      err;
 
-    if (std::string err; !tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filepath.c_str()))
+    // Get the directory path for MTL file
+
+    if (std::string mtlBaseDir = filepath.substr(0, filepath.find_last_of("/\\") + 1);
+        !tinyobj::LoadObj(&attrib, &shapes, &tinyMaterials, &warn, &err, filepath.c_str(), mtlBaseDir.c_str()))
     {
       throw std::runtime_error(warn + err);
     }
+
+#if defined(DEBUG)
+    if (!warn.empty())
+    {
+      std::cout << YELLOW << "[Model] Warning: " << RESET << warn << std::endl;
+    }
+#endif
+
+    // Convert TinyObj materials to our PBR materials
+    materials.clear();
+    for (const auto& mat : tinyMaterials)
+    {
+      MaterialInfo matInfo;
+      matInfo.name = mat.name;
+
+      // Convert TinyObj material to PBR using helper function
+      auto  Kd = glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+      auto  Ks = glm::vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
+      float Ns = mat.shininess;
+
+      matInfo.pbrMaterial = mtlToPBR(Kd, Ks, Ns, matInfo.name);
+      matInfo.materialId  = static_cast<int>(materials.size());
+      materials.push_back(matInfo);
+
+      std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << mat.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << ","
+                << matInfo.pbrMaterial.albedo.g << "," << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic
+                << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << std::endl;
+    }
+
+    // Group indices by material to create sub-meshes
+    std::unordered_map<int, std::vector<uint32_t>> indicesByMaterial;
 
     std::unordered_map<Vertex, uint32_t> uniqueVertices{};
     vertices.clear();
     indices.clear();
 
+    float xMultiplier = flipX ? -1.0f : 1.0f;
+    float yMultiplier = flipY ? -1.0f : 1.0f;
+    float zMultiplier = flipZ ? -1.0f : 1.0f;
+
     for (const auto& shape : shapes)
     {
-      for (const auto& index : shape.mesh.indices)
+      for (size_t f = 0; f < shape.mesh.indices.size() / 3; f++)
       {
-        Vertex vertex{};
+        // Get material ID for this face
+        int materialId = shape.mesh.material_ids[f];
 
-        if (index.vertex_index >= 0)
+        for (size_t v = 0; v < 3; v++)
         {
-          vertex.position = {
-                  attrib.vertices[3 * index.vertex_index + 0],
-                  attrib.vertices[3 * index.vertex_index + 1],
-                  attrib.vertices[3 * index.vertex_index + 2],
-          };
+          const auto& index = shape.mesh.indices[3 * f + v];
+          Vertex      vertex{};
+          vertex.materialId = materialId;
 
-          vertex.color = {
-                  attrib.colors[3 * index.vertex_index + 0],
-                  attrib.colors[3 * index.vertex_index + 1],
-                  attrib.colors[3 * index.vertex_index + 2],
-          };
-        }
+          if (index.vertex_index >= 0)
+          {
+            vertex.position = {
+                    xMultiplier * attrib.vertices[3 * index.vertex_index + 0],
+                    yMultiplier * attrib.vertices[3 * index.vertex_index + 1],
+                    zMultiplier * attrib.vertices[3 * index.vertex_index + 2],
+            };
 
-        else
-        {
-          vertex.color = {1.0f, 1.0f, 1.0f};
-        }
+            if (!attrib.colors.empty())
+            {
+              vertex.color = {
+                      attrib.colors[3 * index.vertex_index + 0],
+                      attrib.colors[3 * index.vertex_index + 1],
+                      attrib.colors[3 * index.vertex_index + 2],
+              };
+            }
+            else
+            {
+              vertex.color = {1.0f, 1.0f, 1.0f};
+            }
+          }
 
-        if (index.normal_index >= 0)
-        {
-          vertex.normal = {
-                  attrib.normals[3 * index.normal_index + 0],
-                  attrib.normals[3 * index.normal_index + 1],
-                  attrib.normals[3 * index.normal_index + 2],
-          };
+          if (index.normal_index >= 0)
+          {
+            vertex.normal = {
+                    xMultiplier * attrib.normals[3 * index.normal_index + 0],
+                    yMultiplier * attrib.normals[3 * index.normal_index + 1],
+                    zMultiplier * attrib.normals[3 * index.normal_index + 2],
+            };
+          }
+
+          if (index.texcoord_index >= 0)
+          {
+            vertex.uv = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    attrib.texcoords[2 * index.texcoord_index + 1],
+            };
+          }
+
+          if (uniqueVertices.count(vertex) == 0)
+          {
+            uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+            vertices.push_back(vertex);
+          }
+
+          uint32_t vertexIndex = uniqueVertices[vertex];
+          indices.push_back(vertexIndex);
+
+          // Group indices by material
+          indicesByMaterial[materialId].push_back(vertexIndex);
         }
-        if (index.texcoord_index >= 0)
-        {
-          vertex.uv = {
-                  attrib.texcoords[2 * index.texcoord_index + 0],
-                  attrib.texcoords[2 * index.texcoord_index + 1], // 1.0f - attrib.texcoords[2 * index.texcoord_index + 1] for flipping
-          };
-        }
-        if (uniqueVertices.count(vertex) == 0)
-        {
-          uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-          vertices.push_back(vertex);
-        }
-        indices.push_back(uniqueVertices[vertex]);
       }
     }
+
+    // Create sub-meshes from grouped indices
+    subMeshes.clear();
+    uint32_t currentOffset = 0;
+
+    for (auto& [matId, matIndices] : indicesByMaterial)
+    {
+      if (!matIndices.empty())
+      {
+        SubMesh subMesh;
+        subMesh.materialId  = matId;
+        subMesh.indexOffset = currentOffset;
+        subMesh.indexCount  = static_cast<uint32_t>(matIndices.size());
+        subMeshes.push_back(subMesh);
+
+        currentOffset += subMesh.indexCount;
+      }
+    }
+
+    // Rebuild indices array grouped by material
+    std::vector<uint32_t> groupedIndices;
+    groupedIndices.reserve(indices.size());
+
+    for (const auto& subMesh : subMeshes)
+    {
+      const auto& matIndices = indicesByMaterial[subMesh.materialId];
+      groupedIndices.insert(groupedIndices.end(), matIndices.begin(), matIndices.end());
+    }
+
+    indices = std::move(groupedIndices);
+
+    std::cout << GREEN << "[Model] Loaded " << materials.size() << " materials, " << subMeshes.size() << " sub-meshes" << RESET << std::endl;
   }
 
 } // namespace engine

@@ -20,6 +20,7 @@ namespace engine {
     glm::mat4  projection{1.0f};
     glm::mat4  view{1.0f};
     glm::vec4  lightAmbient{1.f, 1.0f, 1.0f, .02f};
+    glm::vec4  cameraPosition;
     PointLight pointLights[maxLightCount];
     int        lightCount = 0;
   };
@@ -32,6 +33,8 @@ namespace engine {
     Camera&          camera;
     VkDescriptorSet  globalDescriptorSet;
     GameObject::Map& gameObjects;
+    GameObject::id_t selectedObjectId; // ID of currently selected object (0 = camera)
+    GameObject*      selectedObject;   // Pointer to selected object (nullptr = camera)
   };
 
 } // namespace engine

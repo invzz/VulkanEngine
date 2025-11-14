@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Camera.hpp"
+#include "../FrameInfo.hpp"
 #include "../GameObject.hpp"
 
 namespace engine {
@@ -9,6 +10,8 @@ namespace engine {
   {
   public:
     CameraSystem() = default;
+
+    void update(FrameInfo& frameInfo, const GameObject& cameraObject, float aspectRatio) const;
 
     void updatePerspective(Camera& camera, const GameObject& cameraObject, float aspectRatio) const;
 

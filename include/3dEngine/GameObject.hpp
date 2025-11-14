@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "Model.hpp"
+#include "PBRMaterial.hpp"
 
 namespace engine {
 
@@ -35,13 +36,15 @@ namespace engine {
   public:
     using id_t = unsigned int;
     using Map  = std::unordered_map<id_t, GameObject>;
+
     TransformComponent transform{};
     glm::vec3          color{};
     id_t               id{0};
 
     // Optional pointer components
     std::shared_ptr<Model>               model{};
-    std::unique_ptr<PointLightComponent> pointLight = nullptr;
+    std::unique_ptr<PointLightComponent> pointLight  = nullptr;
+    std::unique_ptr<PBRMaterial>         pbrMaterial = nullptr;
 
     static GameObject create()
     {
@@ -66,6 +69,19 @@ namespace engine {
       obj.transform.scale.x     = radius;
       obj.pointLight            = std::make_unique<PointLightComponent>();
       obj.pointLight->intensity = intensity;
+      return obj;
+    }
+
+    static GameObject
+    makePBRObject(std::shared_ptr<Model> model, const glm::vec3& albedo = {1.0f, 1.0f, 1.0f}, float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f)
+    {
+      GameObject obj             = GameObject::create();
+      obj.model                  = model;
+      obj.pbrMaterial            = std::make_unique<PBRMaterial>();
+      obj.pbrMaterial->albedo    = albedo;
+      obj.pbrMaterial->metallic  = metallic;
+      obj.pbrMaterial->roughness = roughness;
+      obj.pbrMaterial->ao        = ao;
       return obj;
     }
 

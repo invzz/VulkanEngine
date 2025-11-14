@@ -32,13 +32,10 @@ namespace engine {
     void run();
 
   private:
-    void loadGameObjects();
-
     Window   window{width(), height(), "Engine App"};
     Device   device{window};
     Renderer renderer{window, device};
 
-    std::unique_ptr<DescriptorPool>                  globalPool;
-    std::unordered_map<GameObject::id_t, GameObject> gameObjects;
+    GameObject::Map gameObjects;
   };
 } // namespace engine

@@ -4,9 +4,15 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "3dEngine/Camera.hpp"
+#include "3dEngine/FrameInfo.hpp"
 #include "3dEngine/GameObject.hpp"
 
 namespace engine {
+
+  void CameraSystem::update(FrameInfo& frameInfo, const GameObject& cameraObject, float aspectRatio) const
+  {
+    updatePerspective(frameInfo.camera, cameraObject, aspectRatio);
+  }
 
   void CameraSystem::updatePerspective(Camera& camera, const GameObject& cameraObject, float aspectRatio) const
   {

@@ -79,7 +79,7 @@ namespace engine {
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
     // somewhat inefficient to loop over all game objects and check for point light components
-    for (auto& [id, obj] : frameInfo.gameObjects)
+    for (const auto& [id, obj] : frameInfo.gameObjects)
     {
       if (!obj.pointLight) continue;
 
@@ -101,10 +101,13 @@ namespace engine {
 
   void PointLightSystem::update(FrameInfo& frameInfo, GlobalUbo& ubo) const
   {
-    ubo.lightCount = 0;
+    ubo.lightCount   = 0;
+    auto rotateLight = glm::rotate(glm::mat4(1.f), frameInfo.frameTime, glm::vec3(0.f, -1.f, 0.f));
     for (auto& [id, obj] : frameInfo.gameObjects)
     {
+      assert(ubo.lightCount < maxLightCount && "Exceeded maximum point light count in scene!");
       if (!obj.pointLight) continue;
+      obj.transform.translation                = glm::vec3(rotateLight * glm::vec4{obj.transform.translation, 1.f});
       ubo.pointLights[ubo.lightCount].position = glm::vec4(obj.transform.translation, 1.f);
       ubo.pointLights[ubo.lightCount].color    = glm::vec4(obj.color, obj.pointLight->intensity);
       ubo.lightCount++;

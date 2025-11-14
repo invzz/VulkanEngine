@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../FrameInfo.hpp"
 #include "../GameObject.hpp"
 #include "../Keyboard.hpp"
 #include "../Mouse.hpp"
@@ -11,7 +12,7 @@ namespace engine {
   public:
     InputSystem(Keyboard& keyboard, Mouse& mouse);
 
-    void update(float deltaTime, GameObject& cameraObject);
+    void update(FrameInfo& frameInfo, GameObject& cameraObject);
 
   private:
     Keyboard& keyboard_;

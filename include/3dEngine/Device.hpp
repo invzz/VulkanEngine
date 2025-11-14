@@ -63,6 +63,8 @@ namespace engine {
 
     const VkPhysicalDeviceProperties& getProperties() const { return properties; }
 
+    VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
+
   private:
     bool                     checkValidationLayerSupport() const;
     std::vector<const char*> getRequiredExtensions() const;
