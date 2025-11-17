@@ -11,12 +11,15 @@ namespace engine {
     static void loadScene(Device& device, GameObject::Map& gameObjects);
 
   private:
+    static void createFromFile(Device& device, GameObject::Map& gameObjects, const std::string& modelPath);
     static void createApple(Device& device, GameObject::Map& gameObjects);
     static void createSpaceShip(Device& device, GameObject::Map& gameObjects);
     static void createLights(GameObject::Map& gameObjects, float radius = 2.0f);
     static void createFloor(Device& device, GameObject::Map& gameObjects);
     static void createDragonGrid(Device& device, GameObject::Map& gameObjects);
     static void createBmw(Device& device, GameObject::Map& gameObjects);
+    static void createCylinderEngine(Device& device, GameObject::Map& gameObjects);
+    static void createAnimatedCube(Device& device, GameObject::Map& gameObjects);
   };
 
 } // namespace engine

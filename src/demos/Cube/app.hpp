@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include "3dEngine/AnimationController.hpp"
 #include "3dEngine/Descriptors.hpp"
 #include "3dEngine/Device.hpp"
 #include "3dEngine/GameObject.hpp"

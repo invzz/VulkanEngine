@@ -9,7 +9,7 @@ Ni 1.45
 d 1.000000
 illum 2
 map_Kd 3DApple002_SQ-4K-JPG_Color.jpg
-map_bump -bm 1 3DApple002_SQ-4K-JPG_NormalGL.jpg
+map_bump -bm 1 3DApple002_SQ-4K-JPG_NormalDX.jpg
 map_Ka 3DApple002_SQ-4K-JPG_AmbientOcclusion.jpg
 map_Ns 3DApple002_SQ-4K-JPG_Roughness.jpg
 

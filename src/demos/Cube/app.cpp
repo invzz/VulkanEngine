@@ -8,6 +8,7 @@
 #include <chrono>
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <iostream>
 
 #include "3dEngine/Camera.hpp"
@@ -109,6 +110,31 @@ namespace engine {
         objectSelectionSystem.update(frameInfo);
         inputSystem.update(frameInfo, cameraObject);
         cameraSystem.update(frameInfo, cameraObject, renderer.getAspectRatio());
+
+        // Update animations
+        for (auto& [id, obj] : gameObjects)
+        {
+          if (obj.animationController)
+          {
+            obj.animationController->update(frameTime);
+
+            // Apply animation to GameObject transform
+            // For simple single-node animations, get the root node's animated transform
+            if (obj.model && !obj.model->getNodes().empty())
+            {
+              const auto& nodes = obj.model->getNodes();
+              // Find the first animated node (usually node 0 for simple animations)
+              if (!nodes.empty())
+              {
+                const auto& node = nodes[0];
+                // Apply the animated TRS to the GameObject
+                obj.transform.translation = node.translation;
+                obj.transform.rotation    = glm::eulerAngles(node.rotation);
+                obj.transform.scale       = node.scale;
+              }
+            }
+          }
+        }
 
         // Persist selection state
         selectedObjectId = frameInfo.selectedObjectId;

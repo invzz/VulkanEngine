@@ -9,6 +9,8 @@
 
 namespace engine {
 
+  class AnimationController; // Forward declaration
+
   struct TransformComponent
   {
     glm::vec3 translation{};           // position offset
@@ -43,8 +45,9 @@ namespace engine {
 
     // Optional pointer components
     std::shared_ptr<Model>               model{};
-    std::unique_ptr<PointLightComponent> pointLight  = nullptr;
-    std::unique_ptr<PBRMaterial>         pbrMaterial = nullptr;
+    std::unique_ptr<PointLightComponent> pointLight          = nullptr;
+    std::unique_ptr<PBRMaterial>         pbrMaterial         = nullptr;
+    std::unique_ptr<AnimationController> animationController = nullptr;
 
     static GameObject create()
     {

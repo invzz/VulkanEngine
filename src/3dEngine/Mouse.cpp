@@ -1,5 +1,7 @@
 #include "3dEngine/Mouse.hpp"
 
+#include "3dEngine/AnimationController.hpp"
+
 namespace engine {
 
   std::pair<double, double> Mouse::getCursorPosition() const

@@ -1,5 +1,7 @@
 #include "3dEngine/Keyboard.hpp"
 
+#include "3dEngine/AnimationController.hpp"
+
 namespace engine {
 
   // namespace engine

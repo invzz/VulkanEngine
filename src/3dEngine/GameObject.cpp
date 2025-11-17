@@ -1,5 +1,7 @@
 #include "3dEngine/GameObject.hpp"
 
+#include "3dEngine/AnimationController.hpp"
+
 namespace engine {
   glm::mat4 TransformComponent::modelTransform() const
   {

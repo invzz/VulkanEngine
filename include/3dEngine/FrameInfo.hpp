@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include "AnimationController.hpp"
 #include "Camera.hpp"
 #include "GameObject.hpp"
 

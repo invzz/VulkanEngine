@@ -2,6 +2,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "3dEngine/AnimationController.hpp"
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Texture.hpp"
 
@@ -16,27 +17,67 @@ namespace engine {
 
     createLights(gameObjects);
     //  createFloor(device, gameObjects);
-    createApple(device, gameObjects);
+    // createApple(device, gameObjects);
+    // createCylinderEngine(device, gameObjects);
+    createAnimatedCube(device, gameObjects);
+  }
+
+  void SceneLoader::createFromFile(Device& device, GameObject::Map& gameObjects, const std::string& modelPath)
+  {
+    if (!gameObjects.empty())
+    {
+      return;
+    }
+
+    auto modelPtr               = Model::createModelFromFile(device, modelPath, false, true, true);
+    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    model.transform.scale       = {1.0f, 1.f, 1.0f};
+    model.transform.translation = {0.0f, 0.0f, 0.0f};
+    gameObjects.try_emplace(model.getId(), std::move(model));
   }
 
   void SceneLoader::createApple(Device& device, GameObject::Map& gameObjects)
   {
-    auto model                  = GameObject::makePBRObject(Model::createModelFromFile(device, "/3DApple002_SQ-4K-JPG.obj", false, true, true));
+    auto modelPtr               = Model::createModelFromFile(device, "/3DApple002_SQ-4K-JPG.obj", false, true, true);
+    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
     model.transform.scale       = {5.0f, 5.f, 5.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 
-    // Load asphalt textures with correct formats:
+    // Load textures from MTL file material definitions
     // - BaseColor: sRGB (true) - color texture needs gamma correction
     // - Normal/Roughness/AO: Linear (false) - data textures, no gamma correction
     // - Normal map is DirectX format (Y-down), shader flips Y to convert to OpenGL/Vulkan convention (Y-up)
 
-    auto textureName = "3DApple002_SQ-4K-JPG";
-    auto path        = std::string(TEXTURE_PATH) + "/" + textureName + "/" + textureName + "_";
+    const auto& materials = model.model->getMaterials();
+    if (!materials.empty())
+    {
+      const auto& mat = materials[0];
 
-    model.pbrMaterial->albedoMap    = std::make_shared<Texture>(device, path + "Color.jpg", true);
-    model.pbrMaterial->normalMap    = std::make_shared<Texture>(device, path + "NormalDX.jpg", false);
-    model.pbrMaterial->roughnessMap = std::make_shared<Texture>(device, path + "Roughness.jpg", false);
-    model.pbrMaterial->uvScale      = 1.0f; // Tile the texture 16 times
+      // Build base path for textures (they're relative to the model file location)
+      std::string basePath = std::string(TEXTURE_PATH) + "/3DApple002_SQ-4K-JPG/";
+
+      if (!mat.diffuseTexPath.empty())
+      {
+        model.pbrMaterial->albedoMap = std::make_shared<Texture>(device, basePath + mat.diffuseTexPath, true);
+      }
+
+      if (!mat.normalTexPath.empty())
+      {
+        model.pbrMaterial->normalMap = std::make_shared<Texture>(device, basePath + mat.normalTexPath, false);
+      }
+
+      if (!mat.roughnessTexPath.empty())
+      {
+        model.pbrMaterial->roughnessMap = std::make_shared<Texture>(device, basePath + mat.roughnessTexPath, false);
+      }
+
+      if (!mat.aoTexPath.empty())
+      {
+        model.pbrMaterial->aoMap = std::make_shared<Texture>(device, basePath + mat.aoTexPath, false);
+      }
+    }
+
+    model.pbrMaterial->uvScale = 1.0f;
     gameObjects.try_emplace(model.getId(), std::move(model));
   }
 
@@ -59,7 +100,7 @@ namespace engine {
 
     for (size_t i = 0; i < lightColors.size(); i++)
     {
-      auto pointLight  = GameObject::makePointLightObject(0.5f, lightColors[i], 0.05f);
+      auto pointLight  = GameObject::makePointLightObject(1.0f, lightColors[i], 0.05f);
       pointLight.color = lightColors[i];
 
       auto rotateLight =
@@ -141,6 +182,83 @@ namespace engine {
         gameObjects.try_emplace(dragonObj.getId(), std::move(dragonObj));
       }
     }
+  }
+
+  void SceneLoader::createCylinderEngine(Device& device, GameObject::Map& gameObjects)
+  {
+    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/StainedGlassLamp/glTF/StainedGlassLamp.gltf", false, true, true);
+    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    model.transform.scale       = {1.0f, 1.0f, 1.0f};
+    model.transform.translation = {0.0f, 0.0f, 0.0f};
+
+    // Load textures for all materials in the glTF model
+    auto& materials = model.model->getMaterials();
+    for (auto& mat : materials)
+    {
+      if (!mat.diffuseTexPath.empty())
+      {
+        mat.pbrMaterial.albedoMap = std::make_shared<Texture>(device, mat.diffuseTexPath, true);
+      }
+
+      if (!mat.normalTexPath.empty())
+      {
+        mat.pbrMaterial.normalMap = std::make_shared<Texture>(device, mat.normalTexPath, false);
+      }
+
+      if (!mat.roughnessTexPath.empty())
+      {
+        mat.pbrMaterial.roughnessMap = std::make_shared<Texture>(device, mat.roughnessTexPath, false);
+      }
+
+      if (!mat.aoTexPath.empty())
+      {
+        mat.pbrMaterial.aoMap = std::make_shared<Texture>(device, mat.aoTexPath, false);
+      }
+    }
+
+    gameObjects.try_emplace(model.getId(), std::move(model));
+  }
+
+  void SceneLoader::createAnimatedCube(Device& device, GameObject::Map& gameObjects)
+  {
+    // AnimatedCube - uses rotation+scale animation (works)
+    // AnimatedTriangle - uses rotation animation (works)
+    // AnimatedMorphCube/Sphere - use morph targets (not yet supported)
+    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/AnimatedTriangle/glTF/AnimatedTriangle.gltf", false, true, true);
+    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    model.transform.scale       = {1.0f, 1.0f, 1.0f};
+    model.transform.translation = {0.0f, 0.0f, 0.0f};
+
+    // Load textures for all materials if present
+    auto& materials = model.model->getMaterials();
+    for (auto& mat : materials)
+    {
+      if (!mat.diffuseTexPath.empty())
+      {
+        mat.pbrMaterial.albedoMap = std::make_shared<Texture>(device, mat.diffuseTexPath, true);
+      }
+      if (!mat.normalTexPath.empty())
+      {
+        mat.pbrMaterial.normalMap = std::make_shared<Texture>(device, mat.normalTexPath, false);
+      }
+      if (!mat.roughnessTexPath.empty())
+      {
+        mat.pbrMaterial.roughnessMap = std::make_shared<Texture>(device, mat.roughnessTexPath, false);
+      }
+      if (!mat.aoTexPath.empty())
+      {
+        mat.pbrMaterial.aoMap = std::make_shared<Texture>(device, mat.aoTexPath, false);
+      }
+    }
+
+    // Setup animation if available
+    if (model.model->hasAnimations())
+    {
+      model.animationController = std::make_unique<AnimationController>(model.model);
+      model.animationController->play(0, true); // Play first animation in loop
+    }
+
+    gameObjects.try_emplace(model.getId(), std::move(model));
   }
 
 } // namespace engine
