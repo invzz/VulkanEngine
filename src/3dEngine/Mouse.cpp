@@ -14,6 +14,18 @@ namespace engine {
 
   void Mouse::lookAround(float deltaTime, GameObject& gameObject)
   {
+    // If cursor is manually shown (ESC pressed), don't do camera control
+    if (window.isCursorVisible())
+    {
+      // User wants cursor visible - unlock our internal state if needed
+      if (cursorLocked_)
+      {
+        unlockCursor();
+      }
+      return;
+    }
+
+    // Auto-lock behavior when window is focused
     if (!window.isFocused())
     {
       if (cursorLocked_)

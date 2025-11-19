@@ -182,6 +182,13 @@ namespace engine {
     builder.materials.clear();
     builder.subMeshes.clear();
 
+    // Track vertex offsets and counts for each mesh primitive (for morph targets)
+    // Key: "meshIndex_primitiveIndex", Value: vertex offset/count in builder.vertices
+    std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
+    std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
+    // Map from builder vertex index to original glTF position index (for morph targets)
+    std::unordered_map<uint32_t, uint32_t> vertexToPositionIndex;
+
     // Load materials first
     for (size_t i = 0; i < gltfModel.materials.size(); i++)
     {
@@ -276,13 +283,21 @@ namespace engine {
       // Process mesh if present
       if (node.mesh >= 0)
       {
-        const tinygltf::Mesh& mesh = gltfModel.meshes[node.mesh];
+        const tinygltf::Mesh& mesh      = gltfModel.meshes[node.mesh];
+        int                   meshIndex = node.mesh;
 
-        for (const auto& primitive : mesh.primitives)
+        for (size_t primIdx = 0; primIdx < mesh.primitives.size(); primIdx++)
         {
-          int materialId = primitive.material;
+          const auto& primitive = mesh.primitives[primIdx];
 
-          // Get accessors for vertex attributes
+          // Record the starting vertex offset for this primitive (for morph targets)
+          uint32_t    primitiveVertexOffset = static_cast<uint32_t>(builder.vertices.size());
+          std::string key                   = std::to_string(meshIndex) + "_" + std::to_string(primIdx);
+          primitiveVertexOffsets[key]       = primitiveVertexOffset;
+          // Check if this primitive has morph targets - if so, disable deduplication
+          bool hasMorphTargets = !primitive.targets.empty();
+
+          int          materialId    = primitive.material; // Get accessors for vertex attributes
           const auto&  posAccessor   = gltfModel.accessors[primitive.attributes.at("POSITION")];
           const auto&  posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
           const auto&  posBuffer     = gltfModel.buffers[posBufferView.buffer];
@@ -406,17 +421,37 @@ namespace engine {
             // Color (default to white)
             vertex.color = {1.0f, 1.0f, 1.0f};
 
-            // Add to vertex buffer with deduplication
-            if (uniqueVertices.count(vertex) == 0)
+            // Add to vertex buffer (disable deduplication for morph targets)
+            if (hasMorphTargets)
             {
-              uniqueVertices[vertex] = static_cast<uint32_t>(builder.vertices.size());
+              // No deduplication - store mapping from vertex index to original glTF position index
+              uint32_t vertexIdx = static_cast<uint32_t>(builder.vertices.size());
+              builder.indices.push_back(vertexIdx);
               builder.vertices.push_back(vertex);
-            }
+              indicesByMaterial[materialId].push_back(vertexIdx);
 
-            uint32_t vertexIndex = uniqueVertices[vertex];
-            builder.indices.push_back(vertexIndex);
-            indicesByMaterial[materialId].push_back(vertexIndex);
+              // Store mapping: builder vertex index -> original glTF position index
+              vertexToPositionIndex[vertexIdx] = index;
+            }
+            else
+            {
+              // Normal deduplication for non-morph meshes
+              if (uniqueVertices.count(vertex) == 0)
+              {
+                uniqueVertices[vertex] = static_cast<uint32_t>(builder.vertices.size());
+                builder.vertices.push_back(vertex);
+              }
+
+              uint32_t vertexIndex = uniqueVertices[vertex];
+              builder.indices.push_back(vertexIndex);
+              indicesByMaterial[materialId].push_back(vertexIndex);
+            }
           }
+
+          // Store the actual vertex count for this primitive (for morph targets)
+          uint32_t primitiveVertexCount = static_cast<uint32_t>(builder.vertices.size()) - primitiveVertexOffset;
+          primitiveVertexCounts[key]    = primitiveVertexCount;
+          std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx << " added " << primitiveVertexCount << " vertices" << std::endl;
         }
       }
 
@@ -501,6 +536,117 @@ namespace engine {
       {
         node.children.push_back(childIdx);
       }
+
+      // Load morph target weights if present
+      if (!gltfNode.weights.empty())
+      {
+        node.morphWeights.resize(gltfNode.weights.size());
+        for (size_t w = 0; w < gltfNode.weights.size(); w++)
+        {
+          node.morphWeights[w] = static_cast<float>(gltfNode.weights[w]);
+        }
+      }
+    }
+
+    // Load morph targets from meshes
+    for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++)
+    {
+      const auto& gltfMesh = gltfModel.meshes[meshIdx];
+
+      for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++)
+      {
+        const auto& primitive = gltfMesh.primitives[primIdx];
+
+        if (primitive.targets.empty())
+        {
+          continue; // No morph targets
+        }
+
+        Model::MorphTargetSet morphSet;
+
+        // Get the vertex offset and count for this primitive
+        std::string key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
+        std::cout << "[GLTFImporter] Looking up morph target key: " << key << std::endl;
+        if (primitiveVertexOffsets.find(key) != primitiveVertexOffsets.end())
+        {
+          morphSet.vertexOffset = primitiveVertexOffsets[key];
+          morphSet.vertexCount  = primitiveVertexCounts[key]; // Use actual vertex count
+
+          // Store position index mapping for morph targets
+          morphSet.positionIndices.resize(morphSet.vertexCount);
+          for (uint32_t i = 0; i < morphSet.vertexCount; i++)
+          {
+            uint32_t vertexIdx          = morphSet.vertexOffset + i;
+            morphSet.positionIndices[i] = vertexToPositionIndex[vertexIdx];
+          }
+
+          std::cout << "[GLTFImporter] Found vertex offset: " << morphSet.vertexOffset << ", count: " << morphSet.vertexCount << std::endl;
+        }
+        else
+        {
+          morphSet.vertexOffset = 0;
+          morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
+          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << std::endl;
+        }
+
+        // Initialize weights from mesh or node
+        if (!gltfMesh.weights.empty())
+        {
+          morphSet.weights.resize(gltfMesh.weights.size());
+          for (size_t w = 0; w < gltfMesh.weights.size(); w++)
+          {
+            morphSet.weights[w] = static_cast<float>(gltfMesh.weights[w]);
+          }
+        }
+        else
+        {
+          morphSet.weights.resize(primitive.targets.size(), 0.0f);
+        }
+
+        // Load each morph target
+        for (const auto& target : primitive.targets)
+        {
+          Model::MorphTarget morphTarget;
+
+          // Load position deltas
+          if (target.find("POSITION") != target.end())
+          {
+            const auto&  posAccessor   = gltfModel.accessors[target.at("POSITION")];
+            const auto&  posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
+            const auto&  posBuffer     = gltfModel.buffers[posBufferView.buffer];
+            const float* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
+
+            morphTarget.positionDeltas.resize(posAccessor.count);
+            for (size_t i = 0; i < posAccessor.count; i++)
+            {
+              morphTarget.positionDeltas[i] = glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
+            }
+          }
+
+          // Load normal deltas
+          if (target.find("NORMAL") != target.end())
+          {
+            const auto&  normAccessor   = gltfModel.accessors[target.at("NORMAL")];
+            const auto&  normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
+            const auto&  normBuffer     = gltfModel.buffers[normBufferView.buffer];
+            const float* normals        = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
+
+            morphTarget.normalDeltas.resize(normAccessor.count);
+            for (size_t i = 0; i < normAccessor.count; i++)
+            {
+              morphTarget.normalDeltas[i] = glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
+            }
+          }
+
+          morphSet.targets.push_back(morphTarget);
+        }
+
+        if (!morphSet.targets.empty())
+        {
+          builder.morphTargetSets.push_back(morphSet);
+          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << std::endl;
+        }
+      }
     }
 
     // Load animations
@@ -555,6 +701,22 @@ namespace engine {
             sampler.rotations[i] = glm::quat(outputs[i * 4 + 3], outputs[i * 4 + 0], outputs[i * 4 + 1], outputs[i * 4 + 2]);
           }
         }
+        else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR)
+        {
+          // Morph target weights - multiple scalars per keyframe
+          // Count weights per keyframe by dividing total count by time count
+          size_t weightsPerFrame = outputAccessor.count / timeAccessor.count;
+          sampler.morphWeights.resize(timeAccessor.count);
+
+          for (size_t i = 0; i < timeAccessor.count; i++)
+          {
+            sampler.morphWeights[i].resize(weightsPerFrame);
+            for (size_t w = 0; w < weightsPerFrame; w++)
+            {
+              sampler.morphWeights[i][w] = outputs[i * weightsPerFrame + w];
+            }
+          }
+        }
 
         // Interpolation type
         if (gltfSampler.interpolation == "LINEAR")
@@ -580,13 +742,14 @@ namespace engine {
           channel.path = Model::AnimationChannel::ROTATION;
         else if (gltfChannel.target_path == "scale")
           channel.path = Model::AnimationChannel::SCALE;
+        else if (gltfChannel.target_path == "weights")
+        {
+          channel.path = Model::AnimationChannel::WEIGHTS;
+          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << std::endl;
+        }
         else
         {
-          // Skip unsupported paths (weights/morph targets, etc.)
-          if (gltfChannel.target_path == "weights")
-          {
-            std::cout << YELLOW << "[GLTFImporter] Warning: Morph target animations (weights) not yet supported, skipping channel" << RESET << std::endl;
-          }
+          // Skip unsupported paths
           continue;
         }
 

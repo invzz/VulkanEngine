@@ -64,11 +64,12 @@ namespace engine {
         CUBICSPLINE
       };
 
-      std::vector<float>     times;        // Keyframe timestamps
-      std::vector<glm::vec3> translations; // For translation channels
-      std::vector<glm::quat> rotations;    // For rotation channels
-      std::vector<glm::vec3> scales;       // For scale channels
-      Interpolation          interpolation = LINEAR;
+      std::vector<float>              times;        // Keyframe timestamps
+      std::vector<glm::vec3>          translations; // For translation channels
+      std::vector<glm::quat>          rotations;    // For rotation channels
+      std::vector<glm::vec3>          scales;       // For scale channels
+      std::vector<std::vector<float>> morphWeights; // For morph target weight channels
+      Interpolation                   interpolation = LINEAR;
     };
 
     struct AnimationChannel
@@ -77,7 +78,8 @@ namespace engine {
       {
         TRANSLATION,
         ROTATION,
-        SCALE
+        SCALE,
+        WEIGHTS // Morph target weights
       };
 
       int        targetNode; // Index into the node array
@@ -95,13 +97,14 @@ namespace engine {
 
     struct Node
     {
-      std::string      name;
-      glm::vec3        translation = glm::vec3(0.0f);
-      glm::quat        rotation    = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-      glm::vec3        scale       = glm::vec3(1.0f);
-      glm::mat4        matrix      = glm::mat4(1.0f);
-      std::vector<int> children;
-      int              mesh = -1;
+      std::string        name;
+      glm::vec3          translation = glm::vec3(0.0f);
+      glm::quat          rotation    = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+      glm::vec3          scale       = glm::vec3(1.0f);
+      glm::mat4          matrix      = glm::mat4(1.0f);
+      std::vector<int>   children;
+      int                mesh = -1;
+      std::vector<float> morphWeights; // Current morph target weights
 
       glm::mat4 getLocalTransform() const
       {
@@ -109,14 +112,32 @@ namespace engine {
       }
     };
 
+    // Morph target (blend shape) data
+    struct MorphTarget
+    {
+      std::vector<glm::vec3> positionDeltas; // Position offsets from base mesh
+      std::vector<glm::vec3> normalDeltas;   // Normal offsets from base mesh
+      std::string            name;
+    };
+
+    struct MorphTargetSet
+    {
+      std::vector<MorphTarget> targets;         // All morph targets for this mesh
+      std::vector<float>       weights;         // Current blend weights [0-1]
+      uint32_t                 vertexOffset;    // Offset into vertex buffer
+      uint32_t                 vertexCount;     // Number of vertices affected
+      std::vector<uint32_t>    positionIndices; // Mapping from vertex to original glTF position index
+    };
+
     struct Builder
     {
-      std::vector<Vertex>       vertices{};
-      std::vector<uint32_t>     indices{};
-      std::vector<MaterialInfo> materials{};  // Materials loaded from MTL file
-      std::vector<SubMesh>      subMeshes{};  // Sub-meshes by material
-      std::vector<Animation>    animations{}; // Animations from glTF
-      std::vector<Node>         nodes{};      // Scene graph nodes
+      std::vector<Vertex>         vertices{};
+      std::vector<uint32_t>       indices{};
+      std::vector<MaterialInfo>   materials{};       // Materials loaded from MTL file
+      std::vector<SubMesh>        subMeshes{};       // Sub-meshes by material
+      std::vector<Animation>      animations{};      // Animations from glTF
+      std::vector<Node>           nodes{};           // Scene graph nodes
+      std::vector<MorphTargetSet> morphTargetSets{}; // Morph targets per mesh
 
       void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
       void loadModelFromGLTF(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
@@ -154,6 +175,15 @@ namespace engine {
     const std::vector<Node>&      getNodes() const { return nodes_; }
     std::vector<Node>&            getNodes() { return nodes_; }
 
+    // Morph target support
+    bool                               hasMorphTargets() const { return !morphTargetSets_.empty(); }
+    const std::vector<MorphTargetSet>& getMorphTargetSets() const { return morphTargetSets_; }
+    std::vector<MorphTargetSet>&       getMorphTargetSets() { return morphTargetSets_; }
+
+    // Buffer access for compute operations
+    VkBuffer getVertexBuffer() const { return vertexBuffer->getBuffer(); }
+    void     bindAlternateVertexBuffer(VkCommandBuffer commandBuffer, VkBuffer vertexBuffer) const;
+
   private:
     Device& device;
 
@@ -165,10 +195,11 @@ namespace engine {
     std::unique_ptr<Buffer> indexBuffer;
     uint32_t                indexCount = 0;
 
-    std::vector<MaterialInfo> materials_;  // Materials from MTL file
-    std::vector<SubMesh>      subMeshes_;  // Sub-meshes by material
-    std::vector<Animation>    animations_; // Animations from glTF
-    std::vector<Node>         nodes_;      // Scene graph nodes
+    std::vector<MaterialInfo>   materials_;       // Materials from MTL file
+    std::vector<SubMesh>        subMeshes_;       // Sub-meshes by material
+    std::vector<Animation>      animations_;      // Animations from glTF
+    std::vector<Node>           nodes_;           // Scene graph nodes
+    std::vector<MorphTargetSet> morphTargetSets_; // Morph targets
 
     void createVertexBuffers(const std::vector<Vertex>& vertices);
     void createIndexBuffers(const std::vector<uint32_t>& indices);

@@ -108,4 +108,44 @@ namespace engine {
     inverseViewMatrix[3][1] = position.y;
     inverseViewMatrix[3][2] = position.z;
   }
+
+  void Camera::updateFrustum()
+  {
+    // Extract frustum planes from view-projection matrix
+    glm::mat4 vp = projectionMatrix * viewMatrix;
+
+    // Left plane
+    frustum.planes[0] = glm::vec4(vp[0][3] + vp[0][0], vp[1][3] + vp[1][0], vp[2][3] + vp[2][0], vp[3][3] + vp[3][0]);
+    // Right plane
+    frustum.planes[1] = glm::vec4(vp[0][3] - vp[0][0], vp[1][3] - vp[1][0], vp[2][3] - vp[2][0], vp[3][3] - vp[3][0]);
+    // Bottom plane
+    frustum.planes[2] = glm::vec4(vp[0][3] + vp[0][1], vp[1][3] + vp[1][1], vp[2][3] + vp[2][1], vp[3][3] + vp[3][1]);
+    // Top plane
+    frustum.planes[3] = glm::vec4(vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1]);
+    // Near plane
+    frustum.planes[4] = glm::vec4(vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2]);
+    // Far plane
+    frustum.planes[5] = glm::vec4(vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2]);
+
+    // Normalize planes
+    for (int i = 0; i < 6; i++)
+    {
+      float length = glm::length(glm::vec3(frustum.planes[i]));
+      frustum.planes[i] /= length;
+    }
+  }
+
+  bool Camera::isInFrustum(const glm::vec3& center, float radius) const
+  {
+    // Test sphere against all 6 frustum planes
+    for (int i = 0; i < 6; i++)
+    {
+      float distance = glm::dot(glm::vec3(frustum.planes[i]), center) + frustum.planes[i].w;
+      if (distance < -radius)
+      {
+        return false; // Sphere is completely outside this plane
+      }
+    }
+    return true; // Sphere intersects or is inside frustum
+  }
 } // namespace engine

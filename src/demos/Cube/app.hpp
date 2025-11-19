@@ -9,6 +9,7 @@
 #include "3dEngine/AnimationController.hpp"
 #include "3dEngine/Descriptors.hpp"
 #include "3dEngine/Device.hpp"
+#include "3dEngine/FrameInfo.hpp"
 #include "3dEngine/GameObject.hpp"
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Renderer.hpp"
@@ -16,6 +17,29 @@
 #include "3dEngine/Window.hpp"
 
 namespace engine {
+
+  // Forward declarations
+  class AnimationSystem;
+  class CameraSystem;
+  class InputSystem;
+  class ObjectSelectionSystem;
+  class PBRRenderSystem;
+  class PointLightSystem;
+  class RenderContext;
+  class UIManager;
+  class Camera;
+
+  struct GameLoopState
+  {
+    ObjectSelectionSystem& objectSelectionSystem;
+    InputSystem&           inputSystem;
+    CameraSystem&          cameraSystem;
+    AnimationSystem&       animationSystem;
+    PBRRenderSystem&       pbrRenderSystem;
+    PointLightSystem&      pointLightSystem;
+    RenderContext&         renderContext;
+    UIManager&             uiManager;
+  };
 
   class App
   {
@@ -33,10 +57,13 @@ namespace engine {
     void run();
 
   private:
-    Window   window{width(), height(), "Engine App"};
-    Device   device{window};
-    Renderer renderer{window, device};
-
+    void            updatePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            computePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            renderPhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
+    Window          window{width(), height(), "Engine App"};
+    Device          device{window};
+    Renderer        renderer{window, device};
     GameObject::Map gameObjects;
   };
 } // namespace engine

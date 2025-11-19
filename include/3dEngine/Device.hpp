@@ -51,6 +51,7 @@ namespace engine {
     VkSurfaceKHR  surface() { return surface_; }
     VkQueue       graphicsQueue() { return graphicsQueue_; }
     VkQueue       presentQueue() { return presentQueue_; }
+    VkInstance    getInstance() { return instance; }
     bool          supportsPresentId() const { return presentIdSupported_; }
 
     SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }

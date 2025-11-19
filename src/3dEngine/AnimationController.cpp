@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
+#include "3dEngine/GameObject.hpp"
 #include "3dEngine/ansi_colors.hpp"
 
 namespace engine {
@@ -122,6 +123,9 @@ namespace engine {
         break;
       case Model::AnimationChannel::SCALE:
         node.scale = interpolateVec3(sampler, currentTime_);
+        break;
+      case Model::AnimationChannel::WEIGHTS:
+        node.morphWeights = interpolateMorphWeights(sampler, currentTime_);
         break;
       }
     }
@@ -251,6 +255,105 @@ namespace engine {
     float factor = (time - t0) / (t1 - t0);
 
     return glm::slerp(sampler.rotations[prevIndex], sampler.rotations[nextIndex], factor);
+  }
+
+  std::vector<float> AnimationController::interpolateMorphWeights(const Model::AnimationSampler& sampler, float time) const
+  {
+    if (sampler.times.empty() || sampler.morphWeights.empty())
+    {
+      return {};
+    }
+
+    // Find the keyframes to interpolate between
+    if (time <= sampler.times.front())
+    {
+      return sampler.morphWeights.front();
+    }
+
+    if (time >= sampler.times.back())
+    {
+      return sampler.morphWeights.back();
+    }
+
+    // Find the two keyframes
+    size_t nextIndex = 0;
+    for (size_t i = 0; i < sampler.times.size() - 1; i++)
+    {
+      if (time >= sampler.times[i] && time < sampler.times[i + 1])
+      {
+        nextIndex = i + 1;
+        break;
+      }
+    }
+
+    size_t prevIndex = nextIndex - 1;
+
+    if (sampler.interpolation == Model::AnimationSampler::STEP)
+    {
+      return sampler.morphWeights[prevIndex];
+    }
+
+    // Linear interpolation for all weights
+    float t0     = sampler.times[prevIndex];
+    float t1     = sampler.times[nextIndex];
+    float factor = (time - t0) / (t1 - t0);
+
+    const auto&        prevWeights = sampler.morphWeights[prevIndex];
+    const auto&        nextWeights = sampler.morphWeights[nextIndex];
+    std::vector<float> result(prevWeights.size());
+
+    for (size_t i = 0; i < prevWeights.size(); i++)
+    {
+      result[i] = prevWeights[i] * (1.0f - factor) + nextWeights[i] * factor;
+    }
+
+    return result;
+  }
+
+  void AnimationController::applyRootNodeToGameObject(GameObject& gameObject) const
+  {
+    if (!model_ || model_->getNodes().empty())
+    {
+      return;
+    }
+
+    // Find the root node (first node without a parent)
+    int         rootNodeIndex = -1;
+    const auto& nodes         = model_->getNodes();
+
+    for (size_t i = 0; i < nodes.size(); i++)
+    {
+      bool isRoot = true;
+      for (size_t j = 0; j < nodes.size(); j++)
+      {
+        const auto& children = nodes[j].children;
+        if (std::find(children.begin(), children.end(), static_cast<int>(i)) != children.end())
+        {
+          isRoot = false;
+          break;
+        }
+      }
+
+      if (isRoot)
+      {
+        rootNodeIndex = static_cast<int>(i);
+        break;
+      }
+    }
+
+    if (rootNodeIndex < 0 || rootNodeIndex >= static_cast<int>(nodes.size()))
+    {
+      return;
+    }
+
+    const auto& rootNode = nodes[rootNodeIndex];
+
+    // Apply the root node's transform to the GameObject
+    // This makes translation/rotation animations visible
+    // For scale, multiply animation scale with base scale to preserve user modifications
+    gameObject.transform.translation = rootNode.translation;
+    gameObject.transform.rotation    = glm::eulerAngles(rootNode.rotation);
+    gameObject.transform.scale       = rootNode.scale * gameObject.transform.baseScale;
   }
 
 } // namespace engine

@@ -17,8 +17,8 @@ namespace engine {
     {
       if (!cameraKeyWasPressed_)
       {
-        frameInfo.selectedObjectId = 0;
-        frameInfo.selectedObject   = nullptr;
+        frameInfo.selectedObjectId = frameInfo.cameraObject.getId();
+        frameInfo.selectedObject   = &frameInfo.cameraObject;
         cameraKeyWasPressed_       = true;
       }
     }
@@ -56,7 +56,12 @@ namespace engine {
           // If at beginning or camera selected, wrap to last object
           if (!frameInfo.gameObjects.empty())
           {
-            auto lastIt                = std::prev(frameInfo.gameObjects.end());
+            // Find the last object by iterating through all
+            auto lastIt = frameInfo.gameObjects.begin();
+            for (auto it = frameInfo.gameObjects.begin(); it != frameInfo.gameObjects.end(); ++it)
+            {
+              lastIt = it;
+            }
             frameInfo.selectedObjectId = lastIt->first;
             frameInfo.selectedObject   = &lastIt->second;
           }

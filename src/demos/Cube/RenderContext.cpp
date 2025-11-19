@@ -55,4 +55,6 @@ namespace engine {
     uboBuffers_[frameIndex]->flush();
   }
 
+  // Shadow descriptors removed - to be reimplemented later
+
 } // namespace engine

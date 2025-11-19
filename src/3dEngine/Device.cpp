@@ -270,8 +270,16 @@ namespace engine {
       }
     }
 
+    // Enable scalar block layout for compute shaders
+    VkPhysicalDeviceVulkan12Features vulkan12Features = {
+            .sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext             = nullptr,
+            .scalarBlockLayout = VK_TRUE,
+    };
+
     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
+            .pNext = &vulkan12Features,
     };
     presentIdSupported_ = false;
 
@@ -289,8 +297,22 @@ namespace engine {
       }
     }
 
+    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
+            .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
+            .pNext     = &vulkan12Features, // Chain to vulkan12Features
+            .presentId = VK_TRUE,
+    };
+
+    // Set up pNext chain: presentId (if supported) -> vulkan12Features
+    void* pNextChain = &vulkan12Features;
+    if (presentIdSupported_)
+    {
+      pNextChain = &presentIdFeaturesEnable;
+    }
+
     VkDeviceCreateInfo createInfo = {
             .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .pNext                = pNextChain,
             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
             .pQueueCreateInfos    = queueCreateInfos.data(),
             .pEnabledFeatures     = &deviceFeatures,
@@ -298,16 +320,6 @@ namespace engine {
 
     createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensions.size());
     createInfo.ppEnabledExtensionNames = enabledExtensions.data();
-
-    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
-            .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
-            .pNext     = nullptr,
-            .presentId = VK_TRUE,
-    };
-    if (presentIdSupported_)
-    {
-      createInfo.pNext = &presentIdFeaturesEnable;
-    }
 
     // might not really be necessary anymore because device specific
     // validation layers have been deprecated

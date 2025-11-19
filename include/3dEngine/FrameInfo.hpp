@@ -8,6 +8,8 @@
 
 namespace engine {
 
+  class MorphTargetManager;
+
   constexpr size_t maxLightCount = 16;
 
   struct PointLight
@@ -23,19 +25,23 @@ namespace engine {
     glm::vec4  lightAmbient{1.f, 1.0f, 1.0f, .02f};
     glm::vec4  cameraPosition;
     PointLight pointLights[maxLightCount];
-    int        lightCount = 0;
+    glm::mat4  lightSpaceMatrices[maxLightCount]; // Light space transformation matrices for shadows
+    int        lightCount       = 0;
+    int        shadowLightCount = 0; // Number of lights casting shadows
   };
 
   struct FrameInfo
   {
-    int              frameIndex;
-    float            frameTime;
-    VkCommandBuffer  commandBuffer;
-    Camera&          camera;
-    VkDescriptorSet  globalDescriptorSet;
-    GameObject::Map& gameObjects;
-    GameObject::id_t selectedObjectId; // ID of currently selected object (0 = camera)
-    GameObject*      selectedObject;   // Pointer to selected object (nullptr = camera)
+    int                 frameIndex;
+    float               frameTime;
+    VkCommandBuffer     commandBuffer;
+    Camera&             camera;
+    VkDescriptorSet     globalDescriptorSet;
+    GameObject::Map&    gameObjects;
+    GameObject::id_t    selectedObjectId; // ID of currently selected object (0 = camera)
+    GameObject*         selectedObject;   // Pointer to selected object (nullptr = camera)
+    GameObject&         cameraObject;
+    MorphTargetManager* morphManager; // Manager for morph target animations (nullptr if not used)
   };
 
 } // namespace engine

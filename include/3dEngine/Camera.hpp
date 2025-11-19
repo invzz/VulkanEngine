@@ -23,6 +23,16 @@ namespace engine {
     const glm::mat4& getInverseView() const { return inverseViewMatrix; }
     glm::vec3        getPosition() const { return glm::vec3(inverseViewMatrix[3]); }
 
+    // Frustum culling support
+    struct Frustum
+    {
+      glm::vec4 planes[6]; // Left, Right, Bottom, Top, Near, Far
+    };
+
+    void           updateFrustum();
+    bool           isInFrustum(const glm::vec3& center, float radius) const;
+    const Frustum& getFrustum() const { return frustum; }
+
   private:
     // projection transform : camera to clip
     glm::mat4 projectionMatrix{1.0f};
@@ -32,6 +42,9 @@ namespace engine {
 
     // inverse of camera transform : camera to world
     glm::mat4 inverseViewMatrix{1.0f};
+
+    // Frustum planes for culling
+    Frustum frustum{};
   };
 
 } // namespace engine

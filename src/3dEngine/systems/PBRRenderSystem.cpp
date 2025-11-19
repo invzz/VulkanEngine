@@ -1,6 +1,7 @@
 #include "3dEngine/systems/PBRRenderSystem.hpp"
 
 #include "3dEngine/Exceptions.hpp"
+#include "3dEngine/MorphTargetManager.hpp"
 #include "3dEngine/PBRMaterial.hpp"
 #include "3dEngine/Texture.hpp"
 
@@ -167,7 +168,24 @@ namespace engine {
   {
     pipeline->bind(frameInfo.commandBuffer);
 
+    // Bind set 0: global (camera, lights)
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
+
+    // Track last bound descriptor to avoid redundant bindings
+    VkDescriptorSet lastBoundMaterial = VK_NULL_HANDLE;
+
+    // Build list of visible objects with frustum culling
+    struct RenderObject
+    {
+      GameObject::id_t   id;
+      const GameObject*  obj;
+      const PBRMaterial* material; // For single-material objects
+      VkDescriptorSet    materialDescSet;
+      float              distanceToCamera; // For sorting
+    };
+
+    std::vector<RenderObject> visibleObjects;
+    visibleObjects.reserve(frameInfo.gameObjects.size());
 
     for (const auto& [id, gameObject] : frameInfo.gameObjects)
     {
@@ -187,9 +205,68 @@ namespace engine {
         continue;
       }
 
-      gameObject.model->bind(frameInfo.commandBuffer);
+      // Frustum culling: check if object is visible
+      glm::vec3 center;
+      float     radius;
+      gameObject.getBoundingSphere(center, radius);
+      if (!frameInfo.camera.isInFrustum(center, radius))
+      {
+        continue; // Skip objects outside view frustum
+      }
+
+      // Calculate distance to camera for sorting
+      float distanceToCamera = glm::length(frameInfo.camera.getPosition() - center);
+
+      // Add to visible list
+      if (!isMultiMaterial && hasPBRMaterial)
+      {
+        // Single-material objects can be sorted
+        visibleObjects.push_back({id, &gameObject, gameObject.pbrMaterial.get(), VK_NULL_HANDLE, distanceToCamera});
+      }
+      else
+      {
+        // Multi-material objects (just add, they handle their own materials)
+        visibleObjects.push_back({id, &gameObject, nullptr, VK_NULL_HANDLE, distanceToCamera});
+      }
+    }
+
+    // Sort by material to minimize state changes (single-material objects only)
+    // Multi-material objects will be rendered in original order
+    std::stable_sort(visibleObjects.begin(), visibleObjects.end(), [](const RenderObject& a, const RenderObject& b) {
+      // Sort single-material objects by material pointer, multi-material objects at end
+      if (a.material && b.material)
+      {
+        return a.material < b.material;
+      }
+      return a.material > b.material; // Put multi-material objects at end
+    });
+
+    // Render sorted visible objects
+    for (const auto& renderObj : visibleObjects)
+    {
+      const GameObject& gameObject = *renderObj.obj;
+      GameObject::id_t  id         = renderObj.id;
+
+      // Bind vertex buffer (use blended buffer for morph targets)
+      if (gameObject.model->hasMorphTargets() && frameInfo.morphManager && frameInfo.morphManager->isModelInitialized(gameObject.model.get()))
+      {
+        VkBuffer blendedBuffer = frameInfo.morphManager->getBlendedBuffer(gameObject.model.get());
+        if (blendedBuffer != VK_NULL_HANDLE)
+        {
+          gameObject.model->bindAlternateVertexBuffer(frameInfo.commandBuffer, blendedBuffer);
+        }
+        else
+        {
+          gameObject.model->bind(frameInfo.commandBuffer);
+        }
+      }
+      else
+      {
+        gameObject.model->bind(frameInfo.commandBuffer);
+      }
 
       // Check if model has multiple materials (sub-meshes)
+      bool isMultiMaterial = gameObject.model->hasMultipleMaterials();
       if (isMultiMaterial)
       {
         // Render each sub-mesh with its own material
@@ -205,8 +282,12 @@ namespace engine {
           // Get or create material descriptor set
           VkDescriptorSet materialDescSet = getMaterialDescriptorSet(material);
 
-          // Bind material descriptor set (set 1)
-          vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &materialDescSet, 0, nullptr);
+          // Only bind if different from last material (avoid redundant state changes)
+          if (materialDescSet != lastBoundMaterial)
+          {
+            vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &materialDescSet, 0, nullptr);
+            lastBoundMaterial = materialDescSet;
+          }
 
           // Set texture flags
           uint32_t textureFlags = 0;
@@ -249,8 +330,12 @@ namespace engine {
         // Get or create material descriptor set
         VkDescriptorSet materialDescSet = getMaterialDescriptorSet(material);
 
-        // Bind material descriptor set (set 1)
-        vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &materialDescSet, 0, nullptr);
+        // Only bind if different from last material (avoid redundant state changes)
+        if (materialDescSet != lastBoundMaterial)
+        {
+          vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &materialDescSet, 0, nullptr);
+          lastBoundMaterial = materialDescSet;
+        }
 
         // Set texture flags
         uint32_t textureFlags = 0;

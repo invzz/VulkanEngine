@@ -267,7 +267,7 @@ namespace engine {
     createInfo.presentMode  = presentMode;
     createInfo.clipped      = VK_TRUE;
     createInfo.oldSwapchain = oldSwapChain == nullptr ? VK_NULL_HANDLE : oldSwapChain->swapChain;
-
+#ifdef SWAPCHAIN_DEBUG
     std::cerr << "Swapchain create request:\n"
               << "  minImageCount: " << createInfo.minImageCount << '\n'
               << "  imageFormat: " << createInfo.imageFormat << '\n'
@@ -278,7 +278,7 @@ namespace engine {
               << "  compositeAlpha: " << createInfo.compositeAlpha << '\n'
               << "  presentMode: " << createInfo.presentMode << '\n'
               << "  imageUsage: " << createInfo.imageUsage << std::endl;
-
+#endif
     if (VkResult createResult = vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain); createResult != VK_SUCCESS)
     {
       std::cerr << "vkCreateSwapchainKHR failed with VkResult " << static_cast<int32_t>(createResult) << std::endl;

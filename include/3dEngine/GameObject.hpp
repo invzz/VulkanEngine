@@ -13,9 +13,10 @@ namespace engine {
 
   struct TransformComponent
   {
-    glm::vec3 translation{};           // position offset
-    glm::vec3 scale{1.0f, 1.0f, 1.0f}; // scaling factors
-    glm::vec3 rotation{};              // rotation angles in radians
+    glm::vec3 translation{};               // position offset
+    glm::vec3 scale{1.0f, 1.0f, 1.0f};     // scaling factors
+    glm::vec3 rotation{};                  // rotation angles in radians
+    glm::vec3 baseScale{1.0f, 1.0f, 1.0f}; // Base scale (for animated objects, multiplied with animation scale)
 
     // Matrix corresponding to translate * rotate * scale
     // * optimized version : using precomputed sines and cosines
@@ -64,6 +65,14 @@ namespace engine {
     GameObject& operator=(GameObject&&) noexcept = default;
 
     id_t getId() const { return id; }
+
+    // Get bounding sphere for frustum culling (center in world space, radius)
+    void getBoundingSphere(glm::vec3& center, float& radius) const
+    {
+      center = transform.translation;
+      // Simple approximation: use maximum scale component as radius
+      radius = glm::max(glm::max(transform.scale.x, transform.scale.y), transform.scale.z) * 5.0f; // Conservative multiplier
+    }
 
     static GameObject makePointLightObject(float intensity = 10.f, const glm::vec3& color = {1.f, 1.f, 1.f}, float radius = 0.1f)
     {

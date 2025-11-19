@@ -16,10 +16,11 @@ namespace engine {
     }
 
     createLights(gameObjects);
-    //  createFloor(device, gameObjects);
+    createFloor(device, gameObjects);
+    createBmw(device, gameObjects);
     // createApple(device, gameObjects);
     // createCylinderEngine(device, gameObjects);
-    createAnimatedCube(device, gameObjects);
+    // createAnimatedCube(device, gameObjects);
   }
 
   void SceneLoader::createFromFile(Device& device, GameObject::Map& gameObjects, const std::string& modelPath)
@@ -38,7 +39,7 @@ namespace engine {
 
   void SceneLoader::createApple(Device& device, GameObject::Map& gameObjects)
   {
-    auto modelPtr               = Model::createModelFromFile(device, "/3DApple002_SQ-4K-JPG.obj", false, true, true);
+    auto modelPtr               = Model::createModelFromFile(device, MODEL_PATH "/3DApple002_SQ-4K-JPG.obj", false, true, true);
     auto model                  = GameObject::makePBRObject(std::move(modelPtr));
     model.transform.scale       = {5.0f, 5.f, 5.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
@@ -83,7 +84,7 @@ namespace engine {
 
   void SceneLoader::createSpaceShip(Device& device, GameObject::Map& gameObjects)
   {
-    auto spaceShipModel = std::shared_ptr<Model>(Model::createModelFromFile(device, "/SpaceShipModeling2.obj", false, true, false));
+    auto spaceShipModel = std::shared_ptr<Model>(Model::createModelFromFile(device, MODEL_PATH "/SpaceShipModeling2.obj", false, true, false));
 
     auto spaceShip                  = GameObject::create();
     spaceShip.model                 = spaceShipModel;
@@ -113,7 +114,7 @@ namespace engine {
 
   void SceneLoader::createFloor(Device& device, GameObject::Map& gameObjects)
   {
-    auto floor                  = GameObject::makePBRObject(Model::createModelFromFile(device, "/quad.obj"), {0.5f, 0.5f, 0.5f}, 0.1f, 0.1f, 0.3f);
+    auto floor                  = GameObject::makePBRObject(Model::createModelFromFile(device, MODEL_PATH "/quad.obj"), {0.5f, 0.5f, 0.5f}, 0.1f, 0.1f, 0.3f);
     floor.transform.scale       = {4.0f, 1.f, 4.0f};
     floor.transform.translation = {0.0f, 0.0f, 0.0f};
 
@@ -136,7 +137,7 @@ namespace engine {
   void SceneLoader::createBmw(Device& device, GameObject::Map& gameObjects)
   {
     // Load the BMW model (MTL materials are loaded automatically)
-    auto bmwModel = std::shared_ptr<Model>(Model::createModelFromFile(device, "/bmw.obj", true, true, true));
+    auto bmwModel = std::shared_ptr<Model>(Model::createModelFromFile(device, MODEL_PATH "/bmw.obj", true, true, true));
 
     // BMW model now has all materials from MTL file loaded automatically
     // Create a simple GameObject with the multi-material model
@@ -149,7 +150,7 @@ namespace engine {
 
   void SceneLoader::createDragonGrid(Device& device, GameObject::Map& gameObjects)
   {
-    auto dragon = std::shared_ptr<Model>(Model::createModelFromFile(device, "/dragon.obj", true));
+    auto dragon = std::shared_ptr<Model>(Model::createModelFromFile(device, MODEL_PATH "/dragon.obj", true));
 
     // Create PBR dragons in a 2D grid
     // Columns: varying metallic (0.0 -> 1.0)
@@ -223,10 +224,10 @@ namespace engine {
   {
     // AnimatedCube - uses rotation+scale animation (works)
     // AnimatedTriangle - uses rotation animation (works)
-    // AnimatedMorphCube/Sphere - use morph targets (not yet supported)
-    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/AnimatedTriangle/glTF/AnimatedTriangle.gltf", false, true, true);
+    // AnimatedMorphCube - uses morph targets (now supported!)
+    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/AnimatedMorphCube/glTF/AnimatedMorphCube.gltf", false, true, true);
     auto model                  = GameObject::makePBRObject(std::move(modelPtr));
-    model.transform.scale       = {1.0f, 1.0f, 1.0f};
+    model.transform.scale       = {10.0f, 10.0f, 10.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 
     // Load textures for all materials if present

@@ -20,10 +20,14 @@ namespace engine {
 
     bool  isPlaying() const { return isPlaying_; }
     float getCurrentTime() const { return currentTime_; }
+    float getPlaybackSpeed() const { return playbackSpeed_; }
     int   getCurrentAnimation() const { return currentAnimationIndex_; }
 
     // Get the updated node transforms (for debugging or rendering)
     const std::vector<glm::mat4>& getNodeTransforms() const { return nodeTransforms_; }
+
+    // Apply root node transform to a GameObject (for simple translation/rotation animations)
+    void applyRootNodeToGameObject(class GameObject& gameObject) const;
 
   private:
     std::shared_ptr<Model> model_;
@@ -39,8 +43,9 @@ namespace engine {
     void computeGlobalTransforms(int nodeIndex, const glm::mat4& parentTransform);
 
     // Interpolation helpers
-    glm::vec3 interpolateVec3(const Model::AnimationSampler& sampler, float time) const;
-    glm::quat interpolateQuat(const Model::AnimationSampler& sampler, float time) const;
+    glm::vec3          interpolateVec3(const Model::AnimationSampler& sampler, float time) const;
+    glm::quat          interpolateQuat(const Model::AnimationSampler& sampler, float time) const;
+    std::vector<float> interpolateMorphWeights(const Model::AnimationSampler& sampler, float time) const;
   };
 
 } // namespace engine

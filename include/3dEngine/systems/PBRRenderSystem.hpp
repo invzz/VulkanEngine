@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <glm/glm.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
@@ -30,6 +31,9 @@ namespace engine {
 
     // Get or create material descriptor set for a given material
     VkDescriptorSet getMaterialDescriptorSet(const PBRMaterial& material);
+
+    // Clear the descriptor cache (call when materials are modified)
+    void clearDescriptorCache() { materialDescriptorCache.clear(); }
 
   private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);

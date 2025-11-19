@@ -29,7 +29,8 @@ namespace std {
 namespace engine {
 
   Model::Model(Device& device, const Builder& builder)
-      : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, animations_{builder.animations}, nodes_{builder.nodes}
+      : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, animations_{builder.animations}, nodes_{builder.nodes},
+        morphTargetSets_{builder.morphTargetSets}
   {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
@@ -91,6 +92,18 @@ namespace engine {
     }
   }
 
+  void Model::bindAlternateVertexBuffer(VkCommandBuffer commandBuffer, VkBuffer alternateVertexBuffer) const
+  {
+    VkBuffer     buffers[] = {alternateVertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+
+    if (hasIndexBuffer)
+    {
+      vkCmdBindIndexBuffer(commandBuffer, indexBuffer->getBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    }
+  }
+
   void Model::createIndexBuffers(const std::vector<uint32_t>& indices)
   {
     indexCount     = static_cast<uint32_t>(indices.size());
@@ -143,7 +156,7 @@ namespace engine {
     vertexBuffer = std::make_unique<Buffer>(device,
                                             vertexSize,
                                             vertexCount,
-                                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // copy data from staging buffer to vertex buffer

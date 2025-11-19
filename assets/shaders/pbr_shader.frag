@@ -20,7 +20,9 @@ layout(set = 0, binding = 0) uniform UBO
   vec4       ambientLightColor;
   vec4       cameraPosition;
   PointLight pointLights[16];
+  mat4       lightSpaceMatrices[16]; // Light space transformation matrices for shadows
   int        numberOfLights;
+  int        shadowLightCount; // Number of lights casting shadows
 }
 ubo;
 
@@ -92,6 +94,8 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+
+// Shadow system removed - to be reimplemented later
 
 // Anisotropic GGX Distribution
 float DistributionGGXAnisotropic(vec3 N, vec3 H, vec3 T, vec3 B, float roughness, float anisotropy)
@@ -209,6 +213,9 @@ void main()
     float attenuation = 1.0 / (distance * distance);
     vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
 
+    // No shadows for now
+    float shadow = 1.0;
+
     // Cook-Torrance BRDF with optional anisotropy
     float NDF;
     if (push.anisotropic > 0.01)
@@ -231,9 +238,9 @@ void main()
     float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
     vec3  specular    = numerator / denominator;
 
-    // Add to outgoing radiance Lo
+    // Add to outgoing radiance Lo (apply shadow)
     float NdotL = max(dot(N, L), 0.0);
-    Lo += (kD * albedo / PI + specular) * radiance * NdotL;
+    Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
   }
 
   // Clearcoat layer (second specular lobe)

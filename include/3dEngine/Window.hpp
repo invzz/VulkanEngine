@@ -27,6 +27,11 @@ namespace engine {
     VkExtent2D  getExtent() const { return {width, height}; }
     bool        isFocused() const { return glfwGetWindowAttrib(window, GLFW_FOCUSED) == GLFW_TRUE; }
 
+    // Cursor control
+    void setCursorVisible(bool visible);
+    void toggleCursor();
+    bool isCursorVisible() const { return cursorVisible; }
+
   private:
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -41,6 +46,9 @@ namespace engine {
 
     // Flag to indicate if the framebuffer has been resized
     bool framebufferResized = false;
+
+    // Cursor visibility state
+    bool cursorVisible = true;
 
     const std::string title;
   };

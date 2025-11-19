@@ -33,8 +33,8 @@ namespace engine {
       int selectPrevious = GLFW_KEY_U;
       int selectCamera   = GLFW_KEY_C;
 
-      // exit key
-      int keyExit = GLFW_KEY_ESCAPE;
+      // UI controls
+      int toggleCursor = GLFW_KEY_ESCAPE;
     };
 
     void moveInPlaneXZ(float deltaTime, GameObject& gameObject) const;

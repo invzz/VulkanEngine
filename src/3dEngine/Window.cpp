@@ -233,4 +233,15 @@ namespace engine {
     }
   }
 
+  void Window::setCursorVisible(bool visible)
+  {
+    cursorVisible = visible;
+    glfwSetInputMode(window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+  }
+
+  void Window::toggleCursor()
+  {
+    setCursorVisible(!cursorVisible);
+  }
+
 } // namespace engine

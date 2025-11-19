@@ -39,9 +39,29 @@ done
 
 mkdir -p "$OUTPUT_DIR"
 
+for shader in "$SHADER_DIR"/*.vert; do
+    filename=$(basename -- "$shader")
+    output_file="$OUTPUT_DIR/${filename%.vert}.vert.spv"
+    if glslc "$shader" -o "$output_file"; then
+        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+    else
+        echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
+    fi
+done
+
 for shader in "$SHADER_DIR"/*.frag; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.frag}.frag.spv"
+    if glslc "$shader" -o "$output_file"; then
+        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+    else
+        echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
+    fi
+done
+
+for shader in "$SHADER_DIR"/*.comp; do
+    filename=$(basename -- "$shader")
+    output_file="$OUTPUT_DIR/${filename%.comp}.comp.spv"
     if glslc "$shader" -o "$output_file"; then
         echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
