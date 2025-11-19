@@ -20,60 +20,116 @@ namespace engine {
         ImGui::Text("Selected: Object %u", frameInfo.selectedObjectId);
         ImGui::Separator();
 
-        // Lock axes checkbox
-        ImGui::Checkbox("Lock Axes", &lockAxes_);
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::IsItemHovered())
+        // Create tabs for Translation, Rotation, and Scale
+        if (ImGui::BeginTabBar("TransformTabs"))
         {
-          ImGui::SetTooltip("When locked, all axes scale uniformly");
-        }
-
-        // Scale controls
-        ImGui::Text("Scale:");
-
-        // For animated objects, modify baseScale; for static objects, modify scale
-        bool       isAnimated  = obj.animationController != nullptr;
-        glm::vec3& targetScale = isAnimated ? obj.transform.baseScale : obj.transform.scale;
-
-        if (isAnimated)
-        {
-          ImGui::TextDisabled("(Animated object - modifying base scale)");
-        }
-
-        if (lockAxes_)
-        {
-          // Uniform scaling - use X axis as the master
-          float uniformScale = targetScale.x;
-          if (ImGui::DragFloat("Uniform", &uniformScale, 0.01f, 0.01f, 100.0f))
+          // Translation Tab
+          if (ImGui::BeginTabItem("Translation"))
           {
-            targetScale = glm::vec3(uniformScale);
-          }
-        }
-        else
-        {
-          // Independent axis scaling
-          ImGui::DragFloat("X", &targetScale.x, 0.01f, 0.01f, 100.0f);
-          ImGui::DragFloat("Y", &targetScale.y, 0.01f, 0.01f, 100.0f);
-          ImGui::DragFloat("Z", &targetScale.z, 0.01f, 0.01f, 100.0f);
-        }
+            ImGui::Spacing();
+            ImGui::DragFloat("X", &obj.transform.translation.x, 0.1f);
+            ImGui::DragFloat("Y", &obj.transform.translation.y, 0.1f);
+            ImGui::DragFloat("Z", &obj.transform.translation.z, 0.1f);
 
-        // Quick scale buttons
-        ImGui::Separator();
-        ImGui::Text("Quick Scale:");
-        if (ImGui::Button("Reset (1.0)"))
-        {
-          targetScale = glm::vec3(1.0f);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Half (0.5)"))
-        {
-          targetScale = glm::vec3(0.5f);
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Double (2.0)"))
-        {
-          targetScale = glm::vec3(2.0f);
+            ImGui::Separator();
+            if (ImGui::Button("Reset Position"))
+            {
+              obj.transform.translation = glm::vec3(0.0f);
+            }
+            ImGui::EndTabItem();
+          }
+
+          // Rotation Tab
+          if (ImGui::BeginTabItem("Rotation"))
+          {
+            ImGui::Spacing();
+            ImGui::Text("Degrees:");
+            float rotationDegrees[3] = {glm::degrees(obj.transform.rotation.x), glm::degrees(obj.transform.rotation.y), glm::degrees(obj.transform.rotation.z)};
+
+            if (ImGui::DragFloat("X", &rotationDegrees[0], 1.0f, -180.0f, 180.0f))
+            {
+              obj.transform.rotation.x = glm::radians(rotationDegrees[0]);
+            }
+            if (ImGui::DragFloat("Y", &rotationDegrees[1], 1.0f, -180.0f, 180.0f))
+            {
+              obj.transform.rotation.y = glm::radians(rotationDegrees[1]);
+            }
+            if (ImGui::DragFloat("Z", &rotationDegrees[2], 1.0f, -180.0f, 180.0f))
+            {
+              obj.transform.rotation.z = glm::radians(rotationDegrees[2]);
+            }
+
+            ImGui::Separator();
+            if (ImGui::Button("Reset Rotation"))
+            {
+              obj.transform.rotation = glm::vec3(0.0f);
+            }
+            ImGui::EndTabItem();
+          }
+
+          // Scale Tab
+          if (ImGui::BeginTabItem("Scale"))
+          {
+            ImGui::Spacing();
+
+            // Lock axes checkbox
+            ImGui::Checkbox("Lock Axes", &lockAxes_);
+            ImGui::SameLine();
+            ImGui::TextDisabled("(?)");
+            if (ImGui::IsItemHovered())
+            {
+              ImGui::SetTooltip("When locked, all axes scale uniformly");
+            }
+
+            ImGui::Spacing();
+
+            // For animated objects, modify baseScale; for static objects, modify scale
+            bool       isAnimated  = obj.animationController != nullptr;
+            glm::vec3& targetScale = isAnimated ? obj.transform.baseScale : obj.transform.scale;
+
+            if (isAnimated)
+            {
+              ImGui::TextDisabled("(Animated - modifying base scale)");
+            }
+
+            if (lockAxes_)
+            {
+              // Uniform scaling - use X axis as the master
+              float uniformScale = targetScale.x;
+              if (ImGui::DragFloat("Uniform", &uniformScale, 0.01f, 0.01f, 100.0f))
+              {
+                targetScale = glm::vec3(uniformScale);
+              }
+            }
+            else
+            {
+              // Independent axis scaling
+              ImGui::DragFloat("X", &targetScale.x, 0.01f, 0.01f, 100.0f);
+              ImGui::DragFloat("Y", &targetScale.y, 0.01f, 0.01f, 100.0f);
+              ImGui::DragFloat("Z", &targetScale.z, 0.01f, 0.01f, 100.0f);
+            }
+
+            // Quick scale buttons
+            ImGui::Separator();
+            ImGui::Text("Quick Scale:");
+            if (ImGui::Button("Reset (1.0)"))
+            {
+              targetScale = glm::vec3(1.0f);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Half (0.5)"))
+            {
+              targetScale = glm::vec3(0.5f);
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Double (2.0)"))
+            {
+              targetScale = glm::vec3(2.0f);
+            }
+            ImGui::EndTabItem();
+          }
+
+          ImGui::EndTabBar();
         }
       }
       else

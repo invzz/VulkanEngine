@@ -34,6 +34,21 @@ namespace engine {
     float intensity{1.0f};
   };
 
+  struct DirectionalLightComponent
+  {
+    float intensity{1.0f};
+  };
+
+  struct SpotLightComponent
+  {
+    float intensity{1.0f};
+    float innerCutoffAngle{12.5f}; // Inner cone angle in degrees
+    float outerCutoffAngle{17.5f}; // Outer cone angle in degrees
+    float constantAttenuation{1.0f};
+    float linearAttenuation{0.09f};
+    float quadraticAttenuation{0.032f};
+  };
+
   class GameObject
   {
   public:
@@ -45,15 +60,17 @@ namespace engine {
     id_t               id{0};
 
     // Optional pointer components
-    std::shared_ptr<Model>               model{};
-    std::unique_ptr<PointLightComponent> pointLight          = nullptr;
-    std::unique_ptr<PBRMaterial>         pbrMaterial         = nullptr;
-    std::unique_ptr<AnimationController> animationController = nullptr;
+    std::shared_ptr<Model>                     model{};
+    std::unique_ptr<PointLightComponent>       pointLight          = nullptr;
+    std::unique_ptr<DirectionalLightComponent> directionalLight    = nullptr;
+    std::unique_ptr<SpotLightComponent>        spotLight           = nullptr;
+    std::unique_ptr<PBRMaterial>               pbrMaterial         = nullptr;
+    std::unique_ptr<AnimationController>       animationController = nullptr;
 
-    static GameObject create()
+    static GameObject create(std::string name = "GameObject")
     {
       static id_t currentId = 0;
-      return GameObject{currentId++};
+      return GameObject{currentId++, std::move(name)};
     }
 
     // delete copy operations
@@ -84,6 +101,27 @@ namespace engine {
       return obj;
     }
 
+    static GameObject makeDirectionalLightObject(float intensity = 1.0f, const glm::vec3& color = {1.f, 1.f, 1.f})
+    {
+      GameObject obj                  = GameObject::create();
+      obj.color                       = color;
+      obj.directionalLight            = std::make_unique<DirectionalLightComponent>();
+      obj.directionalLight->intensity = intensity;
+      return obj;
+    }
+
+    static GameObject makeSpotLightObject(float intensity = 10.f, const glm::vec3& color = {1.f, 1.f, 1.f}, float innerAngle = 12.5f, float outerAngle = 17.5f)
+    {
+      GameObject obj                  = GameObject::create();
+      obj.color                       = color;
+      obj.transform.scale.x           = 0.1f; // Visual size
+      obj.spotLight                   = std::make_unique<SpotLightComponent>();
+      obj.spotLight->intensity        = intensity;
+      obj.spotLight->innerCutoffAngle = innerAngle;
+      obj.spotLight->outerCutoffAngle = outerAngle;
+      return obj;
+    }
+
     static GameObject
     makePBRObject(std::shared_ptr<Model> model, const glm::vec3& albedo = {1.0f, 1.0f, 1.0f}, float metallic = 0.0f, float roughness = 0.5f, float ao = 1.0f)
     {
@@ -98,7 +136,8 @@ namespace engine {
     }
 
   private:
-    explicit GameObject(id_t objId) : id{objId} {}
+    explicit GameObject(id_t objId, std::string objName) : id{objId}, name(std::move(objName)) {}
+    std::string name;
   };
 
 } // namespace engine

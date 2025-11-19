@@ -99,6 +99,7 @@ namespace engine {
 
     std::vector<glm::vec3> lightColors = allColors;
 
+    // Create point lights in a circle
     for (size_t i = 0; i < lightColors.size(); i++)
     {
       auto pointLight  = GameObject::makePointLightObject(1.0f, lightColors[i], 0.05f);
@@ -110,6 +111,22 @@ namespace engine {
 
       gameObjects.try_emplace(pointLight.getId(), std::move(pointLight));
     }
+
+    // Add a directional light (sun-like, from above)
+    auto directionalLight               = GameObject::makeDirectionalLightObject(0.5f, {1.0f, 0.95f, 0.9f}); // Warm sunlight
+    directionalLight.transform.rotation = glm::vec3(glm::radians(-45.0f), glm::radians(30.0f), 0.0f);        // Angled down
+    gameObjects.try_emplace(directionalLight.getId(), std::move(directionalLight));
+
+    // Add two spot lights (like stage lights)
+    auto spotLight1                  = GameObject::makeSpotLightObject(15.0f, {1.0f, 0.8f, 0.5f}, 12.5f, 17.5f); // Warm spotlight
+    spotLight1.transform.translation = glm::vec3(3.0f, 3.0f, 3.0f);
+    spotLight1.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(-135.0f), 0.0f); // Point toward center
+    gameObjects.try_emplace(spotLight1.getId(), std::move(spotLight1));
+
+    auto spotLight2                  = GameObject::makeSpotLightObject(15.0f, {0.5f, 0.8f, 1.0f}, 12.5f, 17.5f); // Cool spotlight
+    spotLight2.transform.translation = glm::vec3(-3.0f, 3.0f, -3.0f);
+    spotLight2.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(45.0f), 0.0f); // Point toward center
+    gameObjects.try_emplace(spotLight2.getId(), std::move(spotLight2));
   }
 
   void SceneLoader::createFloor(Device& device, GameObject::Map& gameObjects)

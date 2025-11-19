@@ -24,7 +24,7 @@ namespace engine {
   class InputSystem;
   class ObjectSelectionSystem;
   class PBRRenderSystem;
-  class PointLightSystem;
+  class LightSystem;
   class RenderContext;
   class UIManager;
   class Camera;
@@ -36,7 +36,7 @@ namespace engine {
     CameraSystem&          cameraSystem;
     AnimationSystem&       animationSystem;
     PBRRenderSystem&       pbrRenderSystem;
-    PointLightSystem&      pointLightSystem;
+    LightSystem&           lightSystem;
     RenderContext&         renderContext;
     UIManager&             uiManager;
   };

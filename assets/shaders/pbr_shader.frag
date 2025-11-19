@@ -13,16 +13,37 @@ struct PointLight
   vec4 color;
 };
 
+struct DirectionalLight
+{
+  vec4 direction;
+  vec4 color;
+};
+
+struct SpotLight
+{
+  vec4  position;
+  vec4  direction;   // w component is inner cutoff (cos)
+  vec4  color;       // w component is intensity
+  float outerCutoff; // Outer cutoff (cos)
+  float constantAtten;
+  float linearAtten;
+  float quadraticAtten;
+};
+
 layout(set = 0, binding = 0) uniform UBO
 {
-  mat4       proj;
-  mat4       view;
-  vec4       ambientLightColor;
-  vec4       cameraPosition;
-  PointLight pointLights[16];
-  mat4       lightSpaceMatrices[16]; // Light space transformation matrices for shadows
-  int        numberOfLights;
-  int        shadowLightCount; // Number of lights casting shadows
+  mat4             proj;
+  mat4             view;
+  vec4             ambientLightColor;
+  vec4             cameraPosition;
+  PointLight       pointLights[16];
+  DirectionalLight directionalLights[16];
+  SpotLight        spotLights[16];
+  mat4             lightSpaceMatrices[16];
+  int              pointLightCount;
+  int              directionalLightCount;
+  int              spotLightCount;
+  int              shadowLightCount;
 }
 ubo;
 
@@ -203,7 +224,9 @@ void main()
 
   // Reflectance equation - Base layer
   vec3 Lo = vec3(0.0);
-  for (int i = 0; i < ubo.numberOfLights; i++)
+
+  // Point lights
+  for (int i = 0; i < ubo.pointLightCount; i++)
   {
     // Calculate per-light radiance
     vec3  lightDir    = ubo.pointLights[i].position.xyz - fragmentWorldPos;
@@ -213,8 +236,7 @@ void main()
     float attenuation = 1.0 / (distance * distance);
     vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
 
-    // No shadows for now
-    float shadow = 1.0;
+    float shadow = 1.0; // No shadows for now
 
     // Cook-Torrance BRDF with optional anisotropy
     float NDF;
@@ -232,13 +254,93 @@ void main()
 
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic; // Metallic surfaces don't have diffuse
+    kD *= 1.0 - metallic;
 
     vec3  numerator   = NDF * G * F;
     float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
     vec3  specular    = numerator / denominator;
 
-    // Add to outgoing radiance Lo (apply shadow)
+    float NdotL = max(dot(N, L), 0.0);
+    Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
+  }
+
+  // Directional lights
+  for (int i = 0; i < ubo.directionalLightCount; i++)
+  {
+    vec3 L        = normalize(-ubo.directionalLights[i].direction.xyz);
+    vec3 H        = normalize(V + L);
+    vec3 radiance = ubo.directionalLights[i].color.xyz * ubo.directionalLights[i].color.w;
+
+    float shadow = 1.0;
+
+    float NDF;
+    if (push.anisotropic > 0.01)
+    {
+      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, push.anisotropic);
+    }
+    else
+    {
+      NDF = DistributionGGX(N, H, roughness);
+    }
+
+    float G = GeometrySmith(N, V, L, roughness);
+    vec3  F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    vec3  numerator   = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3  specular    = numerator / denominator;
+
+    float NdotL = max(dot(N, L), 0.0);
+    Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
+  }
+
+  // Spot lights
+  for (int i = 0; i < ubo.spotLightCount; i++)
+  {
+    vec3  lightDir = ubo.spotLights[i].position.xyz - fragmentWorldPos;
+    float distance = length(lightDir);
+    vec3  L        = normalize(lightDir);
+    vec3  H        = normalize(V + L);
+
+    // Spotlight intensity calculation
+    vec3  spotDir   = normalize(-ubo.spotLights[i].direction.xyz);
+    float theta     = dot(L, spotDir);
+    float epsilon   = ubo.spotLights[i].direction.w - ubo.spotLights[i].outerCutoff;
+    float intensity = clamp((theta - ubo.spotLights[i].outerCutoff) / epsilon, 0.0, 1.0);
+
+    // Attenuation
+    float attenuation =
+            1.0 / (ubo.spotLights[i].constantAtten + ubo.spotLights[i].linearAtten * distance + ubo.spotLights[i].quadraticAtten * distance * distance);
+
+    vec3 radiance = ubo.spotLights[i].color.xyz * ubo.spotLights[i].color.w * attenuation * intensity;
+
+    float shadow = 1.0;
+
+    float NDF;
+    if (push.anisotropic > 0.01)
+    {
+      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, push.anisotropic);
+    }
+    else
+    {
+      NDF = DistributionGGX(N, H, roughness);
+    }
+
+    float G = GeometrySmith(N, V, L, roughness);
+    vec3  F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    vec3  numerator   = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+    vec3  specular    = numerator / denominator;
+
     float NdotL = max(dot(N, L), 0.0);
     Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
   }
@@ -249,7 +351,8 @@ void main()
     vec3 clearcoatF0 = vec3(0.04); // Dielectric clearcoat
     vec3 clearcoatLo = vec3(0.0);
 
-    for (int i = 0; i < ubo.numberOfLights; i++)
+    // Point lights
+    for (int i = 0; i < ubo.pointLightCount; i++)
     {
       vec3  lightDir    = ubo.pointLights[i].position.xyz - fragmentWorldPos;
       float distance    = length(lightDir);
@@ -257,6 +360,55 @@ void main()
       vec3  H           = normalize(V + L);
       float attenuation = 1.0 / (distance * distance);
       vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
+
+      float clearNDF = DistributionGGX(N, H, push.clearcoatRoughness);
+      float clearG   = GeometrySmith(N, V, L, push.clearcoatRoughness);
+      vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
+
+      vec3  numerator   = clearNDF * clearG * clearF;
+      float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+      vec3  specular    = numerator / denominator;
+
+      float NdotL = max(dot(N, L), 0.0);
+      clearcoatLo += specular * radiance * NdotL;
+    }
+
+    // Directional lights
+    for (int i = 0; i < ubo.directionalLightCount; i++)
+    {
+      vec3 L        = normalize(-ubo.directionalLights[i].direction.xyz);
+      vec3 H        = normalize(V + L);
+      vec3 radiance = ubo.directionalLights[i].color.xyz * ubo.directionalLights[i].color.w;
+
+      float clearNDF = DistributionGGX(N, H, push.clearcoatRoughness);
+      float clearG   = GeometrySmith(N, V, L, push.clearcoatRoughness);
+      vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
+
+      vec3  numerator   = clearNDF * clearG * clearF;
+      float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
+      vec3  specular    = numerator / denominator;
+
+      float NdotL = max(dot(N, L), 0.0);
+      clearcoatLo += specular * radiance * NdotL;
+    }
+
+    // Spot lights
+    for (int i = 0; i < ubo.spotLightCount; i++)
+    {
+      vec3  lightDir = ubo.spotLights[i].position.xyz - fragmentWorldPos;
+      float distance = length(lightDir);
+      vec3  L        = normalize(lightDir);
+      vec3  H        = normalize(V + L);
+
+      vec3  spotDir   = normalize(-ubo.spotLights[i].direction.xyz);
+      float theta     = dot(L, spotDir);
+      float epsilon   = ubo.spotLights[i].direction.w - ubo.spotLights[i].outerCutoff;
+      float intensity = clamp((theta - ubo.spotLights[i].outerCutoff) / epsilon, 0.0, 1.0);
+
+      float attenuation =
+              1.0 / (ubo.spotLights[i].constantAtten + ubo.spotLights[i].linearAtten * distance + ubo.spotLights[i].quadraticAtten * distance * distance);
+
+      vec3 radiance = ubo.spotLights[i].color.xyz * ubo.spotLights[i].color.w * attenuation * intensity;
 
       float clearNDF = DistributionGGX(N, H, push.clearcoatRoughness);
       float clearG   = GeometrySmith(N, V, L, push.clearcoatRoughness);

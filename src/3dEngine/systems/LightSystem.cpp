@@ -1,5 +1,6 @@
-#include "3dEngine/Exceptions.hpp"
 #include "3dEngine/systems/LightSystem.hpp"
+
+#include "3dEngine/Exceptions.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS

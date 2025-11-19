@@ -27,9 +27,9 @@
 #include "3dEngine/systems/AnimationSystem.hpp"
 #include "3dEngine/systems/CameraSystem.hpp"
 #include "3dEngine/systems/InputSystem.hpp"
+#include "3dEngine/systems/LightSystem.hpp"
 #include "3dEngine/systems/ObjectSelectionSystem.hpp"
 #include "3dEngine/systems/PBRRenderSystem.hpp"
-#include "3dEngine/systems/PointLightSystem.hpp"
 
 // Demo specific
 #include "RenderContext.hpp"
@@ -100,8 +100,8 @@ namespace engine {
 
     // Render Systems:
     std::cout << "[App] Creating PBRRenderSystem..." << std::endl;
-    PBRRenderSystem  pbrRenderSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
-    PointLightSystem pointLightSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
+    PBRRenderSystem pbrRenderSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
+    LightSystem     lightSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
 
     // UI System:
     ImGuiManager imguiManager{window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight())};
@@ -169,7 +169,7 @@ namespace engine {
                 .cameraSystem          = cameraSystem,
                 .animationSystem       = animationSystem,
                 .pbrRenderSystem       = pbrRenderSystem,
-                .pointLightSystem      = pointLightSystem,
+                .lightSystem           = lightSystem,
                 .renderContext         = renderContext,
                 .uiManager             = uiManager,
         };
@@ -219,7 +219,7 @@ namespace engine {
 
     // Update uniform buffer with per-frame data
     GlobalUbo ubo{};
-    state.pointLightSystem.update(frameInfo, ubo); // Update light positions in UBO
+    state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO
     ubo.projection     = frameInfo.camera.getProjection();
     ubo.view           = frameInfo.camera.getView();
     ubo.cameraPosition = glm::vec4(frameInfo.cameraObject.transform.translation, 1.0f);
@@ -240,8 +240,8 @@ namespace engine {
   void App::renderPhase(FrameInfo& frameInfo, GameLoopState& state)
   {
     // RENDER SYSTEMS - These issue actual draw calls
-    state.pbrRenderSystem.render(frameInfo);  // Draw objects with PBR materials (uses blended buffers if available)
-    state.pointLightSystem.render(frameInfo); // Draw light debug visualizations
+    state.pbrRenderSystem.render(frameInfo); // Draw objects with PBR materials (uses blended buffers if available)
+    state.lightSystem.render(frameInfo);     // Draw light debug visualizations
   }
 
   void App::uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state)
