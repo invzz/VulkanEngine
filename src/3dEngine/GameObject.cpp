@@ -3,55 +3,55 @@
 #include "3dEngine/AnimationController.hpp"
 
 namespace engine {
-  glm::mat4 TransformComponent::modelTransform() const
-  {
-    const float c3 = glm::cos(rotation.z);
-    const float s3 = glm::sin(rotation.z);
-    const float c2 = glm::cos(rotation.x);
-    const float s2 = glm::sin(rotation.x);
-    const float c1 = glm::cos(rotation.y);
-    const float s1 = glm::sin(rotation.y);
-    // clang-format off
-    return glm::mat4{
-        scale.x * (c1 * c3 + s1 * s2 * s3), scale.x * (c2 * s3), scale.x * (c1 * s2 * s3 - c3 * s1), 0.0f,
-        scale.y * (c3 * s1 * s2 - c1 * s3), scale.y * (c2 * c3), scale.y * (c1 * c3 * s2 + s1 * s3), 0.0f,
-        scale.z * (c2 * s1),                scale.z * (-s2),     scale.z * (c1 * c2),                0.0f,
-        translation.x,                      translation.y,       translation.z,                      1.0f};
-    // clang-format on
-  };
 
-  glm::vec3 TransformComponent::getForwardDir() const
+  void GameObject::getBoundingSphere(glm::vec3& center, float& radius) const
   {
-    return glm::vec3{
-            glm::sin(rotation.y) * glm::cos(rotation.x),
-            -glm::sin(rotation.x),
-            glm::cos(rotation.y) * glm::cos(rotation.x),
-    };
+    center = transform.translation;
+    // Simple approximation: use maximum scale component as radius
+    radius = glm::max(glm::max(transform.scale.x, transform.scale.y), transform.scale.z) * 5.0f; // Conservative multiplier
   }
 
-  glm::vec3 TransformComponent::getRightDir() const
+  GameObject GameObject::makePointLightObject(const PointLightParams& params)
   {
-    return glm::vec3{
-            glm::cos(rotation.y),
-            0.0f,
-            -glm::sin(rotation.y),
-    };
+    GameObject obj            = GameObject::create(params.name);
+    obj.color                 = params.color;
+    obj.transform.scale.x     = params.radius;
+    obj.pointLight            = std::make_unique<PointLightComponent>();
+    obj.pointLight->intensity = params.intensity;
+    return obj;
   }
 
-  glm::mat3 TransformComponent::normalMatrix() const
+  GameObject GameObject::makeDirectionalLightObject(const DirectionalLightParams& params)
   {
-    const float c3 = glm::cos(rotation.z);
-    const float s3 = glm::sin(rotation.z);
-    const float c2 = glm::cos(rotation.x);
-    const float s2 = glm::sin(rotation.x);
-    const float c1 = glm::cos(rotation.y);
-    const float s1 = glm::sin(rotation.y);
-
-    // clang-format off
-    return glm::mat3 {
-        scale.x * (c1 * c3 + s1 * s2 * s3), scale.x * (c2 * s3), scale.x * (c1 * s2 * s3 - c3 * s1), 
-        scale.y * (c3 * s1 * s2 - c1 * s3), scale.y * (c2 * c3), scale.y * (c1 * c3 * s2 + s1 * s3), 
-        scale.z * (c2 * s1),                scale.z * (-s2),     scale.z * (c1 * c2)               ,};
-    // clang-format on
+    GameObject obj                  = GameObject::create(params.name);
+    obj.color                       = params.color;
+    obj.directionalLight            = std::make_unique<DirectionalLightComponent>();
+    obj.directionalLight->intensity = params.intensity;
+    return obj;
   }
+
+  GameObject GameObject::makeSpotLightObject(const SpotLightParams& params)
+  {
+    GameObject obj                  = GameObject::create(params.name);
+    obj.color                       = params.color;
+    obj.transform.scale.x           = 0.1f; // Visual size
+    obj.spotLight                   = std::make_unique<SpotLightComponent>();
+    obj.spotLight->intensity        = params.intensity;
+    obj.spotLight->innerCutoffAngle = params.innerAngle;
+    obj.spotLight->outerCutoffAngle = params.outerAngle;
+    return obj;
+  }
+
+  GameObject GameObject::makePBRObject(const PBRObjectParams& params)
+  {
+    GameObject obj             = GameObject::create(params.name);
+    obj.model                  = params.model;
+    obj.pbrMaterial            = std::make_unique<PBRMaterial>();
+    obj.pbrMaterial->albedo    = params.albedo;
+    obj.pbrMaterial->metallic  = params.metallic;
+    obj.pbrMaterial->roughness = params.roughness;
+    obj.pbrMaterial->ao        = params.ao;
+    return obj;
+  }
+
 } // namespace engine

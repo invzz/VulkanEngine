@@ -31,7 +31,7 @@ namespace engine {
     }
 
     auto modelPtr               = Model::createModelFromFile(device, modelPath, false, true, true);
-    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
     model.transform.scale       = {1.0f, 1.f, 1.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
     gameObjects.try_emplace(model.getId(), std::move(model));
@@ -40,7 +40,7 @@ namespace engine {
   void SceneLoader::createApple(Device& device, GameObject::Map& gameObjects)
   {
     auto modelPtr               = Model::createModelFromFile(device, MODEL_PATH "/3DApple002_SQ-4K-JPG.obj", false, true, true);
-    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
     model.transform.scale       = {5.0f, 5.f, 5.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 
@@ -102,7 +102,7 @@ namespace engine {
     // Create point lights in a circle
     for (size_t i = 0; i < lightColors.size(); i++)
     {
-      auto pointLight  = GameObject::makePointLightObject(1.0f, lightColors[i], 0.05f);
+      auto pointLight  = GameObject::makePointLightObject({.intensity = 1.0f, .color = lightColors[i], .radius = 0.05f});
       pointLight.color = lightColors[i];
 
       auto rotateLight =
@@ -113,17 +113,19 @@ namespace engine {
     }
 
     // Add a directional light (sun-like, from above)
-    auto directionalLight               = GameObject::makeDirectionalLightObject(0.5f, {1.0f, 0.95f, 0.9f}); // Warm sunlight
-    directionalLight.transform.rotation = glm::vec3(glm::radians(-45.0f), glm::radians(30.0f), 0.0f);        // Angled down
+    auto directionalLight               = GameObject::makeDirectionalLightObject({.intensity = 0.5f, .color = {1.0f, 0.95f, 0.9f}}); // Warm sunlight
+    directionalLight.transform.rotation = glm::vec3(glm::radians(-45.0f), glm::radians(30.0f), 0.0f);                                // Angled down
     gameObjects.try_emplace(directionalLight.getId(), std::move(directionalLight));
 
     // Add two spot lights (like stage lights)
-    auto spotLight1                  = GameObject::makeSpotLightObject(15.0f, {1.0f, 0.8f, 0.5f}, 12.5f, 17.5f); // Warm spotlight
+    auto spotLight1 =
+            GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {1.0f, 0.8f, 0.5f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Warm spotlight
     spotLight1.transform.translation = glm::vec3(3.0f, 3.0f, 3.0f);
     spotLight1.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(-135.0f), 0.0f); // Point toward center
     gameObjects.try_emplace(spotLight1.getId(), std::move(spotLight1));
 
-    auto spotLight2                  = GameObject::makeSpotLightObject(15.0f, {0.5f, 0.8f, 1.0f}, 12.5f, 17.5f); // Cool spotlight
+    auto spotLight2 =
+            GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {0.5f, 0.8f, 1.0f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Cool spotlight
     spotLight2.transform.translation = glm::vec3(-3.0f, 3.0f, -3.0f);
     spotLight2.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(45.0f), 0.0f); // Point toward center
     gameObjects.try_emplace(spotLight2.getId(), std::move(spotLight2));
@@ -131,7 +133,13 @@ namespace engine {
 
   void SceneLoader::createFloor(Device& device, GameObject::Map& gameObjects)
   {
-    auto floor                  = GameObject::makePBRObject(Model::createModelFromFile(device, MODEL_PATH "/quad.obj"), {0.5f, 0.5f, 0.5f}, 0.1f, 0.1f, 0.3f);
+    auto floor                  = GameObject::makePBRObject({
+                             .model     = Model::createModelFromFile(device, MODEL_PATH "/quad.obj"),
+                             .albedo    = {0.5f, 0.5f, 0.5f},
+                             .metallic  = 0.1f,
+                             .roughness = 0.1f,
+                             .ao        = 0.3f,
+    });
     floor.transform.scale       = {4.0f, 1.f, 4.0f};
     floor.transform.translation = {0.0f, 0.0f, 0.0f};
 
@@ -187,7 +195,7 @@ namespace engine {
         float     metallic = static_cast<float>(col) / static_cast<float>(cols - 1);
         glm::vec3 albedo   = {0.8f, 0.6f, 0.2f}; // Gold color
 
-        GameObject dragonObj = GameObject::makePBRObject(dragon, albedo, metallic, roughness, 1.0f);
+        GameObject dragonObj = GameObject::makePBRObject({.model = dragon, .albedo = albedo, .metallic = metallic, .roughness = roughness, .ao = 1.0f});
 
         dragonObj.transform.translation = {
                 static_cast<float>(col) * spacingX - originX,
@@ -205,7 +213,7 @@ namespace engine {
   void SceneLoader::createCylinderEngine(Device& device, GameObject::Map& gameObjects)
   {
     auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/StainedGlassLamp/glTF/StainedGlassLamp.gltf", false, true, true);
-    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
     model.transform.scale       = {1.0f, 1.0f, 1.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 
@@ -243,7 +251,7 @@ namespace engine {
     // AnimatedTriangle - uses rotation animation (works)
     // AnimatedMorphCube - uses morph targets (now supported!)
     auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/AnimatedMorphCube/glTF/AnimatedMorphCube.gltf", false, true, true);
-    auto model                  = GameObject::makePBRObject(std::move(modelPtr));
+    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
     model.transform.scale       = {10.0f, 10.0f, 10.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 

@@ -25,7 +25,8 @@ namespace engine {
       {
         ImGui::PushID(id);
 
-        std::string label = "Object " + std::to_string(id);
+        std::string label = obj.getName() + " " + std::to_string(id);
+
         if (obj.model)
         {
           label += " (Model)";

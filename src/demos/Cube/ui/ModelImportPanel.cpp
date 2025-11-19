@@ -44,7 +44,7 @@ namespace engine {
 
           // Load the model
           auto modelPtr                   = Model::createModelFromGLTF(device_, fullPath, false, true, true);
-          auto newObject                  = GameObject::makePBRObject(std::move(modelPtr));
+          auto newObject                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
           newObject.transform.scale       = {1.0f, 1.0f, 1.0f};
           newObject.transform.translation = {0.0f, 0.0f, 0.0f};
 

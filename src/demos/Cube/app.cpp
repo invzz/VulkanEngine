@@ -38,6 +38,7 @@
 // UI Panels
 #include "ui/AnimationPanel.hpp"
 #include "ui/CameraPanel.hpp"
+#include "ui/LightsPanel.hpp"
 #include "ui/ModelImportPanel.hpp"
 #include "ui/ScenePanel.hpp"
 #include "ui/TransformPanel.hpp"
@@ -111,6 +112,7 @@ namespace engine {
     uiManager.addPanel(std::make_unique<ModelImportPanel>(device, gameObjects, animationSystem, pbrRenderSystem));
     uiManager.addPanel(std::make_unique<CameraPanel>(cameraObject));
     uiManager.addPanel(std::make_unique<TransformPanel>(gameObjects));
+    uiManager.addPanel(std::make_unique<LightsPanel>(gameObjects));
     uiManager.addPanel(std::make_unique<AnimationPanel>(gameObjects));
     uiManager.addPanel(std::make_unique<ScenePanel>(device, gameObjects, animationSystem));
 
