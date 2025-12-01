@@ -1,6 +1,7 @@
 #pragma once
 
 #include "3dEngine/GameObject.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 #include "UIPanel.hpp"
 
 namespace engine {
@@ -11,12 +12,12 @@ namespace engine {
   class AnimationPanel : public UIPanel
   {
   public:
-    explicit AnimationPanel(GameObject::Map& gameObjects);
+    explicit AnimationPanel(GameObjectManager& objectManager);
 
     void render(FrameInfo& frameInfo) override;
 
   private:
-    GameObject::Map& gameObjects_;
+    GameObjectManager& objectManager_;
   };
 
 } // namespace engine

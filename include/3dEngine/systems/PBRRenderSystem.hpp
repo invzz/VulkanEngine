@@ -18,6 +18,9 @@
 
 namespace engine {
 
+  // Forward declarations
+  class MaterialSystem;
+
   class PBRRenderSystem
   {
   public:
@@ -29,32 +32,18 @@ namespace engine {
 
     void render(FrameInfo& frameInfo);
 
-    // Get or create material descriptor set for a given material
-    VkDescriptorSet getMaterialDescriptorSet(const PBRMaterial& material);
-
-    // Clear the descriptor cache (call when materials are modified)
-    void clearDescriptorCache() { materialDescriptorCache.clear(); }
+    // Clear the material descriptor cache (call when materials are modified)
+    void clearDescriptorCache();
 
   private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipeline(VkRenderPass renderPass);
-    void createMaterialDescriptorSetLayout();
-    void createMaterialDescriptorPool();
-    void createDefaultTextures();
 
     Device&                   device;
     std::unique_ptr<Pipeline> pipeline;
     VkPipelineLayout          pipelineLayout;
 
-    // Material descriptor system
-    std::unique_ptr<DescriptorSetLayout> materialSetLayout;
-    std::unique_ptr<DescriptorPool>      materialDescriptorPool;
-
-    // Cache for material descriptor sets (key = material pointer address as hash)
-    std::unordered_map<size_t, VkDescriptorSet> materialDescriptorCache;
-
-    // Default textures for missing material maps
-    std::shared_ptr<Texture> defaultWhiteTexture;
-    std::shared_ptr<Texture> defaultNormalTexture;
+    // Material management subsystem
+    std::unique_ptr<MaterialSystem> materialSystem;
   };
 } // namespace engine

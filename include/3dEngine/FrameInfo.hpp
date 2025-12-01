@@ -9,6 +9,7 @@
 namespace engine {
 
   class MorphTargetManager;
+  class GameObjectManager;
 
   constexpr size_t maxLightCount = 16;
 
@@ -58,7 +59,7 @@ namespace engine {
     VkCommandBuffer     commandBuffer;
     Camera&             camera;
     VkDescriptorSet     globalDescriptorSet;
-    GameObject::Map&    gameObjects;
+    GameObjectManager*  objectManager;    // Organized access to objects by type
     GameObject::id_t    selectedObjectId; // ID of currently selected object (0 = camera)
     GameObject*         selectedObject;   // Pointer to selected object (nullptr = camera)
     GameObject&         cameraObject;

@@ -1,6 +1,7 @@
 #include "3dEngine/systems/SimpleRenderSystem.hpp"
 
 #include "3dEngine/Exceptions.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -74,7 +75,7 @@ namespace engine {
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
-    for (const auto& [id, gameObject] : frameInfo.gameObjects)
+    for (const auto& [id, gameObject] : frameInfo.objectManager->getAllObjects())
     {
       // skip objects without a model
       if (!gameObject.model)

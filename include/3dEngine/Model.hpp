@@ -184,6 +184,12 @@ namespace engine {
     VkBuffer getVertexBuffer() const { return vertexBuffer->getBuffer(); }
     void     bindAlternateVertexBuffer(VkCommandBuffer commandBuffer, VkBuffer vertexBuffer) const;
 
+    /**
+     * @brief Get approximate memory size of this model
+     * @return Memory size in bytes (vertex + index buffers)
+     */
+    size_t getMemorySize() const;
+
   private:
     Device& device;
 

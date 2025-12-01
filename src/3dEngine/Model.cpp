@@ -241,4 +241,20 @@ namespace engine {
     }
   }
 
+  size_t Model::getMemorySize() const
+  {
+    size_t totalSize = 0;
+
+    // Vertex buffer
+    totalSize += vertexCount * sizeof(Vertex);
+
+    // Index buffer
+    if (hasIndexBuffer)
+    {
+      totalSize += indexCount * sizeof(uint32_t);
+    }
+
+    return totalSize;
+  }
+
 } // namespace engine

@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "3dEngine/GameObjectManager.hpp"
+
 namespace engine {
 
   MorphTargetSystem::MorphTargetSystem(Device& device)
@@ -28,7 +30,7 @@ namespace engine {
     }
 
     // Update morph targets for all models that have them
-    for (auto& [id, obj] : frameInfo.gameObjects)
+    for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
     {
       if (obj.model && obj.model->hasMorphTargets())
       {

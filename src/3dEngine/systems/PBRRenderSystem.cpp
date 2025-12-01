@@ -1,9 +1,12 @@
 #include "3dEngine/systems/PBRRenderSystem.hpp"
 
 #include "3dEngine/Exceptions.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/MorphTargetManager.hpp"
 #include "3dEngine/PBRMaterial.hpp"
 #include "3dEngine/Texture.hpp"
+#include "3dEngine/systems/MaterialSystem.hpp"
+#include "3dEngine/systems/RenderCullingSystem.hpp"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -38,36 +41,19 @@ namespace engine {
 
   PBRRenderSystem::PBRRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout) : device(device)
   {
-    createDefaultTextures();
-    createMaterialDescriptorSetLayout();
-    createMaterialDescriptorPool();
+    materialSystem = std::make_unique<MaterialSystem>(device);
     createPipelineLayout(globalSetLayout);
     createPipeline(renderPass);
   }
 
-  void PBRRenderSystem::createDefaultTextures()
+  PBRRenderSystem::~PBRRenderSystem()
   {
-    defaultWhiteTexture  = Texture::createWhiteTexture(device);
-    defaultNormalTexture = Texture::createNormalTexture(device);
+    vkDestroyPipelineLayout(device.device(), pipelineLayout, nullptr);
   }
 
-  void PBRRenderSystem::createMaterialDescriptorSetLayout()
+  void PBRRenderSystem::clearDescriptorCache()
   {
-    materialSetLayout = DescriptorSetLayout::Builder(device)
-                                .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // albedo
-                                .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // normal
-                                .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // metallic
-                                .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // roughness
-                                .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT) // ao
-                                .build();
-  }
-
-  void PBRRenderSystem::createMaterialDescriptorPool()
-  {
-    materialDescriptorPool = DescriptorPool::Builder(device)
-                                     .setMaxSets(1000) // Support many materials
-                                     .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5000)
-                                     .build();
+    materialSystem->clearDescriptorCache();
   }
 
   void PBRRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
@@ -81,7 +67,7 @@ namespace engine {
     };
 
     // Set 0: global (camera, lights), Set 1: material (textures)
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, materialSetLayout->getDescriptorSetLayout()};
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, materialSystem->getDescriptorSetLayout()};
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -95,61 +81,6 @@ namespace engine {
     {
       throw engine::RuntimeException("failed to create pipeline layout!");
     }
-  }
-
-  PBRRenderSystem::~PBRRenderSystem()
-  {
-    vkDestroyPipelineLayout(device.device(), pipelineLayout, nullptr);
-  }
-
-  VkDescriptorSet PBRRenderSystem::getMaterialDescriptorSet(const PBRMaterial& material)
-  {
-    // Create a hash from material pointer (simple cache key)
-    size_t materialHash = reinterpret_cast<size_t>(&material);
-
-    // Check cache
-    auto it = materialDescriptorCache.find(materialHash);
-    if (it != materialDescriptorCache.end())
-    {
-      return it->second;
-    }
-
-    // Create new descriptor set
-    VkDescriptorSet descriptorSet;
-    if (!materialDescriptorPool->allocateDescriptor(materialSetLayout->getDescriptorSetLayout(), descriptorSet))
-    {
-      throw std::runtime_error("Failed to allocate material descriptor set!");
-    }
-
-    // Write descriptor set with textures or default fallbacks
-    DescriptorWriter writer(*materialSetLayout, *materialDescriptorPool);
-
-    // Albedo map (binding 0)
-    VkDescriptorImageInfo albedoInfo = material.albedoMap ? material.albedoMap->getDescriptorInfo() : defaultWhiteTexture->getDescriptorInfo();
-    writer.writeImage(0, &albedoInfo);
-
-    // Normal map (binding 1)
-    VkDescriptorImageInfo normalInfo = material.normalMap ? material.normalMap->getDescriptorInfo() : defaultNormalTexture->getDescriptorInfo();
-    writer.writeImage(1, &normalInfo);
-
-    // Metallic map (binding 2)
-    VkDescriptorImageInfo metallicInfo = material.metallicMap ? material.metallicMap->getDescriptorInfo() : defaultWhiteTexture->getDescriptorInfo();
-    writer.writeImage(2, &metallicInfo);
-
-    // Roughness map (binding 3)
-    VkDescriptorImageInfo roughnessInfo = material.roughnessMap ? material.roughnessMap->getDescriptorInfo() : defaultWhiteTexture->getDescriptorInfo();
-    writer.writeImage(3, &roughnessInfo);
-
-    // AO map (binding 4)
-    VkDescriptorImageInfo aoInfo = material.aoMap ? material.aoMap->getDescriptorInfo() : defaultWhiteTexture->getDescriptorInfo();
-    writer.writeImage(4, &aoInfo);
-
-    writer.overwrite(descriptorSet);
-
-    // Cache the descriptor set
-    materialDescriptorCache[materialHash] = descriptorSet;
-
-    return descriptorSet;
   }
 
   void PBRRenderSystem::createPipeline(VkRenderPass renderPass)
@@ -171,75 +102,12 @@ namespace engine {
     // Bind set 0: global (camera, lights)
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
+    // Get culled and sorted visible objects
+    std::vector<RenderCullingSystem::RenderableObject> visibleObjects;
+    RenderCullingSystem::cullAndSort(frameInfo, visibleObjects, true);
+
     // Track last bound descriptor to avoid redundant bindings
     VkDescriptorSet lastBoundMaterial = VK_NULL_HANDLE;
-
-    // Build list of visible objects with frustum culling
-    struct RenderObject
-    {
-      GameObject::id_t   id;
-      const GameObject*  obj;
-      const PBRMaterial* material; // For single-material objects
-      VkDescriptorSet    materialDescSet;
-      float              distanceToCamera; // For sorting
-    };
-
-    std::vector<RenderObject> visibleObjects;
-    visibleObjects.reserve(frameInfo.gameObjects.size());
-
-    for (const auto& [id, gameObject] : frameInfo.gameObjects)
-    {
-      // Skip objects without models
-      if (!gameObject.model)
-      {
-        continue;
-      }
-
-      // Check if this is a multi-material model or a PBR object
-      bool isMultiMaterial = gameObject.model->hasMultipleMaterials();
-      bool hasPBRMaterial  = gameObject.pbrMaterial != nullptr;
-
-      // Skip if neither multi-material nor has PBR material
-      if (!isMultiMaterial && !hasPBRMaterial)
-      {
-        continue;
-      }
-
-      // Frustum culling: check if object is visible
-      glm::vec3 center;
-      float     radius;
-      gameObject.getBoundingSphere(center, radius);
-      if (!frameInfo.camera.isInFrustum(center, radius))
-      {
-        continue; // Skip objects outside view frustum
-      }
-
-      // Calculate distance to camera for sorting
-      float distanceToCamera = glm::length(frameInfo.camera.getPosition() - center);
-
-      // Add to visible list
-      if (!isMultiMaterial && hasPBRMaterial)
-      {
-        // Single-material objects can be sorted
-        visibleObjects.push_back({id, &gameObject, gameObject.pbrMaterial.get(), VK_NULL_HANDLE, distanceToCamera});
-      }
-      else
-      {
-        // Multi-material objects (just add, they handle their own materials)
-        visibleObjects.push_back({id, &gameObject, nullptr, VK_NULL_HANDLE, distanceToCamera});
-      }
-    }
-
-    // Sort by material to minimize state changes (single-material objects only)
-    // Multi-material objects will be rendered in original order
-    std::stable_sort(visibleObjects.begin(), visibleObjects.end(), [](const RenderObject& a, const RenderObject& b) {
-      // Sort single-material objects by material pointer, multi-material objects at end
-      if (a.material && b.material)
-      {
-        return a.material < b.material;
-      }
-      return a.material > b.material; // Put multi-material objects at end
-    });
 
     // Render sorted visible objects
     for (const auto& renderObj : visibleObjects)
@@ -280,7 +148,7 @@ namespace engine {
           const auto& material = materials[subMesh.materialId].pbrMaterial;
 
           // Get or create material descriptor set
-          VkDescriptorSet materialDescSet = getMaterialDescriptorSet(material);
+          VkDescriptorSet materialDescSet = materialSystem->getMaterialDescriptorSet(material);
 
           // Only bind if different from last material (avoid redundant state changes)
           if (materialDescSet != lastBoundMaterial)
@@ -328,7 +196,7 @@ namespace engine {
         const auto& material = *gameObject.pbrMaterial;
 
         // Get or create material descriptor set
-        VkDescriptorSet materialDescSet = getMaterialDescriptorSet(material);
+        VkDescriptorSet materialDescSet = materialSystem->getMaterialDescriptorSet(material);
 
         // Only bind if different from last material (avoid redundant state changes)
         if (materialDescSet != lastBoundMaterial)

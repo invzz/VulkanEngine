@@ -39,14 +39,14 @@ vec3 getConeVertex(int index, float angle)
   // Cone apex at origin
   if (index == 0) return vec3(0.0, 0.0, 0.0);
 
-  // Cone base circle (16 segments) at z = -2.0
+  // Cone base circle (16 segments) at z = 2.0 (positive Z)
   float radius      = tan(angle) * 2.0;
   int   circleIndex = index - 1;
 
   if (circleIndex < 16)
   {
     float theta = float(circleIndex) * 2.0 * 3.14159265359 / 16.0;
-    return vec3(radius * cos(theta), radius * sin(theta), -2.0);
+    return vec3(radius * cos(theta), radius * sin(theta), 2.0);
   }
 
   // Lines from apex to circle (every other point for clarity)
@@ -59,7 +59,7 @@ vec3 getConeVertex(int index, float angle)
     {
       int   circlePoint = (lineIndex / 2) * 2;
       float theta       = float(circlePoint) * 2.0 * 3.14159265359 / 16.0;
-      return vec3(radius * cos(theta), radius * sin(theta), -2.0);
+      return vec3(radius * cos(theta), radius * sin(theta), 2.0);
     }
   }
 

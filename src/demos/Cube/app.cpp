@@ -48,7 +48,7 @@ namespace engine {
 
   App::App()
   {
-    SceneLoader::loadScene(device, gameObjects);
+    SceneLoader::loadScene(device, objectManager, resourceManager);
   }
   App::~App() = default;
 
@@ -88,7 +88,7 @@ namespace engine {
 
     // Register all animated objects with the animation system
     // This allows the system to track and update only objects that need animation
-    for (auto& [id, obj] : gameObjects)
+    for (auto& [id, obj] : objectManager.getAllObjects())
     {
       if (obj.animationController || (obj.model && obj.model->hasMorphTargets()))
       {
@@ -109,12 +109,12 @@ namespace engine {
 
     // UI Manager with panels
     UIManager uiManager{imguiManager};
-    uiManager.addPanel(std::make_unique<ModelImportPanel>(device, gameObjects, animationSystem, pbrRenderSystem));
+    uiManager.addPanel(std::make_unique<ModelImportPanel>(device, objectManager, animationSystem, pbrRenderSystem));
     uiManager.addPanel(std::make_unique<CameraPanel>(cameraObject));
-    uiManager.addPanel(std::make_unique<TransformPanel>(gameObjects));
-    uiManager.addPanel(std::make_unique<LightsPanel>(gameObjects));
-    uiManager.addPanel(std::make_unique<AnimationPanel>(gameObjects));
-    uiManager.addPanel(std::make_unique<ScenePanel>(device, gameObjects, animationSystem));
+    uiManager.addPanel(std::make_unique<TransformPanel>(objectManager));
+    uiManager.addPanel(std::make_unique<LightsPanel>(objectManager));
+    uiManager.addPanel(std::make_unique<AnimationPanel>(objectManager));
+    uiManager.addPanel(std::make_unique<ScenePanel>(device, objectManager, animationSystem));
 
     // Selection state (persisted across frames)
     GameObject::id_t selectedObjectId = 0;
@@ -157,7 +157,7 @@ namespace engine {
                 .commandBuffer       = commandBuffer,
                 .camera              = camera,
                 .globalDescriptorSet = renderContext.getGlobalDescriptorSet(frameIndex),
-                .gameObjects         = gameObjects,
+                .objectManager       = &objectManager,
                 .selectedObjectId    = selectedObjectId,
                 .selectedObject      = selectedObject,
                 .cameraObject        = cameraObject,

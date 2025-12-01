@@ -8,12 +8,12 @@ namespace engine {
   class LightsPanel : public UIPanel
   {
   public:
-    LightsPanel(GameObject::Map& gameObjects);
+    LightsPanel(GameObjectManager& objectManager);
 
     void render(FrameInfo& frameInfo) override;
 
   private:
-    GameObject::Map& gameObjects_;
+    GameObjectManager& objectManager_;
   };
 
 } // namespace engine

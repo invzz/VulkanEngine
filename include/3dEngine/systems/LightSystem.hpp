@@ -28,6 +28,9 @@ namespace engine {
     void render(FrameInfo& frameInfo);
     void update(FrameInfo& frameInfo, GlobalUbo& ubo) const;
 
+    // Update target-locked light rotation (call when light position or target changes)
+    static void updateTargetLockedLight(GameObject& obj);
+
   private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipeline(VkRenderPass renderPass);

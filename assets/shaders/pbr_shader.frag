@@ -138,63 +138,66 @@ float DistributionGGXAnisotropic(vec3 N, vec3 H, vec3 T, vec3 B, float roughness
 
 void main()
 {
-  // Apply UV tiling
+  // Apply UV tiling scale
   vec2 uv = fragUV * push.uvScale;
 
-  // Sample material properties from textures or use push constants
+  // Sample material properties from textures or use push constants as base values
   vec3  albedo    = push.albedo;
   float metallic  = push.metallic;
   float roughness = push.roughness;
   float ao        = push.ao;
 
-  // Check texture flags and sample if present
-  if ((push.textureFlags & (1u << 0)) != 0u) // Albedo map
+  // Texture sampling: Check flags to determine which textures are bound
+  // Push constant values act as multipliers/fallbacks when textures are present
+
+  if ((push.textureFlags & (1u << 0)) != 0u) // Albedo/BaseColor texture
   {
     vec4 texColor = texture(albedoMap, uv);
-    albedo        = texColor.rgb; // Already linear (loaded as sRGB format, auto-converted)
+    albedo        = texColor.rgb; // sRGB texture, auto-converted to linear by GPU
   }
 
-  if ((push.textureFlags & (1u << 2)) != 0u) // Metallic map
+  if ((push.textureFlags & (1u << 2)) != 0u) // Metallic texture
   {
-    metallic = texture(metallicMap, uv).r;
+    metallic *= texture(metallicMap, uv).r; // Multiply push constant by texture value
   }
 
-  if ((push.textureFlags & (1u << 3)) != 0u) // Roughness map
+  if ((push.textureFlags & (1u << 3)) != 0u) // Roughness texture
   {
-    roughness = texture(roughnessMap, uv).r;
+    roughness *= texture(roughnessMap, uv).r;
   }
 
-  if ((push.textureFlags & (1u << 4)) != 0u) // AO map
+  if ((push.textureFlags & (1u << 4)) != 0u) // Ambient Occlusion texture
   {
-    ao = texture(aoMap, uv).r;
+    ao *= texture(aoMap, uv).r;
   }
 
   vec3 N = normalize(fragmentNormalWorld);
 
-  // Apply normal map if present
+  // Normal mapping: Transform tangent-space normals to world space
   if ((push.textureFlags & (1u << 1)) != 0u) // Normal map
   {
-    // Sample tangent-space normal
+    // Sample tangent-space normal from texture (stored as [0,1], convert to [-1,1])
     vec3 tangentNormal = texture(normalMap, uv).xyz * 2.0 - 1.0;
 
-    // Flip Y for DirectX normal maps (OpenGL/Vulkan has Y pointing up, DirectX has Y pointing down)
+    // Flip Y for DirectX normal maps (OpenGL/Vulkan: Y-up, DirectX: Y-down)
     tangentNormal.y = -tangentNormal.y;
 
-    // Build TBN matrix - for horizontal surfaces, use Z as up reference
+    // Construct TBN (Tangent-Bitangent-Normal) matrix for transformation to world space
+    // Handle horizontal surfaces (floor/ceiling) differently to avoid tangent instability
     vec3 T;
-    if (abs(N.y) > 0.99) // Surface is horizontal (floor/ceiling)
+    if (abs(N.y) > 0.99) // Surface is nearly horizontal (normal points up/down)
     {
-      T = vec3(1.0, 0.0, 0.0); // Use X-axis as tangent
+      T = vec3(1.0, 0.0, 0.0); // Use world X-axis as tangent
     }
     else // Regular vertical or angled surface
     {
-      T = normalize(cross(N, vec3(0.0, 1.0, 0.0)));
+      T = normalize(cross(N, vec3(0.0, 1.0, 0.0))); // Derive tangent from normal and world up
     }
     vec3 B   = normalize(cross(N, T));
-    T        = normalize(cross(B, N)); // Re-orthogonalize
+    T        = normalize(cross(B, N)); // Re-orthogonalize tangent
     mat3 TBN = mat3(T, B, N);
 
-    // Transform to world space
+    // Transform tangent-space normal to world space
     N = normalize(TBN * tangentNormal);
   }
 

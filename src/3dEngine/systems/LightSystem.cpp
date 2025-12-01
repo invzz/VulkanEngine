@@ -1,6 +1,7 @@
 #include "3dEngine/systems/LightSystem.hpp"
 
 #include "3dEngine/Exceptions.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -85,7 +86,7 @@ namespace engine {
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
     // somewhat inefficient to loop over all game objects and check for point light components
-    for (const auto& [id, obj] : frameInfo.gameObjects)
+    for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
     {
       if (!obj.pointLight) continue;
 
@@ -115,7 +116,7 @@ namespace engine {
                             0,
                             nullptr);
 
-    for (const auto& [id, obj] : frameInfo.gameObjects)
+    for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
     {
       if (!obj.directionalLight) continue;
 
@@ -146,7 +147,7 @@ namespace engine {
     spotPipeline->bind(frameInfo.commandBuffer);
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, spotPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
-    for (const auto& [id, obj] : frameInfo.gameObjects)
+    for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
     {
       if (!obj.spotLight) continue;
 
@@ -177,6 +178,21 @@ namespace engine {
     }
   }
 
+  void LightSystem::updateTargetLockedLight(GameObject& obj)
+  {
+    // Update directional light target tracking
+    if (obj.directionalLight && obj.directionalLight->useTargetPoint)
+    {
+      obj.transform.lookAt(obj.directionalLight->targetPoint);
+    }
+
+    // Update spot light target tracking
+    if (obj.spotLight && obj.spotLight->useTargetPoint)
+    {
+      obj.transform.lookAt(obj.spotLight->targetPoint);
+    }
+  }
+
   void LightSystem::update(FrameInfo& frameInfo, GlobalUbo& ubo) const
   {
     ubo.pointLightCount       = 0;
@@ -185,43 +201,113 @@ namespace engine {
 
     auto rotateLight = glm::rotate(glm::mat4(1.f), frameInfo.frameTime, glm::vec3(0.f, -1.f, 0.f));
 
-    for (auto& [id, obj] : frameInfo.gameObjects)
+    // Use categorized vectors if manager is available
+    if (frameInfo.objectManager)
     {
-      // Point lights
-      if (obj.pointLight)
+      // Process point lights
+      for (auto* obj : frameInfo.objectManager->getPointLights())
       {
         assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
-        obj.transform.translation                     = glm::vec3(rotateLight * glm::vec4{obj.transform.translation, 1.f});
-        ubo.pointLights[ubo.pointLightCount].position = glm::vec4(obj.transform.translation, 1.f);
-        ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(obj.color, obj.pointLight->intensity);
+        obj->transform.translation                    = glm::vec3(rotateLight * glm::vec4{obj->transform.translation, 1.f});
+        ubo.pointLights[ubo.pointLightCount].position = glm::vec4(obj->transform.translation, 1.f);
+        ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(obj->color, obj->pointLight->intensity);
         ubo.pointLightCount++;
       }
 
-      // Directional lights
-      if (obj.directionalLight)
+      // Process directional lights
+      for (auto* obj : frameInfo.objectManager->getDirectionalLights())
       {
         assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
-        // Use transform rotation to determine direction (forward vector)
-        glm::vec3 direction                                        = obj.transform.getForwardDir();
+
+        // Update rotation to look at target if enabled
+        if (obj->directionalLight->useTargetPoint)
+        {
+          obj->transform.lookAt(obj->directionalLight->targetPoint);
+        }
+
+        glm::vec3 direction                                        = obj->transform.getForwardDir();
         ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
-        ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(obj.color, obj.directionalLight->intensity);
+        ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(obj->color, obj->directionalLight->intensity);
         ubo.directionalLightCount++;
       }
 
-      // Spot lights
-      if (obj.spotLight)
+      // Process spot lights
+      for (auto* obj : frameInfo.objectManager->getSpotLights())
       {
         assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
-        glm::vec3 direction = obj.transform.getForwardDir();
 
-        ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(obj.transform.translation, 1.f);
-        ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(obj.spotLight->innerCutoffAngle)));
-        ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(obj.color, obj.spotLight->intensity);
-        ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(obj.spotLight->outerCutoffAngle));
-        ubo.spotLights[ubo.spotLightCount].constantAtten  = obj.spotLight->constantAttenuation;
-        ubo.spotLights[ubo.spotLightCount].linearAtten    = obj.spotLight->linearAttenuation;
-        ubo.spotLights[ubo.spotLightCount].quadraticAtten = obj.spotLight->quadraticAttenuation;
+        // Update rotation to look at target if enabled
+        if (obj->spotLight->useTargetPoint)
+        {
+          obj->transform.lookAt(obj->spotLight->targetPoint);
+        }
+
+        glm::vec3 direction = obj->transform.getForwardDir();
+
+        ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(obj->transform.translation, 1.f);
+        ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(obj->spotLight->innerCutoffAngle)));
+        ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(obj->color, obj->spotLight->intensity);
+        ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(obj->spotLight->outerCutoffAngle));
+        ubo.spotLights[ubo.spotLightCount].constantAtten  = obj->spotLight->constantAttenuation;
+        ubo.spotLights[ubo.spotLightCount].linearAtten    = obj->spotLight->linearAttenuation;
+        ubo.spotLights[ubo.spotLightCount].quadraticAtten = obj->spotLight->quadraticAttenuation;
         ubo.spotLightCount++;
+      }
+    }
+    else
+    {
+      // Legacy: iterate through all game objects (fallback)
+      for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+      {
+        // Point lights
+        if (obj.pointLight)
+        {
+          assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
+          obj.transform.translation                     = glm::vec3(rotateLight * glm::vec4{obj.transform.translation, 1.f});
+          ubo.pointLights[ubo.pointLightCount].position = glm::vec4(obj.transform.translation, 1.f);
+          ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(obj.color, obj.pointLight->intensity);
+          ubo.pointLightCount++;
+        }
+
+        // Directional lights
+        if (obj.directionalLight)
+        {
+          assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
+
+          // Update rotation to look at target if enabled
+          if (obj.directionalLight->useTargetPoint)
+          {
+            obj.transform.lookAt(obj.directionalLight->targetPoint);
+          }
+
+          glm::vec3 direction                                        = obj.transform.getForwardDir();
+          ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
+          ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(obj.color, obj.directionalLight->intensity);
+          ubo.directionalLightCount++;
+        }
+
+        // Spot lights
+        if (obj.spotLight)
+        {
+          assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
+
+          // Update rotation to look at target if enabled
+          if (obj.spotLight->useTargetPoint)
+          {
+            obj.transform.lookAt(obj.spotLight->targetPoint);
+          }
+
+          glm::vec3 direction = obj.transform.getForwardDir();
+
+          ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(obj.transform.translation, 1.f);
+          ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(obj.spotLight->innerCutoffAngle)));
+          ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(obj.color, obj.spotLight->intensity);
+          ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(obj.spotLight->outerCutoffAngle));
+          ubo.spotLights[ubo.spotLightCount].constantAtten  = obj.spotLight->constantAttenuation;
+          ubo.spotLights[ubo.spotLightCount].linearAtten    = obj.spotLight->linearAttenuation;
+          ubo.spotLights[ubo.spotLightCount].quadraticAtten = obj.spotLight->quadraticAttenuation;
+          ubo.spotLightCount++;
+        }
       }
     }
   }

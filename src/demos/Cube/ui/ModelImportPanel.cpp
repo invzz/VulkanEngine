@@ -6,14 +6,15 @@
 #include <iostream>
 
 #include "3dEngine/AnimationController.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/Model.hpp"
 #include "3dEngine/PBRMaterial.hpp"
 #include "3dEngine/Texture.hpp"
 
 namespace engine {
 
-  ModelImportPanel::ModelImportPanel(Device& device, GameObject::Map& gameObjects, AnimationSystem& animationSystem, PBRRenderSystem& pbrRenderSystem)
-      : device_(device), gameObjects_(gameObjects), animationSystem_(animationSystem), pbrRenderSystem_(pbrRenderSystem)
+  ModelImportPanel::ModelImportPanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem, PBRRenderSystem& pbrRenderSystem)
+      : device_(device), objectManager_(objectManager), animationSystem_(animationSystem), pbrRenderSystem_(pbrRenderSystem)
   {}
 
   void ModelImportPanel::render(FrameInfo& frameInfo)
@@ -98,11 +99,12 @@ namespace engine {
             newObject.animationController->play(0, true);
           }
 
-          auto newId          = newObject.getId();
-          auto [it, inserted] = gameObjects_.insert({newId, std::move(newObject)});
+          GameObject::id_t newId = newObject.getId();
+          objectManager_.addObject(std::move(newObject));
 
           // Register with animation system if needed
-          if (it->second.animationController || (it->second.model && it->second.model->hasMorphTargets()))
+          auto* obj = objectManager_.getObject(newId);
+          if (obj && (obj->animationController || (obj->model && obj->model->hasMorphTargets())))
           {
             animationSystem_.registerAnimatedObject(newId);
           }

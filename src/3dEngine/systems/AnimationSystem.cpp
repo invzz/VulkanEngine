@@ -2,6 +2,8 @@
 
 #include <iostream>
 
+#include "3dEngine/GameObjectManager.hpp"
+
 namespace engine {
 
   AnimationSystem::AnimationSystem(Device& device) : device_(device)
@@ -44,8 +46,8 @@ namespace engine {
     // Only iterate registered animated objects (not all gameObjects)
     for (GameObject::id_t objectId : animatedObjects_)
     {
-      auto it = frameInfo.gameObjects.find(objectId);
-      if (it == frameInfo.gameObjects.end())
+      auto it = frameInfo.objectManager->getAllObjects().find(objectId);
+      if (it == frameInfo.objectManager->getAllObjects().end())
       {
         continue; // Object was removed but not unregistered yet
       }
@@ -74,8 +76,8 @@ namespace engine {
     // Only iterate registered animated objects
     for (GameObject::id_t objectId : animatedObjects_)
     {
-      auto it = frameInfo.gameObjects.find(objectId);
-      if (it == frameInfo.gameObjects.end())
+      auto it = frameInfo.objectManager->getAllObjects().find(objectId);
+      if (it == frameInfo.objectManager->getAllObjects().end())
       {
         continue;
       }

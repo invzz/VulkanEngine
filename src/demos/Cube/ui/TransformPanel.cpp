@@ -4,9 +4,11 @@
 
 #include <string>
 
+#include "3dEngine/systems/LightSystem.hpp"
+
 namespace engine {
 
-  TransformPanel::TransformPanel(GameObject::Map& gameObjects) : gameObjects_(gameObjects) {}
+  TransformPanel::TransformPanel(GameObjectManager& objectManager) : objectManager_(objectManager) {}
 
   void TransformPanel::render(FrameInfo& frameInfo)
   {
@@ -27,14 +29,29 @@ namespace engine {
           if (ImGui::BeginTabItem("Translation"))
           {
             ImGui::Spacing();
-            ImGui::DragFloat("X", &obj.transform.translation.x, 0.1f);
-            ImGui::DragFloat("Y", &obj.transform.translation.y, 0.1f);
-            ImGui::DragFloat("Z", &obj.transform.translation.z, 0.1f);
+            bool translationChanged = false;
+            translationChanged |= ImGui::DragFloat("X", &obj.transform.translation.x, 0.1f);
+            translationChanged |= ImGui::DragFloat("Y", &obj.transform.translation.y, 0.1f);
+            translationChanged |= ImGui::DragFloat("Z", &obj.transform.translation.z, 0.1f);
+
+            // If translation changed and light is target-locked, update rotation
+            if (translationChanged)
+            {
+              if ((obj.directionalLight && obj.directionalLight->useTargetPoint) || (obj.spotLight && obj.spotLight->useTargetPoint))
+              {
+                LightSystem::updateTargetLockedLight(obj);
+              }
+            }
 
             ImGui::Separator();
             if (ImGui::Button("Reset Position"))
             {
               obj.transform.translation = glm::vec3(0.0f);
+              // Update rotation if target-locked
+              if ((obj.directionalLight && obj.directionalLight->useTargetPoint) || (obj.spotLight && obj.spotLight->useTargetPoint))
+              {
+                LightSystem::updateTargetLockedLight(obj);
+              }
             }
             ImGui::EndTabItem();
           }

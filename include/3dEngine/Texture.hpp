@@ -40,6 +40,12 @@ namespace engine {
     int getHeight() const { return height_; }
     int getMipLevels() const { return mipLevels_; }
 
+    /**
+     * @brief Get approximate memory size of this texture
+     * @return Memory size in bytes (includes mipmaps)
+     */
+    size_t getMemorySize() const;
+
   private:
     // Private constructor for creating textures from memory
     Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);

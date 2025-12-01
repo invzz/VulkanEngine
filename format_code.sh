@@ -9,5 +9,5 @@ NC='\033[0m' # No Color
 
 # Format C++ code using clang-format
 echo -e "[${GREEN} Formatting ${NC}] C++ code..."
-find . -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i
+find . -name "*.cpp" -o -name "*.hpp" -not -path "./build/*" -not -path "./.xmake/*"| xargs clang-format -i
 echo -e "[${GREEN} Formatting ${NC}] Complete."

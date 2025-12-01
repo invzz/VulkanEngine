@@ -7,8 +7,8 @@
 
 namespace engine {
 
-  ScenePanel::ScenePanel(Device& device, GameObject::Map& gameObjects, AnimationSystem& animationSystem)
-      : device_(device), gameObjects_(gameObjects), animationSystem_(animationSystem)
+  ScenePanel::ScenePanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem)
+      : device_(device), objectManager_(objectManager), animationSystem_(animationSystem)
   {}
 
   void ScenePanel::render(FrameInfo& frameInfo)
@@ -17,11 +17,11 @@ namespace engine {
 
     if (ImGui::CollapsingHeader("Scene Objects"))
     {
-      ImGui::Text("Total: %zu", gameObjects_.size());
+      ImGui::Text("Total: %zu", objectManager_.getAllObjects().size());
 
       toDelete_.clear();
 
-      for (auto& [id, obj] : gameObjects_)
+      for (auto& [id, obj] : objectManager_.getAllObjects())
       {
         ImGui::PushID(id);
 
@@ -70,7 +70,7 @@ namespace engine {
       {
         // Wait for GPU to finish all work before deleting
         device_.WaitIdle();
-        gameObjects_.erase(it->id);
+        objectManager_.removeObject(it->id);
         std::cout << "[ScenePanel] Deleted object " << it->id << std::endl;
         it = pendingDeletions_.erase(it);
       }

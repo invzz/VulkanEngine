@@ -4,6 +4,7 @@
 
 #include "3dEngine/Device.hpp"
 #include "3dEngine/GameObject.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/systems/AnimationSystem.hpp"
 #include "UIPanel.hpp"
 
@@ -15,7 +16,7 @@ namespace engine {
   class ScenePanel : public UIPanel
   {
   public:
-    ScenePanel(Device& device, GameObject::Map& gameObjects, AnimationSystem& animationSystem);
+    ScenePanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem);
 
     void render(FrameInfo& frameInfo) override;
     void processDelayedDeletions(); // Call this between frames, not during rendering
@@ -28,7 +29,7 @@ namespace engine {
     };
 
     Device&                       device_;
-    GameObject::Map&              gameObjects_;
+    GameObjectManager&            objectManager_;
     AnimationSystem&              animationSystem_;
     std::vector<GameObject::id_t> toDelete_;
     std::vector<PendingDeletion>  pendingDeletions_;

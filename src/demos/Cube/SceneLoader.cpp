@@ -4,43 +4,44 @@
 
 #include "3dEngine/AnimationController.hpp"
 #include "3dEngine/Model.hpp"
+#include "3dEngine/ResourceManager.hpp"
 #include "3dEngine/Texture.hpp"
 
 namespace engine {
 
-  void SceneLoader::loadScene(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::loadScene(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
-    if (!gameObjects.empty())
+    if (!objectManager.getAllObjects().empty())
     {
       return;
     }
 
-    createLights(gameObjects);
-    createFloor(device, gameObjects);
-    createBmw(device, gameObjects);
-    // createApple(device, gameObjects);
-    // createCylinderEngine(device, gameObjects);
-    // createAnimatedCube(device, gameObjects);
+    createLights(objectManager);
+    createFloor(device, objectManager, resourceManager);
+    createBmw(device, objectManager, resourceManager);
+    // createApple(device, objectManager);
+    // createCylinderEngine(device, objectManager);
+    // createAnimatedCube(device, objectManager);
   }
 
-  void SceneLoader::createFromFile(Device& device, GameObject::Map& gameObjects, const std::string& modelPath)
+  void SceneLoader::createFromFile(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager, const std::string& modelPath)
   {
-    if (!gameObjects.empty())
+    if (!objectManager.getAllObjects().empty())
     {
       return;
     }
 
-    auto modelPtr               = Model::createModelFromFile(device, modelPath, false, true, true);
-    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
+    auto modelPtr               = resourceManager.loadModel(modelPath, false, true, true);
+    auto model                  = GameObject::makePBRObject({.model = modelPtr});
     model.transform.scale       = {1.0f, 1.f, 1.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
-    gameObjects.try_emplace(model.getId(), std::move(model));
+    objectManager.addObject(std::move(model));
   }
 
-  void SceneLoader::createApple(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createApple(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
-    auto modelPtr               = Model::createModelFromFile(device, MODEL_PATH "/3DApple002_SQ-4K-JPG.obj", false, true, true);
-    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
+    auto modelPtr               = resourceManager.loadModel(MODEL_PATH "/3DApple002_SQ-4K-JPG.obj", false, true, true);
+    auto model                  = GameObject::makePBRObject({.model = modelPtr});
     model.transform.scale       = {5.0f, 5.f, 5.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 
@@ -59,110 +60,114 @@ namespace engine {
 
       if (!mat.diffuseTexPath.empty())
       {
-        model.pbrMaterial->albedoMap = std::make_shared<Texture>(device, basePath + mat.diffuseTexPath, true);
+        model.pbrMaterial->albedoMap = resourceManager.loadTexture(basePath + mat.diffuseTexPath, true);
       }
 
       if (!mat.normalTexPath.empty())
       {
-        model.pbrMaterial->normalMap = std::make_shared<Texture>(device, basePath + mat.normalTexPath, false);
+        model.pbrMaterial->normalMap = resourceManager.loadTexture(basePath + mat.normalTexPath, false);
       }
 
       if (!mat.roughnessTexPath.empty())
       {
-        model.pbrMaterial->roughnessMap = std::make_shared<Texture>(device, basePath + mat.roughnessTexPath, false);
+        model.pbrMaterial->roughnessMap = resourceManager.loadTexture(basePath + mat.roughnessTexPath, false);
       }
 
       if (!mat.aoTexPath.empty())
       {
-        model.pbrMaterial->aoMap = std::make_shared<Texture>(device, basePath + mat.aoTexPath, false);
+        model.pbrMaterial->aoMap = resourceManager.loadTexture(basePath + mat.aoTexPath, false);
       }
     }
 
     model.pbrMaterial->uvScale = 1.0f;
-    gameObjects.try_emplace(model.getId(), std::move(model));
+    objectManager.addObject(std::move(model));
   }
 
-  void SceneLoader::createSpaceShip(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createSpaceShip(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
-    auto spaceShipModel = std::shared_ptr<Model>(Model::createModelFromFile(device, MODEL_PATH "/SpaceShipModeling2.obj", false, true, false));
+    auto spaceShipModel = resourceManager.loadModel(MODEL_PATH "/SpaceShipModeling2.obj", false, true, false);
 
     auto spaceShip                  = GameObject::create();
     spaceShip.model                 = spaceShipModel;
     spaceShip.transform.scale       = {0.2f, 0.2f, 0.2f};
     spaceShip.transform.translation = {0.0f, 0.0f, 0.0f};
-    gameObjects.try_emplace(spaceShip.getId(), std::move(spaceShip));
+    objectManager.addObject(std::move(spaceShip));
   }
 
-  void SceneLoader::createLights(GameObject::Map& gameObjects, float radius)
+  void SceneLoader::createLights(GameObjectManager& objectManager, float radius)
   {
     std::vector<glm::vec3> allColors{{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f}, {1.f, 0.f, 1.f}, {0.f, 1.f, 1.f}, {1.f, 1.f, 0.f}};
 
     std::vector<glm::vec3> lightColors = allColors;
 
-    // Create point lights in a circle
-    for (size_t i = 0; i < lightColors.size(); i++)
-    {
-      auto pointLight  = GameObject::makePointLightObject({.intensity = 1.0f, .color = lightColors[i], .radius = 0.05f});
-      pointLight.color = lightColors[i];
+    // // Create point lights in a circle
+    // for (size_t i = 0; i < lightColors.size(); i++)
+    // {
+    //   auto pointLight  = GameObject::makePointLightObject({.intensity = 1.0f, .color = lightColors[i], .radius = 0.05f});
+    //   pointLight.color = lightColors[i];
 
-      auto rotateLight =
-              glm::rotate(glm::mat4(1.0f), (glm::two_pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size()), glm::vec3(0.f, -2.f, 0.f));
-      pointLight.transform.translation = glm::vec3(rotateLight * glm::vec4{-radius, -1.f, -radius, 1.f});
+    //   auto rotateLight =
+    //           glm::rotate(glm::mat4(1.0f), (glm::two_pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size()), glm::vec3(0.f, -2.f,
+    //           0.f));
+    //   pointLight.transform.translation = glm::vec3(rotateLight * glm::vec4{-radius, -1.f, -radius, 1.f});
 
-      gameObjects.try_emplace(pointLight.getId(), std::move(pointLight));
-    }
+    //   objectManager.addObject(std::move(pointLight));
+    // }
 
     // Add a directional light (sun-like, from above)
     auto directionalLight               = GameObject::makeDirectionalLightObject({.intensity = 0.5f, .color = {1.0f, 0.95f, 0.9f}}); // Warm sunlight
     directionalLight.transform.rotation = glm::vec3(glm::radians(-45.0f), glm::radians(30.0f), 0.0f);                                // Angled down
-    gameObjects.try_emplace(directionalLight.getId(), std::move(directionalLight));
+    objectManager.addObject(std::move(directionalLight));
 
     // Add two spot lights (like stage lights)
     auto spotLight1 =
             GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {1.0f, 0.8f, 0.5f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Warm spotlight
-    spotLight1.transform.translation = glm::vec3(3.0f, 3.0f, 3.0f);
+    spotLight1.transform.translation = glm::vec3(-3.0f, -3.0f, -3.0f);
     spotLight1.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(-135.0f), 0.0f); // Point toward center
-    gameObjects.try_emplace(spotLight1.getId(), std::move(spotLight1));
+    objectManager.addObject(std::move(spotLight1));
 
     auto spotLight2 =
             GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {0.5f, 0.8f, 1.0f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Cool spotlight
-    spotLight2.transform.translation = glm::vec3(-3.0f, 3.0f, -3.0f);
+    spotLight2.transform.translation = glm::vec3(3.0f, 3.0f, -3.0f);
     spotLight2.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(45.0f), 0.0f); // Point toward center
-    gameObjects.try_emplace(spotLight2.getId(), std::move(spotLight2));
+    objectManager.addObject(std::move(spotLight2));
   }
 
-  void SceneLoader::createFloor(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createFloor(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
     auto floor                  = GameObject::makePBRObject({
-                             .model     = Model::createModelFromFile(device, MODEL_PATH "/quad.obj"),
-                             .albedo    = {0.5f, 0.5f, 0.5f},
-                             .metallic  = 0.1f,
-                             .roughness = 0.1f,
-                             .ao        = 0.3f,
+                             .model     = resourceManager.loadModel(MODEL_PATH "/quad.obj", false, false, false),
+                             .albedo    = {1.0f, 1.0f, 1.0f}, // White multiplier (textures define actual color)
+                             .metallic  = 0.0f,               // Non-metallic (asphalt is dielectric)
+                             .roughness = 1.0f,               // Multiplier for roughness texture
+                             .ao        = 1.0f,               // Multiplier for AO texture
     });
     floor.transform.scale       = {4.0f, 1.f, 4.0f};
     floor.transform.translation = {0.0f, 0.0f, 0.0f};
 
-    // Load asphalt textures with correct formats:
-    // - BaseColor: sRGB (true) - color texture needs gamma correction
-    // - Normal/Roughness/AO: Linear (false) - data textures, no gamma correction
-    // - Normal map is DirectX format (Y-down), shader flips Y to convert to OpenGL/Vulkan convention (Y-up)
+    // Load PBR textures with correct formats:
+    // - BaseColor: sRGB (true)  - color texture needs gamma correction (loaded in sRGB, auto-converted to linear)
+    // - Normal:    Linear (false) - tangent-space normal data, no gamma correction
+    // - Roughness: Linear (false) - scalar roughness data, no gamma correction
+    // - AO:        Linear (false) - ambient occlusion data, no gamma correction
+    // Note: Normal maps are DirectX format (Y-down), shader flips Y to OpenGL/Vulkan (Y-up) convention
 
-    auto textureName = "RedStoneWall01";
+    // Available materials: "Asphalt01", "RedStoneWall01", "MarbleTiles01"
+    auto textureName = "Asphalt01";
     auto path        = std::string(TEXTURE_PATH) + "/" + textureName + "_MR_4K" + "/" + textureName + "_4K_";
 
-    floor.pbrMaterial->albedoMap    = std::make_shared<Texture>(device, path + "BaseColor.png", true);
-    floor.pbrMaterial->normalMap    = std::make_shared<Texture>(device, path + "Normal.png", false);
-    floor.pbrMaterial->roughnessMap = std::make_shared<Texture>(device, path + "Roughness.png", false);
-    floor.pbrMaterial->aoMap        = std::make_shared<Texture>(device, path + "Height.png", false);
-    floor.pbrMaterial->uvScale      = 8.0f; // Tile the texture 16 times
-    gameObjects.try_emplace(floor.getId(), std::move(floor));
+    floor.pbrMaterial->albedoMap    = resourceManager.loadTexture(path + "BaseColor.png", true);
+    floor.pbrMaterial->normalMap    = resourceManager.loadTexture(path + "Normal.png", false);
+    floor.pbrMaterial->roughnessMap = resourceManager.loadTexture(path + "Roughness.png", false);
+    floor.pbrMaterial->aoMap        = resourceManager.loadTexture(path + "AO.png", false);
+    floor.pbrMaterial->uvScale      = 8.0f; // Tile the texture 8x across the floor
+    objectManager.addObject(std::move(floor));
   }
 
-  void SceneLoader::createBmw(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createBmw(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
     // Load the BMW model (MTL materials are loaded automatically)
-    auto bmwModel = std::shared_ptr<Model>(Model::createModelFromFile(device, MODEL_PATH "/bmw.obj", true, true, true));
+    auto bmwModel = resourceManager.loadModel(MODEL_PATH "/bmw.obj", true, true, true);
 
     // BMW model now has all materials from MTL file loaded automatically
     // Create a simple GameObject with the multi-material model
@@ -170,12 +175,12 @@ namespace engine {
     bmw.model                 = bmwModel;
     bmw.transform.scale       = {0.004f, 0.004f, 0.004f};
     bmw.transform.translation = {0.0f, -0.03f, 0.0f};
-    gameObjects.try_emplace(bmw.getId(), std::move(bmw));
+    objectManager.addObject(std::move(bmw));
   }
 
-  void SceneLoader::createDragonGrid(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createDragonGrid(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
-    auto dragon = std::shared_ptr<Model>(Model::createModelFromFile(device, MODEL_PATH "/dragon.obj", true));
+    auto dragon = resourceManager.loadModel(MODEL_PATH "/dragon.obj", true, false, false);
 
     // Create PBR dragons in a 2D grid
     // Columns: varying metallic (0.0 -> 1.0)
@@ -205,12 +210,12 @@ namespace engine {
 
         dragonObj.transform.scale = {0.5f, 0.5f, 0.5f};
 
-        gameObjects.try_emplace(dragonObj.getId(), std::move(dragonObj));
+        objectManager.addObject(std::move(dragonObj));
       }
     }
   }
 
-  void SceneLoader::createCylinderEngine(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createCylinderEngine(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
     auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/StainedGlassLamp/glTF/StainedGlassLamp.gltf", false, true, true);
     auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
@@ -223,29 +228,29 @@ namespace engine {
     {
       if (!mat.diffuseTexPath.empty())
       {
-        mat.pbrMaterial.albedoMap = std::make_shared<Texture>(device, mat.diffuseTexPath, true);
+        mat.pbrMaterial.albedoMap = resourceManager.loadTexture(mat.diffuseTexPath, true);
       }
 
       if (!mat.normalTexPath.empty())
       {
-        mat.pbrMaterial.normalMap = std::make_shared<Texture>(device, mat.normalTexPath, false);
+        mat.pbrMaterial.normalMap = resourceManager.loadTexture(mat.normalTexPath, false);
       }
 
       if (!mat.roughnessTexPath.empty())
       {
-        mat.pbrMaterial.roughnessMap = std::make_shared<Texture>(device, mat.roughnessTexPath, false);
+        mat.pbrMaterial.roughnessMap = resourceManager.loadTexture(mat.roughnessTexPath, false);
       }
 
       if (!mat.aoTexPath.empty())
       {
-        mat.pbrMaterial.aoMap = std::make_shared<Texture>(device, mat.aoTexPath, false);
+        mat.pbrMaterial.aoMap = resourceManager.loadTexture(mat.aoTexPath, false);
       }
     }
 
-    gameObjects.try_emplace(model.getId(), std::move(model));
+    objectManager.addObject(std::move(model));
   }
 
-  void SceneLoader::createAnimatedCube(Device& device, GameObject::Map& gameObjects)
+  void SceneLoader::createAnimatedCube(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
     // AnimatedCube - uses rotation+scale animation (works)
     // AnimatedTriangle - uses rotation animation (works)
@@ -261,19 +266,19 @@ namespace engine {
     {
       if (!mat.diffuseTexPath.empty())
       {
-        mat.pbrMaterial.albedoMap = std::make_shared<Texture>(device, mat.diffuseTexPath, true);
+        mat.pbrMaterial.albedoMap = resourceManager.loadTexture(mat.diffuseTexPath, true);
       }
       if (!mat.normalTexPath.empty())
       {
-        mat.pbrMaterial.normalMap = std::make_shared<Texture>(device, mat.normalTexPath, false);
+        mat.pbrMaterial.normalMap = resourceManager.loadTexture(mat.normalTexPath, false);
       }
       if (!mat.roughnessTexPath.empty())
       {
-        mat.pbrMaterial.roughnessMap = std::make_shared<Texture>(device, mat.roughnessTexPath, false);
+        mat.pbrMaterial.roughnessMap = resourceManager.loadTexture(mat.roughnessTexPath, false);
       }
       if (!mat.aoTexPath.empty())
       {
-        mat.pbrMaterial.aoMap = std::make_shared<Texture>(device, mat.aoTexPath, false);
+        mat.pbrMaterial.aoMap = resourceManager.loadTexture(mat.aoTexPath, false);
       }
     }
 
@@ -284,7 +289,7 @@ namespace engine {
       model.animationController->play(0, true); // Play first animation in loop
     }
 
-    gameObjects.try_emplace(model.getId(), std::move(model));
+    objectManager.addObject(std::move(model));
   }
 
 } // namespace engine

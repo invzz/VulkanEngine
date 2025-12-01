@@ -368,4 +368,22 @@ namespace engine {
     device_.memory().endSingleTimeCommands(commandBuffer);
   }
 
+  size_t Texture::getMemorySize() const
+  {
+    // Calculate memory for base texture + all mipmaps
+    // Format: RGBA8 (4 bytes per pixel) or sRGB8_A8 (also 4 bytes)
+    size_t totalSize = 0;
+    int    w         = width_;
+    int    h         = height_;
+
+    for (uint32_t level = 0; level < mipLevels_; ++level)
+    {
+      totalSize += w * h * 4; // 4 bytes per pixel (RGBA8)
+      w = std::max(1, w / 2);
+      h = std::max(1, h / 2);
+    }
+
+    return totalSize;
+  }
+
 } // namespace engine

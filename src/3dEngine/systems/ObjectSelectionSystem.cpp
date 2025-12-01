@@ -2,6 +2,7 @@
 
 #include "3dEngine/FrameInfo.hpp"
 #include "3dEngine/GameObject.hpp"
+#include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/Keyboard.hpp"
 
 namespace engine {
@@ -36,7 +37,7 @@ namespace engine {
         GameObject::id_t prevId = 0;
         bool             found  = false;
 
-        for (const auto& [id, obj] : frameInfo.gameObjects)
+        for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
         {
           if (id == frameInfo.selectedObjectId)
           {
@@ -49,16 +50,16 @@ namespace engine {
         if (found && prevId != 0)
         {
           frameInfo.selectedObjectId = prevId;
-          frameInfo.selectedObject   = &frameInfo.gameObjects.at(prevId);
+          frameInfo.selectedObject   = frameInfo.objectManager->getObject(prevId);
         }
         else
         {
           // If at beginning or camera selected, wrap to last object
-          if (!frameInfo.gameObjects.empty())
+          if (!frameInfo.objectManager->getAllObjects().empty())
           {
             // Find the last object by iterating through all
-            auto lastIt = frameInfo.gameObjects.begin();
-            for (auto it = frameInfo.gameObjects.begin(); it != frameInfo.gameObjects.end(); ++it)
+            auto lastIt = frameInfo.objectManager->getAllObjects().begin();
+            for (auto it = frameInfo.objectManager->getAllObjects().begin(); it != frameInfo.objectManager->getAllObjects().end(); ++it)
             {
               lastIt = it;
             }
@@ -82,9 +83,9 @@ namespace engine {
         // If camera is selected (id=0), go to first object
         if (frameInfo.selectedObjectId == 0)
         {
-          if (!frameInfo.gameObjects.empty())
+          if (!frameInfo.objectManager->getAllObjects().empty())
           {
-            auto firstIt               = frameInfo.gameObjects.begin();
+            auto firstIt               = frameInfo.objectManager->getAllObjects().begin();
             frameInfo.selectedObjectId = firstIt->first;
             frameInfo.selectedObject   = &firstIt->second;
           }
@@ -92,11 +93,11 @@ namespace engine {
         else
         {
           // Find current object and move to next
-          auto it = frameInfo.gameObjects.find(frameInfo.selectedObjectId);
-          if (it != frameInfo.gameObjects.end())
+          auto it = frameInfo.objectManager->getAllObjects().find(frameInfo.selectedObjectId);
+          if (it != frameInfo.objectManager->getAllObjects().end())
           {
             ++it;
-            if (it != frameInfo.gameObjects.end())
+            if (it != frameInfo.objectManager->getAllObjects().end())
             {
               frameInfo.selectedObjectId = it->first;
               frameInfo.selectedObject   = &it->second;

@@ -2,9 +2,11 @@
 
 #include <imgui.h>
 
+#include "3dEngine/systems/LightSystem.hpp"
+
 namespace engine {
 
-  LightsPanel::LightsPanel(GameObject::Map& gameObjects) : gameObjects_(gameObjects) {}
+  LightsPanel::LightsPanel(GameObjectManager& objectManager) : objectManager_(objectManager) {}
 
   void LightsPanel::render(FrameInfo& frameInfo)
   {
@@ -36,6 +38,34 @@ namespace engine {
           ImGui::DragFloat("Intensity##directional", &obj.directionalLight->intensity, 0.01f, 0.0f, 10.0f);
 
           ImGui::Spacing();
+          ImGui::Text("Direction Control:");
+
+          if (ImGui::Checkbox("Use Target Point##directional", &obj.directionalLight->useTargetPoint))
+          {
+            // When enabling, initialize target to a visible default if it's at origin
+            if (obj.directionalLight->useTargetPoint)
+            {
+              if (glm::length(obj.directionalLight->targetPoint) < 0.01f)
+              {
+                obj.directionalLight->targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
+              }
+              LightSystem::updateTargetLockedLight(obj);
+            }
+          }
+
+          if (obj.directionalLight->useTargetPoint)
+          {
+            if (ImGui::DragFloat3("Target Point", &obj.directionalLight->targetPoint.x, 0.1f))
+            {
+              LightSystem::updateTargetLockedLight(obj);
+            }
+          }
+
+          // Show current direction
+          glm::vec3 dir = obj.transform.getForwardDir();
+          ImGui::Text("Current Dir: (%.2f, %.2f, %.2f)", dir.x, dir.y, dir.z);
+
+          ImGui::Spacing();
         }
 
         // Spot Light Component
@@ -46,6 +76,35 @@ namespace engine {
 
           ImGui::DragFloat("Intensity##spot", &obj.spotLight->intensity, 0.1f, 0.0f, 100.0f);
 
+          ImGui::Spacing();
+          ImGui::Text("Direction Control:");
+
+          if (ImGui::Checkbox("Use Target Point##spot", &obj.spotLight->useTargetPoint))
+          {
+            // When enabling, initialize target to a visible default if it's at origin
+            if (obj.spotLight->useTargetPoint)
+            {
+              if (glm::length(obj.spotLight->targetPoint) < 0.01f)
+              {
+                obj.spotLight->targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
+              }
+              LightSystem::updateTargetLockedLight(obj);
+            }
+          }
+
+          if (obj.spotLight->useTargetPoint)
+          {
+            if (ImGui::DragFloat3("Target Point##spot", &obj.spotLight->targetPoint.x, 0.1f))
+            {
+              LightSystem::updateTargetLockedLight(obj);
+            }
+          }
+
+          // Show current direction
+          glm::vec3 dir = obj.transform.getForwardDir();
+          ImGui::Text("Current Dir: (%.2f, %.2f, %.2f)", dir.x, dir.y, dir.z);
+
+          ImGui::Spacing();
           ImGui::Text("Cone Angles:");
           ImGui::DragFloat("Inner Cutoff (deg)", &obj.spotLight->innerCutoffAngle, 0.5f, 0.0f, 90.0f);
           ImGui::DragFloat("Outer Cutoff (deg)", &obj.spotLight->outerCutoffAngle, 0.5f, 0.0f, 90.0f);

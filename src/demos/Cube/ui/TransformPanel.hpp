@@ -8,13 +8,13 @@ namespace engine {
   class TransformPanel : public UIPanel
   {
   public:
-    TransformPanel(GameObject::Map& gameObjects);
+    TransformPanel(GameObjectManager& objectManager);
 
     void render(FrameInfo& frameInfo) override;
 
   private:
-    GameObject::Map& gameObjects_;
-    bool             lockAxes_ = false;
+    GameObjectManager& objectManager_;
+    bool               lockAxes_ = false;
   };
 
 } // namespace engine

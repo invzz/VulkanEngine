@@ -68,6 +68,21 @@ namespace engine {
           scale.z * (c2 * s1),                scale.z * (-s2),     scale.z * (c1 * c2)               ,};
       // clang-format on
     }
+
+    // Set rotation to look at a target point (in world space)
+    inline void lookAt(const glm::vec3& target)
+    {
+      glm::vec3 direction = glm::normalize(target - translation);
+
+      // Calculate yaw (rotation around Y axis)
+      rotation.y = std::atan2(direction.x, direction.z);
+
+      // Calculate pitch (rotation around X axis)
+      rotation.x = -std::asin(direction.y);
+
+      // Keep roll at 0
+      rotation.z = 0.0f;
+    }
   };
 
 } // namespace engine

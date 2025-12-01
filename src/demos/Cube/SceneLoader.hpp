@@ -2,24 +2,26 @@
 
 #include "3dEngine/Device.hpp"
 #include "3dEngine/GameObject.hpp"
+#include "3dEngine/GameObjectManager.hpp"
+#include "3dEngine/ResourceManager.hpp"
 
 namespace engine {
 
   class SceneLoader
   {
   public:
-    static void loadScene(Device& device, GameObject::Map& gameObjects);
+    static void loadScene(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
 
   private:
-    static void createFromFile(Device& device, GameObject::Map& gameObjects, const std::string& modelPath);
-    static void createApple(Device& device, GameObject::Map& gameObjects);
-    static void createSpaceShip(Device& device, GameObject::Map& gameObjects);
-    static void createLights(GameObject::Map& gameObjects, float radius = 2.0f);
-    static void createFloor(Device& device, GameObject::Map& gameObjects);
-    static void createDragonGrid(Device& device, GameObject::Map& gameObjects);
-    static void createBmw(Device& device, GameObject::Map& gameObjects);
-    static void createCylinderEngine(Device& device, GameObject::Map& gameObjects);
-    static void createAnimatedCube(Device& device, GameObject::Map& gameObjects);
+    static void createFromFile(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager, const std::string& modelPath);
+    static void createApple(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createSpaceShip(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createLights(GameObjectManager& objectManager, float radius = 2.0f);
+    static void createFloor(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createDragonGrid(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createBmw(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createCylinderEngine(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createAnimatedCube(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
   };
 
 } // namespace engine

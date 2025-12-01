@@ -6,7 +6,7 @@
 
 namespace engine {
 
-  AnimationPanel::AnimationPanel(GameObject::Map& gameObjects) : gameObjects_(gameObjects) {}
+  AnimationPanel::AnimationPanel(GameObjectManager& objectManager) : objectManager_(objectManager) {}
 
   void AnimationPanel::render(FrameInfo& frameInfo)
   {
@@ -14,7 +14,7 @@ namespace engine {
 
     if (ImGui::CollapsingHeader("Animation", ImGuiTreeNodeFlags_DefaultOpen))
     {
-      for (auto& [id, obj] : gameObjects_)
+      for (auto& [id, obj] : objectManager_.getAllObjects())
       {
         if (obj.animationController)
         {
