@@ -115,22 +115,18 @@ namespace engine {
     // }
 
     // Add a directional light (sun-like, from above)
-    auto directionalLight               = GameObject::makeDirectionalLightObject({.intensity = 0.5f, .color = {1.0f, 0.95f, 0.9f}}); // Warm sunlight
-    directionalLight.transform.rotation = glm::vec3(glm::radians(-45.0f), glm::radians(30.0f), 0.0f);                                // Angled down
+    auto directionalLight = GameObject::makeDirectionalLightObject({.intensity = 0.5f, .color = {1.0f, 0.95f, 0.9f}}); // Warm sunlight
+
+    directionalLight.transform.rotation = glm::vec3(glm::radians(-45.0f), glm::radians(30.0f), 0.0f); // Angled down
     objectManager.addObject(std::move(directionalLight));
 
-    // Add two spot lights (like stage lights)
+    // Add a spotlight
     auto spotLight1 =
             GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {1.0f, 0.8f, 0.5f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Warm spotlight
-    spotLight1.transform.translation = glm::vec3(-3.0f, -3.0f, -3.0f);
-    spotLight1.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(-135.0f), 0.0f); // Point toward center
+    spotLight1.transform.translation     = glm::vec3(3.0f, -3.0f, 3.0f);
+    spotLight1.spotLight->useTargetPoint = true;
+    spotLight1.spotLight->targetPoint    = glm::vec3(0.0f, 0.0f, 0.0f);
     objectManager.addObject(std::move(spotLight1));
-
-    auto spotLight2 =
-            GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {0.5f, 0.8f, 1.0f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Cool spotlight
-    spotLight2.transform.translation = glm::vec3(3.0f, 3.0f, -3.0f);
-    spotLight2.transform.rotation    = glm::vec3(glm::radians(-45.0f), glm::radians(45.0f), 0.0f); // Point toward center
-    objectManager.addObject(std::move(spotLight2));
   }
 
   void SceneLoader::createFloor(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)

@@ -54,6 +54,9 @@ layout(set = 1, binding = 2) uniform sampler2D metallicMap;
 layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
 layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
+// Shadow maps (set 2) - array of shadow maps for multiple lights
+layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[4];
+
 // Push constants: Only material portion visible in fragment shader (offset 128)
 layout(push_constant) uniform PushConstants
 {
@@ -116,7 +119,43 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-// Shadow system removed - to be reimplemented later
+// Calculate shadow factor using PCF (Percentage Closer Filtering)
+float calculateShadow(vec3 worldPos, int lightIndex)
+{
+  if (lightIndex >= ubo.shadowLightCount) return 1.0;
+
+  // Transform world position to light space
+  vec4 lightSpacePos = ubo.lightSpaceMatrices[lightIndex] * vec4(worldPos, 1.0);
+
+  // Perspective divide (needed for spotlight perspective projection)
+  vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+
+  // Transform from [-1,1] to [0,1] for UV lookup (Vulkan already has Z in [0,1])
+  projCoords.xy = projCoords.xy * 0.5 + 0.5;
+
+  // Check if outside shadow map bounds
+  if (projCoords.x < 0.0 || projCoords.x > 1.0 || projCoords.y < 0.0 || projCoords.y > 1.0 || projCoords.z < 0.0 || projCoords.z > 1.0)
+  {
+    return 1.0; // No shadow outside light frustum
+  }
+
+  // PCF 3x3 sampling for soft shadows
+  float shadow    = 0.0;
+  vec2  texelSize = 1.0 / textureSize(shadowMaps[lightIndex], 0);
+
+  for (int x = -1; x <= 1; x++)
+  {
+    for (int y = -1; y <= 1; y++)
+    {
+      vec2 offset = vec2(x, y) * texelSize;
+      // sampler2DShadow returns 0 or 1 based on depth comparison
+      shadow += texture(shadowMaps[lightIndex], vec3(projCoords.xy + offset, projCoords.z));
+    }
+  }
+  shadow /= 9.0;
+
+  return shadow;
+}
 
 // Anisotropic GGX Distribution
 float DistributionGGXAnisotropic(vec3 N, vec3 H, vec3 T, vec3 B, float roughness, float anisotropy)
@@ -274,7 +313,12 @@ void main()
     vec3 H        = normalize(V + L);
     vec3 radiance = ubo.directionalLights[i].color.xyz * ubo.directionalLights[i].color.w;
 
+    // Calculate shadow for first directional light
     float shadow = 1.0;
+    if (i == 0 && ubo.shadowLightCount > 0)
+    {
+      shadow = calculateShadow(fragmentWorldPos, 0);
+    }
 
     float NDF;
     if (push.anisotropic > 0.01)
@@ -321,7 +365,14 @@ void main()
 
     vec3 radiance = ubo.spotLights[i].color.xyz * ubo.spotLights[i].color.w * attenuation * intensity;
 
+    // Calculate shadow for this spotlight
+    // Shadow map index = 1 + i (index 0 is for directional light)
+    int shadowIndex = 1 + i;
     float shadow = 1.0;
+    if (shadowIndex < ubo.shadowLightCount)
+    {
+      shadow = calculateShadow(fragmentWorldPos, shadowIndex);
+    }
 
     float NDF;
     if (push.anisotropic > 0.01)

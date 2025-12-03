@@ -20,10 +20,14 @@ namespace engine {
 
   // Forward declarations
   class MaterialSystem;
+  class ShadowMap;
+  class ShadowSystem;
 
   class PBRRenderSystem
   {
   public:
+    static constexpr int MAX_SHADOW_MAPS = 4;
+
     PBRRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     ~PBRRenderSystem();
 
@@ -35,9 +39,19 @@ namespace engine {
     // Clear the material descriptor cache (call when materials are modified)
     void clearDescriptorCache();
 
+    // Set shadow system for rendering (call before render each frame)
+    void setShadowSystem(ShadowSystem* shadowSystem);
+
+    // Legacy: Set single shadow map (deprecated, use setShadowSystem)
+    void setShadowMap(ShadowMap* shadowMap);
+
+    // Get shadow descriptor set layout for pipeline creation
+    VkDescriptorSetLayout getShadowDescriptorSetLayout() const { return shadowDescriptorSetLayout_; }
+
   private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipeline(VkRenderPass renderPass);
+    void createShadowDescriptorResources();
 
     Device&                   device;
     std::unique_ptr<Pipeline> pipeline;
@@ -45,5 +59,12 @@ namespace engine {
 
     // Material management subsystem
     std::unique_ptr<MaterialSystem> materialSystem;
+
+    // Shadow map resources
+    VkDescriptorSetLayout        shadowDescriptorSetLayout_ = VK_NULL_HANDLE;
+    VkDescriptorPool             shadowDescriptorPool_      = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> shadowDescriptorSets_;
+    ShadowMap*                   currentShadowMap_    = nullptr;
+    ShadowSystem*                currentShadowSystem_ = nullptr;
   };
 } // namespace engine

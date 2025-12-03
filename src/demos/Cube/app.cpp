@@ -30,6 +30,8 @@
 #include "3dEngine/systems/LightSystem.hpp"
 #include "3dEngine/systems/ObjectSelectionSystem.hpp"
 #include "3dEngine/systems/PBRRenderSystem.hpp"
+#include "3dEngine/systems/ShadowSystem.hpp"
+#include "3dEngine/systems/SkyboxRenderSystem.hpp"
 
 // Demo specific
 #include "RenderContext.hpp"
@@ -97,12 +99,20 @@ namespace engine {
     }
 
     // Shadow Mapping (must be before render systems that use it):
-    // Shadow system removed - to be reimplemented later
+    ShadowSystem shadowSystem{device, 2048};
+
+    // Load Skybox
+    std::cout << "[App] Loading skybox..." << std::endl;
+    auto skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
 
     // Render Systems:
-    std::cout << "[App] Creating PBRRenderSystem..." << std::endl;
-    PBRRenderSystem pbrRenderSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
-    LightSystem     lightSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
+    std::cout << "[App] Creating render systems..." << std::endl;
+    SkyboxRenderSystem skyboxRenderSystem{device, renderer.getSwapChainRenderPass()};
+    PBRRenderSystem    pbrRenderSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
+    LightSystem        lightSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
+
+    // Connect shadow system to PBR render system (supports multiple shadow maps)
+    pbrRenderSystem.setShadowSystem(&shadowSystem);
 
     // UI System:
     ImGuiManager imguiManager{window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight())};
@@ -172,8 +182,11 @@ namespace engine {
                 .animationSystem       = animationSystem,
                 .pbrRenderSystem       = pbrRenderSystem,
                 .lightSystem           = lightSystem,
+                .shadowSystem          = shadowSystem,
+                .skyboxRenderSystem    = skyboxRenderSystem,
                 .renderContext         = renderContext,
                 .uiManager             = uiManager,
+                .skybox                = skybox.get(),
         };
 
         // ========================================================================
@@ -190,7 +203,10 @@ namespace engine {
         // ========================================================================
         computePhase(frameInfo, state);
 
-        // Shadow phase removed - to be reimplemented later
+        // ========================================================================
+        // SHADOW PHASE - Render shadow maps before main render pass
+        // ========================================================================
+        shadowPhase(frameInfo, state);
 
         // ========================================================================
         // RENDER PHASE - Issue GPU draw calls (including UI)
@@ -218,15 +234,6 @@ namespace engine {
     state.objectSelectionSystem.update(frameInfo);                   // Handle object selection with mouse
     state.inputSystem.update(frameInfo);                             // Process keyboard/mouse input
     state.cameraSystem.update(frameInfo, renderer.getAspectRatio()); // Update camera matrices
-
-    // Update uniform buffer with per-frame data
-    GlobalUbo ubo{};
-    state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO
-    ubo.projection     = frameInfo.camera.getProjection();
-    ubo.view           = frameInfo.camera.getView();
-    ubo.cameraPosition = glm::vec4(frameInfo.cameraObject.transform.translation, 1.0f);
-
-    state.renderContext.updateUBO(frameInfo.frameIndex, ubo);
   }
 
   void App::computePhase(FrameInfo& frameInfo, GameLoopState& state)
@@ -237,11 +244,38 @@ namespace engine {
     state.animationSystem.update(frameInfo);
   }
 
-  // Shadow phase removed - to be reimplemented later
+  void App::shadowPhase(FrameInfo& frameInfo, GameLoopState& state)
+  {
+    // Render shadow maps for all shadow-casting lights (directional + spotlights)
+    state.shadowSystem.renderShadowMaps(frameInfo, 30.0f);
+
+    // Update uniform buffer with per-frame data (including light space matrices from shadow system)
+    GlobalUbo ubo{};
+    state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO
+    ubo.projection       = frameInfo.camera.getProjection();
+    ubo.view             = frameInfo.camera.getView();
+    ubo.cameraPosition   = glm::vec4(frameInfo.cameraObject.transform.translation, 1.0f);
+    ubo.shadowLightCount = state.shadowSystem.getShadowLightCount();
+
+    // Copy all light space matrices
+    for (int i = 0; i < ubo.shadowLightCount; i++)
+    {
+      ubo.lightSpaceMatrices[i] = state.shadowSystem.getLightSpaceMatrix(i);
+    }
+
+    state.renderContext.updateUBO(frameInfo.frameIndex, ubo);
+  }
 
   void App::renderPhase(FrameInfo& frameInfo, GameLoopState& state)
   {
     // RENDER SYSTEMS - These issue actual draw calls
+
+    // Render skybox first (renders at z=1.0, behind everything)
+    if (state.skybox)
+    {
+      state.skyboxRenderSystem.render(frameInfo, *state.skybox);
+    }
+
     state.pbrRenderSystem.render(frameInfo); // Draw objects with PBR materials (uses blended buffers if available)
     state.lightSystem.render(frameInfo);     // Draw light debug visualizations
   }

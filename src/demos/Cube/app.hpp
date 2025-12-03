@@ -15,6 +15,7 @@
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Renderer.hpp"
 #include "3dEngine/ResourceManager.hpp"
+#include "3dEngine/Skybox.hpp"
 #include "3dEngine/SwapChain.hpp"
 #include "3dEngine/Window.hpp"
 
@@ -28,6 +29,8 @@ namespace engine {
   class PBRRenderSystem;
   class LightSystem;
   class RenderContext;
+  class ShadowSystem;
+  class SkyboxRenderSystem;
   class UIManager;
   class Camera;
 
@@ -39,8 +42,11 @@ namespace engine {
     AnimationSystem&       animationSystem;
     PBRRenderSystem&       pbrRenderSystem;
     LightSystem&           lightSystem;
+    ShadowSystem&          shadowSystem;
+    SkyboxRenderSystem&    skyboxRenderSystem;
     RenderContext&         renderContext;
     UIManager&             uiManager;
+    Skybox*                skybox;
   };
 
   class App
@@ -61,6 +67,7 @@ namespace engine {
   private:
     void              updatePhase(FrameInfo& frameInfo, GameLoopState& state);
     void              computePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void              shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
     void              renderPhase(FrameInfo& frameInfo, GameLoopState& state);
     void              uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
     Window            window{width(), height(), "Engine App"};

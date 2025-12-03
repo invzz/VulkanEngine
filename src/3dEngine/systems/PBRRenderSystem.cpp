@@ -4,9 +4,11 @@
 #include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/MorphTargetManager.hpp"
 #include "3dEngine/PBRMaterial.hpp"
+#include "3dEngine/ShadowMap.hpp"
 #include "3dEngine/Texture.hpp"
 #include "3dEngine/systems/MaterialSystem.hpp"
 #include "3dEngine/systems/RenderCullingSystem.hpp"
+#include "3dEngine/systems/ShadowSystem.hpp"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -42,6 +44,7 @@ namespace engine {
   PBRRenderSystem::PBRRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout) : device(device)
   {
     materialSystem = std::make_unique<MaterialSystem>(device);
+    createShadowDescriptorResources();
     createPipelineLayout(globalSetLayout);
     createPipeline(renderPass);
   }
@@ -49,6 +52,14 @@ namespace engine {
   PBRRenderSystem::~PBRRenderSystem()
   {
     vkDestroyPipelineLayout(device.device(), pipelineLayout, nullptr);
+    if (shadowDescriptorPool_ != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorPool(device.device(), shadowDescriptorPool_, nullptr);
+    }
+    if (shadowDescriptorSetLayout_ != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorSetLayout(device.device(), shadowDescriptorSetLayout_, nullptr);
+    }
   }
 
   void PBRRenderSystem::clearDescriptorCache()
@@ -66,8 +77,8 @@ namespace engine {
             .size       = sizeof(PBRPushConstantData),
     };
 
-    // Set 0: global (camera, lights), Set 1: material (textures)
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, materialSystem->getDescriptorSetLayout()};
+    // Set 0: global (camera, lights), Set 1: material (textures), Set 2: shadow map
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, materialSystem->getDescriptorSetLayout(), shadowDescriptorSetLayout_};
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -81,6 +92,68 @@ namespace engine {
     {
       throw engine::RuntimeException("failed to create pipeline layout!");
     }
+  }
+
+  void PBRRenderSystem::createShadowDescriptorResources()
+  {
+    // Create shadow descriptor set layout with array of shadow maps
+    VkDescriptorSetLayoutBinding shadowBinding{};
+    shadowBinding.binding            = 0;
+    shadowBinding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    shadowBinding.descriptorCount    = MAX_SHADOW_MAPS; // Array of shadow maps
+    shadowBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shadowBinding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings    = &shadowBinding;
+
+    if (vkCreateDescriptorSetLayout(device.device(), &layoutInfo, nullptr, &shadowDescriptorSetLayout_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create shadow descriptor set layout");
+    }
+
+    // Create descriptor pool with enough descriptors for all shadow maps
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize.descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight() * MAX_SHADOW_MAPS);
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes    = &poolSize;
+    poolInfo.maxSets       = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+
+    if (vkCreateDescriptorPool(device.device(), &poolInfo, nullptr, &shadowDescriptorPool_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create shadow descriptor pool");
+    }
+
+    // Allocate descriptor sets
+    std::vector<VkDescriptorSetLayout> layouts(SwapChain::maxFramesInFlight(), shadowDescriptorSetLayout_);
+
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool     = shadowDescriptorPool_;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    allocInfo.pSetLayouts        = layouts.data();
+
+    shadowDescriptorSets_.resize(SwapChain::maxFramesInFlight());
+    if (vkAllocateDescriptorSets(device.device(), &allocInfo, shadowDescriptorSets_.data()) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to allocate shadow descriptor sets");
+    }
+  }
+
+  void PBRRenderSystem::setShadowMap(ShadowMap* shadowMap)
+  {
+    currentShadowMap_ = shadowMap;
+  }
+
+  void PBRRenderSystem::setShadowSystem(ShadowSystem* shadowSystem)
+  {
+    currentShadowSystem_ = shadowSystem;
   }
 
   void PBRRenderSystem::createPipeline(VkRenderPass renderPass)
@@ -101,6 +174,73 @@ namespace engine {
 
     // Bind set 0: global (camera, lights)
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
+
+    // Bind set 2: shadow maps (if available)
+    if (currentShadowSystem_)
+    {
+      int                                                shadowCount = currentShadowSystem_->getShadowLightCount();
+      std::array<VkDescriptorImageInfo, MAX_SHADOW_MAPS> shadowInfos{};
+
+      // Fill in active shadow maps
+      for (int i = 0; i < shadowCount && i < MAX_SHADOW_MAPS; i++)
+      {
+        shadowInfos[i] = currentShadowSystem_->getShadowMapDescriptorInfo(i);
+      }
+
+      // Fill remaining slots with first shadow map (to avoid undefined reads)
+      for (int i = shadowCount; i < MAX_SHADOW_MAPS; i++)
+      {
+        shadowInfos[i] = shadowCount > 0 ? currentShadowSystem_->getShadowMapDescriptorInfo(0) : currentShadowSystem_->getShadowMapDescriptorInfo(0);
+      }
+
+      VkWriteDescriptorSet shadowWrite{};
+      shadowWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      shadowWrite.dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
+      shadowWrite.dstBinding      = 0;
+      shadowWrite.dstArrayElement = 0;
+      shadowWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      shadowWrite.descriptorCount = MAX_SHADOW_MAPS;
+      shadowWrite.pImageInfo      = shadowInfos.data();
+
+      vkUpdateDescriptorSets(device.device(), 1, &shadowWrite, 0, nullptr);
+      vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              pipelineLayout,
+                              2,
+                              1,
+                              &shadowDescriptorSets_[frameInfo.frameIndex],
+                              0,
+                              nullptr);
+    }
+    else if (currentShadowMap_)
+    {
+      // Legacy single shadow map support
+      std::array<VkDescriptorImageInfo, MAX_SHADOW_MAPS> shadowInfos{};
+      shadowInfos[0] = currentShadowMap_->getDescriptorInfo();
+      for (int i = 1; i < MAX_SHADOW_MAPS; i++)
+      {
+        shadowInfos[i] = shadowInfos[0];
+      }
+
+      VkWriteDescriptorSet shadowWrite{};
+      shadowWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      shadowWrite.dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
+      shadowWrite.dstBinding      = 0;
+      shadowWrite.dstArrayElement = 0;
+      shadowWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      shadowWrite.descriptorCount = MAX_SHADOW_MAPS;
+      shadowWrite.pImageInfo      = shadowInfos.data();
+
+      vkUpdateDescriptorSets(device.device(), 1, &shadowWrite, 0, nullptr);
+      vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              pipelineLayout,
+                              2,
+                              1,
+                              &shadowDescriptorSets_[frameInfo.frameIndex],
+                              0,
+                              nullptr);
+    }
 
     // Get culled and sorted visible objects
     std::vector<RenderCullingSystem::RenderableObject> visibleObjects;
