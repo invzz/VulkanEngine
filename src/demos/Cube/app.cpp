@@ -24,12 +24,15 @@
 #include "3dEngine/ansi_colors.hpp"
 
 // Systems
+#include "3dEngine/IBLSystem.hpp"
 #include "3dEngine/systems/AnimationSystem.hpp"
 #include "3dEngine/systems/CameraSystem.hpp"
 #include "3dEngine/systems/InputSystem.hpp"
+#include "3dEngine/systems/LODSystem.hpp"
 #include "3dEngine/systems/LightSystem.hpp"
 #include "3dEngine/systems/ObjectSelectionSystem.hpp"
 #include "3dEngine/systems/PBRRenderSystem.hpp"
+#include "3dEngine/systems/PostProcessingSystem.hpp"
 #include "3dEngine/systems/ShadowSystem.hpp"
 #include "3dEngine/systems/SkyboxRenderSystem.hpp"
 
@@ -42,6 +45,7 @@
 #include "ui/CameraPanel.hpp"
 #include "ui/LightsPanel.hpp"
 #include "ui/ModelImportPanel.hpp"
+#include "ui/PostProcessPanel.hpp"
 #include "ui/ScenePanel.hpp"
 #include "ui/TransformPanel.hpp"
 #include "ui/UIManager.hpp"
@@ -87,6 +91,7 @@ namespace engine {
 
     // Compute Systems:
     AnimationSystem animationSystem{device}; // Animations: morph targets, skeletal, procedural
+    LODSystem       lodSystem{};             // Level of Detail system
 
     // Register all animated objects with the animation system
     // This allows the system to track and update only objects that need animation
@@ -101,30 +106,73 @@ namespace engine {
     // Shadow Mapping (must be before render systems that use it):
     ShadowSystem shadowSystem{device, 2048};
 
+    // IBL System
+    IBLSystem iblSystem{device};
+
     // Load Skybox
     std::cout << "[App] Loading skybox..." << std::endl;
     auto skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
 
+    // Generate IBL maps
+    std::cout << "[App] Generating IBL maps..." << std::endl;
+    iblSystem.generateFromSkybox(*skybox);
+
     // Render Systems:
     std::cout << "[App] Creating render systems..." << std::endl;
-    SkyboxRenderSystem skyboxRenderSystem{device, renderer.getSwapChainRenderPass()};
-    PBRRenderSystem    pbrRenderSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
-    LightSystem        lightSystem{device, renderer.getSwapChainRenderPass(), renderContext.getGlobalSetLayout()};
+    SkyboxRenderSystem skyboxRenderSystem{device, renderer.getOffscreenRenderPass()};
+    PBRRenderSystem    pbrRenderSystem{device, renderer.getOffscreenRenderPass(), renderContext.getGlobalSetLayout()};
+    LightSystem        lightSystem{device, renderer.getOffscreenRenderPass(), renderContext.getGlobalSetLayout()};
 
     // Connect shadow system to PBR render system (supports multiple shadow maps)
     pbrRenderSystem.setShadowSystem(&shadowSystem);
+    pbrRenderSystem.setIBLSystem(&iblSystem);
 
     // UI System:
     ImGuiManager imguiManager{window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight())};
 
+    // Post Processing System
+    auto postProcessPool = DescriptorPool::Builder(device)
+                                   .setMaxSets(SwapChain::maxFramesInFlight())
+                                   .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight())
+                                   .build();
+
+    auto postProcessSetLayout =
+            DescriptorSetLayout::Builder(device).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT).build();
+
+    PostProcessingSystem postProcessingSystem{device, renderer.getSwapChainRenderPass(), {postProcessSetLayout->getDescriptorSetLayout()}};
+
+    std::vector<VkDescriptorSet> postProcessDescriptorSets(SwapChain::maxFramesInFlight());
+    for (int i = 0; i < postProcessDescriptorSets.size(); i++)
+    {
+      auto imageInfo = renderer.getOffscreenImageInfo(i);
+      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).build(postProcessDescriptorSets[i]);
+    }
+
     // UI Manager with panels
-    UIManager uiManager{imguiManager};
+    PostProcessPushConstants postProcessPush{};
+    UIManager                uiManager{imguiManager};
+
+    uiManager.setOnSaveScene([this]() {
+      std::cout << "Saving scene to scene.json..." << std::endl;
+      sceneSerializer.serialize("scene.json");
+    });
+    uiManager.setOnLoadScene([this]() {
+      std::cout << "Loading scene from scene.json..." << std::endl;
+      // Clear existing objects first?
+      // The deserializer currently appends.
+      // Ideally we should clear. But GameObjectManager doesn't have clear().
+      // Let's assume for now we just load on top or restart app to clear.
+      // Or I should implement clear() in GameObjectManager.
+      sceneSerializer.deserialize("scene.json");
+    });
+
     uiManager.addPanel(std::make_unique<ModelImportPanel>(device, objectManager, animationSystem, pbrRenderSystem));
     uiManager.addPanel(std::make_unique<CameraPanel>(cameraObject));
     uiManager.addPanel(std::make_unique<TransformPanel>(objectManager));
     uiManager.addPanel(std::make_unique<LightsPanel>(objectManager));
     uiManager.addPanel(std::make_unique<AnimationPanel>(objectManager));
     uiManager.addPanel(std::make_unique<ScenePanel>(device, objectManager, animationSystem));
+    uiManager.addPanel(std::make_unique<PostProcessPanel>(postProcessPush));
 
     // Selection state (persisted across frames)
     GameObject::id_t selectedObjectId = 0;
@@ -180,6 +228,7 @@ namespace engine {
                 .inputSystem           = inputSystem,
                 .cameraSystem          = cameraSystem,
                 .animationSystem       = animationSystem,
+                .lodSystem             = lodSystem,
                 .pbrRenderSystem       = pbrRenderSystem,
                 .lightSystem           = lightSystem,
                 .shadowSystem          = shadowSystem,
@@ -211,8 +260,25 @@ namespace engine {
         // ========================================================================
         // RENDER PHASE - Issue GPU draw calls (including UI)
         // ========================================================================
+
+        // 1. Render Scene to Offscreen Framebuffer
+        renderer.beginOffscreenRenderPass(commandBuffer);
+        renderScenePhase(frameInfo, state);
+        renderer.endOffscreenRenderPass(commandBuffer);
+
+        // Generate mipmaps for bloom
+        renderer.generateOffscreenMipmaps(commandBuffer);
+
+        // 2. Post-Process (Tonemapping) to Swapchain
         renderer.beginSwapChainRenderPass(commandBuffer);
-        renderPhase(frameInfo, state);
+
+        // Update descriptor set for current frame (in case of resize)
+        auto imageInfo = renderer.getOffscreenImageInfo(frameIndex);
+        DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).overwrite(postProcessDescriptorSets[frameIndex]);
+
+        postProcessingSystem.render(frameInfo, postProcessDescriptorSets[frameIndex], postProcessPush);
+
+        // 3. Render UI on top
         uiPhase(frameInfo, commandBuffer, state);
         renderer.endSwapChainRenderPass(commandBuffer);
 
@@ -234,6 +300,7 @@ namespace engine {
 
     state.objectSelectionSystem.update(frameInfo);                   // Handle object selection with mouse
     state.inputSystem.update(frameInfo);                             // Process keyboard/mouse input
+    state.lodSystem.update(frameInfo);                               // Update Level of Detail
     state.cameraSystem.update(frameInfo, renderer.getAspectRatio()); // Update camera matrices
   }
 
@@ -276,7 +343,7 @@ namespace engine {
     state.renderContext.updateUBO(frameInfo.frameIndex, ubo);
   }
 
-  void App::renderPhase(FrameInfo& frameInfo, GameLoopState& state)
+  void App::renderScenePhase(FrameInfo& frameInfo, GameLoopState& state)
   {
     // RENDER SYSTEMS - These issue actual draw calls
 

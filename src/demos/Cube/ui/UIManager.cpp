@@ -15,6 +15,23 @@ namespace engine {
   {
     imguiManager_.newFrame();
 
+    if (ImGui::BeginMainMenuBar())
+    {
+      if (ImGui::BeginMenu("File"))
+      {
+        if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
+        {
+          if (onSaveScene_) onSaveScene_();
+        }
+        if (ImGui::MenuItem("Load Scene", "Ctrl+O"))
+        {
+          if (onLoadScene_) onLoadScene_();
+        }
+        ImGui::EndMenu();
+      }
+      ImGui::EndMainMenuBar();
+    }
+
     // Create fullscreen dockspace
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);

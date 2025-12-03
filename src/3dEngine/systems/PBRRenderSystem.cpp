@@ -3,6 +3,7 @@
 #include "3dEngine/CubeShadowMap.hpp"
 #include "3dEngine/Exceptions.hpp"
 #include "3dEngine/GameObjectManager.hpp"
+#include "3dEngine/IBLSystem.hpp"
 #include "3dEngine/MorphTargetManager.hpp"
 #include "3dEngine/PBRMaterial.hpp"
 #include "3dEngine/ShadowMap.hpp"
@@ -46,6 +47,7 @@ namespace engine {
   {
     materialSystem = std::make_unique<MaterialSystem>(device);
     createShadowDescriptorResources();
+    createIBLDescriptorResources();
     createPipelineLayout(globalSetLayout);
     createPipeline(renderPass);
   }
@@ -60,6 +62,14 @@ namespace engine {
     if (shadowDescriptorSetLayout_ != VK_NULL_HANDLE)
     {
       vkDestroyDescriptorSetLayout(device.device(), shadowDescriptorSetLayout_, nullptr);
+    }
+    if (iblDescriptorPool_ != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorPool(device.device(), iblDescriptorPool_, nullptr);
+    }
+    if (iblDescriptorSetLayout_ != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorSetLayout(device.device(), iblDescriptorSetLayout_, nullptr);
     }
   }
 
@@ -78,8 +88,11 @@ namespace engine {
             .size       = sizeof(PBRPushConstantData),
     };
 
-    // Set 0: global (camera, lights), Set 1: material (textures), Set 2: shadow map
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, materialSystem->getDescriptorSetLayout(), shadowDescriptorSetLayout_};
+    // Set 0: global (camera, lights), Set 1: material (textures), Set 2: shadow map, Set 3: IBL
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout,
+                                                            materialSystem->getDescriptorSetLayout(),
+                                                            shadowDescriptorSetLayout_,
+                                                            iblDescriptorSetLayout_};
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -158,6 +171,73 @@ namespace engine {
     }
   }
 
+  void PBRRenderSystem::createIBLDescriptorResources()
+  {
+    // Binding 0: Irradiance Map (Cube)
+    // Binding 1: Prefiltered Map (Cube)
+    // Binding 2: BRDF LUT (2D)
+    std::array<VkDescriptorSetLayoutBinding, 3> bindings{};
+
+    bindings[0].binding            = 0;
+    bindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[0].descriptorCount    = 1;
+    bindings[0].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[0].pImmutableSamplers = nullptr;
+
+    bindings[1].binding            = 1;
+    bindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[1].descriptorCount    = 1;
+    bindings[1].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].pImmutableSamplers = nullptr;
+
+    bindings[2].binding            = 2;
+    bindings[2].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[2].descriptorCount    = 1;
+    bindings[2].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[2].pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings    = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(device.device(), &layoutInfo, nullptr, &iblDescriptorSetLayout_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create IBL descriptor set layout");
+    }
+
+    // Descriptor Pool
+    std::array<VkDescriptorPoolSize, 1> poolSizes{};
+    poolSizes[0].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 3);
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes    = poolSizes.data();
+    poolInfo.maxSets       = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+
+    if (vkCreateDescriptorPool(device.device(), &poolInfo, nullptr, &iblDescriptorPool_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create IBL descriptor pool");
+    }
+
+    // Allocate Descriptor Sets
+    std::vector<VkDescriptorSetLayout> layouts(SwapChain::maxFramesInFlight(), iblDescriptorSetLayout_);
+
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool     = iblDescriptorPool_;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    allocInfo.pSetLayouts        = layouts.data();
+
+    iblDescriptorSets_.resize(SwapChain::maxFramesInFlight());
+    if (vkAllocateDescriptorSets(device.device(), &allocInfo, iblDescriptorSets_.data()) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to allocate IBL descriptor sets");
+    }
+  }
+
   void PBRRenderSystem::setShadowMap(ShadowMap* shadowMap)
   {
     currentShadowMap_ = shadowMap;
@@ -166,6 +246,11 @@ namespace engine {
   void PBRRenderSystem::setShadowSystem(ShadowSystem* shadowSystem)
   {
     currentShadowSystem_ = shadowSystem;
+  }
+
+  void PBRRenderSystem::setIBLSystem(IBLSystem* iblSystem)
+  {
+    currentIBLSystem_ = iblSystem;
   }
 
   void PBRRenderSystem::createPipeline(VkRenderPass renderPass)
@@ -290,6 +375,50 @@ namespace engine {
                               2,
                               1,
                               &shadowDescriptorSets_[frameInfo.frameIndex],
+                              0,
+                              nullptr);
+    }
+
+    // Bind set 3: IBL (if available)
+    if (currentIBLSystem_ && currentIBLSystem_->isGenerated())
+    {
+      VkDescriptorImageInfo irradianceInfo = currentIBLSystem_->getIrradianceDescriptorInfo();
+      VkDescriptorImageInfo prefilterInfo  = currentIBLSystem_->getPrefilteredDescriptorInfo();
+      VkDescriptorImageInfo brdfInfo       = currentIBLSystem_->getBRDFLUTDescriptorInfo();
+
+      std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+
+      descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[0].dstSet          = iblDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[0].dstBinding      = 0;
+      descriptorWrites[0].dstArrayElement = 0;
+      descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[0].descriptorCount = 1;
+      descriptorWrites[0].pImageInfo      = &irradianceInfo;
+
+      descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[1].dstSet          = iblDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[1].dstBinding      = 1;
+      descriptorWrites[1].dstArrayElement = 0;
+      descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[1].descriptorCount = 1;
+      descriptorWrites[1].pImageInfo      = &prefilterInfo;
+
+      descriptorWrites[2].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[2].dstSet          = iblDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[2].dstBinding      = 2;
+      descriptorWrites[2].dstArrayElement = 0;
+      descriptorWrites[2].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[2].descriptorCount = 1;
+      descriptorWrites[2].pImageInfo      = &brdfInfo;
+
+      vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+      vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              pipelineLayout,
+                              3,
+                              1,
+                              &iblDescriptorSets_[frameInfo.frameIndex],
                               0,
                               nullptr);
     }

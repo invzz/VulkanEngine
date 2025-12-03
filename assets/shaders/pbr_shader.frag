@@ -62,6 +62,11 @@ layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[4];
 // Cube shadow maps for point lights (set 2, binding 1)
 layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 
+// IBL textures (set 3)
+layout(set = 3, binding = 0) uniform samplerCube irradianceMap;
+layout(set = 3, binding = 1) uniform samplerCube prefilterMap;
+layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
+
 // Push constants: Only material portion visible in fragment shader (offset 128)
 layout(push_constant) uniform PushConstants
 {
@@ -122,6 +127,11 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+  return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 // Calculate shadow factor using PCF (Percentage Closer Filtering)
@@ -523,9 +533,34 @@ void main()
     Lo = mix(Lo, Lo + clearcoatLo * push.clearcoat, push.clearcoat);
   }
 
-  // Ambient lighting (simple approximation)
-  vec3 ambient = ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * albedo * ao;
-  vec3 color   = ambient + Lo;
+  // Ambient lighting (IBL)
+  vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+
+  vec3 kS = F;
+  vec3 kD = 1.0 - kS;
+  kD *= 1.0 - metallic;
+
+  // Flip Y for Vulkan cube map sampling
+  vec3 N_flip     = vec3(N.x, -N.y, N.z);
+  vec3 irradiance = texture(irradianceMap, N_flip).rgb;
+  vec3 diffuse    = irradiance * albedo;
+
+  // Sample prefiltered map
+  const float MAX_REFLECTION_LOD = 4.0;
+  vec3        R                  = reflect(-V, N);
+  vec3        R_flip             = vec3(R.x, -R.y, R.z);
+  vec3        prefilteredColor   = textureLod(prefilterMap, R_flip, roughness * MAX_REFLECTION_LOD).rgb;
+
+  // Sample BRDF LUT
+  vec2 brdf     = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
+  vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+  vec3 ambient = (kD * diffuse + specular) * ao;
+
+  // Add simple ambient as fallback/boost
+  ambient += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * albedo * ao * 0.05;
+
+  vec3 color = ambient + Lo;
 
   // HDR tonemapping (Reinhard)
   color = color / (color + vec3(1.0));

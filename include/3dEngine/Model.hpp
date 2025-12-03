@@ -138,6 +138,7 @@ namespace engine {
       std::vector<Animation>      animations{};      // Animations from glTF
       std::vector<Node>           nodes{};           // Scene graph nodes
       std::vector<MorphTargetSet> morphTargetSets{}; // Morph targets per mesh
+      std::string                 filePath{};
 
       void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
       void loadModelFromGLTF(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
@@ -190,8 +191,11 @@ namespace engine {
      */
     size_t getMemorySize() const;
 
+    const std::string& getFilePath() const { return filePath; }
+
   private:
-    Device& device;
+    Device&     device;
+    std::string filePath;
 
     std::unique_ptr<Buffer> vertexBuffer;
     uint32_t                vertexCount = 0;

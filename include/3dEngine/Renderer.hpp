@@ -25,12 +25,19 @@ namespace engine {
 
     // Render pass helpers
     void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
-
     void endSwapChainRenderPass(VkCommandBuffer commandBuffer) const;
+
+    void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
+    void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
+    void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
 
     // Accessors
     VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
-    bool         isFrameInProgress() const { return isFrameStarted; }
+    VkRenderPass getOffscreenRenderPass() const { return offscreenRenderPass; }
+
+    VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
+
+    bool isFrameInProgress() const { return isFrameStarted; }
 
     VkCommandBuffer getCurrentCommandBuffer() const
     {
@@ -51,11 +58,33 @@ namespace engine {
     void freeCommandBuffers();
     void recreateSwapChain();
 
+    // Offscreen resources
+    void createOffscreenResources();
+    void createOffscreenRenderPass();
+    void createOffscreenFramebuffers();
+    void freeOffscreenResources();
+
     Window&                      window;
     Device&                      device;
     std::unique_ptr<SwapChain>   swapChain;
     std::vector<VkCommandBuffer> commandBuffers;
-    uint32_t                     currentImageIndex{0};
+
+    // Offscreen members
+    VkRenderPass                offscreenRenderPass{VK_NULL_HANDLE};
+    std::vector<VkImage>        offscreenColorImages;
+    std::vector<VkDeviceMemory> offscreenColorImageMemorys;
+    std::vector<VkImageView>    offscreenColorImageViews;
+    std::vector<VkImageView>    offscreenColorAttachmentImageViews;
+    std::vector<VkFramebuffer>  offscreenFramebuffers;
+
+    std::vector<VkImage>        offscreenDepthImages;
+    std::vector<VkDeviceMemory> offscreenDepthImageMemorys;
+    std::vector<VkImageView>    offscreenDepthImageViews;
+
+    VkSampler offscreenSampler{VK_NULL_HANDLE};
+    uint32_t  offscreenMipLevels{1};
+
+    uint32_t currentImageIndex{0};
     // keep track of frame index for syncing [0, maxFramesInFlight]
     int  currentFrameIndex{0};
     bool isFrameStarted{false};

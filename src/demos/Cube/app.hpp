@@ -15,6 +15,7 @@
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Renderer.hpp"
 #include "3dEngine/ResourceManager.hpp"
+#include "3dEngine/SceneSerializer.hpp"
 #include "3dEngine/Skybox.hpp"
 #include "3dEngine/SwapChain.hpp"
 #include "3dEngine/Window.hpp"
@@ -31,6 +32,7 @@ namespace engine {
   class RenderContext;
   class ShadowSystem;
   class SkyboxRenderSystem;
+  class LODSystem;
   class UIManager;
   class Camera;
 
@@ -40,6 +42,7 @@ namespace engine {
     InputSystem&           inputSystem;
     CameraSystem&          cameraSystem;
     AnimationSystem&       animationSystem;
+    LODSystem&             lodSystem;
     PBRRenderSystem&       pbrRenderSystem;
     LightSystem&           lightSystem;
     ShadowSystem&          shadowSystem;
@@ -68,12 +71,13 @@ namespace engine {
     void              updatePhase(FrameInfo& frameInfo, GameLoopState& state);
     void              computePhase(FrameInfo& frameInfo, GameLoopState& state);
     void              shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
-    void              renderPhase(FrameInfo& frameInfo, GameLoopState& state);
+    void              renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
     void              uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
     Window            window{width(), height(), "Engine App"};
     Device            device{window};
     Renderer          renderer{window, device};
     ResourceManager   resourceManager{device};
     GameObjectManager objectManager;
+    SceneSerializer   sceneSerializer{objectManager, resourceManager};
   };
 } // namespace engine

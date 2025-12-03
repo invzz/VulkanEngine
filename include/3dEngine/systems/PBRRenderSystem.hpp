@@ -22,6 +22,7 @@ namespace engine {
   class MaterialSystem;
   class ShadowMap;
   class ShadowSystem;
+  class IBLSystem;
 
   class PBRRenderSystem
   {
@@ -43,6 +44,9 @@ namespace engine {
     // Set shadow system for rendering (call before render each frame)
     void setShadowSystem(ShadowSystem* shadowSystem);
 
+    // Set IBL system for rendering (call before render each frame)
+    void setIBLSystem(IBLSystem* iblSystem);
+
     // Legacy: Set single shadow map (deprecated, use setShadowSystem)
     void setShadowMap(ShadowMap* shadowMap);
 
@@ -53,6 +57,7 @@ namespace engine {
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
     void createPipeline(VkRenderPass renderPass);
     void createShadowDescriptorResources();
+    void createIBLDescriptorResources();
 
     Device&                   device;
     std::unique_ptr<Pipeline> pipeline;
@@ -67,5 +72,11 @@ namespace engine {
     std::vector<VkDescriptorSet> shadowDescriptorSets_;
     ShadowMap*                   currentShadowMap_    = nullptr;
     ShadowSystem*                currentShadowSystem_ = nullptr;
+
+    // IBL resources
+    VkDescriptorSetLayout        iblDescriptorSetLayout_ = VK_NULL_HANDLE;
+    VkDescriptorPool             iblDescriptorPool_      = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> iblDescriptorSets_;
+    IBLSystem*                   currentIBLSystem_ = nullptr;
   };
 } // namespace engine

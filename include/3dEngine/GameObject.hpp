@@ -7,6 +7,7 @@
 #include "Model.hpp"
 #include "PBRMaterial.hpp"
 #include "components/DirectionalLightComponent.hpp"
+#include "components/LODComponent.hpp"
 #include "components/PointLightComponent.hpp"
 #include "components/SpotLightComponent.hpp"
 #include "components/TransformComponent.hpp"
@@ -66,6 +67,7 @@ namespace engine {
     std::unique_ptr<SpotLightComponent>        spotLight           = nullptr;
     std::unique_ptr<PBRMaterial>               pbrMaterial         = nullptr;
     std::unique_ptr<AnimationController>       animationController = nullptr;
+    std::unique_ptr<LODComponent>              lodComponent        = nullptr;
 
     static GameObject create(std::string name = "GameObject")
     {

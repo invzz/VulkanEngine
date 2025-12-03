@@ -30,7 +30,7 @@ namespace engine {
 
   Model::Model(Device& device, const Builder& builder)
       : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, animations_{builder.animations}, nodes_{builder.nodes},
-        morphTargetSets_{builder.morphTargetSets}
+        morphTargetSets_{builder.morphTargetSets}, filePath{builder.filePath}
   {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
@@ -216,6 +216,7 @@ namespace engine {
 
   void engine::Model::Builder::loadModelFromFile(const std::string& filepath, bool flipX, bool flipY, bool flipZ)
   {
+    this->filePath = filepath;
     OBJImporter importer;
     if (!importer.load(*this, filepath, flipX, flipY, flipZ))
     {
@@ -234,6 +235,7 @@ namespace engine {
 
   void Model::Builder::loadModelFromGLTF(const std::string& filepath, bool flipX, bool flipY, bool flipZ)
   {
+    this->filePath = filepath;
     GLTFImporter importer;
     if (!importer.load(*this, filepath, flipX, flipY, flipZ))
     {

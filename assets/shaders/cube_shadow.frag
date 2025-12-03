@@ -13,9 +13,9 @@ push;
 void main()
 {
   // Calculate distance from fragment to light
-  vec3  lightPos  = push.lightPosAndFarPlane.xyz;
-  float farPlane  = push.lightPosAndFarPlane.w;
-  float distance  = length(fragWorldPos - lightPos);
+  vec3  lightPos           = push.lightPosAndFarPlane.xyz;
+  float farPlane           = push.lightPosAndFarPlane.w;
+  float distance           = length(fragWorldPos - lightPos);
   float normalizedDistance = distance / farPlane;
 
   // Write normalized distance as depth

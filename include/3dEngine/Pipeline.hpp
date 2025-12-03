@@ -51,14 +51,14 @@ namespace engine {
     Pipeline(const Pipeline&) = delete;
 
     // static function to get default config
-    static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+    static void              defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+    static std::vector<char> readFile(const std::string& filePath);
 
     // function to bind pipeline to command buffer
     void bind(VkCommandBuffer commandBuffer);
 
   private:
-    static std::vector<char> readFile(const std::string& filePath);
-    void                     createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+    void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
 
     void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
 

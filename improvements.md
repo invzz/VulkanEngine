@@ -16,19 +16,18 @@ This document outlines prioritized improvements for the Vulkan-based 3D engine. 
 | **Resource Manager** | ✅ Complete | Deduplication, async loading, LRU cache, priority system |
 | **PBR Rendering** | ✅ Complete | Cook-Torrance BRDF, clearcoat, anisotropy |
 | **Light Types** | ✅ Complete | Point, directional, spot lights with attenuation |
+| **Shadow System** | ✅ Complete | Directional, spotlight (2D), point light (cube maps) |
+| **Skybox** | ✅ Complete | Cubemap loading, dedicated render system |
 | **Animation System** | ✅ Complete | Morph targets, GPU compute blending |
 | **Model Loading** | ✅ Complete | OBJ + glTF with materials and animations |
 | **Frustum Culling** | ⚠️ Basic | Sphere-based only, no spatial partitioning |
+| **Post-Processing** | ✅ Complete | ACES Tonemapping, Color Grading, Bloom, FXAA implemented |
 | **ImGui Integration** | ✅ Complete | Multiple panels, object selection |
 
 ### ⚠️ Known Gaps
 | Gap | Impact | Priority |
 |-----|--------|----------|
-| **No Shadows** | Major visual quality loss | 🔥 High |
-| **No IBL/Skybox** | Flat ambient lighting | 🔥 High |
-| **No Post-Processing** | No bloom, SSAO, tonemapping (basic Reinhard in shader) | 🔥 High |
 | **No LOD System** | Performance issues with large scenes | Medium |
-| **No Scene Serialization** | Can't save/load scenes | Medium |
 | **No Profiler** | Can't identify bottlenecks | Medium |
 | **Basic Culling Only** | O(n) per frame, no spatial acceleration | Medium |
 
@@ -84,34 +83,55 @@ src/demos/Cube/SceneLoader.cpp                   [✅ UPDATED - Asphalt textures
 
 ---
 
-### 2. Shadow System Reintegration
-**Status:** Removed - needs reimplementation  
+### 2. Shadow System ✅
+**Status:** ✅ **COMPLETE**  
 **Complexity:** High  
 **Time Estimate:** 4-5 days  
 **Impact:** Critical for realistic lighting
 
-**Implementation approach:**
-- Cascaded shadow maps (CSM) for directional lights
-- Shadow map atlas for point/spot lights
-- PCF or VSM filtering for soft shadows
-- Separate shadow pass before main rendering
+**What was implemented:**
+- ✅ 2D shadow maps for directional lights (PCF soft shadows)
+- ✅ 2D shadow maps for spotlights (perspective projection)
+- ✅ Cube shadow maps for point lights (6-face omnidirectional)
+- ✅ Linear depth storage for point lights (distance/farPlane)
+- ✅ Proper Vulkan Y-flip handling for cube map sampling
+- ✅ Shadow bias to prevent acne
+- ✅ Separate shadow render pass before main rendering
+
+**Files created/modified:**
+```
+include/3dEngine/systems/ShadowSystem.hpp        [✅ NEW]
+src/3dEngine/systems/ShadowSystem.cpp            [✅ NEW]
+include/3dEngine/ShadowMap.hpp                   [✅ NEW]
+src/3dEngine/ShadowMap.cpp                       [✅ NEW]
+include/3dEngine/CubeShadowMap.hpp               [✅ NEW]
+src/3dEngine/CubeShadowMap.cpp                   [✅ NEW]
+assets/shaders/shadow.vert                       [✅ NEW]
+assets/shaders/shadow.frag                       [✅ NEW]
+assets/shaders/cube_shadow.vert                  [✅ NEW]
+assets/shaders/cube_shadow.frag                  [✅ NEW]
+assets/shaders/pbr_shader.frag                   [✅ UPDATED - Shadow sampling]
+```
 
 **Architecture:**
 ```cpp
 class ShadowSystem {
-  void renderShadowMaps(FrameInfo& frameInfo);
-  VkDescriptorSet getShadowDescriptorSet();
+  // 2D shadow maps for directional/spot lights
+  void renderShadowMaps(FrameInfo& frameInfo, float sceneRadius);
   
-private:
-  std::unique_ptr<ShadowMapAtlas> atlas;
-  std::vector<CascadeInfo> cascades;
-  VkRenderPass shadowRenderPass;
+  // Cube shadow maps for point lights
+  void renderPointLightShadowMaps(FrameInfo& frameInfo);
+  
+  // Descriptor access for PBR shader
+  VkDescriptorImageInfo getShadowMapDescriptorInfo(int index);
+  VkDescriptorImageInfo getCubeShadowMapDescriptorInfo(int index);
 };
 ```
 
-**Benefits:**
+**Benefits achieved:**
 - Realistic depth perception
-- Better object grounding
+- Proper object grounding
+- Omnidirectional point light shadows
 - Professional visual quality
 
 ---
@@ -276,17 +296,19 @@ class LODManager {
 
 ---
 
-### 5. Image-Based Lighting (IBL)
-**Status:** Not implemented  
-**Complexity:** Medium-High  
-**Time Estimate:** 3-4 days  
+### 5. Image-Based Lighting (IBL) ✅
+**Status:** ✅ **COMPLETE**
+**Complexity:** Medium-High
+**Time Estimate:** 3-4 days
 **Impact:** Massive PBR quality improvement
 
-**What's needed:**
-- Skybox/environment map
-- Prefiltered environment maps (diffuse irradiance, specular)
-- BRDF integration lookup table (LUT)
-- Fragment shader integration
+**What was implemented:**
+- ✅ Skybox/environment map
+- ✅ Prefiltered environment maps (diffuse irradiance, specular)
+- ✅ BRDF integration lookup table (LUT)
+- ✅ Fragment shader integration
+- ✅ `IBLSystem` class for generation and management
+- ✅ Integration into `PBRRenderSystem` and `app.cpp`
 
 **Implementation:**
 ```cpp
@@ -308,9 +330,9 @@ private:
 **Shader changes:**
 ```glsl
 // Add to PBR shader:
-layout(set = 2, binding = 0) uniform samplerCube irradianceMap;
-layout(set = 2, binding = 1) uniform samplerCube prefilteredMap;
-layout(set = 2, binding = 2) uniform sampler2D brdfLUT;
+layout(set = 3, binding = 0) uniform samplerCube irradianceMap;
+layout(set = 3, binding = 1) uniform samplerCube prefilteredMap;
+layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
 
 // Use in lighting calculation:
 vec3 diffuse = texture(irradianceMap, N).rgb * albedo;
@@ -646,43 +668,17 @@ class AssetBrowser {
 
 ---
 
-### 12. Scene Serialization
-**Status:** Programmatic scene creation only  
+### 12. Scene Serialization ✅
+**Status:** ✅ **COMPLETE**
 **Complexity:** Medium  
 **Time Estimate:** 2-3 days  
 **Impact:** Workflow efficiency
 
 **Implementation:**
-```cpp
-class SceneSerializer {
-  void save(const std::string& path, GameObjectManager& objects);
-  void load(const std::string& path, GameObjectManager& objects);
-  
-  // JSON format example:
-  {
-    "objects": [
-      {
-        "id": 1,
-        "name": "Floor",
-        "transform": { "position": [0,0,0], "rotation": [0,0,0], "scale": [10,1,10] },
-        "components": {
-          "mesh": { "path": "assets/models/plane.obj" },
-          "material": {
-            "albedo": [0.8, 0.8, 0.8],
-            "metallic": 0.0,
-            "roughness": 0.8,
-            "textures": {
-              "albedo": "assets/textures/wood_albedo.png",
-              "normal": "assets/textures/wood_normal.png"
-            }
-          }
-        }
-      }
-    ],
-    "lights": [ ... ]
-  }
-};
-```
+- ✅ `SceneSerializer` class using `nlohmann/json`
+- ✅ Save/Load menu in UI
+- ✅ Serialization of Transforms, Models, Materials, Lights
+- ✅ Integration with `GameObjectManager` and `ResourceManager`
 
 **Benefits:**
 - Save/load scenes from editor
@@ -738,55 +734,28 @@ Frame: 16.3ms (61 FPS)
 
 ---
 
-### 14. Post-Processing Stack
-**Status:** No post-processing  
-**Complexity:** Medium (per effect)  
-**Time Estimate:** 1-2 days per effect  
+### 14. Post-Processing Stack ✅
+**Status:** ✅ **COMPLETE**
+**Complexity:** Medium (per effect)
+**Time Estimate:** 1-2 days per effect
 **Impact:** Visual polish
+
+**What was implemented:**
+- ✅ Offscreen HDR Framebuffer (R16G16B16A16_SFLOAT)
+- ✅ PostProcessingSystem for full-screen quad rendering
+- ✅ ACES Filmic Tonemapping shader
+- ✅ Gamma Correction (linear -> sRGB)
+- ✅ Procedural Color Grading (Exposure, Contrast, Saturation, Vignette)
+- ✅ **Bloom** (Mipmap-based downsampling + additive blending)
+- ✅ **FXAA** (Fast Approximate Anti-Aliasing)
+- ✅ UI Controls for toggling and tuning effects
 
 **Architecture:**
 ```cpp
-class PostProcessStack {
-  void addEffect(std::unique_ptr<PostEffect> effect);
-  void render(VkCommandBuffer cmd, VkImageView input, VkImageView output);
-  
-  std::vector<std::unique_ptr<PostEffect>> effects;
-  std::vector<FramebufferResource> intermediateBuffers;
+class PostProcessingSystem {
+  void render(FrameInfo& frameInfo, VkDescriptorSet descriptorSet, const PostProcessPushConstants& push);
+  // Renders full-screen triangle with no vertex buffer
 };
-
-class PostEffect {
-  virtual void render(VkCommandBuffer cmd, 
-                      VkImageView input, 
-                      VkImageView output) = 0;
-};
-```
-
-**Effects to implement (priority order):**
-
-1. **Tonemapping** (essential for HDR)
-```glsl
-vec3 tonemap(vec3 hdr) {
-  // ACES filmic tone curve
-  return (hdr * (2.51 * hdr + 0.03)) / 
-         (hdr * (2.43 * hdr + 0.59) + 0.14);
-}
-```
-
-2. **Bloom** (glow on bright areas)
-```
-1. Extract bright pixels (threshold)
-2. Gaussian blur (5-pass downscale)
-3. Composite back to scene
-```
-
-3. **FXAA** (anti-aliasing)
-```glsl
-// Fast approximate anti-aliasing (edge smoothing)
-```
-
-4. **Color Grading** (artistic control)
-```glsl
-vec3 graded = texture(lutTexture, color).rgb;
 ```
 
 **Benefits:**
@@ -905,18 +874,19 @@ class RayTracingSystem {
 
 ## 📅 Recommended Implementation Order
 
-### Phase 1: Visual Quality (Next 2-3 weeks)
+### Phase 1: Visual Quality ✅ COMPLETE
 1. ✅ **Texture System** - **COMPLETE**
 2. ✅ **Resource Manager** - **COMPLETE** (with async loading)
 3. ✅ **Async Asset Loading** - **COMPLETE** (in ResourceManager)
-4. **Skybox + Simple IBL** - Quick visual improvement, environment mapping
-5. **Shadow System** - Critical for realism
-6. **Profiler** - Measure before optimizing
+4. ✅ **Skybox** - **COMPLETE** (cubemap rendering)
+5. ✅ **Shadow System** - **COMPLETE** (directional, spot, point lights)
+6. ✅ **IBL (Image-Based Lighting)** - **COMPLETE**
+7. **Profiler** - Measure before optimizing
 
-### Phase 2: Performance & Polish (2-3 weeks)
-7. **Post-Processing Stack** - Bloom, proper tonemapping, FXAA
-8. **Improved Frustum Culling + LOD** - Handle larger scenes
-9. **Full IBL** - Complete environment lighting
+### Phase 2: Performance & Polish (Current - 2-3 weeks)
+8. **Post-Processing Stack** - Bloom, proper tonemapping, FXAA
+9. **Improved Frustum Culling + LOD** - Handle larger scenes
+10. **PCF Soft Shadows for Point Lights** - Smoother cube shadow edges
 
 ### Phase 3: Architecture & Workflow (3-4 weeks)
 10. **Scene Serialization** - Save/load scenes

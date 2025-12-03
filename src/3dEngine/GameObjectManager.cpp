@@ -20,6 +20,16 @@ namespace engine {
     allObjects_.erase(it);
   }
 
+  void GameObjectManager::clear()
+  {
+    allObjects_.clear();
+    pbrObjects_.clear();
+    pointLights_.clear();
+    directionalLights_.clear();
+    spotLights_.clear();
+    lodObjects_.clear();
+  }
+
   GameObject* GameObjectManager::getObject(GameObject::id_t id)
   {
     auto it = allObjects_.find(id);
@@ -49,6 +59,11 @@ namespace engine {
     if (obj->spotLight)
     {
       spotLights_.push_back(obj);
+    }
+
+    if (obj->lodComponent)
+    {
+      lodObjects_.push_back(obj);
     }
   }
 
@@ -82,6 +97,11 @@ namespace engine {
     if (obj->spotLight)
     {
       removeFromVector(spotLights_);
+    }
+
+    if (obj->lodComponent)
+    {
+      removeFromVector(lodObjects_);
     }
   }
 

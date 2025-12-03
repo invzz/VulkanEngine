@@ -17,10 +17,12 @@ namespace engine {
     // Add objects to appropriate vectors based on their components
     void                      addObject(GameObject&& obj);
     void                      removeObject(GameObject::id_t id); // Access by type
+    void                      clear();
     std::vector<GameObject*>& getPBRObjects() { return pbrObjects_; }
     std::vector<GameObject*>& getPointLights() { return pointLights_; }
     std::vector<GameObject*>& getDirectionalLights() { return directionalLights_; }
     std::vector<GameObject*>& getSpotLights() { return spotLights_; }
+    std::vector<GameObject*>& getLODObjects() { return lodObjects_; }
 
     // Access all objects
     GameObject::Map& getAllObjects() { return allObjects_; }
@@ -40,6 +42,7 @@ namespace engine {
     std::vector<GameObject*> pointLights_;
     std::vector<GameObject*> directionalLights_;
     std::vector<GameObject*> spotLights_;
+    std::vector<GameObject*> lodObjects_;
 
     void categorizeObject(GameObject* obj);
     void removeFromCategory(GameObject* obj);

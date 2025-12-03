@@ -15,8 +15,6 @@ namespace engine {
     {
       return;
     }
-
-    createLights(objectManager);
     createFloor(device, objectManager, resourceManager);
     createBmw(device, objectManager, resourceManager);
     // createApple(device, objectManager);

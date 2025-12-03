@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -42,9 +43,13 @@ namespace engine {
       return nullptr;
     }
 
+    void setOnSaveScene(std::function<void()> callback) { onSaveScene_ = callback; }
+    void setOnLoadScene(std::function<void()> callback) { onLoadScene_ = callback; }
+
   private:
     ImGuiManager&                         imguiManager_;
     std::vector<std::unique_ptr<UIPanel>> panels_;
+    std::function<void()>                 onSaveScene_;
+    std::function<void()>                 onLoadScene_;
   };
-
 } // namespace engine
