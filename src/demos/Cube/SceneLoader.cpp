@@ -96,23 +96,20 @@ namespace engine {
 
   void SceneLoader::createLights(GameObjectManager& objectManager, float radius)
   {
-    std::vector<glm::vec3> allColors{{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f}, {1.f, 0.f, 1.f}, {0.f, 1.f, 1.f}, {1.f, 1.f, 0.f}};
+    std::vector<glm::vec3> lightColors = {{1.f, 0.f, 0.f}, {0.f, 1.f, 0.f}, {0.f, 0.f, 1.f}, {1.f, 1.f, 1.f}};
 
-    std::vector<glm::vec3> lightColors = allColors;
+    // Create point lights in a circle (limit to 4 for shadow maps)
+    for (size_t i = 0; i < lightColors.size(); i++)
+    {
+      auto pointLight  = GameObject::makePointLightObject({.intensity = 1.0f, .color = lightColors[i], .radius = 0.05f});
+      pointLight.color = lightColors[i];
 
-    // // Create point lights in a circle
-    // for (size_t i = 0; i < lightColors.size(); i++)
-    // {
-    //   auto pointLight  = GameObject::makePointLightObject({.intensity = 1.0f, .color = lightColors[i], .radius = 0.05f});
-    //   pointLight.color = lightColors[i];
+      auto rotateLight =
+              glm::rotate(glm::mat4(1.0f), (glm::two_pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size()), glm::vec3(0.f, -1.f, 0.f));
+      pointLight.transform.translation = glm::vec3(rotateLight * glm::vec4{-radius, -2.f, -radius, 1.f});
 
-    //   auto rotateLight =
-    //           glm::rotate(glm::mat4(1.0f), (glm::two_pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size()), glm::vec3(0.f, -2.f,
-    //           0.f));
-    //   pointLight.transform.translation = glm::vec3(rotateLight * glm::vec4{-radius, -1.f, -radius, 1.f});
-
-    //   objectManager.addObject(std::move(pointLight));
-    // }
+      objectManager.addObject(std::move(pointLight));
+    }
 
     // Add a directional light (sun-like, from above)
     auto directionalLight = GameObject::makeDirectionalLightObject({.intensity = 0.5f, .color = {1.0f, 0.95f, 0.9f}}); // Warm sunlight

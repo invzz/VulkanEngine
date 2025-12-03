@@ -26,7 +26,8 @@ namespace engine {
   class PBRRenderSystem
   {
   public:
-    static constexpr int MAX_SHADOW_MAPS = 4;
+    static constexpr int MAX_SHADOW_MAPS      = 4;
+    static constexpr int MAX_CUBE_SHADOW_MAPS = 4;
 
     PBRRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     ~PBRRenderSystem();

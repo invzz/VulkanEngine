@@ -3,6 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
+#include "3dEngine/CubeShadowMap.hpp"
 #include "3dEngine/GameObject.hpp"
 #include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/Model.hpp"
@@ -16,20 +17,37 @@ namespace engine {
     glm::mat4 lightSpaceMatrix;
   };
 
-  ShadowSystem::ShadowSystem(Device& device, uint32_t shadowMapSize) : device_{device}
+  struct CubeShadowPushConstants
   {
-    // Create multiple shadow maps
+    glm::mat4 modelMatrix;
+    glm::mat4 lightSpaceMatrix;
+    glm::vec4 lightPosAndFarPlane; // xyz = light position, w = far plane
+  };
+
+  ShadowSystem::ShadowSystem(Device& device, uint32_t shadowMapSize) : device_{device}, shadowMapSize_{shadowMapSize}
+  {
+    // Create multiple shadow maps for directional/spot lights
     for (int i = 0; i < MAX_SHADOW_MAPS; i++)
     {
       shadowMaps_.push_back(std::make_unique<ShadowMap>(device, shadowMapSize, shadowMapSize));
       lightSpaceMatrices_[i] = glm::mat4(1.0f);
     }
 
+    // Create cube shadow maps for point lights
+    for (int i = 0; i < MAX_CUBE_SHADOW_MAPS; i++)
+    {
+      cubeShadowMaps_.push_back(std::make_unique<CubeShadowMap>(device, shadowMapSize));
+      pointLightPositions_[i] = glm::vec3(0.0f);
+      pointLightRanges_[i]    = 25.0f;
+    }
+
     createPipelineLayout();
     createPipeline();
+    createCubeShadowPipelineLayout();
+    createCubeShadowPipeline();
 
-    std::cout << "[" << GREEN << "ShadowSystem" << RESET << "] Initialized with " << MAX_SHADOW_MAPS << " shadow maps (" << shadowMapSize << "x"
-              << shadowMapSize << ")" << std::endl;
+    std::cout << "[" << GREEN << "ShadowSystem" << RESET << "] Initialized with " << MAX_SHADOW_MAPS << " 2D shadow maps and " << MAX_CUBE_SHADOW_MAPS
+              << " cube shadow maps (" << shadowMapSize << "x" << shadowMapSize << ")" << std::endl;
   }
 
   ShadowSystem::~ShadowSystem()
@@ -37,6 +55,10 @@ namespace engine {
     if (pipelineLayout_ != VK_NULL_HANDLE)
     {
       vkDestroyPipelineLayout(device_.device(), pipelineLayout_, nullptr);
+    }
+    if (cubePipelineLayout_ != VK_NULL_HANDLE)
+    {
+      vkDestroyPipelineLayout(device_.device(), cubePipelineLayout_, nullptr);
     }
   }
 
@@ -211,6 +233,152 @@ namespace engine {
       renderToShadowMap(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
       shadowLightCount_++;
     }
+
+    // Render cube shadow maps for point lights
+    renderPointLightShadowMaps(frameInfo);
+  }
+
+  void ShadowSystem::createCubeShadowPipelineLayout()
+  {
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.offset     = 0;
+    pushConstantRange.size       = sizeof(CubeShadowPushConstants);
+
+    VkPipelineLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount         = 0;
+    layoutInfo.pSetLayouts            = nullptr;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges    = &pushConstantRange;
+
+    if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &cubePipelineLayout_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create cube shadow pipeline layout");
+    }
+  }
+
+  void ShadowSystem::createCubeShadowPipeline()
+  {
+    PipelineConfigInfo configInfo{};
+    Pipeline::defaultPipelineConfigInfo(configInfo);
+
+    // Only need position for shadow mapping
+    configInfo.bindingDescriptions   = Model::Vertex::getBindingDescriptions();
+    configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
+
+    // No color attachment - depth only
+    configInfo.colorBlendInfo.attachmentCount = 0;
+    configInfo.colorBlendAttachment           = {};
+
+    // Depth bias to prevent shadow acne
+    configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
+    configInfo.rasterizationInfo.depthBiasConstantFactor = 1.25f;
+    configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
+
+    // No culling for point light shadows to ensure all geometry is captured
+    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+
+    // Use the render pass from the first cube shadow map
+    configInfo.renderPass     = cubeShadowMaps_[0]->getRenderPass();
+    configInfo.pipelineLayout = cubePipelineLayout_;
+
+    // Use specialized cube shadow shaders that write linear depth
+    cubePipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/cube_shadow.vert.spv", SHADER_PATH "/cube_shadow.frag.spv", configInfo);
+  }
+
+  void ShadowSystem::renderPointLightShadowMaps(FrameInfo& frameInfo)
+  {
+    cubeShadowLightCount_ = 0;
+
+    if (!frameInfo.objectManager) return;
+
+    auto& pointLights = frameInfo.objectManager->getPointLights();
+
+    for (size_t i = 0; i < pointLights.size() && cubeShadowLightCount_ < MAX_CUBE_SHADOW_MAPS; i++)
+    {
+      auto&     light    = pointLights[i];
+      glm::vec3 position = light->transform.translation;
+
+      // Estimate range from point light intensity or use default
+      float range = 10.0f;
+      if (light->pointLight)
+      {
+        // Use a reasonable range for the scene
+        range = 10.0f;
+      }
+
+      pointLightPositions_[cubeShadowLightCount_] = position;
+      pointLightRanges_[cubeShadowLightCount_]    = range;
+
+      // Transition cube map to attachment layout BEFORE rendering all 6 faces
+      cubeShadowMaps_[cubeShadowLightCount_]->transitionToAttachmentLayout(frameInfo.commandBuffer);
+
+      // Render all 6 faces of the cube shadow map
+      for (int face = 0; face < 6; face++)
+      {
+        glm::mat4 lightSpaceMatrix = calculatePointLightMatrix(position, face, range);
+        renderToCubeFace(frameInfo, *cubeShadowMaps_[cubeShadowLightCount_], face, lightSpaceMatrix, position, range);
+      }
+
+      // Transition cube map to shader read layout AFTER rendering all 6 faces
+      cubeShadowMaps_[cubeShadowLightCount_]->transitionToShaderReadLayout(frameInfo.commandBuffer);
+
+      cubeShadowLightCount_++;
+    }
+  }
+
+  glm::mat4 ShadowSystem::calculatePointLightMatrix(const glm::vec3& position, int face, float range)
+  {
+    float     nearPlane  = 0.1f;
+    glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, nearPlane, range);
+
+    // Vulkan Y flip
+    projection[1][1] *= -1;
+
+    glm::mat4 view = CubeShadowMap::getFaceViewMatrix(position, face);
+
+    return projection * view;
+  }
+
+  void ShadowSystem::renderToCubeFace(FrameInfo&       frameInfo,
+                                      CubeShadowMap&   cubeShadowMap,
+                                      int              face,
+                                      const glm::mat4& lightSpaceMatrix,
+                                      const glm::vec3& lightPos,
+                                      float            farPlane)
+  {
+    // Begin render pass for this face
+    cubeShadowMap.beginRenderPass(frameInfo.commandBuffer, face);
+
+    // Bind cube shadow pipeline
+    cubePipeline_->bind(frameInfo.commandBuffer);
+
+    // Render all objects
+    if (frameInfo.objectManager)
+    {
+      for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+      {
+        if (!obj.model) continue;
+
+        CubeShadowPushConstants push{};
+        push.modelMatrix         = obj.transform.modelTransform();
+        push.lightSpaceMatrix    = lightSpaceMatrix;
+        push.lightPosAndFarPlane = glm::vec4(lightPos, farPlane);
+
+        vkCmdPushConstants(frameInfo.commandBuffer,
+                           cubePipelineLayout_,
+                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0,
+                           sizeof(CubeShadowPushConstants),
+                           &push);
+
+        obj.model->bind(frameInfo.commandBuffer);
+        obj.model->draw(frameInfo.commandBuffer);
+      }
+    }
+
+    cubeShadowMap.endRenderPass(frameInfo.commandBuffer);
   }
 
 } // namespace engine

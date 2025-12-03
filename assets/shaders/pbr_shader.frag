@@ -40,10 +40,12 @@ layout(set = 0, binding = 0) uniform UBO
   DirectionalLight directionalLights[16];
   SpotLight        spotLights[16];
   mat4             lightSpaceMatrices[16];
+  vec4             pointLightShadowData[4]; // xyz = position, w = far plane
   int              pointLightCount;
   int              directionalLightCount;
   int              spotLightCount;
-  int              shadowLightCount;
+  int              shadowLightCount;     // 2D shadow maps (directional + spot)
+  int              cubeShadowLightCount; // Cube shadow maps (point lights)
 }
 ubo;
 
@@ -56,6 +58,9 @@ layout(set = 1, binding = 4) uniform sampler2D aoMap;
 
 // Shadow maps (set 2) - array of shadow maps for multiple lights
 layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[4];
+
+// Cube shadow maps for point lights (set 2, binding 1)
+layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 
 // Push constants: Only material portion visible in fragment shader (offset 128)
 layout(push_constant) uniform PushConstants
@@ -153,6 +158,39 @@ float calculateShadow(vec3 worldPos, int lightIndex)
     }
   }
   shadow /= 9.0;
+
+  return shadow;
+}
+
+// Calculate shadow factor for point light using cube shadow map
+float calculatePointLightShadow(vec3 worldPos, int lightIndex)
+{
+  if (lightIndex >= ubo.cubeShadowLightCount) return 1.0;
+
+  vec3  lightPos = ubo.pointLightShadowData[lightIndex].xyz;
+  float farPlane = ubo.pointLightShadowData[lightIndex].w;
+
+  // Direction from light to fragment
+  vec3  lightToFrag  = worldPos - lightPos;
+  float currentDepth = length(lightToFrag);
+
+  // Check if outside light range
+  if (currentDepth > farPlane) return 1.0;
+
+  // For Vulkan cube maps, flip Y to match the rendering coordinate system
+  vec3 sampleDir = vec3(lightToFrag.x, -lightToFrag.y, lightToFrag.z);
+
+  // Sample cube shadow map - stored value is linear depth / farPlane
+  float closestDepth = texture(cubeShadowMaps[lightIndex], sampleDir).r;
+
+  // Normalize current depth to [0, 1] range
+  float normalizedDepth = currentDepth / farPlane;
+
+  // Bias to prevent shadow acne
+  float bias = 0.02;
+
+  // In shadow if current fragment is further than stored depth
+  float shadow = (normalizedDepth > closestDepth + bias) ? 0.0 : 1.0;
 
   return shadow;
 }
@@ -278,7 +316,12 @@ void main()
     float attenuation = 1.0 / (distance * distance);
     vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
 
-    float shadow = 1.0; // No shadows for now
+    // Calculate shadow for point light using cube shadow map
+    float shadow = 1.0;
+    if (i < ubo.cubeShadowLightCount)
+    {
+      shadow = calculatePointLightShadow(fragmentWorldPos, i);
+    }
 
     // Cook-Torrance BRDF with optional anisotropy
     float NDF;
@@ -367,8 +410,8 @@ void main()
 
     // Calculate shadow for this spotlight
     // Shadow map index = 1 + i (index 0 is for directional light)
-    int shadowIndex = 1 + i;
-    float shadow = 1.0;
+    int   shadowIndex = 1 + i;
+    float shadow      = 1.0;
     if (shadowIndex < ubo.shadowLightCount)
     {
       shadow = calculateShadow(fragmentWorldPos, shadowIndex);

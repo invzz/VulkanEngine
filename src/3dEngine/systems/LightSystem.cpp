@@ -14,6 +14,7 @@
 #include <glm/common.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
+#include <iostream>
 #include <stdexcept>
 
 #include "3dEngine/systems/LightSystem.hpp"
@@ -208,7 +209,6 @@ namespace engine {
       for (auto* obj : frameInfo.objectManager->getPointLights())
       {
         assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
-        obj->transform.translation                    = glm::vec3(rotateLight * glm::vec4{obj->transform.translation, 1.f});
         ubo.pointLights[ubo.pointLightCount].position = glm::vec4(obj->transform.translation, 1.f);
         ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(obj->color, obj->pointLight->intensity);
         ubo.pointLightCount++;
@@ -256,59 +256,7 @@ namespace engine {
     }
     else
     {
-      // Legacy: iterate through all game objects (fallback)
-      for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
-      {
-        // Point lights
-        if (obj.pointLight)
-        {
-          assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
-          obj.transform.translation                     = glm::vec3(rotateLight * glm::vec4{obj.transform.translation, 1.f});
-          ubo.pointLights[ubo.pointLightCount].position = glm::vec4(obj.transform.translation, 1.f);
-          ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(obj.color, obj.pointLight->intensity);
-          ubo.pointLightCount++;
-        }
-
-        // Directional lights
-        if (obj.directionalLight)
-        {
-          assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
-
-          // Update rotation to look at target if enabled
-          if (obj.directionalLight->useTargetPoint)
-          {
-            obj.transform.lookAt(obj.directionalLight->targetPoint);
-          }
-
-          glm::vec3 direction                                        = obj.transform.getForwardDir();
-          ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
-          ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(obj.color, obj.directionalLight->intensity);
-          ubo.directionalLightCount++;
-        }
-
-        // Spot lights
-        if (obj.spotLight)
-        {
-          assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
-
-          // Update rotation to look at target if enabled
-          if (obj.spotLight->useTargetPoint)
-          {
-            obj.transform.lookAt(obj.spotLight->targetPoint);
-          }
-
-          glm::vec3 direction = obj.transform.getForwardDir();
-
-          ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(obj.transform.translation, 1.f);
-          ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(obj.spotLight->innerCutoffAngle)));
-          ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(obj.color, obj.spotLight->intensity);
-          ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(obj.spotLight->outerCutoffAngle));
-          ubo.spotLights[ubo.spotLightCount].constantAtten  = obj.spotLight->constantAttenuation;
-          ubo.spotLights[ubo.spotLightCount].linearAtten    = obj.spotLight->linearAttenuation;
-          ubo.spotLights[ubo.spotLightCount].quadraticAtten = obj.spotLight->quadraticAttenuation;
-          ubo.spotLightCount++;
-        }
-      }
+      std::cout << "[LightSystem] Warning: No GameObjectManager available in FrameInfo for light update." << std::endl;
     }
   }
 

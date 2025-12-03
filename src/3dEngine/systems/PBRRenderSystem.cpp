@@ -1,5 +1,6 @@
 #include "3dEngine/systems/PBRRenderSystem.hpp"
 
+#include "3dEngine/CubeShadowMap.hpp"
 #include "3dEngine/Exceptions.hpp"
 #include "3dEngine/GameObjectManager.hpp"
 #include "3dEngine/MorphTargetManager.hpp"
@@ -96,18 +97,27 @@ namespace engine {
 
   void PBRRenderSystem::createShadowDescriptorResources()
   {
-    // Create shadow descriptor set layout with array of shadow maps
-    VkDescriptorSetLayoutBinding shadowBinding{};
-    shadowBinding.binding            = 0;
-    shadowBinding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    shadowBinding.descriptorCount    = MAX_SHADOW_MAPS; // Array of shadow maps
-    shadowBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
-    shadowBinding.pImmutableSamplers = nullptr;
+    // Create shadow descriptor set layout with array of shadow maps and cube shadow maps
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
+
+    // Binding 0: 2D shadow maps for directional and spot lights
+    bindings[0].binding            = 0;
+    bindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[0].descriptorCount    = MAX_SHADOW_MAPS;
+    bindings[0].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[0].pImmutableSamplers = nullptr;
+
+    // Binding 1: Cube shadow maps for point lights
+    bindings[1].binding            = 1;
+    bindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[1].descriptorCount    = MAX_CUBE_SHADOW_MAPS;
+    bindings[1].stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings    = &shadowBinding;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings    = bindings.data();
 
     if (vkCreateDescriptorSetLayout(device.device(), &layoutInfo, nullptr, &shadowDescriptorSetLayout_) != VK_SUCCESS)
     {
@@ -115,14 +125,16 @@ namespace engine {
     }
 
     // Create descriptor pool with enough descriptors for all shadow maps
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize.descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight() * MAX_SHADOW_MAPS);
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    poolSizes[0].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight() * MAX_SHADOW_MAPS);
+    poolSizes[1].type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight() * MAX_CUBE_SHADOW_MAPS);
 
     VkDescriptorPoolCreateInfo poolInfo{};
     poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes    = &poolSize;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes    = poolSizes.data();
     poolInfo.maxSets       = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
 
     if (vkCreateDescriptorPool(device.device(), &poolInfo, nullptr, &shadowDescriptorPool_) != VK_SUCCESS)
@@ -178,31 +190,55 @@ namespace engine {
     // Bind set 2: shadow maps (if available)
     if (currentShadowSystem_)
     {
-      int                                                shadowCount = currentShadowSystem_->getShadowLightCount();
-      std::array<VkDescriptorImageInfo, MAX_SHADOW_MAPS> shadowInfos{};
+      int shadowCount     = currentShadowSystem_->getShadowLightCount();
+      int cubeShadowCount = currentShadowSystem_->getCubeShadowLightCount();
 
-      // Fill in active shadow maps
+      // Fill in 2D shadow maps
+      std::array<VkDescriptorImageInfo, MAX_SHADOW_MAPS> shadowInfos{};
       for (int i = 0; i < shadowCount && i < MAX_SHADOW_MAPS; i++)
       {
         shadowInfos[i] = currentShadowSystem_->getShadowMapDescriptorInfo(i);
       }
-
-      // Fill remaining slots with first shadow map (to avoid undefined reads)
+      // Fill remaining slots with first shadow map
       for (int i = shadowCount; i < MAX_SHADOW_MAPS; i++)
       {
         shadowInfos[i] = shadowCount > 0 ? currentShadowSystem_->getShadowMapDescriptorInfo(0) : currentShadowSystem_->getShadowMapDescriptorInfo(0);
       }
 
-      VkWriteDescriptorSet shadowWrite{};
-      shadowWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      shadowWrite.dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
-      shadowWrite.dstBinding      = 0;
-      shadowWrite.dstArrayElement = 0;
-      shadowWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      shadowWrite.descriptorCount = MAX_SHADOW_MAPS;
-      shadowWrite.pImageInfo      = shadowInfos.data();
+      // Fill in cube shadow maps
+      std::array<VkDescriptorImageInfo, MAX_CUBE_SHADOW_MAPS> cubeShadowInfos{};
+      for (int i = 0; i < cubeShadowCount && i < MAX_CUBE_SHADOW_MAPS; i++)
+      {
+        cubeShadowInfos[i] = currentShadowSystem_->getCubeShadowMapDescriptorInfo(i);
+      }
+      // Fill remaining slots with first cube shadow map
+      for (int i = cubeShadowCount; i < MAX_CUBE_SHADOW_MAPS; i++)
+      {
+        cubeShadowInfos[i] = cubeShadowCount > 0 ? currentShadowSystem_->getCubeShadowMapDescriptorInfo(0)
+                                                 : currentShadowSystem_->getCubeShadowMapDescriptorInfo(0);
+      }
 
-      vkUpdateDescriptorSets(device.device(), 1, &shadowWrite, 0, nullptr);
+      std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+      // Write 2D shadow maps
+      descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[0].dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[0].dstBinding      = 0;
+      descriptorWrites[0].dstArrayElement = 0;
+      descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[0].descriptorCount = MAX_SHADOW_MAPS;
+      descriptorWrites[0].pImageInfo      = shadowInfos.data();
+
+      // Write cube shadow maps
+      descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[1].dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[1].dstBinding      = 1;
+      descriptorWrites[1].dstArrayElement = 0;
+      descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[1].descriptorCount = MAX_CUBE_SHADOW_MAPS;
+      descriptorWrites[1].pImageInfo      = cubeShadowInfos.data();
+
+      vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
       vkCmdBindDescriptorSets(frameInfo.commandBuffer,
                               VK_PIPELINE_BIND_POINT_GRAPHICS,
                               pipelineLayout,
@@ -222,16 +258,32 @@ namespace engine {
         shadowInfos[i] = shadowInfos[0];
       }
 
-      VkWriteDescriptorSet shadowWrite{};
-      shadowWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      shadowWrite.dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
-      shadowWrite.dstBinding      = 0;
-      shadowWrite.dstArrayElement = 0;
-      shadowWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      shadowWrite.descriptorCount = MAX_SHADOW_MAPS;
-      shadowWrite.pImageInfo      = shadowInfos.data();
+      // Create dummy cube shadow map infos (use the 2D shadow map, will be unused)
+      std::array<VkDescriptorImageInfo, MAX_CUBE_SHADOW_MAPS> cubeShadowInfos{};
+      for (int i = 0; i < MAX_CUBE_SHADOW_MAPS; i++)
+      {
+        cubeShadowInfos[i] = shadowInfos[0]; // Use 2D shadow map as placeholder
+      }
 
-      vkUpdateDescriptorSets(device.device(), 1, &shadowWrite, 0, nullptr);
+      std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+      descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[0].dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[0].dstBinding      = 0;
+      descriptorWrites[0].dstArrayElement = 0;
+      descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[0].descriptorCount = MAX_SHADOW_MAPS;
+      descriptorWrites[0].pImageInfo      = shadowInfos.data();
+
+      descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrites[1].dstSet          = shadowDescriptorSets_[frameInfo.frameIndex];
+      descriptorWrites[1].dstBinding      = 1;
+      descriptorWrites[1].dstArrayElement = 0;
+      descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[1].descriptorCount = MAX_CUBE_SHADOW_MAPS;
+      descriptorWrites[1].pImageInfo      = cubeShadowInfos.data();
+
+      vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
       vkCmdBindDescriptorSets(frameInfo.commandBuffer,
                               VK_PIPELINE_BIND_POINT_GRAPHICS,
                               pipelineLayout,

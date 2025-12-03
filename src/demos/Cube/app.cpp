@@ -231,6 +231,7 @@ namespace engine {
   void App::updatePhase(FrameInfo& frameInfo, GameLoopState& state)
   {
     // Update systems (CPU-side processing)
+
     state.objectSelectionSystem.update(frameInfo);                   // Handle object selection with mouse
     state.inputSystem.update(frameInfo);                             // Process keyboard/mouse input
     state.cameraSystem.update(frameInfo, renderer.getAspectRatio()); // Update camera matrices
@@ -246,12 +247,14 @@ namespace engine {
 
   void App::shadowPhase(FrameInfo& frameInfo, GameLoopState& state)
   {
-    // Render shadow maps for all shadow-casting lights (directional + spotlights)
+    // Update uniform buffer with per-frame data FIRST (this also rotates point lights)
+    GlobalUbo ubo{};
+
+    state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO (rotates them)
+
+    // Render shadow maps for all shadow-casting lights (after positions are updated)
     state.shadowSystem.renderShadowMaps(frameInfo, 30.0f);
 
-    // Update uniform buffer with per-frame data (including light space matrices from shadow system)
-    GlobalUbo ubo{};
-    state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO
     ubo.projection       = frameInfo.camera.getProjection();
     ubo.view             = frameInfo.camera.getView();
     ubo.cameraPosition   = glm::vec4(frameInfo.cameraObject.transform.translation, 1.0f);
@@ -261,6 +264,13 @@ namespace engine {
     for (int i = 0; i < ubo.shadowLightCount; i++)
     {
       ubo.lightSpaceMatrices[i] = state.shadowSystem.getLightSpaceMatrix(i);
+    }
+
+    // Copy cube shadow map data for point lights
+    ubo.cubeShadowLightCount = state.shadowSystem.getCubeShadowLightCount();
+    for (int i = 0; i < ubo.cubeShadowLightCount && i < 4; i++)
+    {
+      ubo.pointLightShadowData[i] = glm::vec4(state.shadowSystem.getPointLightPosition(i), state.shadowSystem.getPointLightRange(i));
     }
 
     state.renderContext.updateUBO(frameInfo.frameIndex, ubo);

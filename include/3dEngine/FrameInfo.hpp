@@ -46,10 +46,13 @@ namespace engine {
     DirectionalLight directionalLights[maxLightCount];
     SpotLight        spotLights[maxLightCount];
     glm::mat4        lightSpaceMatrices[maxLightCount]; // Light space transformation matrices for shadows
+    glm::vec4        pointLightShadowData[4];           // xyz = position, w = far plane (for cube shadows)
     int              pointLightCount       = 0;
     int              directionalLightCount = 0;
     int              spotLightCount        = 0;
-    int              shadowLightCount      = 0; // Number of lights casting shadows
+    int              shadowLightCount      = 0; // Number of 2D shadow maps (directional + spot)
+    int              cubeShadowLightCount  = 0; // Number of cube shadow maps (point lights)
+    int              padding[3];                // Padding for alignment
   };
 
   struct FrameInfo
