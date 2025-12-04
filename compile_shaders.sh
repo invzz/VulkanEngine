@@ -72,7 +72,7 @@ done
 for shader in "$SHADER_DIR"/*.task; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.task}.task.spv"
-    if glslc "$shader" -o "$output_file"; then
+    if glslc "$shader" --target-env=vulkan1.3 -o "$output_file"; then
         echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
@@ -82,7 +82,7 @@ done
 for shader in "$SHADER_DIR"/*.mesh; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.mesh}.mesh.spv"
-    if glslc "$shader" -o "$output_file"; then
+    if glslc "$shader" --target-env=vulkan1.3 -o "$output_file"; then
         echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"

@@ -1,6 +1,7 @@
 #version 460
 #extension GL_EXT_mesh_shader : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
@@ -10,99 +11,110 @@ layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
 struct Meshlet
 {
-    uint vertexOffset;
-    uint triangleOffset;
-    uint vertexCount;
-    uint triangleCount;
+  uint vertexOffset;
+  uint triangleOffset;
+  uint vertexCount;
+  uint triangleCount;
 
-    float center[3];
-    float radius;
+  float center[3];
+  float radius;
 
-    float cone_axis[3];
-    float cone_cutoff;
+  float cone_axis[3];
+  float cone_cutoff;
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
-    Meshlet meshlets[];
+layout(buffer_reference, scalar) readonly buffer MeshletBuffer
+{
+  Meshlet meshlets[];
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletVerticesBuffer {
-    uint vertexIndices[];
+layout(buffer_reference, scalar) readonly buffer MeshletVerticesBuffer
+{
+  uint vertexIndices[];
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletTrianglesBuffer {
-    uint8_t triangleIndices[];
+layout(buffer_reference, scalar) readonly buffer MeshletTrianglesBuffer
+{
+  uint8_t triangleIndices[];
 };
 
-layout(buffer_reference, scalar) readonly buffer VertexBuffer {
-    vec3 position;
-    vec3 color;
-    vec3 normal;
-    vec2 uv;
-    int materialId;
+layout(buffer_reference, scalar) readonly buffer VertexBuffer
+{
+  vec3 position;
+  vec3 color;
+  vec3 normal;
+  vec2 uv;
+  int  materialId;
 };
 
-layout(push_constant) uniform Push {
-    mat4 modelMatrix;
-    mat4 normalMatrix;
-    uint meshId;
-    uint materialId;
-    uint64_t meshletBufferAddress;
-    uint64_t meshletVerticesAddress;
-    uint64_t meshletTrianglesAddress;
-    uint64_t vertexBufferAddress;
-} push;
+layout(push_constant) uniform Push
+{
+  mat4     modelMatrix;
+  mat4     normalMatrix;
+  uint     meshId;
+  uint     materialId;
+  uint64_t meshletBufferAddress;
+  uint64_t meshletVerticesAddress;
+  uint64_t meshletTrianglesAddress;
+  uint64_t vertexBufferAddress;
+}
+push;
 
-layout(set = 0, binding = 0) uniform GlobalUbo {
-    mat4 projection;
-    mat4 view;
-    mat4 inverseView;
-    vec4 ambientLightColor;
-    vec3 lightPosition;
-    vec4 lightColor;
-} ubo;
+layout(set = 0, binding = 0) uniform GlobalUbo
+{
+  mat4 projection;
+  mat4 view;
+  mat4 inverseView;
+  vec4 ambientLightColor;
+  vec3 lightPosition;
+  vec4 lightColor;
+}
+ubo;
 
-layout(location = 0) out vec3 outWorldPos;
-layout(location = 1) out vec3 outNormal;
-layout(location = 2) out vec2 outUV;
+layout(location = 0) out vec3 outWorldPos[];
+layout(location = 1) out vec3 outNormal[];
+layout(location = 2) out vec2 outUV[];
 
-void main() {
-    uint meshletId = gl_WorkGroupID.x; // From Task Shader or DrawMeshTasks
-    uint threadId = gl_LocalInvocationID.x;
+void main()
+{
+  uint meshletId = gl_WorkGroupID.x; // From Task Shader or DrawMeshTasks
+  uint threadId  = gl_LocalInvocationID.x;
 
-    MeshletBuffer meshlets = MeshletBuffer(push.meshletBufferAddress);
-    Meshlet m = meshlets.meshlets[meshletId];
+  MeshletBuffer meshlets = MeshletBuffer(push.meshletBufferAddress);
+  Meshlet       m        = meshlets.meshlets[meshletId];
 
-    SetMeshOutputsEXT(m.vertexCount, m.triangleCount);
+  SetMeshOutputsEXT(m.vertexCount, m.triangleCount);
 
-    // Process vertices
-    // Each thread processes multiple vertices if needed (max_vertices = 64, local_size = 32)
-    for (uint i = threadId; i < m.vertexCount; i += 32) {
-        MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
-        uint vertexIndex = meshletVertices.vertexIndices[m.vertexOffset + i];
+  // Process vertices
+  // Each thread processes multiple vertices if needed (max_vertices = 64, local_size = 32)
+  for (uint i = threadId; i < m.vertexCount; i += 32)
+  {
+    MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
+    uint                  vertexIndex     = meshletVertices.vertexIndices[m.vertexOffset + i];
 
-        VertexBuffer vertices = VertexBuffer(push.vertexBufferAddress);
-        VertexBuffer v = vertices[vertexIndex];
+    VertexBuffer vertices = VertexBuffer(push.vertexBufferAddress);
+    VertexBuffer v        = vertices[vertexIndex];
 
-        vec4 worldPos = push.modelMatrix * vec4(v.position, 1.0);
-        gl_MeshVerticesEXT[i].gl_Position = ubo.projection * ubo.view * worldPos;
-        
-        outWorldPos[i] = worldPos.xyz;
-        outNormal[i] = normalize(mat3(push.normalMatrix) * v.normal);
-        outUV[i] = v.uv;
-    }
+    vec4 worldPos                     = push.modelMatrix * vec4(v.position, 1.0);
+    gl_MeshVerticesEXT[i].gl_Position = ubo.projection * ubo.view * worldPos;
 
-    // Process primitives
-    // Each thread processes multiple triangles if needed (max_primitives = 124, local_size = 32)
-    for (uint i = threadId; i < m.triangleCount; i += 32) {
-        MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);
-        
-        // Indices are packed as uint8_t in the buffer
-        uint baseIndex = m.triangleOffset + (i * 3);
-        uint8_t i0 = meshletTriangles.triangleIndices[baseIndex + 0];
-        uint8_t i1 = meshletTriangles.triangleIndices[baseIndex + 1];
-        uint8_t i2 = meshletTriangles.triangleIndices[baseIndex + 2];
+    outWorldPos[i] = worldPos.xyz;
+    outNormal[i]   = normalize(mat3(push.normalMatrix) * v.normal);
+    outUV[i]       = v.uv;
+  }
 
-        gl_PrimitiveTriangleIndicesEXT[i] = uvec3(i0, i1, i2);
-    }
+  // Process primitives
+  // Each thread processes multiple triangles if needed (max_primitives = 124, local_size = 32)
+  for (uint i = threadId; i < m.triangleCount; i += 32)
+  {
+    MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);
+
+    // Indices are packed as uint8_t in the buffer
+    uint    baseIndex = m.triangleOffset + (i * 3);
+    uint8_t i0        = meshletTriangles.triangleIndices[baseIndex + 0];
+    uint8_t i1        = meshletTriangles.triangleIndices[baseIndex + 1];
+    uint8_t i2        = meshletTriangles.triangleIndices[baseIndex + 2];
+
+    gl_PrimitiveTriangleIndicesEXT[i] = uvec3(i0, i1, i2);
+  }
 }
