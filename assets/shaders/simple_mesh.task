@@ -1,0 +1,60 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+struct Meshlet
+{
+    uint vertexOffset;
+    uint triangleOffset;
+    uint vertexCount;
+    uint triangleCount;
+
+    float center[3];
+    float radius;
+
+    float cone_axis[3];
+    float cone_cutoff;
+};
+
+layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
+    Meshlet meshlets[];
+};
+
+layout(push_constant) uniform Push {
+    mat4 modelMatrix;
+    mat4 normalMatrix;
+    uint meshId;
+    uint materialId;
+    uint64_t meshletBufferAddress;
+    uint64_t meshletVerticesAddress;
+    uint64_t meshletTrianglesAddress;
+    uint64_t vertexBufferAddress;
+} push;
+
+// Task payload to pass to mesh shader
+struct TaskPayload {
+    uint meshletIndices[32];
+};
+
+taskPayloadSharedEXT TaskPayload payload;
+
+void main() {
+    uint threadId = gl_LocalInvocationID.x;
+    uint meshletId = gl_GlobalInvocationID.x;
+
+    // TODO: Culling logic here
+    // For now, just pass through the first 32 meshlets (or however many we have)
+    
+    // This is a placeholder. In a real implementation, we would:
+    // 1. Fetch meshlet bounds
+    // 2. Cull against frustum
+    // 3. Compact visible meshlets into payload
+    
+    // Emit meshlets
+    EmitMeshTasksEXT(1, 1, 1);
+}

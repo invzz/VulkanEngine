@@ -247,6 +247,7 @@ namespace engine {
     };
 
     std::vector<const char*> enabledExtensions(deviceExtensions.begin(), deviceExtensions.end());
+    enabledExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
     uint32_t extensionCount = 0;
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
@@ -284,9 +285,16 @@ namespace engine {
             .bufferDeviceAddress                       = VK_TRUE,
     };
 
+    VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {
+            .sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+            .pNext      = &vulkan12Features,
+            .taskShader = VK_TRUE,
+            .meshShader = VK_TRUE,
+    };
+
     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
-            .pNext = &vulkan12Features,
+            .pNext = &meshShaderFeatures,
     };
     presentIdSupported_ = false;
 
@@ -306,12 +314,12 @@ namespace engine {
 
     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
             .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
-            .pNext     = &vulkan12Features, // Chain to vulkan12Features
+            .pNext     = &meshShaderFeatures, // Chain to meshShaderFeatures
             .presentId = VK_TRUE,
     };
 
-    // Set up pNext chain: presentId (if supported) -> vulkan12Features
-    void* pNextChain = &vulkan12Features;
+    // Set up pNext chain: presentId (if supported) -> meshShaderFeatures -> vulkan12Features
+    void* pNextChain = &meshShaderFeatures;
     if (presentIdSupported_)
     {
       pNextChain = &presentIdFeaturesEnable;

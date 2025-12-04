@@ -135,6 +135,20 @@ namespace engine {
       std::vector<uint32_t>    positionIndices; // Mapping from vertex to original glTF position index
     };
 
+    struct Meshlet
+    {
+      uint32_t vertexOffset;
+      uint32_t triangleOffset;
+      uint32_t vertexCount;
+      uint32_t triangleCount;
+
+      float center[3];
+      float radius;
+
+      float cone_axis[3];
+      float cone_cutoff;
+    };
+
     struct Builder
     {
       std::vector<Vertex>         vertices{};
@@ -207,6 +221,13 @@ namespace engine {
     void     setMeshId(uint32_t id) { meshId = id; }
     uint32_t getMeshId() const { return meshId; }
 
+    // Meshlet support
+    const std::vector<Meshlet>& getMeshlets() const { return meshlets; }
+    uint64_t                    getMeshletBufferAddress() const { return meshletBuffer ? meshletBuffer->getDeviceAddress() : 0; }
+    uint64_t                    getMeshletVerticesAddress() const { return meshletVerticesBuffer ? meshletVerticesBuffer->getDeviceAddress() : 0; }
+    uint64_t                    getMeshletTrianglesAddress() const { return meshletTrianglesBuffer ? meshletTrianglesBuffer->getDeviceAddress() : 0; }
+    uint32_t                    getMeshletCount() const { return static_cast<uint32_t>(meshlets.size()); }
+
   private:
     Device&     device;
     std::string filePath;
@@ -220,6 +241,12 @@ namespace engine {
     std::unique_ptr<Buffer> indexBuffer;
     uint32_t                indexCount = 0;
 
+    // Meshlet buffers
+    std::vector<Meshlet>    meshlets;
+    std::unique_ptr<Buffer> meshletBuffer;
+    std::unique_ptr<Buffer> meshletVerticesBuffer;
+    std::unique_ptr<Buffer> meshletTrianglesBuffer;
+
     std::vector<MaterialInfo>   materials_;       // Materials from MTL file
     std::vector<SubMesh>        subMeshes_;       // Sub-meshes by material
     std::vector<Animation>      animations_;      // Animations from glTF
@@ -228,6 +255,7 @@ namespace engine {
 
     void createVertexBuffers(const std::vector<Vertex>& vertices);
     void createIndexBuffers(const std::vector<uint32_t>& indices);
+    void generateMeshlets(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices);
   };
 
 } // namespace engine

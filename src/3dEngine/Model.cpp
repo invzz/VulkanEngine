@@ -5,6 +5,8 @@
 #include <cmath>
 #include <cstring>
 #define GLM_ENABLE_EXPERIMENTAL
+#include <meshoptimizer.h>
+
 #include <glm/gtx/hash.hpp>
 #include <iostream>
 #include <unordered_map>
@@ -34,6 +36,7 @@ namespace engine {
   {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
+    generateMeshlets(builder.vertices, builder.indices);
   }
 
   std::unique_ptr<Model> Model::createModelFromFile(Device& device, const std::string& filepath, bool flipX, bool flipY, bool flipZ)
@@ -258,6 +261,147 @@ namespace engine {
     }
 
     return totalSize;
+  }
+
+  void Model::generateMeshlets(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
+  {
+    if (indices.empty())
+    {
+      return;
+    }
+
+    const size_t max_vertices  = 64;
+    const size_t max_triangles = 124;
+    const float  cone_weight   = 0.0f;
+
+    size_t max_meshlets = meshopt_buildMeshletsBound(indices.size(), max_vertices, max_triangles);
+
+    std::vector<meshopt_Meshlet> localMeshlets(max_meshlets);
+    std::vector<unsigned int>    meshlet_vertices(max_meshlets * max_vertices);
+    std::vector<unsigned char>   meshlet_triangles(max_meshlets * max_triangles * 3);
+
+    size_t meshlet_count = meshopt_buildMeshlets(localMeshlets.data(),
+                                                 meshlet_vertices.data(),
+                                                 meshlet_triangles.data(),
+                                                 indices.data(),
+                                                 indices.size(),
+                                                 &vertices[0].position.x,
+                                                 vertices.size(),
+                                                 sizeof(Vertex),
+                                                 max_vertices,
+                                                 max_triangles,
+                                                 cone_weight);
+
+    const meshopt_Meshlet& last = localMeshlets[meshlet_count - 1];
+    meshlet_vertices.resize(last.vertex_offset + last.vertex_count);
+    meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
+
+    meshlets.reserve(meshlet_count);
+    for (size_t i = 0; i < meshlet_count; ++i)
+    {
+      const auto&    m      = localMeshlets[i];
+      meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshlet_vertices[m.vertex_offset],
+                                                           &meshlet_triangles[m.triangle_offset],
+                                                           m.triangle_count,
+                                                           &vertices[0].position.x,
+                                                           vertices.size(),
+                                                           sizeof(Vertex));
+
+      Meshlet myMeshlet{};
+      myMeshlet.vertexOffset   = m.vertex_offset;
+      myMeshlet.triangleOffset = m.triangle_offset;
+      myMeshlet.vertexCount    = m.vertex_count;
+      myMeshlet.triangleCount  = m.triangle_count;
+
+      memcpy(myMeshlet.center, bounds.center, sizeof(float) * 3);
+      myMeshlet.radius = bounds.radius;
+      memcpy(myMeshlet.cone_axis, bounds.cone_axis, sizeof(float) * 3);
+      myMeshlet.cone_cutoff = bounds.cone_cutoff;
+
+      meshlets.push_back(myMeshlet);
+    }
+
+    // Create buffers
+    // Meshlet Buffer
+    {
+      VkDeviceSize bufferSize = sizeof(Meshlet) * meshlets.size();
+      Buffer       stagingBuffer{device,
+                           sizeof(Meshlet),
+                           static_cast<uint32_t>(meshlets.size()),
+                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+
+      stagingBuffer.map();
+      stagingBuffer.writeToBuffer(meshlets.data());
+
+      meshletBuffer =
+              std::make_unique<Buffer>(device,
+                                       sizeof(Meshlet),
+                                       static_cast<uint32_t>(meshlets.size()),
+                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      device.memory().copyBufferImmediate(stagingBuffer.getBuffer(),
+                                          meshletBuffer->getBuffer(),
+                                          bufferSize,
+                                          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                                          VK_ACCESS_SHADER_READ_BIT);
+    }
+
+    // Meshlet Vertices Buffer
+    {
+      VkDeviceSize bufferSize = sizeof(unsigned int) * meshlet_vertices.size();
+      Buffer       stagingBuffer{device,
+                           sizeof(unsigned int),
+                           static_cast<uint32_t>(meshlet_vertices.size()),
+                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+
+      stagingBuffer.map();
+      stagingBuffer.writeToBuffer(meshlet_vertices.data());
+
+      meshletVerticesBuffer =
+              std::make_unique<Buffer>(device,
+                                       sizeof(unsigned int),
+                                       static_cast<uint32_t>(meshlet_vertices.size()),
+                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      device.memory().copyBufferImmediate(stagingBuffer.getBuffer(),
+                                          meshletVerticesBuffer->getBuffer(),
+                                          bufferSize,
+                                          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                                          VK_ACCESS_SHADER_READ_BIT);
+    }
+
+    // Meshlet Triangles Buffer
+    {
+      VkDeviceSize bufferSize = sizeof(unsigned char) * meshlet_triangles.size();
+
+      Buffer stagingBuffer{device,
+                           sizeof(unsigned char),
+                           static_cast<uint32_t>(meshlet_triangles.size()),
+                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+
+      stagingBuffer.map();
+      stagingBuffer.writeToBuffer(meshlet_triangles.data());
+
+      meshletTrianglesBuffer =
+              std::make_unique<Buffer>(device,
+                                       sizeof(unsigned char),
+                                       static_cast<uint32_t>(meshlet_triangles.size()),
+                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      device.memory().copyBufferImmediate(stagingBuffer.getBuffer(),
+                                          meshletTrianglesBuffer->getBuffer(),
+                                          bufferSize,
+                                          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                                          VK_ACCESS_SHADER_READ_BIT);
+    }
+
+    std::cout << "[" << GREEN << "Model" << RESET << "] Generated " << meshlets.size() << " meshlets." << std::endl;
   }
 
 } // namespace engine

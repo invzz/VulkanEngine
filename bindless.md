@@ -103,7 +103,7 @@ This document outlines the step-by-step migration from standard descriptor-set-p
 ## 🚀 Phase 4: GPU-Driven Culling & Mesh Shaders
 **Objective:** Move scene traversal and culling to the GPU.
 
-- [ ] **Meshlet Generation (CPU)**
+- [x] **Meshlet Generation (CPU)**
     - Implement a meshlet builder (using `meshoptimizer` or custom).
     - Split `Model` geometry into "meshlets" (e.g., 64 vertices, 126 triangles).
     - Store meshlet data (bounding sphere, vertex indices, primitive indices) in SSBOs.

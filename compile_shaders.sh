@@ -69,6 +69,26 @@ for shader in "$SHADER_DIR"/*.comp; do
     fi
 done
 
+for shader in "$SHADER_DIR"/*.task; do
+    filename=$(basename -- "$shader")
+    output_file="$OUTPUT_DIR/${filename%.task}.task.spv"
+    if glslc "$shader" -o "$output_file"; then
+        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+    else
+        echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
+    fi
+done
+
+for shader in "$SHADER_DIR"/*.mesh; do
+    filename=$(basename -- "$shader")
+    output_file="$OUTPUT_DIR/${filename%.mesh}.mesh.spv"
+    if glslc "$shader" -o "$output_file"; then
+        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+    else
+        echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
+    fi
+done
+
 for shader in "$SHADER_DIR"/*.vert; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.vert}.vert.spv"
