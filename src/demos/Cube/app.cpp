@@ -32,8 +32,8 @@
 #include "3dEngine/systems/InputSystem.hpp"
 #include "3dEngine/systems/LODSystem.hpp"
 #include "3dEngine/systems/LightSystem.hpp"
+#include "3dEngine/systems/MeshRenderSystem.hpp"
 #include "3dEngine/systems/ObjectSelectionSystem.hpp"
-#include "3dEngine/systems/PBRRenderSystem.hpp"
 #include "3dEngine/systems/PostProcessingSystem.hpp"
 #include "3dEngine/systems/ShadowSystem.hpp"
 #include "3dEngine/systems/SkyboxRenderSystem.hpp"
@@ -122,15 +122,15 @@ namespace engine {
     // Render Systems:
     std::cout << "[App] Creating render systems..." << std::endl;
     SkyboxRenderSystem skyboxRenderSystem{device, renderer.getOffscreenRenderPass()};
-    PBRRenderSystem    pbrRenderSystem{device,
-                                    renderer.getOffscreenRenderPass(),
-                                    renderContext.getGlobalSetLayout(),
-                                    resourceManager.getTextureManager().getDescriptorSetLayout()};
+    MeshRenderSystem   meshRenderSystem{device,
+                                      renderer.getOffscreenRenderPass(),
+                                      renderContext.getGlobalSetLayout(),
+                                      resourceManager.getTextureManager().getDescriptorSetLayout()};
     LightSystem        lightSystem{device, renderer.getOffscreenRenderPass(), renderContext.getGlobalSetLayout()};
 
     // Connect shadow system to PBR render system (supports multiple shadow maps)
-    pbrRenderSystem.setShadowSystem(&shadowSystem);
-    pbrRenderSystem.setIBLSystem(&iblSystem);
+    meshRenderSystem.setShadowSystem(&shadowSystem);
+    meshRenderSystem.setIBLSystem(&iblSystem);
 
     // UI System:
     ImGuiManager imguiManager{window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight())};
@@ -171,7 +171,7 @@ namespace engine {
       sceneSerializer.deserialize("scene.json");
     });
 
-    uiManager.addPanel(std::make_unique<ModelImportPanel>(device, objectManager, animationSystem, pbrRenderSystem));
+    uiManager.addPanel(std::make_unique<ModelImportPanel>(device, objectManager, animationSystem));
     uiManager.addPanel(std::make_unique<CameraPanel>(cameraObject));
     uiManager.addPanel(std::make_unique<TransformPanel>(objectManager));
     uiManager.addPanel(std::make_unique<LightsPanel>(objectManager));
@@ -201,7 +201,7 @@ namespace engine {
               .cameraSystem          = cameraSystem,
               .animationSystem       = animationSystem,
               .lodSystem             = lodSystem,
-              .pbrRenderSystem       = pbrRenderSystem,
+              .meshRenderSystem      = meshRenderSystem,
               .lightSystem           = lightSystem,
               .shadowSystem          = shadowSystem,
               .skyboxRenderSystem    = skyboxRenderSystem,
@@ -220,7 +220,7 @@ namespace engine {
               .cameraSystem          = cameraSystem,
               .animationSystem       = animationSystem,
               .lodSystem             = lodSystem,
-              .pbrRenderSystem       = pbrRenderSystem,
+              .meshRenderSystem      = meshRenderSystem,
               .lightSystem           = lightSystem,
               .shadowSystem          = shadowSystem,
               .skyboxRenderSystem    = skyboxRenderSystem,
@@ -239,7 +239,7 @@ namespace engine {
               .cameraSystem          = cameraSystem,
               .animationSystem       = animationSystem,
               .lodSystem             = lodSystem,
-              .pbrRenderSystem       = pbrRenderSystem,
+              .meshRenderSystem      = meshRenderSystem,
               .lightSystem           = lightSystem,
               .shadowSystem          = shadowSystem,
               .skyboxRenderSystem    = skyboxRenderSystem,
@@ -258,7 +258,7 @@ namespace engine {
               .cameraSystem          = cameraSystem,
               .animationSystem       = animationSystem,
               .lodSystem             = lodSystem,
-              .pbrRenderSystem       = pbrRenderSystem,
+              .meshRenderSystem      = meshRenderSystem,
               .lightSystem           = lightSystem,
               .shadowSystem          = shadowSystem,
               .skyboxRenderSystem    = skyboxRenderSystem,
@@ -280,7 +280,7 @@ namespace engine {
               .cameraSystem          = cameraSystem,
               .animationSystem       = animationSystem,
               .lodSystem             = lodSystem,
-              .pbrRenderSystem       = pbrRenderSystem,
+              .meshRenderSystem      = meshRenderSystem,
               .lightSystem           = lightSystem,
               .shadowSystem          = shadowSystem,
               .skyboxRenderSystem    = skyboxRenderSystem,
@@ -339,6 +339,7 @@ namespace engine {
                 .selectedObject      = selectedObject,
                 .cameraObject        = cameraObject,
                 .morphManager        = animationSystem.getMorphManager(),
+                .extent              = renderer.getSwapChainExtent(),
         };
 
         // Execute Render Graph
@@ -416,8 +417,8 @@ namespace engine {
       state.skyboxRenderSystem.render(frameInfo, *state.skybox);
     }
 
-    state.pbrRenderSystem.render(frameInfo); // Draw objects with PBR materials (uses blended buffers if available)
-    state.lightSystem.render(frameInfo);     // Draw light debug visualizations
+    state.meshRenderSystem.render(frameInfo);
+    state.lightSystem.render(frameInfo); // Draw light debug visualizations
   }
 
   void App::uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state)

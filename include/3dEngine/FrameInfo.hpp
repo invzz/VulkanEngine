@@ -68,6 +68,7 @@ namespace engine {
     GameObject*         selectedObject;   // Pointer to selected object (nullptr = camera)
     GameObject&         cameraObject;
     MorphTargetManager* morphManager; // Manager for morph target animations (nullptr if not used)
+    VkExtent2D          extent;       // Screen extent
   };
 
 } // namespace engine

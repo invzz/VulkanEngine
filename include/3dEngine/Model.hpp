@@ -58,6 +58,8 @@ namespace engine {
       uint32_t indexOffset; // Offset into the index buffer
       uint32_t indexCount;  // Number of indices for this sub-mesh
       int      materialId;  // Index into materials array
+      uint32_t meshletOffset = 0;
+      uint32_t meshletCount  = 0;
     };
 
     // Animation structures

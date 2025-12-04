@@ -5,7 +5,6 @@
 #include "3dEngine/Device.hpp"
 #include "3dEngine/GameObject.hpp"
 #include "3dEngine/systems/AnimationSystem.hpp"
-#include "3dEngine/systems/PBRRenderSystem.hpp"
 #include "UIPanel.hpp"
 
 namespace engine {
@@ -16,7 +15,7 @@ namespace engine {
   class ModelImportPanel : public UIPanel
   {
   public:
-    ModelImportPanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem, PBRRenderSystem& pbrRenderSystem);
+    ModelImportPanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem);
 
     void render(FrameInfo& frameInfo) override;
 
@@ -24,7 +23,6 @@ namespace engine {
     Device&            device_;
     GameObjectManager& objectManager_;
     AnimationSystem&   animationSystem_;
-    PBRRenderSystem&   pbrRenderSystem_;
     char               modelPath_[256] = {};
   };
 

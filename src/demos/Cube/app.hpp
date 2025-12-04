@@ -27,7 +27,7 @@ namespace engine {
   class CameraSystem;
   class InputSystem;
   class ObjectSelectionSystem;
-  class PBRRenderSystem;
+  class MeshRenderSystem;
   class LightSystem;
   class RenderContext;
   class ShadowSystem;
@@ -43,7 +43,7 @@ namespace engine {
     CameraSystem&          cameraSystem;
     AnimationSystem&       animationSystem;
     LODSystem&             lodSystem;
-    PBRRenderSystem&       pbrRenderSystem;
+    MeshRenderSystem&      meshRenderSystem;
     LightSystem&           lightSystem;
     ShadowSystem&          shadowSystem;
     SkyboxRenderSystem&    skyboxRenderSystem;

@@ -25,7 +25,9 @@ namespace engine {
   void RenderContext::createGlobalSetLayout()
   {
     globalSetLayout_ = DescriptorSetLayout::Builder(device_)
-                               .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+                               .addBinding(0,
+                                           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                           VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
                                .build();
   }

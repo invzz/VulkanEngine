@@ -143,7 +143,7 @@ namespace engine {
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
             .pEngineName        = "No Engine",
             .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
-            .apiVersion         = VK_API_VERSION_1_2,
+            .apiVersion         = VK_API_VERSION_1_3,
     };
 
     VkInstanceCreateInfo createInfo = {
@@ -285,9 +285,15 @@ namespace engine {
             .bufferDeviceAddress                       = VK_TRUE,
     };
 
+    VkPhysicalDeviceMaintenance4Features maintenance4Features = {
+            .sType        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES,
+            .pNext        = &vulkan12Features,
+            .maintenance4 = VK_TRUE,
+    };
+
     VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {
             .sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
-            .pNext      = &vulkan12Features,
+            .pNext      = &maintenance4Features,
             .taskShader = VK_TRUE,
             .meshShader = VK_TRUE,
     };
@@ -355,6 +361,12 @@ namespace engine {
 
     vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
     vkGetDeviceQueue(device_, indices.presentFamily, 0, &presentQueue_);
+
+    vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");
+    if (!vkCmdDrawMeshTasksEXT)
+    {
+      std::cerr << "Failed to load vkCmdDrawMeshTasksEXT function pointer!" << std::endl;
+    }
   }
 
   /**

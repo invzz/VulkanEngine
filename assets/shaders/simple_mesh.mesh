@@ -38,7 +38,7 @@ layout(buffer_reference, scalar) readonly buffer MeshletTrianglesBuffer
   uint8_t triangleIndices[];
 };
 
-layout(buffer_reference, scalar) readonly buffer VertexBuffer
+struct Vertex
 {
   vec3 position;
   vec3 color;
@@ -47,16 +47,40 @@ layout(buffer_reference, scalar) readonly buffer VertexBuffer
   int  materialId;
 };
 
+layout(buffer_reference, scalar) readonly buffer VertexBuffer
+{
+  Vertex vertices[];
+};
+
 layout(push_constant) uniform Push
 {
-  mat4     modelMatrix;
-  mat4     normalMatrix;
-  uint     meshId;
-  uint     materialId;
+  mat4  modelMatrix;
+  mat4  normalMatrix;
+  vec3  albedo;
+  float metallic;
+  float roughness;
+  float ao;
+  float isSelected;
+  float clearcoat;
+  float clearcoatRoughness;
+  float anisotropic;
+  float anisotropicRotation;
+  uint  textureFlags;
+  float uvScale;
+  uint  albedoIndex;
+  uint  normalIndex;
+  uint  metallicIndex;
+  uint  roughnessIndex;
+  uint  aoIndex;
+  uint  meshId;
+
   uint64_t meshletBufferAddress;
   uint64_t meshletVerticesAddress;
   uint64_t meshletTrianglesAddress;
   uint64_t vertexBufferAddress;
+  uint     meshletOffset;
+  uint     meshletCount;
+  vec2     screenSize;
 }
 push;
 
@@ -64,57 +88,55 @@ layout(set = 0, binding = 0) uniform GlobalUbo
 {
   mat4 projection;
   mat4 view;
-  mat4 inverseView;
-  vec4 ambientLightColor;
-  vec3 lightPosition;
-  vec4 lightColor;
 }
 ubo;
 
-layout(location = 0) out vec3 outWorldPos[];
-layout(location = 1) out vec3 outNormal[];
-layout(location = 2) out vec2 outUV[];
+layout(location = 0) out vec3 outColor[];
+layout(location = 1) out vec3 outWorldPos[];
+layout(location = 2) out vec3 outNormal[];
+layout(location = 3) out vec2 outUV[];
+
+struct TaskPayload
+{
+  uint meshletIndices[32];
+};
+
+taskPayloadSharedEXT TaskPayload payload;
 
 void main()
 {
-  uint meshletId = gl_WorkGroupID.x; // From Task Shader or DrawMeshTasks
-  uint threadId  = gl_LocalInvocationID.x;
+  uint meshletId = payload.meshletIndices[gl_WorkGroupID.x];
 
-  MeshletBuffer meshlets = MeshletBuffer(push.meshletBufferAddress);
-  Meshlet       m        = meshlets.meshlets[meshletId];
+  MeshletBuffer meshletBuffer = MeshletBuffer(push.meshletBufferAddress);
+  Meshlet       meshlet       = meshletBuffer.meshlets[meshletId];
 
-  SetMeshOutputsEXT(m.vertexCount, m.triangleCount);
+  SetMeshOutputsEXT(meshlet.vertexCount, meshlet.triangleCount);
 
-  // Process vertices
-  // Each thread processes multiple vertices if needed (max_vertices = 64, local_size = 32)
-  for (uint i = threadId; i < m.vertexCount; i += 32)
+  MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
+  VertexBuffer          vertexBuffer    = VertexBuffer(push.vertexBufferAddress);
+
+  for (uint i = gl_LocalInvocationIndex; i < meshlet.vertexCount; i += 32)
   {
-    MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
-    uint                  vertexIndex     = meshletVertices.vertexIndices[m.vertexOffset + i];
+    uint   vertexIndex = meshletVertices.vertexIndices[meshlet.vertexOffset + i];
+    Vertex v           = vertexBuffer.vertices[vertexIndex];
 
-    VertexBuffer vertices = VertexBuffer(push.vertexBufferAddress);
-    VertexBuffer v        = vertices[vertexIndex];
+    gl_MeshVerticesEXT[i].gl_Position = ubo.projection * ubo.view * push.modelMatrix * vec4(v.position, 1.0);
 
-    vec4 worldPos                     = push.modelMatrix * vec4(v.position, 1.0);
-    gl_MeshVerticesEXT[i].gl_Position = ubo.projection * ubo.view * worldPos;
-
-    outWorldPos[i] = worldPos.xyz;
-    outNormal[i]   = normalize(mat3(push.normalMatrix) * v.normal);
+    outColor[i]    = v.color;
+    outWorldPos[i] = (push.modelMatrix * vec4(v.position, 1.0)).xyz;
+    outNormal[i]   = normalize((push.normalMatrix * vec4(v.normal, 0.0)).xyz);
     outUV[i]       = v.uv;
   }
 
-  // Process primitives
-  // Each thread processes multiple triangles if needed (max_primitives = 124, local_size = 32)
-  for (uint i = threadId; i < m.triangleCount; i += 32)
+  MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);
+
+  for (uint i = gl_LocalInvocationIndex; i < meshlet.triangleCount; i += 32)
   {
-    MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);
+    uint    baseTriIdx = meshlet.triangleOffset + (i * 3);
+    uint8_t idx0       = meshletTriangles.triangleIndices[baseTriIdx + 0];
+    uint8_t idx1       = meshletTriangles.triangleIndices[baseTriIdx + 1];
+    uint8_t idx2       = meshletTriangles.triangleIndices[baseTriIdx + 2];
 
-    // Indices are packed as uint8_t in the buffer
-    uint    baseIndex = m.triangleOffset + (i * 3);
-    uint8_t i0        = meshletTriangles.triangleIndices[baseIndex + 0];
-    uint8_t i1        = meshletTriangles.triangleIndices[baseIndex + 1];
-    uint8_t i2        = meshletTriangles.triangleIndices[baseIndex + 2];
-
-    gl_PrimitiveTriangleIndicesEXT[i] = uvec3(i0, i1, i2);
+    gl_PrimitiveTriangleIndicesEXT[i] = uvec3(idx0, idx1, idx2);
   }
 }

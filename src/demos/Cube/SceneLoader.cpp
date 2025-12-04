@@ -15,11 +15,12 @@ namespace engine {
     {
       return;
     }
-    // createFloor(device, objectManager, resourceManager);
-    // createBmw(device, objectManager, resourceManager);
+    createFloor(device, objectManager, resourceManager);
+    createDemoObject(device, objectManager, resourceManager);
     // createApple(device, objectManager, resourceManager);
     // createCylinderEngine(device, objectManager, resourceManager);
-    createAnimatedCube(device, objectManager, resourceManager);
+    // createAnimatedCube(device, objectManager, resourceManager);
+    createLights(objectManager, 2.0f);
   }
 
   void SceneLoader::createFromFile(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager, const std::string& modelPath)
@@ -241,13 +242,11 @@ namespace engine {
     objectManager.addObject(std::move(model));
   }
 
-  void SceneLoader::createAnimatedCube(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
+  void SceneLoader::createDemoObject(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager)
   {
-    // AnimatedCube - uses rotation+scale animation (works)
-    // AnimatedTriangle - uses rotation animation (works)
-    // AnimatedMorphCube - uses morph targets (now supported!)
-    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/Sponza/glTF/Sponza.gltf", false, true, true);
-    auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
+    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/StainedGlassLamp/glTF/StainedGlassLamp.gltf", false, true, true);
+    auto model                  = GameObject::create();
+    model.model                 = std::move(modelPtr);
     model.transform.scale       = {10.0f, 10.0f, 10.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
 

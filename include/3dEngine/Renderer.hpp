@@ -51,7 +51,8 @@ namespace engine {
       return currentFrameIndex;
     }
 
-    float getAspectRatio() const { return swapChain->extentAspectRatio(); }
+    float      getAspectRatio() const { return swapChain->extentAspectRatio(); }
+    VkExtent2D getSwapChainExtent() const { return swapChain->getSwapChainExtent(); }
 
   private:
     void createCommandBuffers();

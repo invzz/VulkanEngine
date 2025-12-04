@@ -21,7 +21,7 @@ namespace engine {
     static void createDragonGrid(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
     static void createBmw(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
     static void createCylinderEngine(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
-    static void createAnimatedCube(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
+    static void createDemoObject(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager);
   };
 
 } // namespace engine

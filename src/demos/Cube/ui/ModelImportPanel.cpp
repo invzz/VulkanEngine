@@ -13,8 +13,8 @@
 
 namespace engine {
 
-  ModelImportPanel::ModelImportPanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem, PBRRenderSystem& pbrRenderSystem)
-      : device_(device), objectManager_(objectManager), animationSystem_(animationSystem), pbrRenderSystem_(pbrRenderSystem)
+  ModelImportPanel::ModelImportPanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem)
+      : device_(device), objectManager_(objectManager), animationSystem_(animationSystem)
   {}
 
   void ModelImportPanel::render(FrameInfo& frameInfo)
@@ -88,9 +88,6 @@ namespace engine {
               }
             }
           }
-
-          // Clear material descriptor cache since we just loaded new textures
-          pbrRenderSystem_.clearDescriptorCache();
 
           // Setup animation if available
           if (newObject.model->hasAnimations())

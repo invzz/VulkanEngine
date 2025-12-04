@@ -274,51 +274,80 @@ namespace engine {
     const size_t max_triangles = 124;
     const float  cone_weight   = 0.0f;
 
-    size_t max_meshlets = meshopt_buildMeshletsBound(indices.size(), max_vertices, max_triangles);
+    // Clear existing meshlets
+    meshlets.clear();
+    std::vector<unsigned int>  all_meshlet_vertices;
+    std::vector<unsigned char> all_meshlet_triangles;
 
-    std::vector<meshopt_Meshlet> localMeshlets(max_meshlets);
-    std::vector<unsigned int>    meshlet_vertices(max_meshlets * max_vertices);
-    std::vector<unsigned char>   meshlet_triangles(max_meshlets * max_triangles * 3);
-
-    size_t meshlet_count = meshopt_buildMeshlets(localMeshlets.data(),
-                                                 meshlet_vertices.data(),
-                                                 meshlet_triangles.data(),
-                                                 indices.data(),
-                                                 indices.size(),
-                                                 &vertices[0].position.x,
-                                                 vertices.size(),
-                                                 sizeof(Vertex),
-                                                 max_vertices,
-                                                 max_triangles,
-                                                 cone_weight);
-
-    const meshopt_Meshlet& last = localMeshlets[meshlet_count - 1];
-    meshlet_vertices.resize(last.vertex_offset + last.vertex_count);
-    meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
-
-    meshlets.reserve(meshlet_count);
-    for (size_t i = 0; i < meshlet_count; ++i)
+    // If no submeshes, create a default one
+    if (subMeshes_.empty())
     {
-      const auto&    m      = localMeshlets[i];
-      meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshlet_vertices[m.vertex_offset],
-                                                           &meshlet_triangles[m.triangle_offset],
-                                                           m.triangle_count,
-                                                           &vertices[0].position.x,
-                                                           vertices.size(),
-                                                           sizeof(Vertex));
+      SubMesh sm{};
+      sm.indexOffset = 0;
+      sm.indexCount  = static_cast<uint32_t>(indices.size());
+      sm.materialId  = 0;
+      subMeshes_.push_back(sm);
+    }
 
-      Meshlet myMeshlet{};
-      myMeshlet.vertexOffset   = m.vertex_offset;
-      myMeshlet.triangleOffset = m.triangle_offset;
-      myMeshlet.vertexCount    = m.vertex_count;
-      myMeshlet.triangleCount  = m.triangle_count;
+    for (auto& subMesh : subMeshes_)
+    {
+      size_t max_meshlets = meshopt_buildMeshletsBound(subMesh.indexCount, max_vertices, max_triangles);
 
-      memcpy(myMeshlet.center, bounds.center, sizeof(float) * 3);
-      myMeshlet.radius = bounds.radius;
-      memcpy(myMeshlet.cone_axis, bounds.cone_axis, sizeof(float) * 3);
-      myMeshlet.cone_cutoff = bounds.cone_cutoff;
+      std::vector<meshopt_Meshlet> localMeshlets(max_meshlets);
+      std::vector<unsigned int>    local_meshlet_vertices(max_meshlets * max_vertices);
+      std::vector<unsigned char>   local_meshlet_triangles(max_meshlets * max_triangles * 3);
 
-      meshlets.push_back(myMeshlet);
+      size_t meshlet_count = meshopt_buildMeshlets(localMeshlets.data(),
+                                                   local_meshlet_vertices.data(),
+                                                   local_meshlet_triangles.data(),
+                                                   &indices[subMesh.indexOffset],
+                                                   subMesh.indexCount,
+                                                   &vertices[0].position.x,
+                                                   vertices.size(),
+                                                   sizeof(Vertex),
+                                                   max_vertices,
+                                                   max_triangles,
+                                                   cone_weight);
+
+      const meshopt_Meshlet& last = localMeshlets[meshlet_count - 1];
+      local_meshlet_vertices.resize(last.vertex_offset + last.vertex_count);
+      local_meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
+
+      // Update SubMesh info
+      subMesh.meshletOffset = static_cast<uint32_t>(meshlets.size());
+      subMesh.meshletCount  = static_cast<uint32_t>(meshlet_count);
+
+      // Offsets for this batch
+      uint32_t vertexOffsetBase   = static_cast<uint32_t>(all_meshlet_vertices.size());
+      uint32_t triangleOffsetBase = static_cast<uint32_t>(all_meshlet_triangles.size());
+
+      // Append data
+      all_meshlet_vertices.insert(all_meshlet_vertices.end(), local_meshlet_vertices.begin(), local_meshlet_vertices.end());
+      all_meshlet_triangles.insert(all_meshlet_triangles.end(), local_meshlet_triangles.begin(), local_meshlet_triangles.end());
+
+      for (size_t i = 0; i < meshlet_count; ++i)
+      {
+        const auto&    m      = localMeshlets[i];
+        meshopt_Bounds bounds = meshopt_computeMeshletBounds(&local_meshlet_vertices[m.vertex_offset],
+                                                             &local_meshlet_triangles[m.triangle_offset],
+                                                             m.triangle_count,
+                                                             &vertices[0].position.x,
+                                                             vertices.size(),
+                                                             sizeof(Vertex));
+
+        Meshlet myMeshlet{};
+        myMeshlet.vertexOffset   = m.vertex_offset + vertexOffsetBase;
+        myMeshlet.triangleOffset = m.triangle_offset + triangleOffsetBase;
+        myMeshlet.vertexCount    = m.vertex_count;
+        myMeshlet.triangleCount  = m.triangle_count;
+
+        memcpy(myMeshlet.center, bounds.center, sizeof(float) * 3);
+        myMeshlet.radius = bounds.radius;
+        memcpy(myMeshlet.cone_axis, bounds.cone_axis, sizeof(float) * 3);
+        myMeshlet.cone_cutoff = bounds.cone_cutoff;
+
+        meshlets.push_back(myMeshlet);
+      }
     }
 
     // Create buffers
@@ -350,20 +379,20 @@ namespace engine {
 
     // Meshlet Vertices Buffer
     {
-      VkDeviceSize bufferSize = sizeof(unsigned int) * meshlet_vertices.size();
+      VkDeviceSize bufferSize = sizeof(unsigned int) * all_meshlet_vertices.size();
       Buffer       stagingBuffer{device,
                            sizeof(unsigned int),
-                           static_cast<uint32_t>(meshlet_vertices.size()),
+                           static_cast<uint32_t>(all_meshlet_vertices.size()),
                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
       stagingBuffer.map();
-      stagingBuffer.writeToBuffer(meshlet_vertices.data());
+      stagingBuffer.writeToBuffer(all_meshlet_vertices.data());
 
       meshletVerticesBuffer =
               std::make_unique<Buffer>(device,
                                        sizeof(unsigned int),
-                                       static_cast<uint32_t>(meshlet_vertices.size()),
+                                       static_cast<uint32_t>(all_meshlet_vertices.size()),
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -376,21 +405,21 @@ namespace engine {
 
     // Meshlet Triangles Buffer
     {
-      VkDeviceSize bufferSize = sizeof(unsigned char) * meshlet_triangles.size();
+      VkDeviceSize bufferSize = sizeof(unsigned char) * all_meshlet_triangles.size();
 
       Buffer stagingBuffer{device,
                            sizeof(unsigned char),
-                           static_cast<uint32_t>(meshlet_triangles.size()),
+                           static_cast<uint32_t>(all_meshlet_triangles.size()),
                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
       stagingBuffer.map();
-      stagingBuffer.writeToBuffer(meshlet_triangles.data());
+      stagingBuffer.writeToBuffer(all_meshlet_triangles.data());
 
       meshletTrianglesBuffer =
               std::make_unique<Buffer>(device,
                                        sizeof(unsigned char),
-                                       static_cast<uint32_t>(meshlet_triangles.size()),
+                                       static_cast<uint32_t>(all_meshlet_triangles.size()),
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 

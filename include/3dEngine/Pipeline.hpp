@@ -36,11 +36,18 @@ namespace engine {
   {
   public:
     Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+    Pipeline(Device&                   device,
+             const std::string&        taskFilePath,
+             const std::string&        meshFilePath,
+             const std::string&        fragFilePath,
+             const PipelineConfigInfo& configInfo);
 
     ~Pipeline()
     {
-      vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
-      vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
+      if (vertShaderModule) vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
+      if (fragShaderModule) vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
+      if (taskShaderModule) vkDestroyShaderModule(device.device(), taskShaderModule, nullptr);
+      if (meshShaderModule) vkDestroyShaderModule(device.device(), meshShaderModule, nullptr);
       vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
     };
 
@@ -52,6 +59,7 @@ namespace engine {
 
     // static function to get default config
     static void              defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+    static void              defaultMeshPipelineConfigInfo(PipelineConfigInfo& configInfo);
     static std::vector<char> readFile(const std::string& filePath);
 
     // function to bind pipeline to command buffer
@@ -59,6 +67,8 @@ namespace engine {
 
   private:
     void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+    void
+    createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
 
     void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
 
@@ -75,11 +85,14 @@ namespace engine {
     // handle to the vertex shader module
     // typedef to pointer to opaque struct
     // always check what the actual type is
-    VkShaderModule vertShaderModule;
+    VkShaderModule vertShaderModule = VK_NULL_HANDLE;
 
     // handle to the fragment shader module
     // typedef to pointer to opaque struct
     // always check what the actual type is
-    VkShaderModule fragShaderModule;
+    VkShaderModule fragShaderModule = VK_NULL_HANDLE;
+
+    VkShaderModule taskShaderModule = VK_NULL_HANDLE;
+    VkShaderModule meshShaderModule = VK_NULL_HANDLE;
   };
 } // namespace engine

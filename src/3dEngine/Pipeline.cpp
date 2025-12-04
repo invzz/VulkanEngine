@@ -20,6 +20,19 @@ namespace engine {
               << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
   }
 
+  Pipeline::Pipeline(Device&                   device,
+                     const std::string&        taskFilePath,
+                     const std::string&        meshFilePath,
+                     const std::string&        fragFilePath,
+                     const PipelineConfigInfo& configInfo)
+      : device(device)
+  {
+    createMeshPipeline(taskFilePath, meshFilePath, fragFilePath, configInfo);
+    std::cout << "[" << GREEN << "Pipeline" << RESET << "] task: " << BLUE << std::filesystem::path(taskFilePath).filename().string() << " mesh: " << BLUE
+              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string()
+              << RESET << std::endl;
+  }
+
   std::vector<char> Pipeline::readFile(const std::string& filePath)
   {
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
@@ -124,9 +137,90 @@ namespace engine {
     configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
   }
 
+  void Pipeline::defaultMeshPipelineConfigInfo(PipelineConfigInfo& configInfo)
+  {
+    defaultPipelineConfigInfo(configInfo);
+    // Mesh shaders don't use vertex input or input assembly
+    configInfo.bindingDescriptions.clear();
+    configInfo.attributeDescriptions.clear();
+    configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // Ignored but good practice
+  }
+
   void Pipeline::bind(VkCommandBuffer commandBuffer)
   {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+  }
+
+  void Pipeline::createMeshPipeline(const std::string&        taskFilePath,
+                                    const std::string&        meshFilePath,
+                                    const std::string&        fragFilePath,
+                                    const PipelineConfigInfo& configInfo)
+  {
+    assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in configInfo");
+    assert(configInfo.renderPass != VK_NULL_HANDLE && "Cannot create graphics pipeline: no render pass provided in configInfo");
+
+    auto taskShaderCode = readFile(taskFilePath);
+    auto meshShaderCode = readFile(meshFilePath);
+    auto fragShaderCode = readFile(fragFilePath);
+
+    createShaderModule(taskShaderCode, &taskShaderModule);
+    createShaderModule(meshShaderCode, &meshShaderModule);
+    createShaderModule(fragShaderCode, &fragShaderModule);
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {
+            {
+                    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                    .pNext  = nullptr,
+                    .flags  = 0,
+                    .stage  = VK_SHADER_STAGE_TASK_BIT_EXT,
+                    .module = taskShaderModule,
+                    .pName  = "main",
+            },
+            {
+                    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                    .pNext  = nullptr,
+                    .flags  = 0,
+                    .stage  = VK_SHADER_STAGE_MESH_BIT_EXT,
+                    .module = meshShaderModule,
+                    .pName  = "main",
+            },
+            {
+                    .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                    .pNext  = nullptr,
+                    .flags  = 0,
+                    .stage  = VK_SHADER_STAGE_FRAGMENT_BIT,
+                    .module = fragShaderModule,
+                    .pName  = "main",
+            },
+    };
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+    };
+
+    VkGraphicsPipelineCreateInfo pipelineInfo{
+            .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount          = 3,
+            .pStages             = shaderStages,
+            .pVertexInputState   = &vertexInputInfo, // Ignored by mesh shaders but required by validation layers sometimes? No, should be null or empty.
+            .pInputAssemblyState = &configInfo.inputAssemblyInfo,
+            .pViewportState      = &configInfo.viewportInfo,
+            .pRasterizationState = &configInfo.rasterizationInfo,
+            .pMultisampleState   = &configInfo.multisampleInfo,
+            .pDepthStencilState  = &configInfo.depthStencilInfo,
+            .pColorBlendState    = &configInfo.colorBlendInfo,
+            .pDynamicState       = &configInfo.dynamicStateInfo,
+            .layout              = configInfo.pipelineLayout,
+            .renderPass          = configInfo.renderPass,
+            .subpass             = configInfo.subpass,
+            .basePipelineHandle  = VK_NULL_HANDLE,
+            .basePipelineIndex   = -1,
+    };
+
+    if (vkCreateGraphicsPipelines(device.device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+    {
+      throw GraphicsPipelineCreationException("failed to create mesh pipeline!");
+    }
   }
 
   void Pipeline::createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo)

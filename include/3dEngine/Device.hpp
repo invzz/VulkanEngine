@@ -66,6 +66,8 @@ namespace engine {
 
     VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
 
+    PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT = nullptr;
+
   private:
     bool                     checkValidationLayerSupport() const;
     std::vector<const char*> getRequiredExtensions() const;
