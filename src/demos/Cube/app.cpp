@@ -25,6 +25,7 @@
 
 // Systems
 #include "3dEngine/IBLSystem.hpp"
+#include "3dEngine/RenderGraph.hpp"
 #include "3dEngine/systems/AnimationSystem.hpp"
 #include "3dEngine/systems/CameraSystem.hpp"
 #include "3dEngine/systems/InputSystem.hpp"
@@ -184,6 +185,119 @@ namespace engine {
     int  frameCount  = 0;
 
     // ============================================================================
+    // RENDER GRAPH SETUP
+    // ============================================================================
+    RenderGraph renderGraph;
+
+    // 1. Update Pass
+    renderGraph.addPass(std::make_unique<LambdaRenderPass>("Update", [&](FrameInfo& frameInfo) {
+      GameLoopState state{
+              .objectSelectionSystem = objectSelectionSystem,
+              .inputSystem           = inputSystem,
+              .cameraSystem          = cameraSystem,
+              .animationSystem       = animationSystem,
+              .lodSystem             = lodSystem,
+              .pbrRenderSystem       = pbrRenderSystem,
+              .lightSystem           = lightSystem,
+              .shadowSystem          = shadowSystem,
+              .skyboxRenderSystem    = skyboxRenderSystem,
+              .renderContext         = renderContext,
+              .uiManager             = uiManager,
+              .skybox                = skybox.get(),
+      };
+      updatePhase(frameInfo, state);
+    }));
+
+    // 2. Compute Pass
+    renderGraph.addPass(std::make_unique<LambdaRenderPass>("Compute", [&](FrameInfo& frameInfo) {
+      GameLoopState state{
+              .objectSelectionSystem = objectSelectionSystem,
+              .inputSystem           = inputSystem,
+              .cameraSystem          = cameraSystem,
+              .animationSystem       = animationSystem,
+              .lodSystem             = lodSystem,
+              .pbrRenderSystem       = pbrRenderSystem,
+              .lightSystem           = lightSystem,
+              .shadowSystem          = shadowSystem,
+              .skyboxRenderSystem    = skyboxRenderSystem,
+              .renderContext         = renderContext,
+              .uiManager             = uiManager,
+              .skybox                = skybox.get(),
+      };
+      computePhase(frameInfo, state);
+    }));
+
+    // 3. Shadow Pass
+    renderGraph.addPass(std::make_unique<LambdaRenderPass>("Shadow", [&](FrameInfo& frameInfo) {
+      GameLoopState state{
+              .objectSelectionSystem = objectSelectionSystem,
+              .inputSystem           = inputSystem,
+              .cameraSystem          = cameraSystem,
+              .animationSystem       = animationSystem,
+              .lodSystem             = lodSystem,
+              .pbrRenderSystem       = pbrRenderSystem,
+              .lightSystem           = lightSystem,
+              .shadowSystem          = shadowSystem,
+              .skyboxRenderSystem    = skyboxRenderSystem,
+              .renderContext         = renderContext,
+              .uiManager             = uiManager,
+              .skybox                = skybox.get(),
+      };
+      shadowPhase(frameInfo, state);
+    }));
+
+    // 4. Offscreen Pass (Main Scene)
+    renderGraph.addPass(std::make_unique<LambdaRenderPass>("Offscreen", [&](FrameInfo& frameInfo) {
+      GameLoopState state{
+              .objectSelectionSystem = objectSelectionSystem,
+              .inputSystem           = inputSystem,
+              .cameraSystem          = cameraSystem,
+              .animationSystem       = animationSystem,
+              .lodSystem             = lodSystem,
+              .pbrRenderSystem       = pbrRenderSystem,
+              .lightSystem           = lightSystem,
+              .shadowSystem          = shadowSystem,
+              .skyboxRenderSystem    = skyboxRenderSystem,
+              .renderContext         = renderContext,
+              .uiManager             = uiManager,
+              .skybox                = skybox.get(),
+      };
+      renderer.beginOffscreenRenderPass(frameInfo.commandBuffer);
+      renderScenePhase(frameInfo, state);
+      renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
+      renderer.generateOffscreenMipmaps(frameInfo.commandBuffer);
+    }));
+
+    // 5. Composition Pass (PostProcess + UI)
+    renderGraph.addPass(std::make_unique<LambdaRenderPass>("Composition", [&](FrameInfo& frameInfo) {
+      GameLoopState state{
+              .objectSelectionSystem = objectSelectionSystem,
+              .inputSystem           = inputSystem,
+              .cameraSystem          = cameraSystem,
+              .animationSystem       = animationSystem,
+              .lodSystem             = lodSystem,
+              .pbrRenderSystem       = pbrRenderSystem,
+              .lightSystem           = lightSystem,
+              .shadowSystem          = shadowSystem,
+              .skyboxRenderSystem    = skyboxRenderSystem,
+              .renderContext         = renderContext,
+              .uiManager             = uiManager,
+              .skybox                = skybox.get(),
+      };
+
+      renderer.beginSwapChainRenderPass(frameInfo.commandBuffer);
+
+      // Update descriptor set for current frame
+      auto imageInfo = renderer.getOffscreenImageInfo(frameInfo.frameIndex);
+      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).overwrite(postProcessDescriptorSets[frameInfo.frameIndex]);
+
+      postProcessingSystem.render(frameInfo, postProcessDescriptorSets[frameInfo.frameIndex], postProcessPush);
+
+      uiPhase(frameInfo, frameInfo.commandBuffer, state);
+      renderer.endSwapChainRenderPass(frameInfo.commandBuffer);
+    }));
+
+    // ============================================================================
     // MAIN GAME LOOP
     // ============================================================================
     while (!window.shouldClose())
@@ -222,67 +336,11 @@ namespace engine {
                 .morphManager        = animationSystem.getMorphManager(),
         };
 
-        // Build game loop state (references to all systems and state)
-        GameLoopState state{
-                .objectSelectionSystem = objectSelectionSystem,
-                .inputSystem           = inputSystem,
-                .cameraSystem          = cameraSystem,
-                .animationSystem       = animationSystem,
-                .lodSystem             = lodSystem,
-                .pbrRenderSystem       = pbrRenderSystem,
-                .lightSystem           = lightSystem,
-                .shadowSystem          = shadowSystem,
-                .skyboxRenderSystem    = skyboxRenderSystem,
-                .renderContext         = renderContext,
-                .uiManager             = uiManager,
-                .skybox                = skybox.get(),
-        };
-
-        // ========================================================================
-        // UPDATE PHASE - Process game logic, input, animations
-        // ========================================================================
-        updatePhase(frameInfo, state);
+        // Execute Render Graph
+        renderGraph.execute(frameInfo);
 
         // Persist selection state across frames (from FrameInfo back to local variables)
-        selectedObjectId = frameInfo.selectedObjectId;
-        selectedObject   = frameInfo.selectedObject;
-
-        // ========================================================================
-        // COMPUTE PHASE - Animations and GPU compute shaders
-        // ========================================================================
-        computePhase(frameInfo, state);
-
-        // ========================================================================
-        // SHADOW PHASE - Render shadow maps before main render pass
-        // ========================================================================
-        shadowPhase(frameInfo, state);
-
-        // ========================================================================
-        // RENDER PHASE - Issue GPU draw calls (including UI)
-        // ========================================================================
-
-        // 1. Render Scene to Offscreen Framebuffer
-        renderer.beginOffscreenRenderPass(commandBuffer);
-        renderScenePhase(frameInfo, state);
-        renderer.endOffscreenRenderPass(commandBuffer);
-
-        // Generate mipmaps for bloom
-        renderer.generateOffscreenMipmaps(commandBuffer);
-
-        // 2. Post-Process (Tonemapping) to Swapchain
-        renderer.beginSwapChainRenderPass(commandBuffer);
-
-        // Update descriptor set for current frame (in case of resize)
-        auto imageInfo = renderer.getOffscreenImageInfo(frameIndex);
-        DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).overwrite(postProcessDescriptorSets[frameIndex]);
-
-        postProcessingSystem.render(frameInfo, postProcessDescriptorSets[frameIndex], postProcessPush);
-
-        // 3. Render UI on top
-        uiPhase(frameInfo, commandBuffer, state);
-        renderer.endSwapChainRenderPass(commandBuffer);
-
-        // Persist selection state after UI phase (UI can change selection)
+        // Note: This needs to happen after the graph execution because UI/Selection systems modify it
         selectedObjectId = frameInfo.selectedObjectId;
         selectedObject   = frameInfo.selectedObject;
 
