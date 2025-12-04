@@ -3,11 +3,11 @@
 #include <memory>
 #include <vector>
 
-#include "3dEngine/Buffer.hpp"
-#include "3dEngine/Descriptors.hpp"
-#include "3dEngine/Device.hpp"
-#include "3dEngine/FrameInfo.hpp"
-#include "3dEngine/MeshManager.hpp"
+#include "Engine/Graphics/Buffer.hpp"
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Resources/MeshManager.hpp"
 
 namespace engine {
 

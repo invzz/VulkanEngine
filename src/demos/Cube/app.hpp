@@ -6,19 +6,19 @@
 #include <memory>
 #include <vector>
 
-#include "3dEngine/AnimationController.hpp"
-#include "3dEngine/Descriptors.hpp"
-#include "3dEngine/Device.hpp"
-#include "3dEngine/FrameInfo.hpp"
-#include "3dEngine/GameObject.hpp"
-#include "3dEngine/GameObjectManager.hpp"
-#include "3dEngine/Model.hpp"
-#include "3dEngine/Renderer.hpp"
-#include "3dEngine/ResourceManager.hpp"
-#include "3dEngine/SceneSerializer.hpp"
-#include "3dEngine/Skybox.hpp"
-#include "3dEngine/SwapChain.hpp"
-#include "3dEngine/Window.hpp"
+#include "Engine/Core/Window.hpp"
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Renderer.hpp"
+#include "Engine/Graphics/SwapChain.hpp"
+#include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
+#include "Engine/Scene/AnimationController.hpp"
+#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/SceneSerializer.hpp"
+#include "Engine/Scene/Skybox.hpp"
 
 namespace engine {
 

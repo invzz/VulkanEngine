@@ -5,11 +5,11 @@
 #include <cstring>
 #include <iostream>
 
-#include "3dEngine/AnimationController.hpp"
-#include "3dEngine/GameObjectManager.hpp"
-#include "3dEngine/Model.hpp"
-#include "3dEngine/PBRMaterial.hpp"
-#include "3dEngine/Texture.hpp"
+#include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
+#include "Engine/Resources/Texture.hpp"
+#include "Engine/Scene/AnimationController.hpp"
+#include "Engine/Scene/GameObjectManager.hpp"
 
 namespace engine {
 
@@ -92,8 +92,8 @@ namespace engine {
           // Setup animation if available
           if (newObject.model->hasAnimations())
           {
-            newObject.animationController = std::make_unique<AnimationController>(newObject.model);
-            newObject.animationController->play(0, true);
+            auto& animCtrl = newObject.addComponent<AnimationController>(newObject.model);
+            animCtrl.play(0, true);
           }
 
           GameObject::id_t newId = newObject.getId();
@@ -101,7 +101,7 @@ namespace engine {
 
           // Register with animation system if needed
           auto* obj = objectManager_.getObject(newId);
-          if (obj && (obj->animationController || (obj->model && obj->model->hasMorphTargets())))
+          if (obj && (obj->getComponent<AnimationController>() || (obj->model && obj->model->hasMorphTargets())))
           {
             animationSystem_.registerAnimatedObject(newId);
           }

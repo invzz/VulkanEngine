@@ -1,6 +1,6 @@
 #pragma once
 
-#include "3dEngine/FrameInfo.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
 
 namespace engine {
 

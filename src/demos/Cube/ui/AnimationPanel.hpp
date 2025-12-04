@@ -1,7 +1,7 @@
 #pragma once
 
-#include "3dEngine/GameObject.hpp"
-#include "3dEngine/GameObjectManager.hpp"
+#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/GameObjectManager.hpp"
 #include "UIPanel.hpp"
 
 namespace engine {

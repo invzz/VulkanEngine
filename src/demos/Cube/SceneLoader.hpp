@@ -1,9 +1,9 @@
 #pragma once
 
-#include "3dEngine/Device.hpp"
-#include "3dEngine/GameObject.hpp"
-#include "3dEngine/GameObjectManager.hpp"
-#include "3dEngine/ResourceManager.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
+#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/GameObjectManager.hpp"
 
 namespace engine {
 

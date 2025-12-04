@@ -16,24 +16,24 @@ namespace engine {
     {
       for (auto& [id, obj] : objectManager_.getAllObjects())
       {
-        if (obj.animationController)
+        if (obj.getComponent<AnimationController>())
         {
           std::string label = "Object " + std::to_string(id);
           if (ImGui::TreeNode(label.c_str()))
           {
-            bool isPlaying = obj.animationController->isPlaying();
+            bool isPlaying = obj.getComponent<AnimationController>()->isPlaying();
             if (ImGui::Checkbox("Playing", &isPlaying))
             {
               if (isPlaying)
-                obj.animationController->play(0, true);
+                obj.getComponent<AnimationController>()->play(0, true);
               else
-                obj.animationController->stop();
+                obj.getComponent<AnimationController>()->stop();
             }
 
-            float speed = obj.animationController->getPlaybackSpeed();
+            float speed = obj.getComponent<AnimationController>()->getPlaybackSpeed();
             if (ImGui::SliderFloat("Speed", &speed, 0.0f, 2.0f))
             {
-              obj.animationController->setPlaybackSpeed(speed);
+              obj.getComponent<AnimationController>()->setPlaybackSpeed(speed);
             }
 
             ImGui::TreePop();

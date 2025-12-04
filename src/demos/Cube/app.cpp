@@ -11,32 +11,32 @@
 #include <glm/gtc/quaternion.hpp>
 #include <iostream>
 
-#include "3dEngine/AnimationController.hpp"
-#include "3dEngine/Camera.hpp"
-#include "3dEngine/Device.hpp"
-#include "3dEngine/Exceptions.hpp"
-#include "3dEngine/GameObject.hpp"
-#include "3dEngine/ImGuiManager.hpp"
-#include "3dEngine/Keyboard.hpp"
-#include "3dEngine/Model.hpp"
-#include "3dEngine/Mouse.hpp"
-#include "3dEngine/TextureManager.hpp"
-#include "3dEngine/Window.hpp"
-#include "3dEngine/ansi_colors.hpp"
+#include "Engine/Core/Exceptions.hpp"
+#include "Engine/Core/Keyboard.hpp"
+#include "Engine/Core/Mouse.hpp"
+#include "Engine/Core/Window.hpp"
+#include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/ImGuiManager.hpp"
+#include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/TextureManager.hpp"
+#include "Engine/Scene/AnimationController.hpp"
+#include "Engine/Scene/Camera.hpp"
+#include "Engine/Scene/GameObject.hpp"
 
 // Systems
-#include "3dEngine/IBLSystem.hpp"
-#include "3dEngine/RenderGraph.hpp"
-#include "3dEngine/systems/AnimationSystem.hpp"
-#include "3dEngine/systems/CameraSystem.hpp"
-#include "3dEngine/systems/InputSystem.hpp"
-#include "3dEngine/systems/LODSystem.hpp"
-#include "3dEngine/systems/LightSystem.hpp"
-#include "3dEngine/systems/MeshRenderSystem.hpp"
-#include "3dEngine/systems/ObjectSelectionSystem.hpp"
-#include "3dEngine/systems/PostProcessingSystem.hpp"
-#include "3dEngine/systems/ShadowSystem.hpp"
-#include "3dEngine/systems/SkyboxRenderSystem.hpp"
+#include "Engine/Graphics/RenderGraph.hpp"
+#include "Engine/Systems/AnimationSystem.hpp"
+#include "Engine/Systems/CameraSystem.hpp"
+#include "Engine/Systems/IBLSystem.hpp"
+#include "Engine/Systems/InputSystem.hpp"
+#include "Engine/Systems/LODSystem.hpp"
+#include "Engine/Systems/LightSystem.hpp"
+#include "Engine/Systems/MeshRenderSystem.hpp"
+#include "Engine/Systems/ObjectSelectionSystem.hpp"
+#include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 // Demo specific
 #include "RenderContext.hpp"
@@ -99,7 +99,7 @@ namespace engine {
     // This allows the system to track and update only objects that need animation
     for (auto& [id, obj] : objectManager.getAllObjects())
     {
-      if (obj.animationController || (obj.model && obj.model->hasMorphTargets()))
+      if (obj.getComponent<AnimationController>() || (obj.model && obj.model->hasMorphTargets()))
       {
         animationSystem.registerAnimatedObject(id);
       }

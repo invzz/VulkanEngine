@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-#include "3dEngine/systems/LightSystem.hpp"
+#include "Engine/Systems/LightSystem.hpp"
 
 namespace engine {
 
@@ -19,43 +19,43 @@ namespace engine {
         auto& obj = *frameInfo.selectedObject;
 
         // Point Light Component
-        if (obj.pointLight)
+        if (auto* pointLight = obj.getComponent<PointLightComponent>())
         {
           ImGui::Text("Point Light");
           ImGui::Separator();
 
-          ImGui::DragFloat("Intensity##point", &obj.pointLight->intensity, 0.1f, 0.0f, 100.0f);
+          ImGui::DragFloat("Intensity##point", &pointLight->intensity, 0.1f, 0.0f, 100.0f);
 
           ImGui::Spacing();
         }
 
         // Directional Light Component
-        if (obj.directionalLight)
+        if (auto* dirLight = obj.getComponent<DirectionalLightComponent>())
         {
           ImGui::Text("Directional Light");
           ImGui::Separator();
 
-          ImGui::DragFloat("Intensity##directional", &obj.directionalLight->intensity, 0.01f, 0.0f, 10.0f);
+          ImGui::DragFloat("Intensity##directional", &dirLight->intensity, 0.01f, 0.0f, 10.0f);
 
           ImGui::Spacing();
           ImGui::Text("Direction Control:");
 
-          if (ImGui::Checkbox("Use Target Point##directional", &obj.directionalLight->useTargetPoint))
+          if (ImGui::Checkbox("Use Target Point##directional", &dirLight->useTargetPoint))
           {
             // When enabling, initialize target to a visible default if it's at origin
-            if (obj.directionalLight->useTargetPoint)
+            if (dirLight->useTargetPoint)
             {
-              if (glm::length(obj.directionalLight->targetPoint) < 0.01f)
+              if (glm::length(dirLight->targetPoint) < 0.01f)
               {
-                obj.directionalLight->targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
+                dirLight->targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
               }
               LightSystem::updateTargetLockedLight(obj);
             }
           }
 
-          if (obj.directionalLight->useTargetPoint)
+          if (dirLight->useTargetPoint)
           {
-            if (ImGui::DragFloat3("Target Point", &obj.directionalLight->targetPoint.x, 0.1f))
+            if (ImGui::DragFloat3("Target Point", &dirLight->targetPoint.x, 0.1f))
             {
               LightSystem::updateTargetLockedLight(obj);
             }
@@ -69,32 +69,32 @@ namespace engine {
         }
 
         // Spot Light Component
-        if (obj.spotLight)
+        if (auto* spotLight = obj.getComponent<SpotLightComponent>())
         {
           ImGui::Text("Spot Light");
           ImGui::Separator();
 
-          ImGui::DragFloat("Intensity##spot", &obj.spotLight->intensity, 0.1f, 0.0f, 100.0f);
+          ImGui::DragFloat("Intensity##spot", &spotLight->intensity, 0.1f, 0.0f, 100.0f);
 
           ImGui::Spacing();
           ImGui::Text("Direction Control:");
 
-          if (ImGui::Checkbox("Use Target Point##spot", &obj.spotLight->useTargetPoint))
+          if (ImGui::Checkbox("Use Target Point##spot", &spotLight->useTargetPoint))
           {
             // When enabling, initialize target to a visible default if it's at origin
-            if (obj.spotLight->useTargetPoint)
+            if (spotLight->useTargetPoint)
             {
-              if (glm::length(obj.spotLight->targetPoint) < 0.01f)
+              if (glm::length(spotLight->targetPoint) < 0.01f)
               {
-                obj.spotLight->targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
+                spotLight->targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
               }
               LightSystem::updateTargetLockedLight(obj);
             }
           }
 
-          if (obj.spotLight->useTargetPoint)
+          if (spotLight->useTargetPoint)
           {
-            if (ImGui::DragFloat3("Target Point##spot", &obj.spotLight->targetPoint.x, 0.1f))
+            if (ImGui::DragFloat3("Target Point##spot", &spotLight->targetPoint.x, 0.1f))
             {
               LightSystem::updateTargetLockedLight(obj);
             }
@@ -106,26 +106,30 @@ namespace engine {
 
           ImGui::Spacing();
           ImGui::Text("Cone Angles:");
-          ImGui::DragFloat("Inner Cutoff (deg)", &obj.spotLight->innerCutoffAngle, 0.5f, 0.0f, 90.0f);
-          ImGui::DragFloat("Outer Cutoff (deg)", &obj.spotLight->outerCutoffAngle, 0.5f, 0.0f, 90.0f);
+          ImGui::DragFloat("Inner Cutoff (deg)", &spotLight->innerCutoffAngle, 0.5f, 0.0f, 90.0f);
+          ImGui::DragFloat("Outer Cutoff (deg)", &spotLight->outerCutoffAngle, 0.5f, 0.0f, 90.0f);
 
           // Ensure outer is always >= inner
-          if (obj.spotLight->outerCutoffAngle < obj.spotLight->innerCutoffAngle)
+          if (spotLight->outerCutoffAngle < spotLight->innerCutoffAngle)
           {
-            obj.spotLight->outerCutoffAngle = obj.spotLight->innerCutoffAngle;
+            spotLight->outerCutoffAngle = spotLight->innerCutoffAngle;
           }
 
           ImGui::Spacing();
           ImGui::Text("Attenuation:");
-          ImGui::DragFloat("Constant", &obj.spotLight->constantAttenuation, 0.01f, 0.0f, 10.0f);
-          ImGui::DragFloat("Linear", &obj.spotLight->linearAttenuation, 0.001f, 0.0f, 1.0f, "%.4f");
-          ImGui::DragFloat("Quadratic", &obj.spotLight->quadraticAttenuation, 0.001f, 0.0f, 1.0f, "%.4f");
+          ImGui::DragFloat("Constant", &spotLight->constantAttenuation, 0.01f, 0.0f, 10.0f);
+          ImGui::DragFloat("Linear", &spotLight->linearAttenuation, 0.001f, 0.0f, 1.0f, "%.4f");
+          ImGui::DragFloat("Quadratic", &spotLight->quadraticAttenuation, 0.001f, 0.0f, 1.0f, "%.4f");
 
           ImGui::Spacing();
         }
 
         // Color control (common for all lights)
-        if (obj.pointLight || obj.directionalLight || obj.spotLight)
+        bool hasPointLight = obj.getComponent<PointLightComponent>() != nullptr;
+        bool hasDirLight   = obj.getComponent<DirectionalLightComponent>() != nullptr;
+        bool hasSpotLight  = obj.getComponent<SpotLightComponent>() != nullptr;
+
+        if (hasPointLight || hasDirLight || hasSpotLight)
         {
           ImGui::Separator();
           ImGui::Text("Light Color:");
@@ -133,7 +137,7 @@ namespace engine {
         }
 
         // Show message if no light component
-        if (!obj.pointLight && !obj.directionalLight && !obj.spotLight)
+        if (!hasPointLight && !hasDirLight && !hasSpotLight)
         {
           ImGui::TextDisabled("No light component");
           ImGui::TextDisabled("This object is not a light");

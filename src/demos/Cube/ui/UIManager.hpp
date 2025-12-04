@@ -4,8 +4,8 @@
 #include <memory>
 #include <vector>
 
-#include "3dEngine/FrameInfo.hpp"
-#include "3dEngine/ImGuiManager.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/ImGuiManager.hpp"
 #include "UIPanel.hpp"
 
 namespace engine {

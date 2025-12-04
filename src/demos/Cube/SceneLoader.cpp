@@ -2,10 +2,10 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "3dEngine/AnimationController.hpp"
-#include "3dEngine/Model.hpp"
-#include "3dEngine/ResourceManager.hpp"
-#include "3dEngine/Texture.hpp"
+#include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
+#include "Engine/Resources/Texture.hpp"
+#include "Engine/Scene/AnimationController.hpp"
 
 namespace engine {
 
@@ -59,26 +59,26 @@ namespace engine {
 
       if (!mat.diffuseTexPath.empty())
       {
-        model.pbrMaterial->albedoMap = resourceManager.loadTexture(basePath + mat.diffuseTexPath, true);
+        model.getComponent<PBRMaterial>()->albedoMap = resourceManager.loadTexture(basePath + mat.diffuseTexPath, true);
       }
 
       if (!mat.normalTexPath.empty())
       {
-        model.pbrMaterial->normalMap = resourceManager.loadTexture(basePath + mat.normalTexPath, false);
+        model.getComponent<PBRMaterial>()->normalMap = resourceManager.loadTexture(basePath + mat.normalTexPath, false);
       }
 
       if (!mat.roughnessTexPath.empty())
       {
-        model.pbrMaterial->roughnessMap = resourceManager.loadTexture(basePath + mat.roughnessTexPath, false);
+        model.getComponent<PBRMaterial>()->roughnessMap = resourceManager.loadTexture(basePath + mat.roughnessTexPath, false);
       }
 
       if (!mat.aoTexPath.empty())
       {
-        model.pbrMaterial->aoMap = resourceManager.loadTexture(basePath + mat.aoTexPath, false);
+        model.getComponent<PBRMaterial>()->aoMap = resourceManager.loadTexture(basePath + mat.aoTexPath, false);
       }
     }
 
-    model.pbrMaterial->uvScale = 1.0f;
+    model.getComponent<PBRMaterial>()->uvScale = 1.0f;
     objectManager.addObject(std::move(model));
   }
 
@@ -119,9 +119,9 @@ namespace engine {
     // Add a spotlight
     auto spotLight1 =
             GameObject::makeSpotLightObject({.intensity = 15.0f, .color = {1.0f, 0.8f, 0.5f}, .innerAngle = 12.5f, .outerAngle = 17.5f}); // Warm spotlight
-    spotLight1.transform.translation     = glm::vec3(3.0f, -3.0f, 3.0f);
-    spotLight1.spotLight->useTargetPoint = true;
-    spotLight1.spotLight->targetPoint    = glm::vec3(0.0f, 0.0f, 0.0f);
+    spotLight1.transform.translation                              = glm::vec3(3.0f, -3.0f, 3.0f);
+    spotLight1.getComponent<SpotLightComponent>()->useTargetPoint = true;
+    spotLight1.getComponent<SpotLightComponent>()->targetPoint    = glm::vec3(0.0f, 0.0f, 0.0f);
     objectManager.addObject(std::move(spotLight1));
   }
 
@@ -148,11 +148,11 @@ namespace engine {
     auto textureName = "Asphalt01";
     auto path        = std::string(TEXTURE_PATH) + "/" + textureName + "_MR_4K" + "/" + textureName + "_4K_";
 
-    floor.pbrMaterial->albedoMap    = resourceManager.loadTexture(path + "BaseColor.png", true);
-    floor.pbrMaterial->normalMap    = resourceManager.loadTexture(path + "Normal.png", false);
-    floor.pbrMaterial->roughnessMap = resourceManager.loadTexture(path + "Roughness.png", false);
-    floor.pbrMaterial->aoMap        = resourceManager.loadTexture(path + "AO.png", false);
-    floor.pbrMaterial->uvScale      = 8.0f; // Tile the texture 8x across the floor
+    floor.getComponent<PBRMaterial>()->albedoMap    = resourceManager.loadTexture(path + "BaseColor.png", true);
+    floor.getComponent<PBRMaterial>()->normalMap    = resourceManager.loadTexture(path + "Normal.png", false);
+    floor.getComponent<PBRMaterial>()->roughnessMap = resourceManager.loadTexture(path + "Roughness.png", false);
+    floor.getComponent<PBRMaterial>()->aoMap        = resourceManager.loadTexture(path + "AO.png", false);
+    floor.getComponent<PBRMaterial>()->uvScale      = 8.0f; // Tile the texture 8x across the floor
     objectManager.addObject(std::move(floor));
   }
 
@@ -275,8 +275,8 @@ namespace engine {
     // Setup animation if available
     if (model.model->hasAnimations())
     {
-      model.animationController = std::make_unique<AnimationController>(model.model);
-      model.animationController->play(0, true); // Play first animation in loop
+      auto& animCtrl = model.addComponent<AnimationController>(model.model);
+      animCtrl.play(0, true); // Play first animation in loop
     }
 
     objectManager.addObject(std::move(model));

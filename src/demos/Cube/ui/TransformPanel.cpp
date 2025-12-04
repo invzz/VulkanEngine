@@ -4,7 +4,7 @@
 
 #include <string>
 
-#include "3dEngine/systems/LightSystem.hpp"
+#include "Engine/Systems/LightSystem.hpp"
 
 namespace engine {
 
@@ -37,7 +37,10 @@ namespace engine {
             // If translation changed and light is target-locked, update rotation
             if (translationChanged)
             {
-              if ((obj.directionalLight && obj.directionalLight->useTargetPoint) || (obj.spotLight && obj.spotLight->useTargetPoint))
+              bool isDirLocked  = obj.getComponent<DirectionalLightComponent>() && obj.getComponent<DirectionalLightComponent>()->useTargetPoint;
+              bool isSpotLocked = obj.getComponent<SpotLightComponent>() && obj.getComponent<SpotLightComponent>()->useTargetPoint;
+
+              if (isDirLocked || isSpotLocked)
               {
                 LightSystem::updateTargetLockedLight(obj);
               }
@@ -48,7 +51,10 @@ namespace engine {
             {
               obj.transform.translation = glm::vec3(0.0f);
               // Update rotation if target-locked
-              if ((obj.directionalLight && obj.directionalLight->useTargetPoint) || (obj.spotLight && obj.spotLight->useTargetPoint))
+              bool isDirLocked  = obj.getComponent<DirectionalLightComponent>() && obj.getComponent<DirectionalLightComponent>()->useTargetPoint;
+              bool isSpotLocked = obj.getComponent<SpotLightComponent>() && obj.getComponent<SpotLightComponent>()->useTargetPoint;
+
+              if (isDirLocked || isSpotLocked)
               {
                 LightSystem::updateTargetLockedLight(obj);
               }
@@ -101,7 +107,7 @@ namespace engine {
             ImGui::Spacing();
 
             // For animated objects, modify baseScale; for static objects, modify scale
-            bool       isAnimated  = obj.animationController != nullptr;
+            bool       isAnimated  = obj.getComponent<AnimationController>() != nullptr;
             glm::vec3& targetScale = isAnimated ? obj.transform.baseScale : obj.transform.scale;
 
             if (isAnimated)
