@@ -7,6 +7,7 @@
 #include "3dEngine/Descriptors.hpp"
 #include "3dEngine/Device.hpp"
 #include "3dEngine/FrameInfo.hpp"
+#include "3dEngine/MeshManager.hpp"
 
 namespace engine {
 
@@ -14,7 +15,7 @@ namespace engine {
   class RenderContext
   {
   public:
-    explicit RenderContext(Device& device);
+    explicit RenderContext(Device& device, MeshManager& meshManager);
 
     void                  updateUBO(int frameIndex, const GlobalUbo& ubo);
     VkDescriptorSet       getGlobalDescriptorSet(int frameIndex) const { return globalDescriptorSets_[frameIndex]; }
@@ -22,6 +23,7 @@ namespace engine {
 
   private:
     Device&                              device_;
+    MeshManager&                         meshManager_;
     std::unique_ptr<DescriptorPool>      globalPool_;
     std::unique_ptr<DescriptorSetLayout> globalSetLayout_;
     std::vector<std::unique_ptr<Buffer>> uboBuffers_;

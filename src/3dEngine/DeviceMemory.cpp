@@ -49,6 +49,14 @@ namespace engine {
     allocInfo.allocationSize  = memRequirements.size;
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
+    VkMemoryAllocateFlagsInfo allocFlagsInfo{};
+    if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    {
+      allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+      allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+      allocInfo.pNext      = &allocFlagsInfo;
+    }
+
     if (vkAllocateMemory(device.device_, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
     {
       throw engine::RuntimeException("failed to allocate vertex buffer memory!");

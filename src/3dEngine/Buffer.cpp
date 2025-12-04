@@ -124,4 +124,12 @@ namespace engine {
     return invalidate(alignmentSize, index * alignmentSize);
   }
 
+  VkDeviceAddress Buffer::getDeviceAddress() const
+  {
+    VkBufferDeviceAddressInfo bufferDeviceAddressInfo{};
+    bufferDeviceAddressInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+    bufferDeviceAddressInfo.buffer = buffer;
+    return vkGetBufferDeviceAddress(device.device(), &bufferDeviceAddressInfo);
+  }
+
 } // namespace engine

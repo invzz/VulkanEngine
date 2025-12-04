@@ -140,11 +140,12 @@ namespace engine {
     data.weightsBuffer->writeToBuffer(initialWeights.data(), sizeof(float) * weightsCount);
 
     // Create blended output buffer (will store computed vertices)
-    data.blendedBuffer = std::make_unique<Buffer>(device_,
-                                                  sizeof(Model::Vertex),
-                                                  static_cast<uint32_t>(data.vertexCount),
-                                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    data.blendedBuffer =
+            std::make_unique<Buffer>(device_,
+                                     sizeof(Model::Vertex),
+                                     static_cast<uint32_t>(data.vertexCount),
+                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
   void MorphTargetManager::updateAndBlend(VkCommandBuffer commandBuffer, std::shared_ptr<Model> model)
@@ -261,6 +262,16 @@ namespace engine {
       return VK_NULL_HANDLE;
     }
     return it->second.blendedBuffer->getBuffer();
+  }
+
+  uint64_t MorphTargetManager::getBlendedBufferAddress(const Model* model) const
+  {
+    auto it = modelData_.find(model);
+    if (it == modelData_.end())
+    {
+      return 0;
+    }
+    return it->second.blendedBuffer->getDeviceAddress();
   }
 
 } // namespace engine

@@ -20,6 +20,7 @@
 #include "3dEngine/Keyboard.hpp"
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Mouse.hpp"
+#include "3dEngine/TextureManager.hpp"
 #include "3dEngine/Window.hpp"
 #include "3dEngine/ansi_colors.hpp"
 
@@ -67,7 +68,7 @@ namespace engine {
 
     // Setup rendering context (descriptors, UBO buffers)
     // Creates descriptor layouts and global descriptor sets for shader uniforms
-    RenderContext renderContext{device};
+    RenderContext renderContext{device, resourceManager.getMeshManager()};
 
     // Setup scene objects (camera, input devices)
     Camera   camera{};
@@ -121,7 +122,10 @@ namespace engine {
     // Render Systems:
     std::cout << "[App] Creating render systems..." << std::endl;
     SkyboxRenderSystem skyboxRenderSystem{device, renderer.getOffscreenRenderPass()};
-    PBRRenderSystem    pbrRenderSystem{device, renderer.getOffscreenRenderPass(), renderContext.getGlobalSetLayout()};
+    PBRRenderSystem    pbrRenderSystem{device,
+                                    renderer.getOffscreenRenderPass(),
+                                    renderContext.getGlobalSetLayout(),
+                                    resourceManager.getTextureManager().getDescriptorSetLayout()};
     LightSystem        lightSystem{device, renderer.getOffscreenRenderPass(), renderContext.getGlobalSetLayout()};
 
     // Connect shadow system to PBR render system (supports multiple shadow maps)
@@ -329,6 +333,7 @@ namespace engine {
                 .commandBuffer       = commandBuffer,
                 .camera              = camera,
                 .globalDescriptorSet = renderContext.getGlobalDescriptorSet(frameIndex),
+                .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
                 .objectManager       = &objectManager,
                 .selectedObjectId    = selectedObjectId,
                 .selectedObject      = selectedObject,

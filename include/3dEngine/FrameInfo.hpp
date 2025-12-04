@@ -62,6 +62,7 @@ namespace engine {
     VkCommandBuffer     commandBuffer;
     Camera&             camera;
     VkDescriptorSet     globalDescriptorSet;
+    VkDescriptorSet     globalTextureSet; // Bindless texture set
     GameObjectManager*  objectManager;    // Organized access to objects by type
     GameObject::id_t    selectedObjectId; // ID of currently selected object (0 = camera)
     GameObject*         selectedObject;   // Pointer to selected object (nullptr = camera)

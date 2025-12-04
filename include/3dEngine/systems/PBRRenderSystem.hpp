@@ -30,7 +30,7 @@ namespace engine {
     static constexpr int MAX_SHADOW_MAPS      = 4;
     static constexpr int MAX_CUBE_SHADOW_MAPS = 4;
 
-    PBRRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+    PBRRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
     ~PBRRenderSystem();
 
     PBRRenderSystem(const PBRRenderSystem&)            = delete;
@@ -54,7 +54,7 @@ namespace engine {
     VkDescriptorSetLayout getShadowDescriptorSetLayout() const { return shadowDescriptorSetLayout_; }
 
   private:
-    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
     void createPipeline(VkRenderPass renderPass);
     void createShadowDescriptorResources();
     void createIBLDescriptorResources();

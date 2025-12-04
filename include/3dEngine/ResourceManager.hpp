@@ -10,12 +10,14 @@
 #include <unordered_map>
 
 #include "Device.hpp"
+#include "MeshManager.hpp"
 
 namespace engine {
 
   // Forward declarations
   class Texture;
   class Model;
+  class TextureManager;
 
   /**
    * @brief Async loading status for tracking resource load progress
@@ -210,8 +212,20 @@ namespace engine {
      */
     void waitForAsyncLoads();
 
+    /**
+     * @brief Get the Texture Manager for bindless rendering
+     */
+    TextureManager& getTextureManager() const { return *textureManager_; }
+
+    /**
+     * @brief Get the Mesh Manager for bindless rendering
+     */
+    MeshManager& getMeshManager() const { return *meshManager_; }
+
   private:
-    Device& device_;
+    Device&                         device_;
+    std::unique_ptr<TextureManager> textureManager_;
+    std::unique_ptr<MeshManager>    meshManager_;
 
     // Resource caches (weak_ptr allows automatic cleanup)
     mutable std::mutex                                      textureMutex_;

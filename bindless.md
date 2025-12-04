@@ -12,7 +12,7 @@ This document outlines the step-by-step migration from standard descriptor-set-p
 ## 📦 Phase 1: Foundation (Vulkan 1.2 Setup)
 **Objective:** Enable required Vulkan features and extensions without breaking existing rendering.
 
-- [ ] **Upgrade Device Creation**
+- [x] **Upgrade Device Creation**
     - Update `Device::createLogicalDevice` to enable `VkPhysicalDeviceVulkan12Features`.
     - Required features:
         - `descriptorIndexing`
@@ -23,11 +23,11 @@ This document outlines the step-by-step migration from standard descriptor-set-p
         - `bufferDeviceAddress` (for Phase 3)
         - `shaderInt64` (for 64-bit addresses)
 
-- [ ] **Verify Extension Support**
+- [x] **Verify Extension Support**
     - Add checks in `Device::isDeviceSuitable`.
     - Ensure `VK_EXT_descriptor_indexing` is available (core in 1.2).
 
-- [ ] **Update Descriptor Pool**
+- [x] **Update Descriptor Pool**
     - Update `DescriptorPool::Builder` to support `VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT`.
 
 ---
@@ -35,7 +35,7 @@ This document outlines the step-by-step migration from standard descriptor-set-p
 ## 🎨 Phase 2: Bindless Textures (The "Mega-Descriptor")
 **Objective:** Access all textures from a single global descriptor array in shaders.
 
-- [ ] **Global Descriptor Layout**
+- [x] **Global Descriptor Layout**
     - Create a new `GlobalDescriptorSet` layout.
     - **Binding 0**: Global UBO (Camera, Scene data).
     - **Binding 1**: Material SSBO (Array of material structs).
@@ -43,19 +43,19 @@ This document outlines the step-by-step migration from standard descriptor-set-p
     - **Binding 3**: Texture Array (Unbounded `texture2D textures[]`).
         - Flags: `VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT`.
 
-- [ ] **Texture Manager**
+- [x] **Texture Manager**
     - Create `TextureManager` class.
     - Maintain a `std::vector<VkImageView>` of all loaded textures.
     - Assign a unique `uint32_t globalIndex` to each `Texture` upon loading.
     - Handle growing the descriptor set if texture count exceeds limit (or allocate a huge limit like 4096).
 
-- [ ] **Material System Update**
+- [x] **Material System Update**
     - Refactor `PBRMaterial` to be a POD (Plain Old Data) struct for GPU upload.
     - Remove `VkDescriptorSet` from `PBRMaterial`.
     - Add `uint32_t albedoIndex`, `normalIndex`, etc., to the material struct.
     - Create a `MaterialBuffer` (SSBO) to store all material data.
 
-- [ ] **Shader Update (Fragment)**
+- [x] **Shader Update (Fragment)**
     - Enable `GL_EXT_nonuniform_qualifier`.
     - Replace individual texture bindings with:
       ```glsl
@@ -73,15 +73,15 @@ This document outlines the step-by-step migration from standard descriptor-set-p
 ## 📐 Phase 3: Bindless Geometry (Buffer Device Address)
 **Objective:** Remove vertex buffer bindings; fetch vertex data manually in shader.
 
-- [ ] **Buffer Upgrade**
+- [x] **Buffer Upgrade**
     - Add `VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT` to `Buffer` creation.
     - Implement `Buffer::getDeviceAddress()` returning `VkDeviceAddress` (uint64_t).
 
-- [ ] **Model Data Upload**
+- [x] **Model Data Upload**
     - Create a `MeshBuffer` SSBO containing `VkDeviceAddress` for vertex and index buffers for each mesh.
     - Upload this data to GPU.
 
-- [ ] **Shader Update (Vertex)**
+- [x] **Shader Update (Vertex)**
     - Enable `GL_EXT_buffer_reference`.
     - Define buffer reference types:
       ```glsl

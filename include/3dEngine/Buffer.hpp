@@ -38,6 +38,7 @@ namespace engine {
     VkDeviceSize          getBufferSize() const { return bufferSize; }
     VkBufferUsageFlags    getUsageFlags() const { return usageFlags; }
     VkMemoryPropertyFlags getMemoryPropertyFlags() const { return memoryPropertyFlags; }
+    VkDeviceAddress       getDeviceAddress() const;
 
   private:
     static VkDeviceSize   getAlignment(VkDeviceSize instanceSize, VkDeviceSize minOffsetAlignment);

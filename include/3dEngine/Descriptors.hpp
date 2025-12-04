@@ -16,15 +16,22 @@ namespace engine {
     public:
       explicit Builder(Device& device) : device{device} {}
 
-      Builder&                             addBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, uint32_t count = 1);
+      Builder&                             addBinding(uint32_t                 binding,
+                                                      VkDescriptorType         descriptorType,
+                                                      VkShaderStageFlags       stageFlags,
+                                                      uint32_t                 count        = 1,
+                                                      VkDescriptorBindingFlags bindingFlags = 0);
       std::unique_ptr<DescriptorSetLayout> build() const;
 
     private:
       Device&                                                    device;
       std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> bindings{};
+      std::unordered_map<uint32_t, VkDescriptorBindingFlags>     bindingFlags{};
     };
 
-    DescriptorSetLayout(Device& device, const std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>& bindings);
+    DescriptorSetLayout(Device&                                                           device,
+                        const std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>& bindings,
+                        const std::unordered_map<uint32_t, VkDescriptorBindingFlags>&     bindingFlags);
     ~DescriptorSetLayout();
     DescriptorSetLayout(const DescriptorSetLayout&)            = delete;
     DescriptorSetLayout& operator=(const DescriptorSetLayout&) = delete;

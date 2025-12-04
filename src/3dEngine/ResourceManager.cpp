@@ -7,6 +7,7 @@
 
 #include "3dEngine/Model.hpp"
 #include "3dEngine/Texture.hpp"
+#include "3dEngine/TextureManager.hpp"
 
 // Simple SHA256 implementation for content hashing
 #include <cstdint>
@@ -28,6 +29,9 @@ namespace engine {
 
   ResourceManager::ResourceManager(Device& device) : device_(device)
   {
+    textureManager_ = std::make_unique<TextureManager>(device);
+    meshManager_    = std::make_unique<MeshManager>(device);
+
     // Initialize thread pool with hardware concurrency
     size_t numThreads = std::thread::hardware_concurrency();
     if (numThreads == 0) numThreads = 4; // Fallback
@@ -100,6 +104,10 @@ namespace engine {
     textureCache_[key] = texture;
     updateTextureAccess(key, memSize, priority);
 
+    // Register with TextureManager
+    uint32_t globalIndex = textureManager_->addTexture(texture);
+    texture->setGlobalIndex(globalIndex);
+
     return texture;
   }
 
@@ -150,6 +158,10 @@ namespace engine {
     // Cache the model (as weak_ptr)
     modelCache_[key] = model;
     updateModelAccess(key, memSize, priority);
+
+    // Register with MeshManager
+    uint32_t meshId = meshManager_->registerModel(model.get());
+    model->setMeshId(meshId);
 
     return model;
   }
@@ -222,6 +234,10 @@ namespace engine {
     textureCache_[cacheKey]        = texture;
     contentHashToKey_[contentHash] = cacheKey;
     updateTextureAccess(cacheKey, memSize, priority);
+
+    // Register with TextureManager
+    uint32_t globalIndex = textureManager_->addTexture(texture);
+    texture->setGlobalIndex(globalIndex);
 
     return texture;
   }

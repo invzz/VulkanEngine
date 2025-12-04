@@ -143,7 +143,7 @@ namespace engine {
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
             .pEngineName        = "No Engine",
             .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
-            .apiVersion         = VK_API_VERSION_1_1,
+            .apiVersion         = VK_API_VERSION_1_2,
     };
 
     VkInstanceCreateInfo createInfo = {
@@ -243,6 +243,7 @@ namespace engine {
 
     VkPhysicalDeviceFeatures deviceFeatures = {
             .samplerAnisotropy = VK_TRUE,
+            .shaderInt64       = VK_TRUE,
     };
 
     std::vector<const char*> enabledExtensions(deviceExtensions.begin(), deviceExtensions.end());
@@ -270,11 +271,17 @@ namespace engine {
       }
     }
 
-    // Enable scalar block layout for compute shaders
+    // Enable Vulkan 1.2 features for Bindless Rendering
     VkPhysicalDeviceVulkan12Features vulkan12Features = {
-            .sType             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-            .pNext             = nullptr,
-            .scalarBlockLayout = VK_TRUE,
+            .sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext                                     = nullptr,
+            .descriptorIndexing                        = VK_TRUE,
+            .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
+            .descriptorBindingPartiallyBound           = VK_TRUE,
+            .descriptorBindingVariableDescriptorCount  = VK_TRUE,
+            .runtimeDescriptorArray                    = VK_TRUE,
+            .scalarBlockLayout                         = VK_TRUE,
+            .bufferDeviceAddress                       = VK_TRUE,
     };
 
     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
@@ -390,7 +397,21 @@ namespace engine {
     VkPhysicalDeviceFeatures supportedFeatures;
     vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+    VkPhysicalDeviceVulkan12Features vulkan12Features = {};
+    vulkan12Features.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+
+    VkPhysicalDeviceFeatures2 features2 = {};
+    features2.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features2.pNext                     = &vulkan12Features;
+
+    vkGetPhysicalDeviceFeatures2(device, &features2);
+
+    bool bindlessSupported = vulkan12Features.descriptorIndexing && vulkan12Features.shaderSampledImageArrayNonUniformIndexing &&
+                             vulkan12Features.descriptorBindingPartiallyBound && vulkan12Features.descriptorBindingVariableDescriptorCount &&
+                             vulkan12Features.runtimeDescriptorArray && vulkan12Features.bufferDeviceAddress;
+
+    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy && supportedFeatures.shaderInt64 &&
+           bindlessSupported;
   }
 
   bool Device::checkValidationLayerSupport() const

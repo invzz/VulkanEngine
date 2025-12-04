@@ -40,6 +40,9 @@ namespace engine {
     int getHeight() const { return height_; }
     int getMipLevels() const { return mipLevels_; }
 
+    void     setGlobalIndex(uint32_t index) { globalIndex_ = index; }
+    uint32_t getGlobalIndex() const { return globalIndex_; }
+
     /**
      * @brief Get approximate memory size of this texture
      * @return Memory size in bytes (includes mipmaps)
@@ -65,9 +68,10 @@ namespace engine {
     VkImageView    imageView_   = VK_NULL_HANDLE;
     VkSampler      sampler_     = VK_NULL_HANDLE;
 
-    int      width_     = 0;
-    int      height_    = 0;
-    uint32_t mipLevels_ = 1;
+    int      width_       = 0;
+    int      height_      = 0;
+    uint32_t mipLevels_   = 1;
+    uint32_t globalIndex_ = 0;
   };
 
 } // namespace engine

@@ -4,8 +4,8 @@
 
 namespace engine {
 
-  RenderContext::RenderContext(Device& device)
-      : device_{device}, uboBuffers_(SwapChain::maxFramesInFlight()), globalDescriptorSets_(SwapChain::maxFramesInFlight())
+  RenderContext::RenderContext(Device& device, MeshManager& meshManager)
+      : device_{device}, meshManager_{meshManager}, uboBuffers_(SwapChain::maxFramesInFlight()), globalDescriptorSets_(SwapChain::maxFramesInFlight())
   {
     createDescriptorPool();
     createGlobalSetLayout();
@@ -18,12 +18,16 @@ namespace engine {
     globalPool_ = DescriptorPool::Builder(device_)
                           .setMaxSets(SwapChain::maxFramesInFlight())
                           .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::maxFramesInFlight())
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SwapChain::maxFramesInFlight())
                           .build();
   }
 
   void RenderContext::createGlobalSetLayout()
   {
-    globalSetLayout_ = DescriptorSetLayout::Builder(device_).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS).build();
+    globalSetLayout_ = DescriptorSetLayout::Builder(device_)
+                               .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+                               .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
+                               .build();
   }
 
   void RenderContext::createUBOBuffers()
@@ -45,7 +49,9 @@ namespace engine {
     for (size_t i = 0; i < globalDescriptorSets_.size(); i++)
     {
       auto bufferInfo = uboBuffers_[i]->descriptorInfo();
-      DescriptorWriter(*globalSetLayout_, *globalPool_).writeBuffer(0, &bufferInfo).build(globalDescriptorSets_[i]);
+      auto meshInfo   = meshManager_.getDescriptorInfo();
+
+      DescriptorWriter(*globalSetLayout_, *globalPool_).writeBuffer(0, &bufferInfo).writeBuffer(1, &meshInfo).build(globalDescriptorSets_[i]);
     }
   }
 

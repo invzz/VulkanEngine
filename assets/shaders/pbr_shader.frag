@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_nonuniform_qualifier : enable
 
 layout(location = 0) out vec4 outColor;
 
@@ -49,12 +50,8 @@ layout(set = 0, binding = 0) uniform UBO
 }
 ubo;
 
-// Material textures (set 1)
-layout(set = 1, binding = 0) uniform sampler2D albedoMap;
-layout(set = 1, binding = 1) uniform sampler2D normalMap;
-layout(set = 1, binding = 2) uniform sampler2D metallicMap;
-layout(set = 1, binding = 3) uniform sampler2D roughnessMap;
-layout(set = 1, binding = 4) uniform sampler2D aoMap;
+// Global textures (set 1)
+layout(set = 1, binding = 0) uniform sampler2D globalTextures[];
 
 // Shadow maps (set 2) - array of shadow maps for multiple lights
 layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[4];
@@ -81,6 +78,11 @@ layout(push_constant) uniform PushConstants
   float                     anisotropicRotation; // Anisotropic rotation
   uint                      textureFlags;        // Bit flags: bit 0=albedo, 1=normal, 2=metallic, 3=roughness, 4=ao
   float                     uvScale;             // UV tiling scale
+  uint                      albedoIndex;
+  uint                      normalIndex;
+  uint                      metallicIndex;
+  uint                      roughnessIndex;
+  uint                      aoIndex;
 }
 push;
 
@@ -239,23 +241,23 @@ void main()
 
   if ((push.textureFlags & (1u << 0)) != 0u) // Albedo/BaseColor texture
   {
-    vec4 texColor = texture(albedoMap, uv);
+    vec4 texColor = texture(globalTextures[nonuniformEXT(push.albedoIndex)], uv);
     albedo        = texColor.rgb; // sRGB texture, auto-converted to linear by GPU
   }
 
   if ((push.textureFlags & (1u << 2)) != 0u) // Metallic texture
   {
-    metallic *= texture(metallicMap, uv).r; // Multiply push constant by texture value
+    metallic *= texture(globalTextures[nonuniformEXT(push.metallicIndex)], uv).r; // Multiply push constant by texture value
   }
 
   if ((push.textureFlags & (1u << 3)) != 0u) // Roughness texture
   {
-    roughness *= texture(roughnessMap, uv).r;
+    roughness *= texture(globalTextures[nonuniformEXT(push.roughnessIndex)], uv).r;
   }
 
   if ((push.textureFlags & (1u << 4)) != 0u) // Ambient Occlusion texture
   {
-    ao *= texture(aoMap, uv).r;
+    ao *= texture(globalTextures[nonuniformEXT(push.aoIndex)], uv).r;
   }
 
   vec3 N = normalize(fragmentNormalWorld);
@@ -264,7 +266,7 @@ void main()
   if ((push.textureFlags & (1u << 1)) != 0u) // Normal map
   {
     // Sample tangent-space normal from texture (stored as [0,1], convert to [-1,1])
-    vec3 tangentNormal = texture(normalMap, uv).xyz * 2.0 - 1.0;
+    vec3 tangentNormal = texture(globalTextures[nonuniformEXT(push.normalIndex)], uv).xyz * 2.0 - 1.0;
 
     // Flip Y for DirectX normal maps (OpenGL/Vulkan: Y-up, DirectX: Y-down)
     tangentNormal.y = -tangentNormal.y;

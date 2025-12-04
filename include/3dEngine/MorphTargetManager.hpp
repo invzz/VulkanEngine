@@ -51,6 +51,12 @@ namespace engine {
      */
     VkBuffer getBlendedBuffer(const Model* model) const;
 
+    /**
+     * @brief Get the device address of the blended vertex buffer
+     * @return Device address or 0 if not initialized
+     */
+    uint64_t getBlendedBufferAddress(const Model* model) const;
+
   private:
     struct ModelMorphData
     {

@@ -19,6 +19,12 @@
 
 namespace engine {
 
+  struct MeshBuffers
+  {
+    uint64_t vertexBufferAddress;
+    uint64_t indexBufferAddress;
+  };
+
   class Model
   {
   public:
@@ -183,7 +189,12 @@ namespace engine {
 
     // Buffer access for compute operations
     VkBuffer getVertexBuffer() const { return vertexBuffer->getBuffer(); }
-    void     bindAlternateVertexBuffer(VkCommandBuffer commandBuffer, VkBuffer vertexBuffer) const;
+    VkBuffer getIndexBuffer() const { return indexBuffer ? indexBuffer->getBuffer() : VK_NULL_HANDLE; }
+
+    uint64_t getVertexBufferAddress() const { return vertexBuffer->getDeviceAddress(); }
+    uint64_t getIndexBufferAddress() const { return indexBuffer ? indexBuffer->getDeviceAddress() : 0; }
+
+    void bindAlternateVertexBuffer(VkCommandBuffer commandBuffer, VkBuffer vertexBuffer) const;
 
     /**
      * @brief Get approximate memory size of this model
@@ -193,9 +204,13 @@ namespace engine {
 
     const std::string& getFilePath() const { return filePath; }
 
+    void     setMeshId(uint32_t id) { meshId = id; }
+    uint32_t getMeshId() const { return meshId; }
+
   private:
     Device&     device;
     std::string filePath;
+    uint32_t    meshId = 0;
 
     std::unique_ptr<Buffer> vertexBuffer;
     uint32_t                vertexCount = 0;

@@ -1,13 +1,17 @@
 #include "3dEngine/Descriptors.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <stdexcept>
 
 #include "3dEngine/Exceptions.hpp"
 
 namespace engine {
-  DescriptorSetLayout::Builder&
-  DescriptorSetLayout::Builder::addBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, uint32_t count)
+  DescriptorSetLayout::Builder& DescriptorSetLayout::Builder::addBinding(uint32_t                 binding,
+                                                                         VkDescriptorType         descriptorType,
+                                                                         VkShaderStageFlags       stageFlags,
+                                                                         uint32_t                 count,
+                                                                         VkDescriptorBindingFlags flags)
   {
     assert(bindings.count(binding) == 0 && "Binding already in use");
     VkDescriptorSetLayoutBinding layoutBinding{};
@@ -16,26 +20,65 @@ namespace engine {
     layoutBinding.descriptorCount = count;
     layoutBinding.stageFlags      = stageFlags;
     bindings[binding]             = layoutBinding;
+    bindingFlags[binding]         = flags;
     return *this;
   }
 
   std::unique_ptr<DescriptorSetLayout> DescriptorSetLayout::Builder::build() const
   {
-    return std::make_unique<DescriptorSetLayout>(device, bindings);
+    return std::make_unique<DescriptorSetLayout>(device, bindings, bindingFlags);
   }
 
-  DescriptorSetLayout::DescriptorSetLayout(Device& device, const std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>& bindings)
+  DescriptorSetLayout::DescriptorSetLayout(Device&                                                           device,
+                                           const std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>& bindings,
+                                           const std::unordered_map<uint32_t, VkDescriptorBindingFlags>&     bindingFlags)
       : device{device}, bindings{bindings}
   {
     std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings{};
-    for (const auto& [binding, layoutBinding] : bindings)
+    std::vector<VkDescriptorBindingFlags>     setLayoutBindingFlags{};
+
+    // Sort bindings by binding index to ensure consistent order
+    std::vector<uint32_t> keys;
+    for (const auto& [binding, _] : bindings)
     {
-      setLayoutBindings.push_back(layoutBinding);
+      keys.push_back(binding);
     }
+    std::sort(keys.begin(), keys.end());
+
+    for (uint32_t binding : keys)
+    {
+      setLayoutBindings.push_back(bindings.at(binding));
+      if (bindingFlags.count(binding))
+      {
+        setLayoutBindingFlags.push_back(bindingFlags.at(binding));
+      }
+      else
+      {
+        setLayoutBindingFlags.push_back(0);
+      }
+    }
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+    bindingFlagsInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+    bindingFlagsInfo.bindingCount  = static_cast<uint32_t>(setLayoutBindingFlags.size());
+    bindingFlagsInfo.pBindingFlags = setLayoutBindingFlags.data();
+
     VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo{};
     descriptorSetLayoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetLayoutInfo.bindingCount = static_cast<uint32_t>(setLayoutBindings.size());
     descriptorSetLayoutInfo.pBindings    = setLayoutBindings.data();
+    descriptorSetLayoutInfo.pNext        = &bindingFlagsInfo;
+
+    // Check if we need UPDATE_AFTER_BIND_POOL_BIT
+    for (auto flag : setLayoutBindingFlags)
+    {
+      if (flag & VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
+      {
+        descriptorSetLayoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+        break;
+      }
+    }
+
     if (vkCreateDescriptorSetLayout(device.device(), &descriptorSetLayoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
     {
       throw engine::RuntimeException("failed to create descriptor set layout!");

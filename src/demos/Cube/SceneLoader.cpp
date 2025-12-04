@@ -15,11 +15,11 @@ namespace engine {
     {
       return;
     }
-    createFloor(device, objectManager, resourceManager);
-    createBmw(device, objectManager, resourceManager);
-    // createApple(device, objectManager);
-    // createCylinderEngine(device, objectManager);
-    // createAnimatedCube(device, objectManager);
+    // createFloor(device, objectManager, resourceManager);
+    // createBmw(device, objectManager, resourceManager);
+    // createApple(device, objectManager, resourceManager);
+    // createCylinderEngine(device, objectManager, resourceManager);
+    createAnimatedCube(device, objectManager, resourceManager);
   }
 
   void SceneLoader::createFromFile(Device& device, GameObjectManager& objectManager, ResourceManager& resourceManager, const std::string& modelPath)
@@ -246,7 +246,7 @@ namespace engine {
     // AnimatedCube - uses rotation+scale animation (works)
     // AnimatedTriangle - uses rotation animation (works)
     // AnimatedMorphCube - uses morph targets (now supported!)
-    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/AnimatedMorphCube/glTF/AnimatedMorphCube.gltf", false, true, true);
+    auto modelPtr               = Model::createModelFromGLTF(device, MODEL_PATH "/glTF/Sponza/glTF/Sponza.gltf", false, true, true);
     auto model                  = GameObject::makePBRObject({.model = std::move(modelPtr)});
     model.transform.scale       = {10.0f, 10.0f, 10.0f};
     model.transform.translation = {0.0f, 0.0f, 0.0f};
