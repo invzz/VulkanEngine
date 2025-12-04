@@ -179,35 +179,35 @@ namespace engine {
           // Lights
           if (objJson.contains("pointLight"))
           {
-            auto& pl                  = objJson["pointLight"];
-            obj.pointLight            = std::make_unique<PointLightComponent>();
-            obj.pointLight->intensity = pl.value("intensity", 1.0f);
-            obj.color                 = pl.value("color", glm::vec3(1.0f));
-            obj.transform.scale.x     = pl.value("radius", 0.1f);
+            auto& pl              = objJson["pointLight"];
+            auto& pointLight      = obj.addComponent<PointLightComponent>();
+            pointLight.intensity  = pl.value("intensity", 1.0f);
+            obj.color             = pl.value("color", glm::vec3(1.0f));
+            obj.transform.scale.x = pl.value("radius", 0.1f);
           }
 
           if (objJson.contains("directionalLight"))
           {
-            auto& dl                        = objJson["directionalLight"];
-            obj.directionalLight            = std::make_unique<DirectionalLightComponent>();
-            obj.directionalLight->intensity = dl.value("intensity", 1.0f);
-            obj.color                       = dl.value("color", glm::vec3(1.0f));
+            auto& dl           = objJson["directionalLight"];
+            auto& dirLight     = obj.addComponent<DirectionalLightComponent>();
+            dirLight.intensity = dl.value("intensity", 1.0f);
+            obj.color          = dl.value("color", glm::vec3(1.0f));
           }
 
           if (objJson.contains("spotLight"))
           {
-            auto& sl                        = objJson["spotLight"];
-            obj.spotLight                   = std::make_unique<SpotLightComponent>();
-            obj.spotLight->intensity        = sl.value("intensity", 1.0f);
-            obj.color                       = sl.value("color", glm::vec3(1.0f));
-            obj.spotLight->innerCutoffAngle = sl.value("innerAngle", 12.5f);
-            obj.spotLight->outerCutoffAngle = sl.value("outerAngle", 17.5f);
+            auto& sl                   = objJson["spotLight"];
+            auto& spotLight            = obj.addComponent<SpotLightComponent>();
+            spotLight.intensity        = sl.value("intensity", 1.0f);
+            obj.color                  = sl.value("color", glm::vec3(1.0f));
+            spotLight.innerCutoffAngle = sl.value("innerAngle", 12.5f);
+            spotLight.outerCutoffAngle = sl.value("outerAngle", 17.5f);
           }
 
           // LOD Component
           if (objJson.contains("lodComponent"))
           {
-            obj.lodComponent = std::make_unique<LODComponent>();
+            auto& lodComponent = obj.addComponent<LODComponent>();
             for (const auto& levelJson : objJson["lodComponent"])
             {
               float       distance  = levelJson.value("distance", 0.0f);
@@ -215,7 +215,7 @@ namespace engine {
               if (!modelPath.empty())
               {
                 auto model = resourceManager.loadModel(modelPath, true, true, true);
-                obj.lodComponent->levels.push_back({model, distance});
+                lodComponent.levels.push_back({model, distance});
               }
             }
           }

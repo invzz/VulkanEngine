@@ -6,6 +6,7 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameBuffer.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 
 namespace engine {
@@ -33,7 +34,7 @@ namespace engine {
 
     // Accessors
     VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
-    VkRenderPass getOffscreenRenderPass() const { return offscreenRenderPass; }
+    VkRenderPass getOffscreenRenderPass() const { return offscreenFrameBuffer->getRenderPass(); }
 
     VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
 
@@ -58,32 +59,14 @@ namespace engine {
     void createCommandBuffers();
     void freeCommandBuffers();
     void recreateSwapChain();
-
-    // Offscreen resources
     void createOffscreenResources();
-    void createOffscreenRenderPass();
-    void createOffscreenFramebuffers();
-    void freeOffscreenResources();
 
     Window&                      window;
     Device&                      device;
     std::unique_ptr<SwapChain>   swapChain;
     std::vector<VkCommandBuffer> commandBuffers;
 
-    // Offscreen members
-    VkRenderPass                offscreenRenderPass{VK_NULL_HANDLE};
-    std::vector<VkImage>        offscreenColorImages;
-    std::vector<VkDeviceMemory> offscreenColorImageMemorys;
-    std::vector<VkImageView>    offscreenColorImageViews;
-    std::vector<VkImageView>    offscreenColorAttachmentImageViews;
-    std::vector<VkFramebuffer>  offscreenFramebuffers;
-
-    std::vector<VkImage>        offscreenDepthImages;
-    std::vector<VkDeviceMemory> offscreenDepthImageMemorys;
-    std::vector<VkImageView>    offscreenDepthImageViews;
-
-    VkSampler offscreenSampler{VK_NULL_HANDLE};
-    uint32_t  offscreenMipLevels{1};
+    std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
 
     uint32_t currentImageIndex{0};
     // keep track of frame index for syncing [0, maxFramesInFlight]
