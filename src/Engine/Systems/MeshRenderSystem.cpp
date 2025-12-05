@@ -12,31 +12,15 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <array>
+#include <cstring> // for memcpy
 #include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
-
 namespace engine {
 
   struct MeshPushConstantData
   {
     glm::mat4 modelMatrix{1.0f};
     glm::mat4 normalMatrix{1.0f};
-    glm::vec3 albedo{1.0f, 1.0f, 1.0f};
-    float     metallic{0.0f};
-    float     roughness{0.5f};
-    float     ao{1.0f};
-    float     isSelected{0.0f};
-    float     clearcoat{0.0f};
-    float     clearcoatRoughness{0.03f};
-    float     anisotropic{0.0f};
-    float     anisotropicRotation{0.0f};
-    uint32_t  textureFlags{0};
-    float     uvScale{1.0f};
-    uint32_t  albedoIndex{0};
-    uint32_t  normalIndex{0};
-    uint32_t  metallicIndex{0};
-    uint32_t  roughnessIndex{0};
-    uint32_t  aoIndex{0};
     uint32_t  meshId{0};
 
     uint64_t  meshletBufferAddress;
@@ -53,6 +37,7 @@ namespace engine {
   {
     createShadowDescriptorResources();
     createIBLDescriptorResources();
+    createMaterialDescriptorResources();
     createPipelineLayout(globalSetLayout, bindlessSetLayout);
     createPipeline(renderPass);
   }
@@ -75,6 +60,14 @@ namespace engine {
     if (iblDescriptorSetLayout_ != VK_NULL_HANDLE)
     {
       vkDestroyDescriptorSetLayout(device.device(), iblDescriptorSetLayout_, nullptr);
+    }
+    if (materialDescriptorPool_ != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorPool(device.device(), materialDescriptorPool_, nullptr);
+    }
+    if (materialDescriptorSetLayout_ != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorSetLayout(device.device(), materialDescriptorSetLayout_, nullptr);
     }
   }
 
@@ -198,6 +191,89 @@ namespace engine {
     }
   }
 
+  void MeshRenderSystem::createMaterialDescriptorResources()
+  {
+    VkDescriptorSetLayoutBinding binding{};
+    binding.binding            = 0;
+    binding.descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    binding.descriptorCount    = 1;
+    binding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
+    binding.pImmutableSamplers = nullptr;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings    = &binding;
+
+    if (vkCreateDescriptorSetLayout(device.device(), &layoutInfo, nullptr, &materialDescriptorSetLayout_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create material descriptor set layout");
+    }
+
+    VkDeviceSize minAlignment = device.getProperties().limits.minUniformBufferOffsetAlignment;
+    VkDeviceSize atomSize     = sizeof(MaterialUniformData);
+    if (minAlignment > 0)
+    {
+      atomSize = (atomSize + minAlignment - 1) & ~(minAlignment - 1);
+    }
+
+    materialBuffers_.resize(SwapChain::maxFramesInFlight());
+    for (size_t i = 0; i < SwapChain::maxFramesInFlight(); i++)
+    {
+      materialBuffers_[i] = std::make_unique<Buffer>(device,
+                                                     atomSize,
+                                                     10000, // Max objects assumption
+                                                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      materialBuffers_[i]->map();
+    }
+
+    VkDescriptorPoolSize poolSize{};
+    poolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+    poolSize.descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes    = &poolSize;
+    poolInfo.maxSets       = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+
+    if (vkCreateDescriptorPool(device.device(), &poolInfo, nullptr, &materialDescriptorPool_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create material descriptor pool");
+    }
+
+    std::vector<VkDescriptorSetLayout> layouts(SwapChain::maxFramesInFlight(), materialDescriptorSetLayout_);
+
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool     = materialDescriptorPool_;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    allocInfo.pSetLayouts        = layouts.data();
+
+    materialDescriptorSets_.resize(SwapChain::maxFramesInFlight());
+    if (vkAllocateDescriptorSets(device.device(), &allocInfo, materialDescriptorSets_.data()) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to allocate material descriptor sets");
+    }
+
+    for (size_t i = 0; i < SwapChain::maxFramesInFlight(); i++)
+    {
+      VkDescriptorBufferInfo bufferInfo = materialBuffers_[i]->descriptorInfoForIndex(0);
+
+      VkWriteDescriptorSet descriptorWrite{};
+      descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrite.dstSet          = materialDescriptorSets_[i];
+      descriptorWrite.dstBinding      = 0;
+      descriptorWrite.dstArrayElement = 0;
+      descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+      descriptorWrite.descriptorCount = 1;
+      descriptorWrite.pBufferInfo     = &bufferInfo;
+
+      vkUpdateDescriptorSets(device.device(), 1, &descriptorWrite, 0, nullptr);
+    }
+  }
+
   void MeshRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout)
   {
     VkPushConstantRange pushConstantRange{
@@ -206,7 +282,11 @@ namespace engine {
             .size       = sizeof(MeshPushConstantData),
     };
 
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, bindlessSetLayout, shadowDescriptorSetLayout_, iblDescriptorSetLayout_};
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout,
+                                                            bindlessSetLayout,
+                                                            shadowDescriptorSetLayout_,
+                                                            iblDescriptorSetLayout_,
+                                                            materialDescriptorSetLayout_};
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -236,6 +316,28 @@ namespace engine {
                                           SHADER_PATH "/simple_mesh.mesh.spv",
                                           SHADER_PATH "/pbr_shader.frag.spv",
                                           pipelineConfig);
+
+    // Create Transparent Pipeline
+    PipelineConfigInfo transparentConfig                       = pipelineConfig;
+    transparentConfig.colorBlendAttachment.blendEnable         = VK_TRUE;
+    transparentConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    transparentConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    transparentConfig.colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
+    transparentConfig.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    transparentConfig.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    transparentConfig.colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
+
+    // Fix pointer to attachment
+    transparentConfig.colorBlendInfo.pAttachments = &transparentConfig.colorBlendAttachment;
+
+    // Disable depth write for transparent objects
+    transparentConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
+
+    transparentPipeline = std::make_unique<Pipeline>(device,
+                                                     SHADER_PATH "/simple_mesh.task.spv",
+                                                     SHADER_PATH "/simple_mesh.mesh.spv",
+                                                     SHADER_PATH "/pbr_shader.frag.spv",
+                                                     transparentConfig);
   }
 
   void MeshRenderSystem::setShadowSystem(ShadowSystem* shadowSystem)
@@ -355,106 +457,176 @@ namespace engine {
                               nullptr);
     }
 
-    auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
-    for (auto entity : view)
+    // Material Buffer Preparation
+    VkDeviceSize minAlignment = device.getProperties().limits.minUniformBufferOffsetAlignment;
+    VkDeviceSize atomSize     = sizeof(MaterialUniformData);
+    if (minAlignment > 0)
     {
-      auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
-      if (!modelComp.model) continue;
+      atomSize = (atomSize + minAlignment - 1) & ~(minAlignment - 1);
+    }
 
-      const auto& subMeshes = modelComp.model->getSubMeshes();
-      const auto& materials = modelComp.model->getMaterials();
+    char*    mappedData         = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
+    uint32_t dynamicOffsetIndex = 0;
 
-      for (const auto& subMesh : subMeshes)
+    auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+
+    auto renderPass = [&](bool renderTransparent) {
+      for (auto entity : view)
       {
-        if (subMesh.meshletCount == 0) continue;
+        auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
+        if (!modelComp.model) continue;
 
-        MeshPushConstantData push{};
-        push.modelMatrix             = transform.modelTransform();
-        push.normalMatrix            = glm::mat4{transform.normalMatrix()};
-        push.meshId                  = modelComp.model->getMeshId();
-        push.meshletBufferAddress    = modelComp.model->getMeshletBufferAddress();
-        push.meshletVerticesAddress  = modelComp.model->getMeshletVerticesAddress();
-        push.meshletTrianglesAddress = modelComp.model->getMeshletTrianglesAddress();
-        push.vertexBufferAddress     = modelComp.model->getVertexBufferAddress();
-        push.meshletOffset           = subMesh.meshletOffset;
-        push.meshletCount            = subMesh.meshletCount;
-        push.screenSize              = glm::vec2(frameInfo.extent.width, frameInfo.extent.height);
-        push.isSelected              = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
+        const auto& subMeshes = modelComp.model->getSubMeshes();
+        const auto& materials = modelComp.model->getMaterials();
 
-        const PBRMaterial* pMaterial = nullptr;
-        if (auto* mat = frameInfo.scene->getRegistry().try_get<PBRMaterial>(entity))
+        for (const auto& subMesh : subMeshes)
         {
-          pMaterial = mat;
-        }
-        else if (subMesh.materialId >= 0 && subMesh.materialId < materials.size())
-        {
-          pMaterial = &materials[subMesh.materialId].pbrMaterial;
-        }
+          if (subMesh.meshletCount == 0) continue;
 
-        if (pMaterial)
-        {
-          const auto& material = *pMaterial;
+          if (dynamicOffsetIndex >= 10000) break;
 
-          uint32_t textureFlags = 0;
-          if (material.hasAlbedoMap())
+          const PBRMaterial* pMaterial = nullptr;
+          if (auto* mat = frameInfo.scene->getRegistry().try_get<PBRMaterial>(entity))
           {
-            textureFlags |= (1 << 0);
-            push.albedoIndex = material.albedoMap->getGlobalIndex();
+            pMaterial = mat;
           }
-          if (material.hasNormalMap())
+          else if (subMesh.materialId >= 0 && subMesh.materialId < materials.size())
           {
-            textureFlags |= (1 << 1);
-            push.normalIndex = material.normalMap->getGlobalIndex();
-          }
-          if (material.hasMetallicMap())
-          {
-            textureFlags |= (1 << 2);
-            push.metallicIndex = material.metallicMap->getGlobalIndex();
-          }
-          if (material.hasRoughnessMap())
-          {
-            textureFlags |= (1 << 3);
-            push.roughnessIndex = material.roughnessMap->getGlobalIndex();
-          }
-          if (material.hasAOMap())
-          {
-            textureFlags |= (1 << 4);
-            push.aoIndex = material.aoMap->getGlobalIndex();
+            pMaterial = &materials[subMesh.materialId].pbrMaterial;
           }
 
-          push.albedo              = material.albedo;
-          push.metallic            = material.metallic;
-          push.roughness           = material.roughness;
-          push.ao                  = material.ao;
-          push.clearcoat           = material.clearcoat;
-          push.clearcoatRoughness  = material.clearcoatRoughness;
-          push.anisotropic         = material.anisotropic;
-          push.anisotropicRotation = material.anisotropicRotation;
-          push.textureFlags        = textureFlags;
-          push.uvScale             = material.uvScale;
-        }
-        else
-        {
-          // Default material
-          push.albedo    = glm::vec3(1.0f);
-          push.metallic  = 0.0f;
-          push.roughness = 0.5f;
-          push.ao        = 1.0f;
-        }
+          bool isTransparent = false;
+          if (pMaterial)
+          {
+            if (pMaterial->alphaMode == AlphaMode::Blend || pMaterial->transmission > 0.0f)
+            {
+              isTransparent = true;
+            }
+          }
 
-        vkCmdPushConstants(frameInfo.commandBuffer,
-                           pipelineLayout,
-                           VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0,
-                           sizeof(MeshPushConstantData),
-                           &push);
+          if (isTransparent != renderTransparent) continue;
 
-        if (device.vkCmdDrawMeshTasksEXT)
-        {
-          uint32_t groupCount = (subMesh.meshletCount + 31) / 32;
-          device.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
+          MeshPushConstantData push{};
+          push.modelMatrix             = transform.modelTransform();
+          push.normalMatrix            = glm::transpose(glm::inverse(push.modelMatrix));
+          push.meshId                  = modelComp.model->getMeshId();
+          push.meshletBufferAddress    = modelComp.model->getMeshletBufferAddress();
+          push.meshletVerticesAddress  = modelComp.model->getMeshletVerticesAddress();
+          push.meshletTrianglesAddress = modelComp.model->getMeshletTrianglesAddress();
+          push.vertexBufferAddress     = modelComp.model->getVertexBufferAddress();
+          push.meshletOffset           = subMesh.meshletOffset;
+          push.meshletCount            = subMesh.meshletCount;
+          push.screenSize              = glm::vec2(frameInfo.extent.width, frameInfo.extent.height);
+
+          MaterialUniformData matData{};
+          matData.isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
+
+          if (pMaterial)
+          {
+            const auto& material = *pMaterial;
+
+            uint32_t textureFlags = 0;
+            if (material.hasAlbedoMap())
+            {
+              textureFlags |= (1 << 0);
+              matData.albedoIndex = material.albedoMap->getGlobalIndex();
+            }
+            if (material.hasNormalMap())
+            {
+              textureFlags |= (1 << 1);
+              matData.normalIndex = material.normalMap->getGlobalIndex();
+            }
+            if (material.hasMetallicMap())
+            {
+              textureFlags |= (1 << 2);
+              matData.metallicIndex = material.metallicMap->getGlobalIndex();
+            }
+            if (material.hasRoughnessMap())
+            {
+              textureFlags |= (1 << 3);
+              matData.roughnessIndex = material.roughnessMap->getGlobalIndex();
+            }
+            if (material.hasAOMap())
+            {
+              textureFlags |= (1 << 4);
+              matData.aoIndex = material.aoMap->getGlobalIndex();
+            }
+            if (material.hasEmissiveMap())
+            {
+              textureFlags |= (1 << 5);
+              matData.emissiveIndex = material.emissiveMap->getGlobalIndex();
+            }
+            if (material.useMetallicRoughnessTexture)
+            {
+              textureFlags |= (1 << 6);
+            }
+            if (material.useOcclusionRoughnessMetallicTexture)
+            {
+              textureFlags |= (1 << 7);
+            }
+
+            matData.albedo               = material.albedo;
+            matData.metallic             = material.metallic;
+            matData.roughness            = material.roughness;
+            matData.ao                   = material.ao;
+            matData.emissiveInfo         = glm::vec4(material.emissiveColor, material.emissiveStrength);
+            matData.clearcoat            = material.clearcoat;
+            matData.clearcoatRoughness   = material.clearcoatRoughness;
+            matData.anisotropic          = material.anisotropic;
+            matData.anisotropicRotation  = material.anisotropicRotation;
+            matData.transmission         = material.transmission;
+            matData.ior                  = material.ior;
+            matData.iridescence          = material.iridescence;
+            matData.iridescenceIOR       = material.iridescenceIOR;
+            matData.iridescenceThickness = material.iridescenceThickness;
+            matData.textureFlags         = textureFlags;
+            matData.uvScale              = material.uvScale;
+            matData.alphaCutoff          = material.alphaCutoff;
+            matData.alphaMode            = static_cast<uint32_t>(material.alphaMode);
+          }
+          else
+          {
+            matData.albedo    = glm::vec4(1.0f);
+            matData.metallic  = 0.0f;
+            matData.roughness = 0.5f;
+            matData.ao        = 1.0f;
+          }
+
+          memcpy(mappedData + (dynamicOffsetIndex * atomSize), &matData, sizeof(MaterialUniformData));
+
+          uint32_t dynamicOffset = static_cast<uint32_t>(dynamicOffsetIndex * atomSize);
+          vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+                                  VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                  pipelineLayout,
+                                  4,
+                                  1,
+                                  &materialDescriptorSets_[frameInfo.frameIndex],
+                                  1,
+                                  &dynamicOffset);
+
+          dynamicOffsetIndex++;
+
+          vkCmdPushConstants(frameInfo.commandBuffer,
+                             pipelineLayout,
+                             VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                             0,
+                             sizeof(MeshPushConstantData),
+                             &push);
+
+          if (device.vkCmdDrawMeshTasksEXT)
+          {
+            uint32_t groupCount = (subMesh.meshletCount + 31) / 32;
+            device.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
+          }
         }
       }
-    }
+    };
+
+    // Opaque Pass
+    renderPass(false);
+
+    // Transparent Pass
+    transparentPipeline->bind(frameInfo.commandBuffer);
+    renderPass(true);
   }
 } // namespace engine

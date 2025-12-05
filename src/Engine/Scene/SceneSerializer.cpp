@@ -175,7 +175,7 @@ namespace engine {
           {
             auto& matJson         = objJson["material"];
             auto& pbrMaterial     = scene.getRegistry().emplace<PBRMaterial>(entity);
-            pbrMaterial.albedo    = matJson.value("albedo", glm::vec3(1.0f));
+            pbrMaterial.albedo    = glm::vec4(matJson.value("albedo", glm::vec3(1.0f)), 1.0f);
             pbrMaterial.metallic  = matJson.value("metallic", 0.0f);
             pbrMaterial.roughness = matJson.value("roughness", 0.5f);
             pbrMaterial.ao        = matJson.value("ao", 1.0f);

@@ -309,7 +309,7 @@ namespace engine {
       // Process delayed deletions at the start of the frame (before any rendering)
       if (auto* scenePanel = uiManager.getPanel<ScenePanel>())
       {
-        scenePanel->processDelayedDeletions();
+        scenePanel->processDelayedDeletions(selectedEntity, selectedObjectId);
       }
 
       // Update IBL if requested (deferred to avoid destroying resources in use)

@@ -58,7 +58,7 @@ namespace engine {
     }
   }
 
-  void ScenePanel::processDelayedDeletions()
+  void ScenePanel::processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId)
   {
     if (toDelete_.empty()) return;
 
@@ -66,6 +66,11 @@ namespace engine {
 
     for (auto entity : toDelete_)
     {
+      if (entity == selectedEntity)
+      {
+        selectedEntity   = entt::null;
+        selectedObjectId = 0;
+      }
       scene_.destroyEntity(entity);
     }
     toDelete_.clear();

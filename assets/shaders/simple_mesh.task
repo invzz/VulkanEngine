@@ -32,22 +32,6 @@ layout(push_constant) uniform Push
 {
   mat4  modelMatrix;
   mat4  normalMatrix;
-  vec3  albedo;
-  float metallic;
-  float roughness;
-  float ao;
-  float isSelected;
-  float clearcoat;
-  float clearcoatRoughness;
-  float anisotropic;
-  float anisotropicRotation;
-  uint  textureFlags;
-  float uvScale;
-  uint  albedoIndex;
-  uint  normalIndex;
-  uint  metallicIndex;
-  uint  roughnessIndex;
-  uint  aoIndex;
   uint  meshId;
 
   uint64_t meshletBufferAddress;

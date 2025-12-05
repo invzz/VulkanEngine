@@ -208,6 +208,10 @@ namespace engine {
         {
           mat.pbrMaterial.aoMap = resourceManager_.loadTexture(mat.aoTexPath, false, true);
         }
+        if (!mat.emissiveTexPath.empty())
+        {
+          mat.pbrMaterial.emissiveMap = resourceManager_.loadTexture(mat.emissiveTexPath, true, true);
+        }
       }
 
       auto entity = scene_.createEntity();

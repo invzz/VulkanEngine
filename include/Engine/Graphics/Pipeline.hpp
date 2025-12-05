@@ -10,9 +10,6 @@ namespace engine {
   struct PipelineConfigInfo
   {
     explicit PipelineConfigInfo() = default;
-    // delete copy operations
-    PipelineConfigInfo(const PipelineConfigInfo&)            = delete;
-    PipelineConfigInfo& operator=(const PipelineConfigInfo&) = delete;
 
     std::vector<VkVertexInputBindingDescription>   bindingDescriptions;
     std::vector<VkVertexInputAttributeDescription> attributeDescriptions;

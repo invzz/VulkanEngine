@@ -146,7 +146,7 @@ namespace engine {
     transform.translation = {0.0f, 2.0f, 0.0f};
 
     auto& material     = scene.getRegistry().get<PBRMaterial>(entity);
-    material.albedo    = {0.5f, 0.5f, 0.5f};
+    material.albedo    = {0.5f, 0.5f, 0.5f, 1.0f};
     material.roughness = 0.8f;
   }
 

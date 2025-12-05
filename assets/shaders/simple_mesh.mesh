@@ -56,22 +56,6 @@ layout(push_constant) uniform Push
 {
   mat4  modelMatrix;
   mat4  normalMatrix;
-  vec3  albedo;
-  float metallic;
-  float roughness;
-  float ao;
-  float isSelected;
-  float clearcoat;
-  float clearcoatRoughness;
-  float anisotropic;
-  float anisotropicRotation;
-  uint  textureFlags;
-  float uvScale;
-  uint  albedoIndex;
-  uint  normalIndex;
-  uint  metallicIndex;
-  uint  roughnessIndex;
-  uint  aoIndex;
   uint  meshId;
 
   uint64_t meshletBufferAddress;
@@ -115,6 +99,9 @@ void main()
   MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
   VertexBuffer          vertexBuffer    = VertexBuffer(push.vertexBufferAddress);
 
+  // Calculate normal matrix
+  mat3 normalMatrix = mat3(push.normalMatrix);
+
   for (uint i = gl_LocalInvocationIndex; i < meshlet.vertexCount; i += 32)
   {
     uint   vertexIndex = meshletVertices.vertexIndices[meshlet.vertexOffset + i];
@@ -124,7 +111,7 @@ void main()
 
     outColor[i]    = v.color;
     outWorldPos[i] = (push.modelMatrix * vec4(v.position, 1.0)).xyz;
-    outNormal[i]   = normalize((push.normalMatrix * vec4(v.normal, 0.0)).xyz);
+    outNormal[i]   = normalize(normalMatrix * v.normal);
     outUV[i]       = v.uv;
   }
 

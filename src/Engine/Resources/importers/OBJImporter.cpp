@@ -60,7 +60,7 @@ namespace engine {
 
       // Use specular color for metallic tint (gold, copper, chrome with tint)
       // This preserves colored reflections for metals
-      pbr.albedo = glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f));
+      pbr.albedo = glm::vec4(glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f)), 1.0f);
     }
     else
     {
@@ -74,7 +74,7 @@ namespace engine {
       pbr.metallic = glm::clamp(metallic, 0.0f, 1.0f);
 
       // Blend albedo based on metallic value for partial metals
-      pbr.albedo = glm::mix(Kd, glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f)), pbr.metallic);
+      pbr.albedo = glm::vec4(glm::mix(Kd, glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f)), pbr.metallic), 1.0f);
     }
 
     pbr.roughness = roughness;

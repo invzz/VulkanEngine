@@ -201,7 +201,22 @@ namespace engine {
       const auto& pbr = gltfMat.pbrMetallicRoughness;
 
       // Base color (albedo)
-      matInfo.pbrMaterial.albedo = glm::vec3(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2]);
+      matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
+
+      // Alpha Mode
+      if (gltfMat.alphaMode == "MASK")
+      {
+        matInfo.pbrMaterial.alphaMode   = AlphaMode::Mask;
+        matInfo.pbrMaterial.alphaCutoff = static_cast<float>(gltfMat.alphaCutoff);
+      }
+      else if (gltfMat.alphaMode == "BLEND")
+      {
+        matInfo.pbrMaterial.alphaMode = AlphaMode::Blend;
+      }
+      else
+      {
+        matInfo.pbrMaterial.alphaMode = AlphaMode::Opaque;
+      }
 
       // Metallic and roughness
       matInfo.pbrMaterial.metallic  = static_cast<float>(pbr.metallicFactor);
@@ -221,7 +236,13 @@ namespace engine {
 
       if (pbr.metallicRoughnessTexture.index >= 0)
       {
-        matInfo.roughnessTexPath = getTexturePath(gltfModel, pbr.metallicRoughnessTexture.index, baseDir, cacheDir);
+        matInfo.roughnessTexPath                        = getTexturePath(gltfModel, pbr.metallicRoughnessTexture.index, baseDir, cacheDir);
+        matInfo.pbrMaterial.useMetallicRoughnessTexture = true;
+
+        if (gltfMat.occlusionTexture.index == pbr.metallicRoughnessTexture.index)
+        {
+          matInfo.pbrMaterial.useOcclusionRoughnessMetallicTexture = true;
+        }
       }
 
       if (gltfMat.occlusionTexture.index >= 0)
@@ -229,11 +250,123 @@ namespace engine {
         matInfo.aoTexPath = getTexturePath(gltfModel, gltfMat.occlusionTexture.index, baseDir, cacheDir);
       }
 
+      // Emissive Factor
+      matInfo.pbrMaterial.emissiveColor = glm::vec3(gltfMat.emissiveFactor[0], gltfMat.emissiveFactor[1], gltfMat.emissiveFactor[2]);
+
+      if (gltfMat.emissiveTexture.index >= 0)
+      {
+        matInfo.emissiveTexPath = getTexturePath(gltfModel, gltfMat.emissiveTexture.index, baseDir, cacheDir);
+      }
+
+      // Parse Extensions
+      // Emissive Strength
+      if (gltfMat.extensions.find("KHR_materials_emissive_strength") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_emissive_strength");
+        if (ext.Has("emissiveStrength"))
+        {
+          matInfo.pbrMaterial.emissiveStrength = static_cast<float>(ext.Get("emissiveStrength").GetNumberAsDouble());
+        }
+      }
+
+      // Transmission
+      if (gltfMat.extensions.find("KHR_materials_transmission") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_transmission");
+        if (ext.Has("transmissionFactor"))
+        {
+          matInfo.pbrMaterial.transmission = static_cast<float>(ext.Get("transmissionFactor").GetNumberAsDouble());
+        }
+      }
+
+      // IOR
+      if (gltfMat.extensions.find("KHR_materials_ior") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_ior");
+        if (ext.Has("ior"))
+        {
+          matInfo.pbrMaterial.ior = static_cast<float>(ext.Get("ior").GetNumberAsDouble());
+        }
+      }
+
+      // Iridescence
+      if (gltfMat.extensions.find("KHR_materials_iridescence") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_iridescence");
+        if (ext.Has("iridescenceFactor"))
+        {
+          matInfo.pbrMaterial.iridescence = static_cast<float>(ext.Get("iridescenceFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("iridescenceIor"))
+        {
+          matInfo.pbrMaterial.iridescenceIOR = static_cast<float>(ext.Get("iridescenceIor").GetNumberAsDouble());
+        }
+        if (ext.Has("iridescenceThicknessMaximum"))
+        {
+          matInfo.pbrMaterial.iridescenceThickness = static_cast<float>(ext.Get("iridescenceThicknessMaximum").GetNumberAsDouble());
+        }
+      }
+
+      // Clearcoat
+      if (gltfMat.extensions.find("KHR_materials_clearcoat") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_clearcoat");
+        if (ext.Has("clearcoatFactor"))
+        {
+          matInfo.pbrMaterial.clearcoat = static_cast<float>(ext.Get("clearcoatFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("clearcoatRoughnessFactor"))
+        {
+          matInfo.pbrMaterial.clearcoatRoughness = static_cast<float>(ext.Get("clearcoatRoughnessFactor").GetNumberAsDouble());
+        }
+      }
+
+      // Texture Transform (KHR_texture_transform)
+      // We currently only support a single global UV scale, so we check textures in priority order
+      const tinygltf::ExtensionMap* textureExtensions = nullptr;
+
+      if (gltfMat.normalTexture.index >= 0 && gltfMat.normalTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &gltfMat.normalTexture.extensions;
+      }
+      else if (pbr.baseColorTexture.index >= 0 && pbr.baseColorTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &pbr.baseColorTexture.extensions;
+      }
+      else if (pbr.metallicRoughnessTexture.index >= 0 && pbr.metallicRoughnessTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &pbr.metallicRoughnessTexture.extensions;
+      }
+      else if (gltfMat.occlusionTexture.index >= 0 && gltfMat.occlusionTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &gltfMat.occlusionTexture.extensions;
+      }
+
+      if (textureExtensions)
+      {
+        const auto& ext = textureExtensions->at("KHR_texture_transform");
+        if (ext.Has("scale"))
+        {
+          const auto& scale = ext.Get("scale");
+          if (scale.IsArray() && scale.ArrayLen() >= 1)
+          {
+            // Use the X scale as the uniform scale
+            matInfo.pbrMaterial.uvScale = static_cast<float>(scale.Get(0).GetNumberAsDouble());
+          }
+        }
+      }
+
       builder.materials.push_back(matInfo);
+
+      std::string alphaModeStr = "OPAQUE";
+      if (matInfo.pbrMaterial.alphaMode == AlphaMode::Mask)
+        alphaModeStr = "MASK";
+      else if (matInfo.pbrMaterial.alphaMode == AlphaMode::Blend)
+        alphaModeStr = "BLEND";
 
       std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << matInfo.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << ","
                 << matInfo.pbrMaterial.albedo.g << "," << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic
-                << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << std::endl;
+                << ", roughness=" << matInfo.pbrMaterial.roughness << ", alphaMode=" << alphaModeStr << ")" << std::endl;
     }
 
     // Process all meshes in the scene

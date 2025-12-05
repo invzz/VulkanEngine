@@ -1,5 +1,6 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : require
 
 layout(location = 0) out vec4 outColor;
 
@@ -65,26 +66,36 @@ layout(set = 3, binding = 1) uniform samplerCube prefilterMap;
 layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
 
 // Push constants: Only material portion visible in fragment shader (offset 128)
-layout(push_constant) uniform PushConstants
+layout(set = 4, binding = 0) uniform MaterialData
 {
-  layout(offset = 128) vec3 albedo;
-  float                     metallic;
-  float                     roughness;
-  float                     ao;
-  float                     isSelected;          // 1.0 if selected, 0.0 otherwise
-  float                     clearcoat;           // Clearcoat layer strength
-  float                     clearcoatRoughness;  // Clearcoat roughness
-  float                     anisotropic;         // Anisotropy strength
-  float                     anisotropicRotation; // Anisotropic rotation
-  uint                      textureFlags;        // Bit flags: bit 0=albedo, 1=normal, 2=metallic, 3=roughness, 4=ao
-  float                     uvScale;             // UV tiling scale
-  uint                      albedoIndex;
-  uint                      normalIndex;
-  uint                      metallicIndex;
-  uint                      roughnessIndex;
-  uint                      aoIndex;
+  vec4  albedo;
+  float metallic;
+  float roughness;
+  float ao;
+  float isSelected;
+  float clearcoat;
+  float clearcoatRoughness;
+  float anisotropic;
+  float anisotropicRotation;
+  float transmission;
+  float ior;
+  float iridescence;
+  float iridescenceIOR;
+  float iridescenceThickness;
+  uint  textureFlags;
+  float uvScale;
+  float alphaCutoff;
+  uint  alphaMode;
+  uint  albedoIndex;
+  uint  normalIndex;
+  uint  metallicIndex;
+  uint  roughnessIndex;
+  uint  aoIndex;
+  uint  emissiveIndex;
+  uint  _padding;
+  vec4  emissiveInfo; // rgb: color, a: strength
 }
-push;
+material;
 
 const float PI = 3.14159265359;
 
@@ -225,48 +236,108 @@ float DistributionGGXAnisotropic(vec3 N, vec3 H, vec3 T, vec3 B, float roughness
   return a2 * w2 * w2 / PI;
 }
 
+vec3 evalIridescence(float NdotV, float thickness, float ior)
+{
+  // Simple thin-film interference approximation
+  // Phase shift based on path difference
+  float cosTheta2  = NdotV * NdotV;
+  float sinTheta2  = 1.0 - cosTheta2;
+  float sinTheta2t = sinTheta2 / (ior * ior);
+  float cosTheta2t = 1.0 - sinTheta2t;
+  float cosTheta_t = sqrt(max(0.0, cosTheta2t));
+
+  // Path difference = 2 * n * d * cos(theta_t)
+  // We map this to a color cycle
+  float pathDiff = 2.0 * ior * thickness * cosTheta_t;
+
+  // Map path difference to RGB phase
+  // 400-700nm range roughly
+  vec3 phase = vec3(pathDiff) * vec3(1.0 / 450.0, 1.0 / 550.0, 1.0 / 650.0) * 2.0 * PI;
+
+  return vec3(cos(phase.r), cos(phase.g), cos(phase.b)) * 0.5 + 0.5;
+}
+
 void main()
 {
   // Apply UV tiling scale
-  vec2 uv = fragUV * push.uvScale;
+  vec2 uv = fragUV * material.uvScale;
 
   // Sample material properties from textures or use push constants as base values
-  vec3  albedo    = push.albedo;
-  float metallic  = push.metallic;
-  float roughness = push.roughness;
-  float ao        = push.ao;
+  vec4  baseColor = material.albedo;
+  vec3  albedo    = baseColor.rgb;
+  float alpha     = baseColor.a;
+  float metallic  = material.metallic;
+  float roughness = material.roughness;
+  float ao        = material.ao;
 
   // Texture sampling: Check flags to determine which textures are bound
   // Push constant values act as multipliers/fallbacks when textures are present
 
-  if ((push.textureFlags & (1u << 0)) != 0u) // Albedo/BaseColor texture
+  if ((material.textureFlags & (1u << 0)) != 0u) // Albedo/BaseColor texture
   {
-    vec4 texColor = texture(globalTextures[nonuniformEXT(push.albedoIndex)], uv);
+    vec4 texColor = texture(globalTextures[nonuniformEXT(material.albedoIndex)], uv);
     albedo        = texColor.rgb; // sRGB texture, auto-converted to linear by GPU
+    alpha         = texColor.a;
   }
 
-  if ((push.textureFlags & (1u << 2)) != 0u) // Metallic texture
+  // Alpha Masking
+  if (material.alphaMode == 1) // MASK
   {
-    metallic *= texture(globalTextures[nonuniformEXT(push.metallicIndex)], uv).r; // Multiply push constant by texture value
+    if (alpha < material.alphaCutoff)
+    {
+      discard;
+    }
+    alpha = 1.0; // Treat as opaque after test
+  }
+  else if (material.alphaMode == 0) // OPAQUE
+  {
+    alpha = 1.0;
   }
 
-  if ((push.textureFlags & (1u << 3)) != 0u) // Roughness texture
+  bool aoHandled = false;
+
+  if ((material.textureFlags & (1u << 7)) != 0u) // OcclusionRoughnessMetallic Packed
   {
-    roughness *= texture(globalTextures[nonuniformEXT(push.roughnessIndex)], uv).r;
+    // glTF: Red = Occlusion, Green = Roughness, Blue = Metallic
+    vec4 ormSample = texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv);
+    ao             = ormSample.r;
+    roughness      = ormSample.g;
+    metallic       = ormSample.b;
+    aoHandled      = true;
+  }
+  else if ((material.textureFlags & (1u << 6)) != 0u) // MetallicRoughness Packed (glTF)
+  {
+    // glTF: Blue = Metallic, Green = Roughness
+    // We assume the texture is bound to roughnessIndex
+    vec4 mrSample = texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv);
+    metallic *= mrSample.b;
+    roughness *= mrSample.g;
+  }
+  else
+  {
+    if ((material.textureFlags & (1u << 2)) != 0u) // Metallic texture
+    {
+      metallic *= texture(globalTextures[nonuniformEXT(material.metallicIndex)], uv).r; // Multiply push constant by texture value
+    }
+
+    if ((material.textureFlags & (1u << 3)) != 0u) // Roughness texture
+    {
+      roughness *= texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv).r;
+    }
   }
 
-  if ((push.textureFlags & (1u << 4)) != 0u) // Ambient Occlusion texture
+  if (!aoHandled && (material.textureFlags & (1u << 4)) != 0u) // Ambient Occlusion texture
   {
-    ao *= texture(globalTextures[nonuniformEXT(push.aoIndex)], uv).r;
+    ao *= texture(globalTextures[nonuniformEXT(material.aoIndex)], uv).r;
   }
 
   vec3 N = normalize(fragmentNormalWorld);
 
   // Normal mapping: Transform tangent-space normals to world space
-  if ((push.textureFlags & (1u << 1)) != 0u) // Normal map
+  if ((material.textureFlags & (1u << 1)) != 0u) // Normal map
   {
     // Sample tangent-space normal from texture (stored as [0,1], convert to [-1,1])
-    vec3 tangentNormal = texture(globalTextures[nonuniformEXT(push.normalIndex)], uv).xyz * 2.0 - 1.0;
+    vec3 tangentNormal = texture(globalTextures[nonuniformEXT(material.normalIndex)], uv).xyz * 2.0 - 1.0;
 
     // Flip Y for DirectX normal maps (OpenGL/Vulkan: Y-up, DirectX: Y-down)
     tangentNormal.y = -tangentNormal.y;
@@ -298,9 +369,9 @@ void main()
   vec3 B = cross(N, T);
 
   // Rotate tangent for anisotropic direction
-  if (push.anisotropic > 0.01)
+  if (material.anisotropic > 0.01)
   {
-    float angle = push.anisotropicRotation * 2.0 * PI;
+    float angle = material.anisotropicRotation * 2.0 * PI;
     float cosA  = cos(angle);
     float sinA  = sin(angle);
     vec3  Trot  = cosA * T + sinA * B;
@@ -312,7 +383,23 @@ void main()
   // Calculate reflectance at normal incidence
   // For dielectrics use 0.04, for metals use albedo
   vec3 F0 = vec3(0.04);
-  F0      = mix(F0, albedo, metallic);
+
+  // Apply IOR if provided (F0 = ((ior-1)/(ior+1))^2)
+  if (material.ior != 1.5)
+  {
+    float ior = material.ior;
+    float f   = (ior - 1.0) / (ior + 1.0);
+    F0        = vec3(f * f);
+  }
+
+  // Apply Iridescence to F0
+  if (material.iridescence > 0.0)
+  {
+    vec3 iridescenceColor = evalIridescence(max(dot(N, V), 0.1), material.iridescenceThickness, material.iridescenceIOR);
+    F0                    = mix(F0, iridescenceColor, material.iridescence);
+  }
+
+  F0 = mix(F0, albedo, metallic);
 
   // Reflectance equation - Base layer
   vec3 Lo = vec3(0.0);
@@ -337,9 +424,9 @@ void main()
 
     // Cook-Torrance BRDF with optional anisotropy
     float NDF;
-    if (push.anisotropic > 0.01)
+    if (material.anisotropic > 0.01)
     {
-      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, push.anisotropic);
+      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, material.anisotropic);
     }
     else
     {
@@ -376,9 +463,9 @@ void main()
     }
 
     float NDF;
-    if (push.anisotropic > 0.01)
+    if (material.anisotropic > 0.01)
     {
-      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, push.anisotropic);
+      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, material.anisotropic);
     }
     else
     {
@@ -430,9 +517,9 @@ void main()
     }
 
     float NDF;
-    if (push.anisotropic > 0.01)
+    if (material.anisotropic > 0.01)
     {
-      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, push.anisotropic);
+      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, material.anisotropic);
     }
     else
     {
@@ -455,7 +542,7 @@ void main()
   }
 
   // Clearcoat layer (second specular lobe)
-  if (push.clearcoat > 0.01)
+  if (material.clearcoat > 0.01)
   {
     vec3 clearcoatF0 = vec3(0.04); // Dielectric clearcoat
     vec3 clearcoatLo = vec3(0.0);
@@ -470,8 +557,8 @@ void main()
       float attenuation = 1.0 / (distance * distance);
       vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
 
-      float clearNDF = DistributionGGX(N, H, push.clearcoatRoughness);
-      float clearG   = GeometrySmith(N, V, L, push.clearcoatRoughness);
+      float clearNDF = DistributionGGX(N, H, material.clearcoatRoughness);
+      float clearG   = GeometrySmith(N, V, L, material.clearcoatRoughness);
       vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
 
       vec3  numerator   = clearNDF * clearG * clearF;
@@ -489,8 +576,8 @@ void main()
       vec3 H        = normalize(V + L);
       vec3 radiance = ubo.directionalLights[i].color.xyz * ubo.directionalLights[i].color.w;
 
-      float clearNDF = DistributionGGX(N, H, push.clearcoatRoughness);
-      float clearG   = GeometrySmith(N, V, L, push.clearcoatRoughness);
+      float clearNDF = DistributionGGX(N, H, material.clearcoatRoughness);
+      float clearG   = GeometrySmith(N, V, L, material.clearcoatRoughness);
       vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
 
       vec3  numerator   = clearNDF * clearG * clearF;
@@ -519,8 +606,8 @@ void main()
 
       vec3 radiance = ubo.spotLights[i].color.xyz * ubo.spotLights[i].color.w * attenuation * intensity;
 
-      float clearNDF = DistributionGGX(N, H, push.clearcoatRoughness);
-      float clearG   = GeometrySmith(N, V, L, push.clearcoatRoughness);
+      float clearNDF = DistributionGGX(N, H, material.clearcoatRoughness);
+      float clearG   = GeometrySmith(N, V, L, material.clearcoatRoughness);
       vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
 
       vec3  numerator   = clearNDF * clearG * clearF;
@@ -532,7 +619,7 @@ void main()
     }
 
     // Blend base layer with clearcoat
-    Lo = mix(Lo, Lo + clearcoatLo * push.clearcoat, push.clearcoat);
+    Lo = mix(Lo, Lo + clearcoatLo * material.clearcoat, material.clearcoat);
   }
 
   // Ambient lighting (IBL)
@@ -564,7 +651,19 @@ void main()
   // Add simple ambient as fallback/boost
   ambient += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * albedo * ao * 0.05;
 
-  vec3 color = ambient + Lo;
+  // DEBUG: Disable ambient to see emissive clearly
+  // ambient = vec3(0.0);
+
+  // Emissive
+  vec3 emissive = material.emissiveInfo.rgb * material.emissiveInfo.a;
+
+  if ((material.textureFlags & (1u << 5)) != 0u) // Emissive texture
+  {
+    vec3 emissiveTex = texture(globalTextures[nonuniformEXT(material.emissiveIndex)], uv).rgb;
+    emissive *= emissiveTex;
+  }
+
+  vec3 color = ambient + Lo + emissive;
 
   // HDR tonemapping (Reinhard)
   color = color / (color + vec3(1.0));
@@ -572,7 +671,7 @@ void main()
   color = pow(color, vec3(1.0 / 2.2));
 
   // Add selection highlight (bright cyan outline effect)
-  if (push.isSelected > 0.5)
+  if (material.isSelected > 0.5)
   {
     // Create pulsing effect based on time (using position as pseudo-time)
     float pulse = 0.7 + 0.3 * sin(fragmentWorldPos.x + fragmentWorldPos.y + fragmentWorldPos.z);
@@ -583,5 +682,5 @@ void main()
     color += selectionColor * rimIntensity;
   }
 
-  outColor = vec4(color, 1.0);
+  outColor = vec4(color, alpha * (1.0 - material.transmission));
 }

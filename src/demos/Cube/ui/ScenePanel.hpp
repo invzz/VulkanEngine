@@ -18,7 +18,7 @@ namespace engine {
     ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem);
 
     void render(FrameInfo& frameInfo) override;
-    void processDelayedDeletions();
+    void processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
   private:
     Device&                   device_;
