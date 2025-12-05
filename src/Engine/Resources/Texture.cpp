@@ -12,11 +12,22 @@
 
 namespace engine {
 
-  Texture::Texture(Device& device, const std::string& filepath, bool srgb) : device_{device}
+  Texture::Texture(Device& device, const std::string& filepath, bool srgb, bool flipY) : device_{device}
   {
     // Load image using stb_image
-    int      texChannels;
+    int texChannels;
+
+    if (flipY)
+    {
+      stbi_set_flip_vertically_on_load(true);
+    }
+
     stbi_uc* pixels = stbi_load(filepath.c_str(), &width_, &height_, &texChannels, STBI_rgb_alpha);
+
+    if (flipY)
+    {
+      stbi_set_flip_vertically_on_load(false);
+    }
 
     if (!pixels)
     {

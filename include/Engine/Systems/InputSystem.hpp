@@ -4,7 +4,6 @@
 #include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Scene/GameObject.hpp"
 
 namespace engine {
 

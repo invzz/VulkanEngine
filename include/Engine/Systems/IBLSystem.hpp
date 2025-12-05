@@ -20,10 +20,15 @@ namespace engine {
   class IBLSystem
   {
   public:
-    static constexpr int IRRADIANCE_SIZE      = 32;  // 32x32 per face
-    static constexpr int PREFILTER_SIZE       = 128; // 128x128 per face (base mip)
-    static constexpr int PREFILTER_MIP_LEVELS = 5;   // Mip levels for roughness
-    static constexpr int BRDF_LUT_SIZE        = 512; // 512x512
+    struct Settings
+    {
+      int   irradianceSize        = 64;
+      int   prefilterSize         = 512;
+      int   prefilterMipLevels    = 9;
+      int   brdfLUTSize           = 512;
+      int   prefilterSampleCount  = 4096;
+      float irradianceSampleDelta = 0.025f;
+    };
 
     IBLSystem(Device& device);
     ~IBLSystem();
@@ -38,6 +43,12 @@ namespace engine {
      */
     void generateFromSkybox(Skybox& skybox);
 
+    void requestRegeneration(const Settings& settings, Skybox& skybox);
+    void update();
+
+    void            updateSettings(const Settings& settings);
+    const Settings& getSettings() const { return settings_; }
+
     /**
      * @brief Check if IBL textures have been generated
      */
@@ -49,9 +60,10 @@ namespace engine {
     VkDescriptorImageInfo getBRDFLUTDescriptorInfo() const;
 
   private:
-    void createIrradianceMap();
-    void createPrefilteredEnvMap();
-    void createBRDFLUT();
+    Settings settings_;
+    void     createIrradianceMap();
+    void     createPrefilteredEnvMap();
+    void     createBRDFLUT();
 
     void generateIrradianceMap(Skybox& skybox);
     void generatePrefilteredEnvMap(Skybox& skybox);
@@ -106,6 +118,11 @@ namespace engine {
     VkDescriptorSetLayout brdfDescSetLayout_  = VK_NULL_HANDLE;
     VkDescriptorPool      brdfDescPool_       = VK_NULL_HANDLE;
     VkDescriptorSet       brdfDescSet_        = VK_NULL_HANDLE;
+
+    // Deferred regeneration state
+    bool     regenerationRequested_ = false;
+    Settings nextSettings_;
+    Skybox*  nextSkybox_ = nullptr;
   };
 
 } // namespace engine

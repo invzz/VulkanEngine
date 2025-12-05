@@ -116,6 +116,11 @@ namespace engine {
     void renderPointLightShadowMaps(FrameInfo& frameInfo);
 
     /**
+     * @brief Render all 6 faces of a cube shadow map for a single point light
+     */
+    void renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range);
+
+    /**
      * @brief Render scene to a single face of a cube shadow map
      */
     void renderToCubeFace(FrameInfo&       frameInfo,

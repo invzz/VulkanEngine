@@ -82,7 +82,7 @@ namespace engine {
      * @param priority Resource priority for eviction policy
      * @return Shared pointer to texture (returns cached instance if already loaded)
      */
-    std::shared_ptr<Texture> loadTexture(const std::string& path, bool srgb = true, ResourcePriority priority = ResourcePriority::MEDIUM);
+    std::shared_ptr<Texture> loadTexture(const std::string& path, bool srgb = true, bool flipY = false, ResourcePriority priority = ResourcePriority::MEDIUM);
 
     /**
      * @brief Load a texture from memory with automatic caching (for embedded textures)

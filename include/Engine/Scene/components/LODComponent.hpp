@@ -14,7 +14,7 @@ namespace engine {
     float                  distance; // Distance at which this LOD becomes active
   };
 
-  struct LODComponent : public Component
+  struct LODComponent
   {
     std::vector<LODLevel> levels; // Should be sorted by distance
   };

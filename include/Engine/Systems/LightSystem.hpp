@@ -11,7 +11,7 @@
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Scene/Camera.hpp"
-#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/Scene.hpp"
 
 namespace engine {
 
@@ -29,7 +29,7 @@ namespace engine {
     void update(FrameInfo& frameInfo, GlobalUbo& ubo) const;
 
     // Update target-locked light rotation (call when light position or target changes)
-    static void updateTargetLockedLight(GameObject& obj);
+    static void updateTargetLockedLight(entt::entity entity, Scene* scene);
 
   private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);

@@ -6,8 +6,11 @@
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/CubeShadowMap.hpp"
 #include "Engine/Resources/Model.hpp"
-#include "Engine/Scene/GameObject.hpp"
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/PointLightComponent.hpp"
+#include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 namespace engine {
 
@@ -173,21 +176,20 @@ namespace engine {
     pipeline_->bind(frameInfo.commandBuffer);
 
     // Render all objects to shadow map
-    if (frameInfo.objectManager)
+    auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+    for (auto entity : view)
     {
-      for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
-      {
-        if (!obj.model) continue;
+      auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
+      if (!modelComp.model) continue;
 
-        ShadowPushConstants push{};
-        push.modelMatrix      = obj.transform.modelTransform();
-        push.lightSpaceMatrix = lightSpaceMatrix;
+      ShadowPushConstants push{};
+      push.modelMatrix      = transform.modelTransform();
+      push.lightSpaceMatrix = lightSpaceMatrix;
 
-        vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(ShadowPushConstants), &push);
+      vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
-        obj.model->bind(frameInfo.commandBuffer);
-        obj.model->draw(frameInfo.commandBuffer);
-      }
+      modelComp.model->bind(frameInfo.commandBuffer);
+      modelComp.model->draw(frameInfo.commandBuffer);
     }
 
     // End shadow render pass
@@ -199,35 +201,35 @@ namespace engine {
     shadowLightCount_     = 0;
     glm::vec3 sceneCenter = glm::vec3(0.0f);
 
-    if (!frameInfo.objectManager) return;
-
     // Render shadow map for first directional light
-    auto& dirLights = frameInfo.objectManager->getDirectionalLights();
-    if (!dirLights.empty() && shadowLightCount_ < MAX_SHADOW_MAPS)
+    auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
+    for (auto entity : dirView)
     {
-      glm::vec3 lightDir                     = dirLights[0]->transform.getForwardDir();
+      if (shadowLightCount_ >= MAX_SHADOW_MAPS) break;
+      auto [dirLight, transform] = dirView.get<DirectionalLightComponent, TransformComponent>(entity);
+
+      glm::vec3 lightDir                     = transform.getForwardDir();
       lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalLightMatrix(lightDir, sceneCenter, sceneRadius);
       renderToShadowMap(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
       shadowLightCount_++;
+
+      // Only one directional light shadow for now? The old code took dirLights[0].
+      // I'll break after one.
+      break;
     }
 
     // Render shadow maps for spotlights
-    auto& spotLights = frameInfo.objectManager->getSpotLights();
-    for (size_t i = 0; i < spotLights.size() && shadowLightCount_ < MAX_SHADOW_MAPS; i++)
+    auto spotView = frameInfo.scene->getRegistry().view<SpotLightComponent, TransformComponent>();
+    for (auto entity : spotView)
     {
-      auto&     spot      = spotLights[i];
-      glm::vec3 position  = spot->transform.translation;
-      glm::vec3 direction = spot->transform.getForwardDir();
+      if (shadowLightCount_ >= MAX_SHADOW_MAPS) break;
+      auto [spotLight, transform] = spotView.get<SpotLightComponent, TransformComponent>(entity);
 
-      // Get outer cutoff from light component (or use default 45 degrees)
-      float outerCutoffDegrees = 45.0f;
-      if (spot->getComponent<SpotLightComponent>())
-      {
-        outerCutoffDegrees = spot->getComponent<SpotLightComponent>()->outerCutoffAngle;
-      }
+      glm::vec3 position  = transform.translation;
+      glm::vec3 direction = transform.getForwardDir();
 
-      // Estimate range from attenuation
-      float range = 50.0f;
+      float outerCutoffDegrees = spotLight.outerCutoffAngle;
+      float range              = 50.0f;
 
       lightSpaceMatrices_[shadowLightCount_] = calculateSpotLightMatrix(position, direction, outerCutoffDegrees, range);
       renderToShadowMap(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
@@ -291,38 +293,21 @@ namespace engine {
   {
     cubeShadowLightCount_ = 0;
 
-    if (!frameInfo.objectManager) return;
-
-    auto& pointLights = frameInfo.objectManager->getPointLights();
-
-    for (size_t i = 0; i < pointLights.size() && cubeShadowLightCount_ < MAX_CUBE_SHADOW_MAPS; i++)
+    auto view = frameInfo.scene->getRegistry().view<PointLightComponent, TransformComponent>();
+    for (auto entity : view)
     {
-      auto&     light    = pointLights[i];
-      glm::vec3 position = light->transform.translation;
+      if (cubeShadowLightCount_ >= MAX_CUBE_SHADOW_MAPS) break;
+      auto [pointLight, transform] = view.get<PointLightComponent, TransformComponent>(entity);
 
-      // Estimate range from point light intensity or use default
-      float range = 10.0f;
-      if (light->getComponent<PointLightComponent>())
-      {
-        // Use a reasonable range for the scene
-        range = 10.0f;
-      }
+      glm::vec3 position = transform.translation;
+      float     range    = 25.0f; // Default range
 
+      // Store light data for UBO
       pointLightPositions_[cubeShadowLightCount_] = position;
       pointLightRanges_[cubeShadowLightCount_]    = range;
 
-      // Transition cube map to attachment layout BEFORE rendering all 6 faces
-      cubeShadowMaps_[cubeShadowLightCount_]->transitionToAttachmentLayout(frameInfo.commandBuffer);
-
-      // Render all 6 faces of the cube shadow map
-      for (int face = 0; face < 6; face++)
-      {
-        glm::mat4 lightSpaceMatrix = calculatePointLightMatrix(position, face, range);
-        renderToCubeFace(frameInfo, *cubeShadowMaps_[cubeShadowLightCount_], face, lightSpaceMatrix, position, range);
-      }
-
-      // Transition cube map to shader read layout AFTER rendering all 6 faces
-      cubeShadowMaps_[cubeShadowLightCount_]->transitionToShaderReadLayout(frameInfo.commandBuffer);
+      // Render to cube map faces
+      renderToCubeShadowMap(frameInfo, *cubeShadowMaps_[cubeShadowLightCount_], position, range);
 
       cubeShadowLightCount_++;
     }
@@ -341,6 +326,15 @@ namespace engine {
     return projection * view;
   }
 
+  void ShadowSystem::renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range)
+  {
+    for (int face = 0; face < 6; face++)
+    {
+      glm::mat4 lightSpaceMatrix = calculatePointLightMatrix(position, face, range);
+      renderToCubeFace(frameInfo, cubeShadowMap, face, lightSpaceMatrix, position, range);
+    }
+  }
+
   void ShadowSystem::renderToCubeFace(FrameInfo&       frameInfo,
                                       CubeShadowMap&   cubeShadowMap,
                                       int              face,
@@ -355,27 +349,26 @@ namespace engine {
     cubePipeline_->bind(frameInfo.commandBuffer);
 
     // Render all objects
-    if (frameInfo.objectManager)
+    auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+    for (auto entity : view)
     {
-      for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
-      {
-        if (!obj.model) continue;
+      auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
+      if (!modelComp.model) continue;
 
-        CubeShadowPushConstants push{};
-        push.modelMatrix         = obj.transform.modelTransform();
-        push.lightSpaceMatrix    = lightSpaceMatrix;
-        push.lightPosAndFarPlane = glm::vec4(lightPos, farPlane);
+      CubeShadowPushConstants push{};
+      push.modelMatrix         = transform.modelTransform();
+      push.lightSpaceMatrix    = lightSpaceMatrix;
+      push.lightPosAndFarPlane = glm::vec4(lightPos, farPlane);
 
-        vkCmdPushConstants(frameInfo.commandBuffer,
-                           cubePipelineLayout_,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0,
-                           sizeof(CubeShadowPushConstants),
-                           &push);
+      vkCmdPushConstants(frameInfo.commandBuffer,
+                         cubePipelineLayout_,
+                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0,
+                         sizeof(CubeShadowPushConstants),
+                         &push);
 
-        obj.model->bind(frameInfo.commandBuffer);
-        obj.model->draw(frameInfo.commandBuffer);
-      }
+      modelComp.model->bind(frameInfo.commandBuffer);
+      modelComp.model->draw(frameInfo.commandBuffer);
     }
 
     cubeShadowMap.endRenderPass(frameInfo.commandBuffer);

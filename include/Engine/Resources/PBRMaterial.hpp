@@ -9,7 +9,7 @@ namespace engine {
 
   class Texture; // Forward declaration
 
-  struct PBRMaterial : public Component
+  struct PBRMaterial
   {
     // Base PBR properties
     glm::vec3 albedo{1.0f, 1.0f, 1.0f};

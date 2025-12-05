@@ -6,9 +6,10 @@
 
 namespace engine {
 
-  struct SpotLightComponent : public Component
+  struct SpotLightComponent
   {
     float     intensity{1.0f};
+    glm::vec3 color{1.0f, 1.0f, 1.0f};
     float     innerCutoffAngle{12.5f}; // Inner cone angle in degrees
     float     outerCutoffAngle{17.5f}; // Outer cone angle in degrees
     float     constantAttenuation{1.0f};

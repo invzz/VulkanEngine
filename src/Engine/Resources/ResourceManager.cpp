@@ -57,9 +57,9 @@ namespace engine {
     return oss.str();
   }
 
-  std::shared_ptr<Texture> ResourceManager::loadTexture(const std::string& path, bool srgb, ResourcePriority priority)
+  std::shared_ptr<Texture> ResourceManager::loadTexture(const std::string& path, bool srgb, bool flipY, ResourcePriority priority)
   {
-    std::string key = makeTextureKey(path, srgb);
+    std::string key = makeTextureKey(path, srgb) + (flipY ? "|flipY" : "");
 
     // Lock for thread-safe access
     std::lock_guard<std::mutex> lock(textureMutex_);
@@ -87,7 +87,7 @@ namespace engine {
     }
 
     // Load new texture
-    auto   texture = std::make_shared<Texture>(device_, path, srgb);
+    auto   texture = std::make_shared<Texture>(device_, path, srgb, flipY);
     size_t memSize = texture->getMemorySize();
 
     // Check memory budget and evict if necessary
@@ -650,7 +650,7 @@ namespace engine {
         try
         {
           // Load texture synchronously on worker thread
-          auto texture = loadTexture(path, srgb, priority);
+          auto texture = loadTexture(path, srgb, false, priority);
           promise->set_value(texture);
         }
         catch (const std::exception& e)

@@ -543,15 +543,17 @@ void main()
   kD *= 1.0 - metallic;
 
   // Flip Y for Vulkan cube map sampling
-  vec3 N_flip     = vec3(N.x, -N.y, N.z);
+  // vec3 N_flip     = vec3(N.x, -N.y, N.z);
+  vec3 N_flip     = N;
   vec3 irradiance = texture(irradianceMap, N_flip).rgb;
   vec3 diffuse    = irradiance * albedo;
 
   // Sample prefiltered map
   const float MAX_REFLECTION_LOD = 4.0;
   vec3        R                  = reflect(-V, N);
-  vec3        R_flip             = vec3(R.x, -R.y, R.z);
-  vec3        prefilteredColor   = textureLod(prefilterMap, R_flip, roughness * MAX_REFLECTION_LOD).rgb;
+  // vec3        R_flip             = vec3(R.x, -R.y, R.z);
+  vec3 R_flip           = R;
+  vec3 prefilteredColor = textureLod(prefilterMap, R_flip, roughness * MAX_REFLECTION_LOD).rgb;
 
   // Sample BRDF LUT
   vec2 brdf     = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;

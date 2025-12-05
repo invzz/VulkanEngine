@@ -12,7 +12,7 @@ namespace engine {
   class Texture
   {
   public:
-    Texture(Device& device, const std::string& filepath, bool srgb = true);
+    Texture(Device& device, const std::string& filepath, bool srgb = true, bool flipY = false);
     ~Texture();
 
     Texture(const Texture&)            = delete;

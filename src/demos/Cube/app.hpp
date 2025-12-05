@@ -14,9 +14,7 @@
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
-#include "Engine/Scene/AnimationController.hpp"
-#include "Engine/Scene/GameObject.hpp"
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
 
@@ -68,16 +66,16 @@ namespace engine {
     void run();
 
   private:
-    void              updatePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void              computePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void              shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
-    void              renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void              uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
-    Window            window{width(), height(), "Engine App"};
-    Device            device{window};
-    Renderer          renderer{window, device};
-    ResourceManager   resourceManager{device};
-    GameObjectManager objectManager;
-    SceneSerializer   sceneSerializer{objectManager, resourceManager};
+    void            updatePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            computePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void            uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
+    Window          window{width(), height(), "Engine App"};
+    Device          device{window};
+    Renderer        renderer{window, device};
+    ResourceManager resourceManager{device};
+    Scene           scene;
+    SceneSerializer sceneSerializer{scene, resourceManager};
   };
 } // namespace engine

@@ -2,14 +2,12 @@
 
 #include <vulkan/vulkan.h>
 
-#include "Engine/Scene/AnimationController.hpp"
 #include "Engine/Scene/Camera.hpp"
-#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/Scene.hpp"
 
 namespace engine {
 
   class MorphTargetManager;
-  class GameObjectManager;
 
   constexpr size_t maxLightCount = 16;
 
@@ -63,12 +61,12 @@ namespace engine {
     Camera&             camera;
     VkDescriptorSet     globalDescriptorSet;
     VkDescriptorSet     globalTextureSet; // Bindless texture set
-    GameObjectManager*  objectManager;    // Organized access to objects by type
-    GameObject::id_t    selectedObjectId; // ID of currently selected object (0 = camera)
-    GameObject*         selectedObject;   // Pointer to selected object (nullptr = camera)
-    GameObject&         cameraObject;
-    MorphTargetManager* morphManager; // Manager for morph target animations (nullptr if not used)
-    VkExtent2D          extent;       // Screen extent
+    Scene*              scene;            // Scene access
+    uint32_t            selectedObjectId; // ID of currently selected object (0 = camera)
+    entt::entity        selectedEntity;   // Selected entity handle
+    entt::entity        cameraEntity;     // Camera entity handle
+    MorphTargetManager* morphManager;     // Manager for morph target animations (nullptr if not used)
+    VkExtent2D          extent;           // Screen extent
   };
 
 } // namespace engine

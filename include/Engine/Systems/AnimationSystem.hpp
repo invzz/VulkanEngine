@@ -1,12 +1,15 @@
 #pragma once
 
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <memory>
-#include <unordered_set>
+#include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/MorphTargetManager.hpp"
-#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/components/AnimationComponent.hpp"
 
 namespace engine {
 
@@ -33,26 +36,10 @@ namespace engine {
     AnimationSystem& operator=(const AnimationSystem&) = delete;
 
     /**
-     * @brief Register a GameObject that needs animation updates
-     *
-     * Call this when:
-     * - Loading a model with animations at startup
-     * - Spawning an animated object at runtime
-     *
-     * @param objectId The unique ID of the GameObject
-     */
-    void registerAnimatedObject(GameObject::id_t objectId);
-
-    /**
-     * @brief Unregister a GameObject (e.g., when destroying it)
-     */
-    void unregisterAnimatedObject(GameObject::id_t objectId);
-
-    /**
      * @brief Update all registered animations
      *
      * This performs two steps:
-     * 1. CPU: Update AnimationControllers (interpolate weights/transforms)
+     * 1. CPU: Update AnimationComponents (interpolate weights/transforms)
      * 2. GPU: Dispatch morph target compute shaders (blend vertices)
      *
      * Should be called BEFORE the render pass begins.
@@ -67,12 +54,24 @@ namespace engine {
     MorphTargetManager* getMorphManager() { return morphManager_.get(); }
 
   private:
-    Device&                              device_;
-    std::unique_ptr<MorphTargetManager>  morphManager_;
-    std::unordered_set<GameObject::id_t> animatedObjects_; // Only objects with animations
+    Device&                             device_;
+    std::unique_ptr<MorphTargetManager> morphManager_;
 
-    void updateAnimationControllers(FrameInfo& frameInfo);
+    void updateAnimations(FrameInfo& frameInfo);
     void updateMorphTargets(FrameInfo& frameInfo);
+
+    // Helper functions moved from AnimationController
+    void updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation);
+    void computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform);
+
+    // Interpolation helpers
+    glm::vec3 interpolateVec3(float                                           time,
+                              const std::vector<std::pair<float, glm::vec3>>& keyframes); // Wait, the signature in AnimationController used AnimationSampler
+    // I should probably use AnimationSampler in the signature to match the logic easier.
+
+    glm::vec3          interpolateVec3(const Model::AnimationSampler& sampler, float time);
+    glm::quat          interpolateQuat(const Model::AnimationSampler& sampler, float time);
+    std::vector<float> interpolateMorphWeights(const Model::AnimationSampler& sampler, float time);
   };
 
 } // namespace engine

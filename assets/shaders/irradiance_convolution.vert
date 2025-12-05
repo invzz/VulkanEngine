@@ -2,8 +2,9 @@
 
 layout(push_constant) uniform PushConstants
 {
-  mat4 viewProjection;
-  int  faceIndex;
+  mat4  viewProjection;
+  int   faceIndex;
+  float sampleDelta;
 }
 push;
 

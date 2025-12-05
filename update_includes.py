@@ -1,112 +1,87 @@
 import os
-import re
 
-# Map short names to full paths
-short_mapping = {
-    # Core
-    "Window.hpp": "Engine/Core/Window.hpp",
-    "Keyboard.hpp": "Engine/Core/Keyboard.hpp",
-    "Mouse.hpp": "Engine/Core/Mouse.hpp",
-    "Exceptions.hpp": "Engine/Core/Exceptions.hpp",
-    "utils.hpp": "Engine/Core/utils.hpp",
-    "ansi_colors.hpp": "Engine/Core/ansi_colors.hpp",
+content = r"""#pragma once
 
-    # Graphics
-    "Device.hpp": "Engine/Graphics/Device.hpp",
-    "DeviceMemory.hpp": "Engine/Graphics/DeviceMemory.hpp",
-    "SwapChain.hpp": "Engine/Graphics/SwapChain.hpp",
-    "Pipeline.hpp": "Engine/Graphics/Pipeline.hpp",
-    "Buffer.hpp": "Engine/Graphics/Buffer.hpp",
-    "Descriptors.hpp": "Engine/Graphics/Descriptors.hpp",
-    "Renderer.hpp": "Engine/Graphics/Renderer.hpp",
-    "FrameInfo.hpp": "Engine/Graphics/FrameInfo.hpp",
-    "RenderGraph.hpp": "Engine/Graphics/RenderGraph.hpp",
-    "ShadowMap.hpp": "Engine/Graphics/ShadowMap.hpp",
-    "CubeShadowMap.hpp": "Engine/Graphics/CubeShadowMap.hpp",
-    "MorphTargetCompute.hpp": "Engine/Graphics/MorphTargetCompute.hpp",
-    "ImGuiManager.hpp": "Engine/Graphics/ImGuiManager.hpp",
+#include "Scene.hpp"
+#include "components/TransformComponent.hpp"
 
-    # Scene
-    "GameObject.hpp": "Engine/Scene/GameObject.hpp",
-    "GameObjectManager.hpp": "Engine/Scene/GameObjectManager.hpp",
-    "Camera.hpp": "Engine/Scene/Camera.hpp",
-    "Skybox.hpp": "Engine/Scene/Skybox.hpp",
-    "AnimationController.hpp": "Engine/Scene/AnimationController.hpp",
-    "SceneSerializer.hpp": "Engine/Scene/SceneSerializer.hpp",
+namespace engine {
+
+  class GameObject
+  {
+  public:
+    GameObject() = default;
+    GameObject(entt::entity handle, Scene* scene) : entityHandle(handle), scene(scene) {}
+
+    template<typename T, typename... Args>
+    T& addComponent(Args&&... args)
+    {
+      return scene->getRegistry().emplace<T>(entityHandle, std::forward<Args>(args)...);
+    }
+
+    template<typename T>
+    T& getComponent()
+    {
+      return scene->getRegistry().get<T>(entityHandle);
+    }
+
+    template<typename T>
+    const T& getComponent() const
+    {
+      return scene->getRegistry().get<T>(entityHandle);
+    }
+
+    template<typename T>
+    bool hasComponent() const
+    {
+      return scene->getRegistry().all_of<T>(entityHandle);
+    }
+
+    template<typename T>
+    void removeComponent()
+    {
+      scene->getRegistry().remove<T>(entityHandle);
+    }
+
+    bool isValid() const
+    {
+      return scene && scene->getRegistry().valid(entityHandle);
+    }
+
+    operator bool() const { return isValid(); }
     
-    # Resources
-    "Model.hpp": "Engine/Resources/Model.hpp",
-    "Texture.hpp": "Engine/Resources/Texture.hpp",
-    "TextureManager.hpp": "Engine/Resources/TextureManager.hpp",
-    "MeshManager.hpp": "Engine/Resources/MeshManager.hpp",
-    "MorphTargetManager.hpp": "Engine/Resources/MorphTargetManager.hpp",
-    "ResourceManager.hpp": "Engine/Resources/ResourceManager.hpp",
-    "PBRMaterial.hpp": "Engine/Resources/PBRMaterial.hpp",
+    bool operator==(const GameObject& other) const
+    {
+      return entityHandle == other.entityHandle && scene == other.scene;
+    }
 
-    # Systems
-    "IBLSystem.hpp": "Engine/Systems/IBLSystem.hpp",
-    "MeshRenderSystem.hpp": "Engine/Systems/MeshRenderSystem.hpp",
-    "SkyboxRenderSystem.hpp": "Engine/Systems/SkyboxRenderSystem.hpp",
-    "ShadowSystem.hpp": "Engine/Systems/ShadowSystem.hpp",
-    "PointLightSystem.hpp": "Engine/Systems/PointLightSystem.hpp",
-    "CameraSystem.hpp": "Engine/Systems/CameraSystem.hpp",
-    "InputSystem.hpp": "Engine/Systems/InputSystem.hpp",
-    "ObjectSelectionSystem.hpp": "Engine/Systems/ObjectSelectionSystem.hpp",
-    "PostProcessingSystem.hpp": "Engine/Systems/PostProcessingSystem.hpp",
-    "AnimationSystem.hpp": "Engine/Systems/AnimationSystem.hpp",
-    "LODSystem.hpp": "Engine/Systems/LODSystem.hpp",
-    "MaterialSystem.hpp": "Engine/Systems/MaterialSystem.hpp",
-    "MorphTargetSystem.hpp": "Engine/Systems/MorphTargetSystem.hpp",
-    "LightSystem.hpp": "Engine/Systems/LightSystem.hpp",
-}
+    bool operator!=(const GameObject& other) const
+    {
+      return !(*this == other);
+    }
 
-def process_file(filepath):
-    with open(filepath, 'r') as f:
-        content = f.read()
+    entt::entity getEntity() const { return entityHandle; }
+
+    // Convenience accessor for Transform since every object usually has one
+    TransformComponent& transform()
+    {
+      return getComponent<TransformComponent>();
+    }
+
+    const TransformComponent& transform() const
+    {
+      return getComponent<TransformComponent>();
+    }
     
-    original_content = content
-    
-    for short_name, full_path in short_mapping.items():
-        # Regex to match #include "Window.hpp" but NOT #include "Engine/Core/Window.hpp"
-        # We look for quotes or brackets, then the short name, then closing quote/bracket.
-        # And we ensure it's not preceded by a directory separator.
-        
-        # Pattern: "Window.hpp" -> "Engine/Core/Window.hpp"
-        # We use negative lookbehind to ensure no / before the name
-        
-        # Regex for "Window.hpp"
-        pattern_quote = r'"(?<!/)' + re.escape(short_name) + r'"'
-        replacement_quote = f'"{full_path}"'
-        content = re.sub(pattern_quote, replacement_quote, content)
-        
-        # Regex for <Window.hpp>
-        pattern_bracket = r'<(?<!/)' + re.escape(short_name) + r'>'
-        replacement_bracket = f'<{full_path}>'
-        content = re.sub(pattern_bracket, replacement_bracket, content)
+    uint32_t getId() const { return (uint32_t)entityHandle; }
 
-        # Also handle "systems/Foo.hpp" -> "Engine/Systems/Foo.hpp"
-        if short_name.endswith("System.hpp"):
-             pattern_sys = r'"systems/' + re.escape(short_name) + r'"'
-             replacement_sys = f'"{full_path}"'
-             content = re.sub(pattern_sys, replacement_sys, content)
-             
-        # Handle "../Foo.hpp" -> "Engine/.../Foo.hpp"
-        pattern_rel = r'"\.\./' + re.escape(short_name) + r'"'
-        replacement_rel = f'"{full_path}"'
-        content = re.sub(pattern_rel, replacement_rel, content)
+  private:
+    entt::entity entityHandle{entt::null};
+    Scene* scene{nullptr};
+  };
 
-    if content != original_content:
-        print(f"Updating {filepath}")
-        with open(filepath, 'w') as f:
-            f.write(content)
+} // namespace engine
+"""
 
-def main():
-    dirs_to_scan = ['src', 'include']
-    for root_dir in dirs_to_scan:
-        for root, dirs, files in os.walk(root_dir):
-            for file in files:
-                if file.endswith('.hpp') or file.endswith('.cpp') or file.endswith('.h') or file.endswith('.c'):
-                    process_file(os.path.join(root, file))
-
-if __name__ == "__main__":
-    main()
+with open("include/Engine/Scene/GameObject.hpp", "w") as f:
+    f.write(content)

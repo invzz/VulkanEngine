@@ -5,7 +5,14 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
+#include "Engine/Resources/PBRMaterial.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/LODComponent.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Scene/components/PointLightComponent.hpp"
+#include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 // Helper for glm serialization
 namespace glm {
@@ -24,68 +31,80 @@ namespace glm {
 
 namespace engine {
 
-  SceneSerializer::SceneSerializer(GameObjectManager& manager, ResourceManager& resourceManager) : manager(manager), resourceManager(resourceManager) {}
+  SceneSerializer::SceneSerializer(Scene& scene, ResourceManager& resourceManager) : scene(scene), resourceManager(resourceManager) {}
 
   void SceneSerializer::serialize(const std::string& filepath)
   {
     nlohmann::json sceneJson;
     sceneJson["objects"] = nlohmann::json::array();
 
-    for (const auto& [id, obj] : manager.getAllObjects())
+    auto view = scene.getRegistry().view<entt::entity>();
+    for (auto entity : view)
     {
       nlohmann::json objJson;
-      objJson["id"]   = obj.getId();
-      objJson["name"] = obj.getName();
+      objJson["id"] = (uint32_t)entity;
+      if (scene.getRegistry().all_of<NameComponent>(entity))
+      {
+        objJson["name"] = scene.getRegistry().get<NameComponent>(entity).name;
+      }
+      else
+      {
+        objJson["name"] = "GameObject";
+      }
 
       // Transform
-      objJson["transform"] = {{"translation", obj.transform.translation}, {"rotation", obj.transform.rotation}, {"scale", obj.transform.scale}};
+      if (scene.getRegistry().all_of<TransformComponent>(entity))
+      {
+        auto& t              = scene.getRegistry().get<TransformComponent>(entity);
+        objJson["transform"] = {{"translation", t.translation}, {"rotation", t.rotation}, {"scale", t.scale}};
+      }
 
       // PBR Material & Model
-      if (obj.model)
+      if (scene.getRegistry().all_of<ModelComponent>(entity))
       {
-        objJson["modelPath"] = obj.model->getFilePath(); // Assuming Model has getFilePath()
-
-        if (obj.getComponent<PBRMaterial>())
+        auto& modelComp = scene.getRegistry().get<ModelComponent>(entity);
+        if (modelComp.model)
         {
-          nlohmann::json matJson;
-          matJson["albedo"]    = obj.getComponent<PBRMaterial>()->albedo;
-          matJson["metallic"]  = obj.getComponent<PBRMaterial>()->metallic;
-          matJson["roughness"] = obj.getComponent<PBRMaterial>()->roughness;
-          matJson["ao"]        = obj.getComponent<PBRMaterial>()->ao;
+          objJson["modelPath"] = modelComp.model->getFilePath();
 
-          // Textures (if we can get their paths)
-          // This might require extending PBRMaterial to store paths or getting them from the texture objects if they store it.
-          // For now, let's assume we can't easily get texture paths back from the material unless we stored them.
-          // Let's check PBRMaterial.hpp
-
-          objJson["material"] = matJson;
+          if (scene.getRegistry().all_of<PBRMaterial>(entity))
+          {
+            auto&          mat = scene.getRegistry().get<PBRMaterial>(entity);
+            nlohmann::json matJson;
+            matJson["albedo"]    = mat.albedo;
+            matJson["metallic"]  = mat.metallic;
+            matJson["roughness"] = mat.roughness;
+            matJson["ao"]        = mat.ao;
+            objJson["material"]  = matJson;
+          }
         }
       }
 
       // Lights
-      if (obj.getComponent<PointLightComponent>())
+      if (scene.getRegistry().all_of<PointLightComponent>(entity))
       {
-        objJson["pointLight"] = {{"intensity", obj.getComponent<PointLightComponent>()->intensity}, {"color", obj.color}, {"radius", obj.transform.scale.x}};
+        auto& pl              = scene.getRegistry().get<PointLightComponent>(entity);
+        objJson["pointLight"] = {{"intensity", pl.intensity}, {"color", pl.color}, {"radius", pl.radius}};
       }
 
-      if (obj.getComponent<DirectionalLightComponent>())
+      if (scene.getRegistry().all_of<DirectionalLightComponent>(entity))
       {
-        objJson["directionalLight"] = {{"intensity", obj.getComponent<DirectionalLightComponent>()->intensity}, {"color", obj.color}};
+        auto& dl                    = scene.getRegistry().get<DirectionalLightComponent>(entity);
+        objJson["directionalLight"] = {{"intensity", dl.intensity}, {"color", dl.color}};
       }
 
-      if (obj.getComponent<SpotLightComponent>())
+      if (scene.getRegistry().all_of<SpotLightComponent>(entity))
       {
-        objJson["spotLight"] = {{"intensity", obj.getComponent<SpotLightComponent>()->intensity},
-                                {"color", obj.color},
-                                {"innerAngle", obj.getComponent<SpotLightComponent>()->innerCutoffAngle},
-                                {"outerAngle", obj.getComponent<SpotLightComponent>()->outerCutoffAngle}};
+        auto& sl             = scene.getRegistry().get<SpotLightComponent>(entity);
+        objJson["spotLight"] = {{"intensity", sl.intensity}, {"color", sl.color}, {"innerAngle", sl.innerCutoffAngle}, {"outerAngle", sl.outerCutoffAngle}};
       }
 
       // LOD Component
-      if (obj.getComponent<LODComponent>())
+      if (scene.getRegistry().all_of<LODComponent>(entity))
       {
+        auto&          lod     = scene.getRegistry().get<LODComponent>(entity);
         nlohmann::json lodJson = nlohmann::json::array();
-        for (const auto& level : obj.getComponent<LODComponent>()->levels)
+        for (const auto& level : lod.levels)
         {
           if (level.model)
           {
@@ -123,107 +142,90 @@ namespace engine {
       return false;
     }
 
-    // Clear existing objects? Or just add?
-    // Usually loading a scene clears the current one.
-    manager.clear();
+    scene.getRegistry().clear(); // Clear existing objects
 
     if (sceneJson.contains("objects"))
     {
+      for (const auto& objJson : sceneJson["objects"])
       {
-        for (const auto& objJson : sceneJson["objects"])
+        std::string name = objJson.value("name", "GameObject");
+
+        auto entity = scene.createEntity();
+        scene.getRegistry().emplace<TransformComponent>(entity);
+        scene.getRegistry().emplace<NameComponent>(entity, name);
+
+        // Transform
+        if (objJson.contains("transform"))
         {
-          std::string name = objJson.value("name", "GameObject");
+          auto& t               = objJson["transform"];
+          auto& transform       = scene.getRegistry().get<TransformComponent>(entity);
+          transform.translation = t.value("translation", glm::vec3(0.0f));
+          transform.rotation    = t.value("rotation", glm::vec3(0.0f));
+          transform.scale       = t.value("scale", glm::vec3(1.0f));
+        }
 
-          // Create object
-          // We can't easily use the static make* methods because the object might have mixed components (though unlikely in this engine's current design)
-          // But the make* methods are just helpers. We can create a raw GameObject and add components.
+        // Model & Material
+        if (objJson.contains("modelPath"))
+        {
+          std::string modelPath = objJson["modelPath"];
+          auto        model     = resourceManager.loadModel(modelPath, true, true, true);
+          scene.getRegistry().emplace<ModelComponent>(entity, model);
 
-          // However, GameObject constructor is private and create() is static.
-          GameObject obj = GameObject::create(name);
-
-          // Transform
-          if (objJson.contains("transform"))
+          if (objJson.contains("material"))
           {
-            auto& t                   = objJson["transform"];
-            obj.transform.translation = t.value("translation", glm::vec3(0.0f));
-            obj.transform.rotation    = t.value("rotation", glm::vec3(0.0f));
-            obj.transform.scale       = t.value("scale", glm::vec3(1.0f));
+            auto& matJson         = objJson["material"];
+            auto& pbrMaterial     = scene.getRegistry().emplace<PBRMaterial>(entity);
+            pbrMaterial.albedo    = matJson.value("albedo", glm::vec3(1.0f));
+            pbrMaterial.metallic  = matJson.value("metallic", 0.0f);
+            pbrMaterial.roughness = matJson.value("roughness", 0.5f);
+            pbrMaterial.ao        = matJson.value("ao", 1.0f);
           }
+        }
 
-          // Model & Material
-          if (objJson.contains("modelPath"))
+        // Lights
+        if (objJson.contains("pointLight"))
+        {
+          auto& pl             = objJson["pointLight"];
+          auto& pointLight     = scene.getRegistry().emplace<PointLightComponent>(entity);
+          pointLight.intensity = pl.value("intensity", 1.0f);
+          pointLight.color     = pl.value("color", glm::vec3(1.0f));
+          pointLight.radius    = pl.value("radius", 0.1f);
+        }
+
+        if (objJson.contains("directionalLight"))
+        {
+          auto& dl           = objJson["directionalLight"];
+          auto& dirLight     = scene.getRegistry().emplace<DirectionalLightComponent>(entity);
+          dirLight.intensity = dl.value("intensity", 1.0f);
+          dirLight.color     = dl.value("color", glm::vec3(1.0f));
+        }
+
+        if (objJson.contains("spotLight"))
+        {
+          auto& sl                   = objJson["spotLight"];
+          auto& spotLight            = scene.getRegistry().emplace<SpotLightComponent>(entity);
+          spotLight.intensity        = sl.value("intensity", 1.0f);
+          spotLight.color            = sl.value("color", glm::vec3(1.0f));
+          spotLight.innerCutoffAngle = sl.value("innerAngle", 12.5f);
+          spotLight.outerCutoffAngle = sl.value("outerAngle", 17.5f);
+        }
+
+        // LOD Component
+        if (objJson.contains("lodComponent"))
+        {
+          auto& lodComponent = scene.getRegistry().emplace<LODComponent>(entity);
+          for (const auto& levelJson : objJson["lodComponent"])
           {
-            std::string modelPath = objJson["modelPath"];
-            // Load model using ResourceManager
-            // We need to know if it has textures/materials/morphs.
-            // For now, assume defaults or store them in JSON.
-            // Let's assume standard PBR object loading for now.
-            obj.model = resourceManager.loadModel(modelPath, true, true, true); // Enable everything by default
-
-            if (objJson.contains("material"))
+            float       distance  = levelJson.value("distance", 0.0f);
+            std::string modelPath = levelJson.value("modelPath", "");
+            if (!modelPath.empty())
             {
-              auto& matJson         = objJson["material"];
-              auto& pbrMaterial     = obj.addComponent<PBRMaterial>();
-              pbrMaterial.albedo    = matJson.value("albedo", glm::vec3(1.0f));
-              pbrMaterial.metallic  = matJson.value("metallic", 0.0f);
-              pbrMaterial.roughness = matJson.value("roughness", 0.5f);
-              pbrMaterial.ao        = matJson.value("ao", 1.0f);
-
-              // Re-binding textures would be needed here if we saved them.
-              // Since we didn't save texture paths (yet), we rely on the model loader or default material.
-              // If the model loader loaded materials, they are in the model, but PBRMaterial component overrides?
-              // Actually, GameObject has a pbrMaterial component.
+              auto model = resourceManager.loadModel(modelPath, true, true, true);
+              lodComponent.levels.push_back({model, distance});
             }
           }
-
-          // Lights
-          if (objJson.contains("pointLight"))
-          {
-            auto& pl              = objJson["pointLight"];
-            auto& pointLight      = obj.addComponent<PointLightComponent>();
-            pointLight.intensity  = pl.value("intensity", 1.0f);
-            obj.color             = pl.value("color", glm::vec3(1.0f));
-            obj.transform.scale.x = pl.value("radius", 0.1f);
-          }
-
-          if (objJson.contains("directionalLight"))
-          {
-            auto& dl           = objJson["directionalLight"];
-            auto& dirLight     = obj.addComponent<DirectionalLightComponent>();
-            dirLight.intensity = dl.value("intensity", 1.0f);
-            obj.color          = dl.value("color", glm::vec3(1.0f));
-          }
-
-          if (objJson.contains("spotLight"))
-          {
-            auto& sl                   = objJson["spotLight"];
-            auto& spotLight            = obj.addComponent<SpotLightComponent>();
-            spotLight.intensity        = sl.value("intensity", 1.0f);
-            obj.color                  = sl.value("color", glm::vec3(1.0f));
-            spotLight.innerCutoffAngle = sl.value("innerAngle", 12.5f);
-            spotLight.outerCutoffAngle = sl.value("outerAngle", 17.5f);
-          }
-
-          // LOD Component
-          if (objJson.contains("lodComponent"))
-          {
-            auto& lodComponent = obj.addComponent<LODComponent>();
-            for (const auto& levelJson : objJson["lodComponent"])
-            {
-              float       distance  = levelJson.value("distance", 0.0f);
-              std::string modelPath = levelJson.value("modelPath", "");
-              if (!modelPath.empty())
-              {
-                auto model = resourceManager.loadModel(modelPath, true, true, true);
-                lodComponent.levels.push_back({model, distance});
-              }
-            }
-          }
-
-          manager.addObject(std::move(obj));
         }
       }
-
       return true;
     }
     return false;

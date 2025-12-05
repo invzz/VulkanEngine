@@ -3,20 +3,23 @@
 #include <algorithm>
 #include <glm/glm.hpp>
 
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/components/LODComponent.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 namespace engine {
 
   void LODSystem::update(FrameInfo& frameInfo)
   {
-    auto&     lodObjects = frameInfo.objectManager->getLODObjects();
-    glm::vec3 cameraPos  = frameInfo.camera.getPosition();
+    glm::vec3 cameraPos = frameInfo.camera.getPosition();
 
-    for (auto* obj : lodObjects)
+    auto view = frameInfo.scene->getRegistry().view<LODComponent, TransformComponent, ModelComponent>();
+    for (auto entity : view)
     {
-      if (!obj->getComponent<LODComponent>() || obj->getComponent<LODComponent>()->levels.empty()) continue;
+      auto [lod, transform, modelComp] = view.get<LODComponent, TransformComponent, ModelComponent>(entity);
+      if (lod.levels.empty()) continue;
 
-      float distance = glm::length(obj->transform.translation - cameraPos);
+      float distance = glm::length(transform.translation - cameraPos);
 
       // Find the appropriate LOD level
       // Levels should be sorted by distance (ascending or descending?)
@@ -46,7 +49,7 @@ namespace engine {
 
       float maxDistFound = -1.0f;
 
-      for (const auto& level : obj->getComponent<LODComponent>()->levels)
+      for (const auto& level : lod.levels)
       {
         if (distance >= level.distance)
         {
@@ -66,7 +69,7 @@ namespace engine {
       {
         // Find the level with minimum distance
         float minDist = std::numeric_limits<float>::max();
-        for (const auto& level : obj->getComponent<LODComponent>()->levels)
+        for (const auto& level : lod.levels)
         {
           if (level.distance < minDist)
           {
@@ -76,9 +79,9 @@ namespace engine {
         }
       }
 
-      if (selectedModel && obj->model != selectedModel)
+      if (selectedModel && modelComp.model != selectedModel)
       {
-        obj->model = selectedModel;
+        modelComp.model = selectedModel;
       }
     }
   }

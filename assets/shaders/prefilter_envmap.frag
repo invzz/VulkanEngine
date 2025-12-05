@@ -10,11 +10,11 @@ layout(push_constant) uniform PushConstants
   mat4  viewProjection;
   int   faceIndex;
   float roughness;
+  uint  sampleCount;
 }
 push;
 
-const float PI           = 3.14159265359;
-const uint  SAMPLE_COUNT = 1024u;
+const float PI = 3.14159265359;
 
 // Radical inverse based on Van Der Corpus sequence
 float RadicalInverse_VdC(uint bits)
@@ -77,9 +77,9 @@ void main()
   float totalWeight      = 0.0;
   vec3  prefilteredColor = vec3(0.0);
 
-  for (uint i = 0u; i < SAMPLE_COUNT; ++i)
+  for (uint i = 0u; i < push.sampleCount; ++i)
   {
-    vec2  Xi    = Hammersley(i, SAMPLE_COUNT);
+    vec2  Xi    = Hammersley(i, push.sampleCount);
     vec3  H     = ImportanceSampleGGX(Xi, N, push.roughness);
     vec3  L     = normalize(2.0 * dot(V, H) * H - V);
     float NdotL = max(dot(N, L), 0.0);
@@ -94,7 +94,7 @@ void main()
 
       float resolution = 512.0; // Resolution of source cubemap (per face)
       float saTexel    = 4.0 * PI / (6.0 * resolution * resolution);
-      float saSample   = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
+      float saSample   = 1.0 / (float(push.sampleCount) * pdf + 0.0001);
       float mipLevel   = push.roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel);
 
       // Flip Y for Vulkan cube map convention

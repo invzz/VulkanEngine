@@ -3,7 +3,6 @@
 #include <GLFW/glfw3.h>
 
 #include "Engine/Core/Window.hpp"
-#include "Engine/Scene/GameObject.hpp"
 
 namespace engine {
 
@@ -37,7 +36,7 @@ namespace engine {
       int toggleCursor = GLFW_KEY_ESCAPE;
     };
 
-    void moveInPlaneXZ(float deltaTime, GameObject& gameObject) const;
+    void moveInPlaneXZ(float deltaTime, struct TransformComponent& transform) const;
     bool isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
 
     KeyMappings mappings{};

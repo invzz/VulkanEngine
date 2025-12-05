@@ -1,13 +1,29 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
+#include <memory>
 #include <string>
+#include <vector>
 
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "UIPanel.hpp"
 
 namespace engine {
+
+  class Texture;
+
+  struct ModelEntry
+  {
+    std::string              name;
+    std::string              relativePath;
+    std::string              screenshotPath;
+    std::shared_ptr<Texture> screenshotTexture;
+    VkDescriptorSet          descriptorSet = VK_NULL_HANDLE;
+  };
 
   /**
    * @brief Panel for importing glTF models
@@ -15,15 +31,20 @@ namespace engine {
   class ModelImportPanel : public UIPanel
   {
   public:
-    ModelImportPanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem);
+    ModelImportPanel(Device& device, Scene& scene, AnimationSystem& animationSystem, ResourceManager& resourceManager);
 
     void render(FrameInfo& frameInfo) override;
 
   private:
-    Device&            device_;
-    GameObjectManager& objectManager_;
-    AnimationSystem&   animationSystem_;
-    char               modelPath_[256] = {};
+    void loadModelIndex();
+    void loadModel(const std::string& path);
+
+    Device&                 device_;
+    Scene&                  scene_;
+    AnimationSystem&        animationSystem_;
+    ResourceManager&        resourceManager_;
+    char                    modelPath_[256] = "glTF/DamagedHelmet/glTF/DamagedHelmet.gltf";
+    std::vector<ModelEntry> availableModels_;
   };
 
 } // namespace engine

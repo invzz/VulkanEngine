@@ -5,6 +5,14 @@ layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform samplerCube environmentMap;
 
+layout(push_constant) uniform PushConstants
+{
+  mat4  viewProjection;
+  int   faceIndex;
+  float sampleDelta;
+}
+push;
+
 const float PI = 3.14159265359;
 
 void main()
@@ -17,7 +25,7 @@ void main()
   vec3 right      = normalize(cross(up, N));
   up              = normalize(cross(N, right));
 
-  float sampleDelta = 0.025;
+  float sampleDelta = push.sampleDelta;
   float nrSamples   = 0.0;
 
   for (float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)

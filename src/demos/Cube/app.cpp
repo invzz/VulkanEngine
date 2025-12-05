@@ -20,9 +20,9 @@
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/TextureManager.hpp"
-#include "Engine/Scene/AnimationController.hpp"
 #include "Engine/Scene/Camera.hpp"
-#include "Engine/Scene/GameObject.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 // Systems
 #include "Engine/Graphics/RenderGraph.hpp"
@@ -45,6 +45,7 @@
 // UI Panels
 #include "ui/AnimationPanel.hpp"
 #include "ui/CameraPanel.hpp"
+#include "ui/IBLPanel.hpp"
 #include "ui/LightsPanel.hpp"
 #include "ui/ModelImportPanel.hpp"
 #include "ui/PostProcessPanel.hpp"
@@ -56,7 +57,7 @@ namespace engine {
 
   App::App()
   {
-    SceneLoader::loadScene(device, objectManager, resourceManager);
+    SceneLoader::loadScene(device, scene, resourceManager);
   }
   App::~App() = default;
 
@@ -75,8 +76,10 @@ namespace engine {
     Keyboard keyboard{window};
     Mouse    mouse{window};
 
-    GameObject cameraObject            = GameObject::create();
-    cameraObject.transform.translation = {0.0f, -0.2f, -2.5f};
+    auto cameraEntity = scene.createEntity();
+    scene.getRegistry().emplace<TransformComponent>(cameraEntity);
+    scene.getRegistry().get<TransformComponent>(cameraEntity).translation = {0.0f, -0.2f, -2.5f};
+    scene.getRegistry().emplace<CameraComponent>(cameraEntity);
 
     // ============================================================================
     // SYSTEMS INITIALIZATION
@@ -97,13 +100,7 @@ namespace engine {
 
     // Register all animated objects with the animation system
     // This allows the system to track and update only objects that need animation
-    for (auto& [id, obj] : objectManager.getAllObjects())
-    {
-      if (obj.getComponent<AnimationController>() || (obj.model && obj.model->hasMorphTargets()))
-      {
-        animationSystem.registerAnimatedObject(id);
-      }
-    }
+    // (Registration is now implicit via EnTT views in AnimationSystem::update)
 
     // Shadow Mapping (must be before render systems that use it):
     ShadowSystem shadowSystem{device, 2048};
@@ -171,17 +168,18 @@ namespace engine {
       sceneSerializer.deserialize("scene.json");
     });
 
-    uiManager.addPanel(std::make_unique<ModelImportPanel>(device, objectManager, animationSystem));
-    uiManager.addPanel(std::make_unique<CameraPanel>(cameraObject));
-    uiManager.addPanel(std::make_unique<TransformPanel>(objectManager));
-    uiManager.addPanel(std::make_unique<LightsPanel>(objectManager));
-    uiManager.addPanel(std::make_unique<AnimationPanel>(objectManager));
-    uiManager.addPanel(std::make_unique<ScenePanel>(device, objectManager, animationSystem));
+    uiManager.addPanel(std::make_unique<ModelImportPanel>(device, scene, animationSystem, resourceManager));
+    uiManager.addPanel(std::make_unique<CameraPanel>(cameraEntity, &scene));
+    uiManager.addPanel(std::make_unique<TransformPanel>(scene));
+    uiManager.addPanel(std::make_unique<LightsPanel>(scene));
+    uiManager.addPanel(std::make_unique<IBLPanel>(iblSystem, *skybox));
+    uiManager.addPanel(std::make_unique<AnimationPanel>(scene));
+    uiManager.addPanel(std::make_unique<ScenePanel>(device, scene, animationSystem));
     uiManager.addPanel(std::make_unique<PostProcessPanel>(postProcessPush));
 
     // Selection state (persisted across frames)
-    GameObject::id_t selectedObjectId = 0;
-    GameObject*      selectedObject   = nullptr;
+    uint32_t     selectedObjectId = 0;
+    entt::entity selectedEntity   = entt::null;
 
     // Timing
     auto currentTime = std::chrono::high_resolution_clock::now();
@@ -314,6 +312,9 @@ namespace engine {
         scenePanel->processDelayedDeletions();
       }
 
+      // Update IBL if requested (deferred to avoid destroying resources in use)
+      iblSystem.update();
+
       // Calculate frame time (delta time)
       auto  newTime   = std::chrono::high_resolution_clock::now();
       float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
@@ -334,10 +335,10 @@ namespace engine {
                 .camera              = camera,
                 .globalDescriptorSet = renderContext.getGlobalDescriptorSet(frameIndex),
                 .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-                .objectManager       = &objectManager,
+                .scene               = &scene,
                 .selectedObjectId    = selectedObjectId,
-                .selectedObject      = selectedObject,
-                .cameraObject        = cameraObject,
+                .selectedEntity      = selectedEntity,
+                .cameraEntity        = cameraEntity,
                 .morphManager        = animationSystem.getMorphManager(),
                 .extent              = renderer.getSwapChainExtent(),
         };
@@ -348,7 +349,7 @@ namespace engine {
         // Persist selection state across frames (from FrameInfo back to local variables)
         // Note: This needs to happen after the graph execution because UI/Selection systems modify it
         selectedObjectId = frameInfo.selectedObjectId;
-        selectedObject   = frameInfo.selectedObject;
+        selectedEntity   = frameInfo.selectedEntity;
 
         renderer.endFrame();
       }
@@ -388,7 +389,7 @@ namespace engine {
 
     ubo.projection       = frameInfo.camera.getProjection();
     ubo.view             = frameInfo.camera.getView();
-    ubo.cameraPosition   = glm::vec4(frameInfo.cameraObject.transform.translation, 1.0f);
+    ubo.cameraPosition   = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
     ubo.shadowLightCount = state.shadowSystem.getShadowLightCount();
 
     // Copy all light space matrices

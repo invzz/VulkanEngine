@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "Engine/Core/Window.hpp"
-#include "Engine/Scene/GameObject.hpp"
 
 namespace engine {
   class Mouse
@@ -15,7 +14,7 @@ namespace engine {
 
     std::pair<double, double> getCursorPosition() const;
 
-    void lookAround(float deltaTime, GameObject& gameObject);
+    void lookAround(float deltaTime, struct TransformComponent& transform);
 
     void reset();
 

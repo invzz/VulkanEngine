@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
 
 namespace engine {
 
@@ -30,26 +30,28 @@ namespace engine {
     }
 
     // Update morph targets for all models that have them
-    for (auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+    auto view = frameInfo.scene->getRegistry().view<ModelComponent>();
+    for (auto entity : view)
     {
-      if (obj.model && obj.model->hasMorphTargets())
+      auto& modelComp = view.get<ModelComponent>(entity);
+      if (modelComp.model && modelComp.model->hasMorphTargets())
       {
         // Initialize morph targets for newly added models at runtime
-        if (!manager_->isModelInitialized(obj.model.get()))
+        if (!manager_->isModelInitialized(modelComp.model.get()))
         {
           try
           {
-            manager_->initializeModel(obj.model);
+            manager_->initializeModel(modelComp.model);
           }
           catch (const std::exception& e)
           {
-            std::cerr << "[MorphTargetSystem] ERROR initializing object " << id << ": " << e.what() << std::endl;
+            std::cerr << "[MorphTargetSystem] ERROR initializing object " << (uint32_t)entity << ": " << e.what() << std::endl;
             continue; // Skip this object
           }
         }
 
         // Dispatch compute shader: baseVertices + morphDeltas * weights → blendedVertices
-        manager_->updateAndBlend(frameInfo.commandBuffer, obj.model);
+        manager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
       }
     }
   }

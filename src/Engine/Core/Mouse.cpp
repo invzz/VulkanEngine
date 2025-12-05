@@ -1,6 +1,6 @@
 #include "Engine/Core/Mouse.hpp"
 
-#include "Engine/Scene/AnimationController.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 namespace engine {
 
@@ -12,7 +12,7 @@ namespace engine {
     return {xPos, yPos};
   }
 
-  void Mouse::lookAround(float deltaTime, GameObject& gameObject)
+  void Mouse::lookAround(float deltaTime, TransformComponent& transform)
   {
     // If cursor is manually shown (ESC pressed), don't do camera control
     if (window.isCursorVisible())
@@ -59,12 +59,12 @@ namespace engine {
     lastX = xpos;
     lastY = ypos;
 
-    gameObject.transform.rotation.y += xoffset * lookSpeed * deltaTime;
-    gameObject.transform.rotation.x += yoffset * lookSpeed * deltaTime;
+    transform.rotation.y += xoffset * lookSpeed * deltaTime;
+    transform.rotation.x += yoffset * lookSpeed * deltaTime;
 
-    // clamp the pitch rotation to avoid flipping
-    gameObject.transform.rotation.x = glm::clamp(gameObject.transform.rotation.x, -1.5f, 1.5f);
-    gameObject.transform.rotation.y = glm::mod(gameObject.transform.rotation.y, glm::two_pi<float>());
+    // Limit pitch to avoid gimbal lock
+    transform.rotation.x = glm::clamp(transform.rotation.x, -1.5f, 1.5f);
+    transform.rotation.y = glm::mod(transform.rotation.y, glm::two_pi<float>());
   }
 
   void Mouse::reset()

@@ -1,7 +1,10 @@
 #include "Engine/Systems/LightSystem.hpp"
 
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/PointLightComponent.hpp"
+#include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -86,15 +89,15 @@ namespace engine {
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
-    // somewhat inefficient to loop over all game objects and check for point light components
-    for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+    auto view = frameInfo.scene->getRegistry().view<PointLightComponent, TransformComponent>();
+    for (auto entity : view)
     {
-      if (!obj.getComponent<PointLightComponent>()) continue;
+      auto [pointLight, transform] = view.get<PointLightComponent, TransformComponent>(entity);
 
       PointLightPushConstants push{};
-      push.position = glm::vec4(obj.transform.translation, 1.f);
-      push.color    = glm::vec4(obj.color, obj.getComponent<PointLightComponent>()->intensity);
-      push.radius   = obj.transform.scale.x;
+      push.position = glm::vec4(transform.translation, 1.f);
+      push.color    = glm::vec4(pointLight.color, pointLight.intensity);
+      push.radius   = transform.scale.x;
 
       vkCmdPushConstants(frameInfo.commandBuffer,
                          pipelineLayout,
@@ -117,18 +120,19 @@ namespace engine {
                             0,
                             nullptr);
 
-    for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+    auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
+    for (auto entity : dirView)
     {
-      if (!obj.getComponent<DirectionalLightComponent>()) continue;
+      auto [dirLight, transform] = dirView.get<DirectionalLightComponent, TransformComponent>(entity);
 
       // Create a model matrix that orients the arrow in the light direction
       glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, obj.transform.translation);
+      modelMatrix           = glm::translate(modelMatrix, transform.translation);
 
       // Apply rotation to orient arrow
-      modelMatrix = glm::rotate(modelMatrix, obj.transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-      modelMatrix = glm::rotate(modelMatrix, obj.transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-      modelMatrix = glm::rotate(modelMatrix, obj.transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+      modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+      modelMatrix = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+      modelMatrix = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
       struct DirectionalLightPush
       {
@@ -137,7 +141,7 @@ namespace engine {
       } push;
 
       push.modelMatrix = modelMatrix;
-      push.color       = glm::vec4(obj.color, obj.getComponent<DirectionalLightComponent>()->intensity);
+      push.color       = glm::vec4(dirLight.color, dirLight.intensity);
 
       vkCmdPushConstants(frameInfo.commandBuffer, directionalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
@@ -148,18 +152,19 @@ namespace engine {
     spotPipeline->bind(frameInfo.commandBuffer);
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, spotPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
-    for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+    auto spotView = frameInfo.scene->getRegistry().view<SpotLightComponent, TransformComponent>();
+    for (auto entity : spotView)
     {
-      if (!obj.getComponent<SpotLightComponent>()) continue;
+      auto [spotLight, transform] = spotView.get<SpotLightComponent, TransformComponent>(entity);
 
       // Create a model matrix that positions and orients the cone
       glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, obj.transform.translation);
+      modelMatrix           = glm::translate(modelMatrix, transform.translation);
 
       // Apply rotation to orient cone
-      modelMatrix = glm::rotate(modelMatrix, obj.transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-      modelMatrix = glm::rotate(modelMatrix, obj.transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-      modelMatrix = glm::rotate(modelMatrix, obj.transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+      modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+      modelMatrix = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+      modelMatrix = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
       struct SpotLightPush
       {
@@ -169,8 +174,8 @@ namespace engine {
       } push;
 
       push.modelMatrix = modelMatrix;
-      push.color       = glm::vec4(obj.color, obj.getComponent<SpotLightComponent>()->intensity);
-      push.coneAngle   = glm::radians(obj.getComponent<SpotLightComponent>()->outerCutoffAngle);
+      push.color       = glm::vec4(spotLight.color, spotLight.intensity);
+      push.coneAngle   = glm::radians(spotLight.outerCutoffAngle);
 
       vkCmdPushConstants(frameInfo.commandBuffer, spotPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
@@ -179,18 +184,28 @@ namespace engine {
     }
   }
 
-  void LightSystem::updateTargetLockedLight(GameObject& obj)
+  void LightSystem::updateTargetLockedLight(entt::entity entity, Scene* scene)
   {
+    auto& registry = scene->getRegistry();
+
     // Update directional light target tracking
-    if (obj.getComponent<DirectionalLightComponent>() && obj.getComponent<DirectionalLightComponent>()->useTargetPoint)
+    if (registry.all_of<DirectionalLightComponent>(entity))
     {
-      obj.transform.lookAt(obj.getComponent<DirectionalLightComponent>()->targetPoint);
+      auto& dirLight = registry.get<DirectionalLightComponent>(entity);
+      if (dirLight.useTargetPoint)
+      {
+        registry.get<TransformComponent>(entity).lookAt(dirLight.targetPoint);
+      }
     }
 
     // Update spot light target tracking
-    if (obj.getComponent<SpotLightComponent>() && obj.getComponent<SpotLightComponent>()->useTargetPoint)
+    if (registry.all_of<SpotLightComponent>(entity))
     {
-      obj.transform.lookAt(obj.getComponent<SpotLightComponent>()->targetPoint);
+      auto& spotLight = registry.get<SpotLightComponent>(entity);
+      if (spotLight.useTargetPoint)
+      {
+        registry.get<TransformComponent>(entity).lookAt(spotLight.targetPoint);
+      }
     }
   }
 
@@ -202,62 +217,64 @@ namespace engine {
 
     auto rotateLight = glm::rotate(glm::mat4(1.f), frameInfo.frameTime, glm::vec3(0.f, -1.f, 0.f));
 
-    // Use categorized vectors if manager is available
-    if (frameInfo.objectManager)
+    auto& registry = frameInfo.scene->getRegistry();
+
+    // Process point lights
+    auto pointView = registry.view<TransformComponent, PointLightComponent>();
+    for (auto entity : pointView)
     {
-      // Process point lights
-      for (auto* obj : frameInfo.objectManager->getPointLights())
-      {
-        assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
-        ubo.pointLights[ubo.pointLightCount].position = glm::vec4(obj->transform.translation, 1.f);
-        ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(obj->color, obj->getComponent<PointLightComponent>()->intensity);
-        ubo.pointLightCount++;
-      }
+      auto [transform, pointLight] = pointView.get<TransformComponent, PointLightComponent>(entity);
 
-      // Process directional lights
-      for (auto* obj : frameInfo.objectManager->getDirectionalLights())
-      {
-        assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
-
-        // Update rotation to look at target if enabled
-        if (obj->getComponent<DirectionalLightComponent>()->useTargetPoint)
-        {
-          obj->transform.lookAt(obj->getComponent<DirectionalLightComponent>()->targetPoint);
-        }
-
-        glm::vec3 direction                                        = obj->transform.getForwardDir();
-        ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
-        ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(obj->color, obj->getComponent<DirectionalLightComponent>()->intensity);
-        ubo.directionalLightCount++;
-      }
-
-      // Process spot lights
-      for (auto* obj : frameInfo.objectManager->getSpotLights())
-      {
-        assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
-
-        // Update rotation to look at target if enabled
-        if (obj->getComponent<SpotLightComponent>()->useTargetPoint)
-        {
-          obj->transform.lookAt(obj->getComponent<SpotLightComponent>()->targetPoint);
-        }
-
-        glm::vec3 direction = obj->transform.getForwardDir();
-
-        ubo.spotLights[ubo.spotLightCount].position = glm::vec4(obj->transform.translation, 1.f);
-        ubo.spotLights[ubo.spotLightCount].direction =
-                glm::vec4(glm::normalize(direction), glm::cos(glm::radians(obj->getComponent<SpotLightComponent>()->innerCutoffAngle)));
-        ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(obj->color, obj->getComponent<SpotLightComponent>()->intensity);
-        ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(obj->getComponent<SpotLightComponent>()->outerCutoffAngle));
-        ubo.spotLights[ubo.spotLightCount].constantAtten  = obj->getComponent<SpotLightComponent>()->constantAttenuation;
-        ubo.spotLights[ubo.spotLightCount].linearAtten    = obj->getComponent<SpotLightComponent>()->linearAttenuation;
-        ubo.spotLights[ubo.spotLightCount].quadraticAtten = obj->getComponent<SpotLightComponent>()->quadraticAttenuation;
-        ubo.spotLightCount++;
-      }
+      assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
+      ubo.pointLights[ubo.pointLightCount].position = glm::vec4(transform.translation, 1.f);
+      ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(pointLight.color, pointLight.intensity);
+      ubo.pointLightCount++;
     }
-    else
+
+    // Process directional lights
+    auto dirView = registry.view<TransformComponent, DirectionalLightComponent>();
+    for (auto entity : dirView)
     {
-      std::cout << "[LightSystem] Warning: No GameObjectManager available in FrameInfo for light update." << std::endl;
+      auto [transform, dirLight] = dirView.get<TransformComponent, DirectionalLightComponent>(entity);
+
+      assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
+
+      // Update rotation to look at target if enabled
+      if (dirLight.useTargetPoint)
+      {
+        transform.lookAt(dirLight.targetPoint);
+      }
+
+      glm::vec3 direction                                        = transform.getForwardDir();
+      ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
+      ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(dirLight.color, dirLight.intensity);
+      ubo.directionalLightCount++;
+    }
+
+    // Process spot lights
+    auto spotView = registry.view<TransformComponent, SpotLightComponent>();
+    for (auto entity : spotView)
+    {
+      auto [transform, spotLight] = spotView.get<TransformComponent, SpotLightComponent>(entity);
+
+      assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
+
+      // Update rotation to look at target if enabled
+      if (spotLight.useTargetPoint)
+      {
+        transform.lookAt(spotLight.targetPoint);
+      }
+
+      glm::vec3 direction = transform.getForwardDir();
+
+      ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(transform.translation, 1.f);
+      ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(spotLight.innerCutoffAngle)));
+      ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(spotLight.color, spotLight.intensity);
+      ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(spotLight.outerCutoffAngle));
+      ubo.spotLights[ubo.spotLightCount].constantAtten  = spotLight.constantAttenuation;
+      ubo.spotLights[ubo.spotLightCount].linearAtten    = spotLight.linearAttenuation;
+      ubo.spotLights[ubo.spotLightCount].quadraticAtten = spotLight.quadraticAttenuation;
+      ubo.spotLightCount++;
     }
   }
 

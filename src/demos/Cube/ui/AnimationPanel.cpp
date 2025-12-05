@@ -4,9 +4,11 @@
 
 #include <string>
 
+#include "Engine/Scene/components/AnimationComponent.hpp"
+
 namespace engine {
 
-  AnimationPanel::AnimationPanel(GameObjectManager& objectManager) : objectManager_(objectManager) {}
+  AnimationPanel::AnimationPanel(Scene& scene) : scene_(scene) {}
 
   void AnimationPanel::render(FrameInfo& frameInfo)
   {
@@ -14,30 +16,30 @@ namespace engine {
 
     if (ImGui::CollapsingHeader("Animation", ImGuiTreeNodeFlags_DefaultOpen))
     {
-      for (auto& [id, obj] : objectManager_.getAllObjects())
+      auto view = scene_.getRegistry().view<AnimationComponent>();
+      for (auto entity : view)
       {
-        if (obj.getComponent<AnimationController>())
+        auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
+
+        std::string label = "Object " + std::to_string((uint32_t)entity);
+        if (ImGui::TreeNode(label.c_str()))
         {
-          std::string label = "Object " + std::to_string(id);
-          if (ImGui::TreeNode(label.c_str()))
+          bool isPlaying = anim.isPlaying;
+          if (ImGui::Checkbox("Playing", &isPlaying))
           {
-            bool isPlaying = obj.getComponent<AnimationController>()->isPlaying();
-            if (ImGui::Checkbox("Playing", &isPlaying))
-            {
-              if (isPlaying)
-                obj.getComponent<AnimationController>()->play(0, true);
-              else
-                obj.getComponent<AnimationController>()->stop();
-            }
-
-            float speed = obj.getComponent<AnimationController>()->getPlaybackSpeed();
-            if (ImGui::SliderFloat("Speed", &speed, 0.0f, 2.0f))
-            {
-              obj.getComponent<AnimationController>()->setPlaybackSpeed(speed);
-            }
-
-            ImGui::TreePop();
+            if (isPlaying)
+              anim.play(0, true);
+            else
+              anim.stop();
           }
+
+          float speed = anim.playbackSpeed;
+          if (ImGui::SliderFloat("Speed", &speed, 0.0f, 2.0f))
+          {
+            anim.playbackSpeed = speed;
+          }
+
+          ImGui::TreePop();
         }
       }
     }

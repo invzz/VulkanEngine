@@ -1,9 +1,11 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 
+#include <algorithm>
+#include <vector>
+
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Scene/GameObject.hpp"
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/Scene.hpp"
 
 namespace engine {
 
@@ -18,8 +20,8 @@ namespace engine {
     {
       if (!cameraKeyWasPressed_)
       {
-        frameInfo.selectedObjectId = frameInfo.cameraObject.getId();
-        frameInfo.selectedObject   = &frameInfo.cameraObject;
+        frameInfo.selectedObjectId = (uint32_t)frameInfo.cameraEntity;
+        frameInfo.selectedEntity   = frameInfo.cameraEntity;
         cameraKeyWasPressed_       = true;
       }
     }
@@ -28,44 +30,37 @@ namespace engine {
       cameraKeyWasPressed_ = false;
     }
 
+    // Helper to get sorted entities
+    std::vector<entt::entity> entities;
+    auto                      view = frameInfo.scene->getRegistry().view<entt::entity>();
+    for (auto entity : view)
+    {
+      entities.push_back(entity);
+    }
+    std::sort(entities.begin(), entities.end());
+
+    if (entities.empty()) return;
+
     // U: Previous object
     if (isKeyPressed(mappings.selectPrevious))
     {
       if (!prevKeyWasPressed_)
       {
-        // Find previous object in the map
-        GameObject::id_t prevId = 0;
-        bool             found  = false;
+        auto it = std::find(entities.begin(), entities.end(), (entt::entity)frameInfo.selectedObjectId);
 
-        for (const auto& [id, obj] : frameInfo.objectManager->getAllObjects())
+        if (it != entities.end() && it != entities.begin())
         {
-          if (id == frameInfo.selectedObjectId)
-          {
-            found = true;
-            break;
-          }
-          prevId = id;
-        }
-
-        if (found && prevId != 0)
-        {
-          frameInfo.selectedObjectId = prevId;
-          frameInfo.selectedObject   = frameInfo.objectManager->getObject(prevId);
+          // Select previous
+          auto prev                  = std::prev(it);
+          frameInfo.selectedObjectId = (uint32_t)*prev;
+          frameInfo.selectedEntity   = *prev;
         }
         else
         {
-          // If at beginning or camera selected, wrap to last object
-          if (!frameInfo.objectManager->getAllObjects().empty())
-          {
-            // Find the last object by iterating through all
-            auto lastIt = frameInfo.objectManager->getAllObjects().begin();
-            for (auto it = frameInfo.objectManager->getAllObjects().begin(); it != frameInfo.objectManager->getAllObjects().end(); ++it)
-            {
-              lastIt = it;
-            }
-            frameInfo.selectedObjectId = lastIt->first;
-            frameInfo.selectedObject   = &lastIt->second;
-          }
+          // Wrap to last (from first or from camera/unknown)
+          auto last                  = entities.back();
+          frameInfo.selectedObjectId = (uint32_t)last;
+          frameInfo.selectedEntity   = last;
         }
         prevKeyWasPressed_ = true;
       }
@@ -80,35 +75,21 @@ namespace engine {
     {
       if (!nextKeyWasPressed_)
       {
-        // If camera is selected (id=0), go to first object
-        if (frameInfo.selectedObjectId == 0)
+        auto it = std::find(entities.begin(), entities.end(), (entt::entity)frameInfo.selectedObjectId);
+
+        if (it != entities.end() && std::next(it) != entities.end())
         {
-          if (!frameInfo.objectManager->getAllObjects().empty())
-          {
-            auto firstIt               = frameInfo.objectManager->getAllObjects().begin();
-            frameInfo.selectedObjectId = firstIt->first;
-            frameInfo.selectedObject   = &firstIt->second;
-          }
+          // Select next
+          auto next                  = std::next(it);
+          frameInfo.selectedObjectId = (uint32_t)*next;
+          frameInfo.selectedEntity   = *next;
         }
         else
         {
-          // Find current object and move to next
-          auto it = frameInfo.objectManager->getAllObjects().find(frameInfo.selectedObjectId);
-          if (it != frameInfo.objectManager->getAllObjects().end())
-          {
-            ++it;
-            if (it != frameInfo.objectManager->getAllObjects().end())
-            {
-              frameInfo.selectedObjectId = it->first;
-              frameInfo.selectedObject   = &it->second;
-            }
-            else
-            {
-              // Wrap around to camera
-              frameInfo.selectedObjectId = 0;
-              frameInfo.selectedObject   = nullptr;
-            }
-          }
+          // Wrap to first (from last or from camera/unknown)
+          auto first                 = entities.front();
+          frameInfo.selectedObjectId = (uint32_t)first;
+          frameInfo.selectedEntity   = first;
         }
         nextKeyWasPressed_ = true;
       }

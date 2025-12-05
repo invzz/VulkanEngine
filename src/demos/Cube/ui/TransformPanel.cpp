@@ -4,11 +4,15 @@
 
 #include <string>
 
+#include "Engine/Scene/components/AnimationComponent.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightSystem.hpp"
 
 namespace engine {
 
-  TransformPanel::TransformPanel(GameObjectManager& objectManager) : objectManager_(objectManager) {}
+  TransformPanel::TransformPanel(Scene& scene) : scene_(scene) {}
 
   void TransformPanel::render(FrameInfo& frameInfo)
   {
@@ -16,10 +20,13 @@ namespace engine {
 
     if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
     {
-      if (frameInfo.selectedObject)
+      if (frameInfo.selectedEntity != entt::null)
       {
-        auto& obj = *frameInfo.selectedObject;
-        ImGui::Text("Selected: Object %u", frameInfo.selectedObjectId);
+        auto  entity    = frameInfo.selectedEntity;
+        auto& registry  = scene_.getRegistry();
+        auto& transform = registry.get<TransformComponent>(entity);
+
+        ImGui::Text("Selected: Object %u", (uint32_t)entity);
         ImGui::Separator();
 
         // Create tabs for Translation, Rotation, and Scale
@@ -30,33 +37,51 @@ namespace engine {
           {
             ImGui::Spacing();
             bool translationChanged = false;
-            translationChanged |= ImGui::DragFloat("X", &obj.transform.translation.x, 0.1f);
-            translationChanged |= ImGui::DragFloat("Y", &obj.transform.translation.y, 0.1f);
-            translationChanged |= ImGui::DragFloat("Z", &obj.transform.translation.z, 0.1f);
+            translationChanged |= ImGui::DragFloat("X", &transform.translation.x, 0.1f);
+            translationChanged |= ImGui::DragFloat("Y", &transform.translation.y, 0.1f);
+            translationChanged |= ImGui::DragFloat("Z", &transform.translation.z, 0.1f);
 
             // If translation changed and light is target-locked, update rotation
             if (translationChanged)
             {
-              bool isDirLocked  = obj.getComponent<DirectionalLightComponent>() && obj.getComponent<DirectionalLightComponent>()->useTargetPoint;
-              bool isSpotLocked = obj.getComponent<SpotLightComponent>() && obj.getComponent<SpotLightComponent>()->useTargetPoint;
+              bool isDirLocked = false;
+              if (registry.all_of<DirectionalLightComponent>(entity))
+              {
+                isDirLocked = registry.get<DirectionalLightComponent>(entity).useTargetPoint;
+              }
+
+              bool isSpotLocked = false;
+              if (registry.all_of<SpotLightComponent>(entity))
+              {
+                isSpotLocked = registry.get<SpotLightComponent>(entity).useTargetPoint;
+              }
 
               if (isDirLocked || isSpotLocked)
               {
-                LightSystem::updateTargetLockedLight(obj);
+                LightSystem::updateTargetLockedLight(entity, &scene_);
               }
             }
 
             ImGui::Separator();
             if (ImGui::Button("Reset Position"))
             {
-              obj.transform.translation = glm::vec3(0.0f);
+              transform.translation = glm::vec3(0.0f);
               // Update rotation if target-locked
-              bool isDirLocked  = obj.getComponent<DirectionalLightComponent>() && obj.getComponent<DirectionalLightComponent>()->useTargetPoint;
-              bool isSpotLocked = obj.getComponent<SpotLightComponent>() && obj.getComponent<SpotLightComponent>()->useTargetPoint;
+              bool isDirLocked = false;
+              if (registry.all_of<DirectionalLightComponent>(entity))
+              {
+                isDirLocked = registry.get<DirectionalLightComponent>(entity).useTargetPoint;
+              }
+
+              bool isSpotLocked = false;
+              if (registry.all_of<SpotLightComponent>(entity))
+              {
+                isSpotLocked = registry.get<SpotLightComponent>(entity).useTargetPoint;
+              }
 
               if (isDirLocked || isSpotLocked)
               {
-                LightSystem::updateTargetLockedLight(obj);
+                LightSystem::updateTargetLockedLight(entity, &scene_);
               }
             }
             ImGui::EndTabItem();
@@ -67,25 +92,25 @@ namespace engine {
           {
             ImGui::Spacing();
             ImGui::Text("Degrees:");
-            float rotationDegrees[3] = {glm::degrees(obj.transform.rotation.x), glm::degrees(obj.transform.rotation.y), glm::degrees(obj.transform.rotation.z)};
+            float rotationDegrees[3] = {glm::degrees(transform.rotation.x), glm::degrees(transform.rotation.y), glm::degrees(transform.rotation.z)};
 
             if (ImGui::DragFloat("X", &rotationDegrees[0], 1.0f, -180.0f, 180.0f))
             {
-              obj.transform.rotation.x = glm::radians(rotationDegrees[0]);
+              transform.rotation.x = glm::radians(rotationDegrees[0]);
             }
             if (ImGui::DragFloat("Y", &rotationDegrees[1], 1.0f, -180.0f, 180.0f))
             {
-              obj.transform.rotation.y = glm::radians(rotationDegrees[1]);
+              transform.rotation.y = glm::radians(rotationDegrees[1]);
             }
             if (ImGui::DragFloat("Z", &rotationDegrees[2], 1.0f, -180.0f, 180.0f))
             {
-              obj.transform.rotation.z = glm::radians(rotationDegrees[2]);
+              transform.rotation.z = glm::radians(rotationDegrees[2]);
             }
 
             ImGui::Separator();
             if (ImGui::Button("Reset Rotation"))
             {
-              obj.transform.rotation = glm::vec3(0.0f);
+              transform.rotation = glm::vec3(0.0f);
             }
             ImGui::EndTabItem();
           }
@@ -107,8 +132,8 @@ namespace engine {
             ImGui::Spacing();
 
             // For animated objects, modify baseScale; for static objects, modify scale
-            bool       isAnimated  = obj.getComponent<AnimationController>() != nullptr;
-            glm::vec3& targetScale = isAnimated ? obj.transform.baseScale : obj.transform.scale;
+            bool       isAnimated  = registry.all_of<AnimationComponent>(entity);
+            glm::vec3& targetScale = isAnimated ? transform.baseScale : transform.scale;
 
             if (isAnimated)
             {

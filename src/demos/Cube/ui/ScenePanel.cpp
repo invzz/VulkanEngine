@@ -5,11 +5,12 @@
 #include <iostream>
 #include <string>
 
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/NameComponent.hpp"
+
 namespace engine {
 
-  ScenePanel::ScenePanel(Device& device, GameObjectManager& objectManager, AnimationSystem& animationSystem)
-      : device_(device), objectManager_(objectManager), animationSystem_(animationSystem)
-  {}
+  ScenePanel::ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem) : device_(device), scene_(scene), animationSystem_(animationSystem) {}
 
   void ScenePanel::render(FrameInfo& frameInfo)
   {
@@ -17,17 +18,22 @@ namespace engine {
 
     if (ImGui::CollapsingHeader("Scene Objects"))
     {
-      ImGui::Text("Total: %zu", objectManager_.getAllObjects().size());
+      auto view = scene_.getRegistry().view<entt::entity>();
+      ImGui::Text("Total: %zu", view.size());
 
-      toDelete_.clear();
-
-      for (auto& [id, obj] : objectManager_.getAllObjects())
+      for (auto entity : view)
       {
+        uint32_t id = (uint32_t)entity;
+
         ImGui::PushID(id);
 
-        std::string label = obj.getName() + " " + std::to_string(id);
+        std::string label = "Object " + std::to_string(id);
+        if (scene_.getRegistry().all_of<NameComponent>(entity))
+        {
+          label = scene_.getRegistry().get<NameComponent>(entity).name + " " + std::to_string(id);
+        }
 
-        if (obj.model)
+        if (scene_.getRegistry().all_of<ModelComponent>(entity))
         {
           label += " (Model)";
         }
@@ -38,47 +44,31 @@ namespace engine {
         if (ImGui::SmallButton("Select"))
         {
           frameInfo.selectedObjectId = id;
-          frameInfo.selectedObject   = &obj;
+          frameInfo.selectedEntity   = entity;
         }
         ImGui::SameLine();
 
         if (ImGui::SmallButton("Delete"))
         {
-          toDelete_.push_back(id);
+          toDelete_.push_back(entity);
         }
 
         ImGui::PopID();
-      }
-
-      // Mark objects for deferred deletion
-      for (auto id : toDelete_)
-      {
-        animationSystem_.unregisterAnimatedObject(id);
-        pendingDeletions_.push_back({id, FRAMES_TO_WAIT});
-        std::cout << "[ScenePanel] Marked object " << id << " for deletion in " << FRAMES_TO_WAIT << " frames" << std::endl;
       }
     }
   }
 
   void ScenePanel::processDelayedDeletions()
   {
-    // Process pending deletions - this should be called between frames, not during rendering
-    for (auto it = pendingDeletions_.begin(); it != pendingDeletions_.end();)
+    if (toDelete_.empty()) return;
+
+    vkDeviceWaitIdle(device_.device());
+
+    for (auto entity : toDelete_)
     {
-      it->framesRemaining--;
-      if (it->framesRemaining <= 0)
-      {
-        // Wait for GPU to finish all work before deleting
-        device_.WaitIdle();
-        objectManager_.removeObject(it->id);
-        std::cout << "[ScenePanel] Deleted object " << it->id << std::endl;
-        it = pendingDeletions_.erase(it);
-      }
-      else
-      {
-        ++it;
-      }
+      scene_.destroyEntity(entity);
     }
+    toDelete_.clear();
   }
 
 } // namespace engine

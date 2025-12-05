@@ -2,8 +2,10 @@
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/Texture.hpp"
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
@@ -353,34 +355,36 @@ namespace engine {
                               nullptr);
     }
 
-    for (const auto& [id, gameObject] : frameInfo.objectManager->getAllObjects())
+    auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+    for (auto entity : view)
     {
-      if (!gameObject.model) continue;
+      auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
+      if (!modelComp.model) continue;
 
-      const auto& subMeshes = gameObject.model->getSubMeshes();
-      const auto& materials = gameObject.model->getMaterials();
+      const auto& subMeshes = modelComp.model->getSubMeshes();
+      const auto& materials = modelComp.model->getMaterials();
 
       for (const auto& subMesh : subMeshes)
       {
         if (subMesh.meshletCount == 0) continue;
 
         MeshPushConstantData push{};
-        push.modelMatrix             = gameObject.transform.modelTransform();
-        push.normalMatrix            = glm::mat4{gameObject.transform.normalMatrix()};
-        push.meshId                  = gameObject.model->getMeshId();
-        push.meshletBufferAddress    = gameObject.model->getMeshletBufferAddress();
-        push.meshletVerticesAddress  = gameObject.model->getMeshletVerticesAddress();
-        push.meshletTrianglesAddress = gameObject.model->getMeshletTrianglesAddress();
-        push.vertexBufferAddress     = gameObject.model->getVertexBufferAddress();
+        push.modelMatrix             = transform.modelTransform();
+        push.normalMatrix            = glm::mat4{transform.normalMatrix()};
+        push.meshId                  = modelComp.model->getMeshId();
+        push.meshletBufferAddress    = modelComp.model->getMeshletBufferAddress();
+        push.meshletVerticesAddress  = modelComp.model->getMeshletVerticesAddress();
+        push.meshletTrianglesAddress = modelComp.model->getMeshletTrianglesAddress();
+        push.vertexBufferAddress     = modelComp.model->getVertexBufferAddress();
         push.meshletOffset           = subMesh.meshletOffset;
         push.meshletCount            = subMesh.meshletCount;
         push.screenSize              = glm::vec2(frameInfo.extent.width, frameInfo.extent.height);
-        push.isSelected              = (id == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
+        push.isSelected              = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
 
         const PBRMaterial* pMaterial = nullptr;
-        if (gameObject.getComponent<PBRMaterial>())
+        if (auto* mat = frameInfo.scene->getRegistry().try_get<PBRMaterial>(entity))
         {
-          pMaterial = gameObject.getComponent<PBRMaterial>();
+          pMaterial = mat;
         }
         else if (subMesh.materialId >= 0 && subMesh.materialId < materials.size())
         {

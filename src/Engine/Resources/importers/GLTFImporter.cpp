@@ -410,7 +410,7 @@ namespace engine {
             {
               vertex.uv = {
                       texCoords[index * 2 + 0],
-                      texCoords[index * 2 + 1],
+                      1.0f - texCoords[index * 2 + 1],
               };
             }
             else

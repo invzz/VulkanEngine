@@ -3,21 +3,21 @@
 #include <string>
 
 #include "Engine/Resources/ResourceManager.hpp"
-#include "Engine/Scene/GameObjectManager.hpp"
+#include "Engine/Scene/Scene.hpp"
 
 namespace engine {
 
   class SceneSerializer
   {
   public:
-    SceneSerializer(GameObjectManager& manager, ResourceManager& resourceManager);
+    SceneSerializer(Scene& scene, ResourceManager& resourceManager);
 
     void serialize(const std::string& filepath);
     bool deserialize(const std::string& filepath);
 
   private:
-    GameObjectManager& manager;
-    ResourceManager&   resourceManager;
+    Scene&           scene;
+    ResourceManager& resourceManager;
   };
 
 } // namespace engine
