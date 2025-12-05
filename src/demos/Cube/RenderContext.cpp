@@ -4,13 +4,19 @@
 
 namespace engine {
 
-  RenderContext::RenderContext(Device& device, MeshManager& meshManager)
+  RenderContext::RenderContext(Device& device, MeshManager& meshManager, VkDescriptorImageInfo hzbImageInfo)
       : device_{device}, meshManager_{meshManager}, uboBuffers_(SwapChain::maxFramesInFlight()), globalDescriptorSets_(SwapChain::maxFramesInFlight())
   {
     createDescriptorPool();
     createGlobalSetLayout();
     createUBOBuffers();
     createGlobalDescriptorSets();
+
+    // Initialize with dummy or provided HZB info
+    for (int i = 0; i < SwapChain::maxFramesInFlight(); i++)
+    {
+      updateHZBDescriptor(i, hzbImageInfo);
+    }
   }
 
   void RenderContext::createDescriptorPool()
@@ -19,6 +25,7 @@ namespace engine {
                           .setMaxSets(SwapChain::maxFramesInFlight())
                           .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::maxFramesInFlight())
                           .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SwapChain::maxFramesInFlight())
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight())
                           .build();
   }
 
@@ -29,6 +36,7 @@ namespace engine {
                                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                            VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
+                               .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_TASK_BIT_EXT)
                                .build();
   }
 
@@ -53,8 +61,31 @@ namespace engine {
       auto bufferInfo = uboBuffers_[i]->descriptorInfo();
       auto meshInfo   = meshManager_.getDescriptorInfo();
 
-      DescriptorWriter(*globalSetLayout_, *globalPool_).writeBuffer(0, &bufferInfo).writeBuffer(1, &meshInfo).build(globalDescriptorSets_[i]);
+      // Binding 2 (HZB) will be updated later, but we need to write something or use updateHZBDescriptor
+      // DescriptorWriter requires all bindings? No, it builds what is added.
+      // But if we don't write binding 2, validation might complain if we use it.
+      // We will update it immediately in constructor.
+
+      DescriptorWriter(*globalSetLayout_, *globalPool_)
+              .writeBuffer(0, &bufferInfo)
+              .writeBuffer(1, &meshInfo)
+              //.writeImage(2, ...) // We don't have image info here yet
+              .build(globalDescriptorSets_[i]);
     }
+  }
+
+  void RenderContext::updateHZBDescriptor(int frameIndex, VkDescriptorImageInfo hzbImageInfo)
+  {
+    VkWriteDescriptorSet write{};
+    write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet          = globalDescriptorSets_[frameIndex];
+    write.dstBinding      = 2;
+    write.dstArrayElement = 0;
+    write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.descriptorCount = 1;
+    write.pImageInfo      = &hzbImageInfo;
+
+    vkUpdateDescriptorSets(device_.device(), 1, &write, 0, nullptr);
   }
 
   void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo)

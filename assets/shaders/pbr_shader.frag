@@ -48,6 +48,10 @@ layout(set = 0, binding = 0) uniform UBO
   int              spotLightCount;
   int              shadowLightCount;     // 2D shadow maps (directional + spot)
   int              cubeShadowLightCount; // Cube shadow maps (point lights)
+  int              _pad1;
+  int              _pad2;
+  int              _pad3;
+  vec4             frustumPlanes[6];
 }
 ubo;
 
@@ -408,12 +412,19 @@ void main()
   for (int i = 0; i < ubo.pointLightCount; i++)
   {
     // Calculate per-light radiance
-    vec3  lightDir    = ubo.pointLights[i].position.xyz - fragmentWorldPos;
-    float distance    = length(lightDir);
-    vec3  L           = normalize(lightDir);
+    vec3  lightDir  = ubo.pointLights[i].position.xyz - fragmentWorldPos;
+    float distance2 = dot(lightDir, lightDir);
+    float intensity = ubo.pointLights[i].color.w;
+
+    // Light Culling: Skip if contribution is negligible (approx < 1/255)
+    // intensity / distance2 < 0.004  =>  intensity / 0.004 < distance2
+    if (distance2 > intensity * 250.0) continue;
+
+    float distance    = sqrt(distance2);
+    vec3  L           = lightDir / distance; // normalize
     vec3  H           = normalize(V + L);
-    float attenuation = 1.0 / (distance * distance);
-    vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
+    float attenuation = 1.0 / distance2;
+    vec3  radiance    = ubo.pointLights[i].color.xyz * intensity * attenuation;
 
     // Calculate shadow for point light using cube shadow map
     float shadow = 1.0;

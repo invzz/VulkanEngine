@@ -69,7 +69,11 @@ namespace engine {
 
     // Setup rendering context (descriptors, UBO buffers)
     // Creates descriptor layouts and global descriptor sets for shader uniforms
-    RenderContext renderContext{device, resourceManager.getMeshManager()};
+    // We use the offscreen depth buffer (mip 0) as initial HZB info.
+    // Ideally we should use a view that covers all mips, but for now this satisfies validation.
+    VkDescriptorImageInfo hzbInfo = renderer.getDepthImageInfo(0);
+
+    RenderContext renderContext{device, resourceManager.getMeshManager(), hzbInfo};
 
     // Setup scene objects (camera, input devices)
     Camera   camera{};
@@ -267,7 +271,14 @@ namespace engine {
       renderer.beginOffscreenRenderPass(frameInfo.commandBuffer);
       renderScenePhase(frameInfo, state);
       renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-      renderer.generateOffscreenMipmaps(frameInfo.commandBuffer);
+
+      if (postProcessPush.enableBloom)
+      {
+        renderer.generateOffscreenMipmaps(frameInfo.commandBuffer);
+      }
+
+      // Generate HZB for Occlusion Culling (Next Frame)
+      renderer.generateDepthPyramid(frameInfo.commandBuffer);
     }));
 
     // 5. Composition Pass (PostProcess + UI)
@@ -325,6 +336,29 @@ namespace engine {
       if (auto commandBuffer = renderer.beginFrame())
       {
         int frameIndex = renderer.getFrameIndex();
+
+        // Update HZB descriptor for this frame (using previous frame's depth or current if we had a pre-pass)
+        // We generated HZB at the end of LAST frame for THIS frame index (ping-ponging).
+        // Wait, frameIndex cycles 0..N.
+        // If we generated HZB for frameIndex in the previous cycle, it is available now.
+        // We need to get the HZB image info from renderer.
+        // We need to expose a method in Renderer to get HZB image info.
+        // Let's assume we added getHZBImageInfo(frameIndex).
+        // But we didn't add it yet.
+        // We can construct it manually if we expose getDepthImage/Sampler.
+
+        // Actually, we need the full pyramid view? No, just the sampler and the base view?
+        // The shader samples from the texture.
+        // We need a view that covers all mips?
+        // The depthImageViews in FrameBuffer cover all mips (levelCount = mipLevels).
+        // So we can use that.
+
+        // We need to add getDepthImageInfo to Renderer/FrameBuffer.
+
+        // Update HZB descriptor for this frame (using previous frame's depth)
+        int                   prevFrameIndex = (frameIndex - 1 + SwapChain::maxFramesInFlight()) % SwapChain::maxFramesInFlight();
+        VkDescriptorImageInfo hzbInfo        = renderer.getDepthImageInfo(prevFrameIndex);
+        renderContext.updateHZBDescriptor(frameIndex, hzbInfo);
 
         // Build frame info structure (passed to all systems)
         // Contains all per-frame state: time, camera, selected objects, etc.
@@ -391,6 +425,27 @@ namespace engine {
     ubo.view             = frameInfo.camera.getView();
     ubo.cameraPosition   = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
     ubo.shadowLightCount = state.shadowSystem.getShadowLightCount();
+
+    // Calculate Frustum Planes for Culling (Normalized)
+    glm::mat4 vp   = ubo.projection * ubo.view;
+    glm::mat4 vpT  = glm::transpose(vp);
+    glm::vec4 row0 = vpT[0];
+    glm::vec4 row1 = vpT[1];
+    glm::vec4 row2 = vpT[2];
+    glm::vec4 row3 = vpT[3];
+
+    ubo.frustumPlanes[0] = row3 + row0; // Left
+    ubo.frustumPlanes[1] = row3 - row0; // Right
+    ubo.frustumPlanes[2] = row3 + row1; // Bottom
+    ubo.frustumPlanes[3] = row3 - row1; // Top
+    ubo.frustumPlanes[4] = row2;        // Near
+    ubo.frustumPlanes[5] = row3 - row2; // Far
+
+    for (int i = 0; i < 6; i++)
+    {
+      float len = glm::length(glm::vec3(ubo.frustumPlanes[i]));
+      ubo.frustumPlanes[i] /= len;
+    }
 
     // Copy all light space matrices
     for (int i = 0; i < ubo.shadowLightCount; i++)

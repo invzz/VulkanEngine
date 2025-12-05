@@ -50,7 +50,10 @@ namespace engine {
     int              spotLightCount        = 0;
     int              shadowLightCount      = 0; // Number of 2D shadow maps (directional + spot)
     int              cubeShadowLightCount  = 0; // Number of cube shadow maps (point lights)
-    int              padding[3];                // Padding for alignment
+    int              _pad1;
+    int              _pad2;
+    int              _pad3;
+    glm::vec4        frustumPlanes[6]; // Frustum planes for culling (Left, Right, Bottom, Top, Near, Far)
   };
 
   struct FrameInfo

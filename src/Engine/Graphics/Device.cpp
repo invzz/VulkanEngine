@@ -292,10 +292,13 @@ namespace engine {
     };
 
     VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {
-            .sType      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
-            .pNext      = &maintenance4Features,
-            .taskShader = VK_TRUE,
-            .meshShader = VK_TRUE,
+            .sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+            .pNext                                  = &maintenance4Features,
+            .taskShader                             = VK_TRUE,
+            .meshShader                             = VK_TRUE,
+            .multiviewMeshShader                    = VK_FALSE,
+            .primitiveFragmentShadingRateMeshShader = VK_FALSE,
+            .meshShaderQueries                      = VK_FALSE,
     };
 
     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
@@ -317,6 +320,10 @@ namespace engine {
         enabledExtensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
       }
     }
+
+    // Reset unsupported/unwanted mesh shader features that might have been enabled by the query
+    meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;
+    meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
 
     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
             .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
@@ -621,6 +628,41 @@ namespace engine {
     }
 
     throw engine::RuntimeException("failed to find supported format!");
+  }
+
+  VkCommandBuffer Device::beginSingleTimeCommands()
+  {
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool        = commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    return commandBuffer;
+  }
+
+  void Device::endSingleTimeCommands(VkCommandBuffer commandBuffer)
+  {
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers    = &commandBuffer;
+
+    vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(graphicsQueue_);
+
+    vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
   }
 
 } // namespace engine

@@ -6,10 +6,12 @@
 #include <cmath>
 #include <glm/common.hpp>
 #include <glm/gtc/constants.hpp>
+#include <iostream>
 #include <stdexcept>
 #include <unordered_map>
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -31,6 +33,10 @@ namespace engine {
   Renderer::~Renderer()
   {
     freeCommandBuffers();
+    vkDestroyPipeline(device.device(), hzbPipeline, nullptr);
+    vkDestroyPipelineLayout(device.device(), hzbPipelineLayout, nullptr);
+    vkDestroyDescriptorPool(device.device(), hzbDescriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(device.device(), hzbSetLayout, nullptr);
   }
 
   void Renderer::createCommandBuffers()
@@ -90,6 +96,80 @@ namespace engine {
     {
       createOffscreenResources();
     }
+
+    // Recreate HZB descriptors since image views changed
+    if (hzbDescriptorPool != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorPool(device.device(), hzbDescriptorPool, nullptr);
+      hzbDescriptorPool = VK_NULL_HANDLE;
+      // Re-create pool and sets
+      // We need to call createHZBPipeline logic again for descriptors?
+      // Or just update them.
+      // For simplicity, let's just destroy and recreate the pipeline/descriptors part that depends on images.
+      // But pipeline itself doesn't depend on images.
+      // Only descriptor sets do.
+
+      // Actually, createHZBPipeline handles everything.
+      // But we should separate descriptor creation.
+      // For now, let's just call createHZBPipeline() again if we destroy everything?
+      // No, that's wasteful.
+
+      // Let's just clear the sets and re-allocate/write them.
+      // But we need to know the mip levels.
+      // The mip levels might change if extent changes.
+
+      // So we should re-run the descriptor setup part of createHZBPipeline.
+      // I'll refactor createHZBPipeline to handle updates or just call it here if I make it robust.
+      // But createHZBPipeline creates layout and pipeline too.
+
+      // Let's just destroy the pool and let the next call to generateDepthPyramid re-create?
+      // No, generateDepthPyramid assumes they exist.
+
+      // I'll implement a helper updateHZBDescriptors().
+      // For now, I'll just call createHZBPipeline() which will check if things exist.
+      // But I need to destroy the pool first.
+
+      // Actually, createHZBPipeline is called in constructor.
+      // I should call it here too to refresh descriptors.
+      // But I need to destroy old descriptors first.
+
+      // Let's make createHZBPipeline robust.
+    }
+    createHZBPipeline();
+
+    // Transition all depth images to SHADER_READ_ONLY_OPTIMAL to avoid validation errors on first use
+    VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
+
+    for (int i = 0; i < SwapChain::maxFramesInFlight(); i++)
+    {
+      VkImageMemoryBarrier barrier{};
+      barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+      barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image                           = offscreenFrameBuffer->getDepthImage(i);
+      barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+      barrier.subresourceRange.baseMipLevel   = 0;
+      barrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+      barrier.subresourceRange.baseArrayLayer = 0;
+      barrier.subresourceRange.layerCount     = 1;
+      barrier.srcAccessMask                   = 0;
+      barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+      vkCmdPipelineBarrier(commandBuffer,
+                           VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                           VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           0,
+                           0,
+                           nullptr,
+                           0,
+                           nullptr,
+                           1,
+                           &barrier);
+    }
+
+    device.endSingleTimeCommands(commandBuffer);
 
     // TODO: recreate other resources dependent on swap chain (e.g.,
     // pipelines) the pipeline may not need to be recreated here if using
@@ -244,9 +324,311 @@ namespace engine {
     return offscreenFrameBuffer->getDescriptorImageInfo(index);
   }
 
+  VkDescriptorImageInfo Renderer::getDepthImageInfo(int index) const
+  {
+    VkDescriptorImageInfo info{};
+    info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    info.imageView   = offscreenFrameBuffer->getDepthImageView(index);
+    info.sampler     = offscreenFrameBuffer->getDepthSampler();
+    return info;
+  }
+
   void Renderer::generateOffscreenMipmaps(VkCommandBuffer commandBuffer)
   {
     offscreenFrameBuffer->generateMipmaps(commandBuffer, currentFrameIndex);
+  }
+
+  void Renderer::createHZBPipeline()
+  {
+    // 1. Create Descriptor Set Layout
+    if (hzbSetLayout == VK_NULL_HANDLE)
+    {
+      VkDescriptorSetLayoutBinding bindings[2] = {};
+      // Binding 0: Input Depth (Sampler)
+      bindings[0].binding            = 0;
+      bindings[0].descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bindings[0].descriptorCount    = 1;
+      bindings[0].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+      bindings[0].pImmutableSamplers = nullptr;
+
+      // Binding 1: Output Depth (Storage Image)
+      bindings[1].binding            = 1;
+      bindings[1].descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      bindings[1].descriptorCount    = 1;
+      bindings[1].stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
+      bindings[1].pImmutableSamplers = nullptr;
+
+      VkDescriptorSetLayoutCreateInfo layoutInfo{};
+      layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+      layoutInfo.bindingCount = 2;
+      layoutInfo.pBindings    = bindings;
+
+      if (vkCreateDescriptorSetLayout(device.device(), &layoutInfo, nullptr, &hzbSetLayout) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create HZB descriptor set layout!");
+      }
+    }
+
+    // 2. Create Pipeline
+    if (hzbPipeline == VK_NULL_HANDLE)
+    {
+#ifdef SHADER_PATH
+      std::string shaderPath = std::string(SHADER_PATH) + "/hiz_generate.comp.spv";
+#else
+      std::string shaderPath = "assets/shaders/compiled/hiz_generate.comp.spv";
+#endif
+      auto computeShaderCode = Pipeline::readFile(shaderPath);
+
+      VkShaderModule computeShaderModule;
+
+      VkShaderModuleCreateInfo createInfo{};
+      createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+      createInfo.codeSize = computeShaderCode.size();
+      createInfo.pCode    = reinterpret_cast<const uint32_t*>(computeShaderCode.data());
+
+      if (vkCreateShaderModule(device.device(), &createInfo, nullptr, &computeShaderModule) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create shader module!");
+      }
+
+      VkPipelineShaderStageCreateInfo shaderStageInfo{};
+      shaderStageInfo.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      shaderStageInfo.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
+      shaderStageInfo.module = computeShaderModule;
+      shaderStageInfo.pName  = "main";
+
+      VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+      pipelineLayoutInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+      pipelineLayoutInfo.setLayoutCount = 1;
+      pipelineLayoutInfo.pSetLayouts    = &hzbSetLayout;
+
+      if (vkCreatePipelineLayout(device.device(), &pipelineLayoutInfo, nullptr, &hzbPipelineLayout) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create HZB pipeline layout!");
+      }
+
+      VkComputePipelineCreateInfo pipelineInfo{};
+      pipelineInfo.sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+      pipelineInfo.layout = hzbPipelineLayout;
+      pipelineInfo.stage  = shaderStageInfo;
+
+      if (vkCreateComputePipelines(device.device(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &hzbPipeline) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create HZB compute pipeline!");
+      }
+
+      vkDestroyShaderModule(device.device(), computeShaderModule, nullptr);
+    }
+
+    // 3. Create Descriptor Pool and Sets
+    // We need sets for each frame and each mip transition.
+    // Mip levels can be retrieved from offscreenFrameBuffer (assuming it's used for depth)
+    // Wait, we need to know which framebuffer has the depth.
+    // Assuming offscreenFrameBuffer is used.
+    if (!offscreenFrameBuffer) return;
+
+    // Get mip levels from framebuffer (we need to expose it or calculate it)
+    // FrameBuffer calculates mipLevels based on extent.
+    VkExtent2D extent    = swapChain->getSwapChainExtent();
+    uint32_t   mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+
+    // We need sets for (mipLevels - 1) transitions per frame.
+    uint32_t setsPerFrame = mipLevels - 1;
+    if (setsPerFrame == 0) return;
+
+    uint32_t totalSets = setsPerFrame * SwapChain::maxFramesInFlight();
+
+    std::cout << "HZB Setup: MipLevels=" << mipLevels << ", SetsPerFrame=" << setsPerFrame << ", TotalSets=" << totalSets << std::endl;
+
+    if (hzbDescriptorPool == VK_NULL_HANDLE)
+    {
+      VkDescriptorPoolSize poolSizes[2] = {};
+      poolSizes[0].type                 = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      poolSizes[0].descriptorCount      = totalSets;
+      poolSizes[1].type                 = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      poolSizes[1].descriptorCount      = totalSets;
+
+      VkDescriptorPoolCreateInfo poolInfo{};
+      poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+      poolInfo.poolSizeCount = 2;
+      poolInfo.pPoolSizes    = poolSizes;
+      poolInfo.maxSets       = totalSets;
+
+      if (vkCreateDescriptorPool(device.device(), &poolInfo, nullptr, &hzbDescriptorPool) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create HZB descriptor pool!");
+      }
+    }
+
+    // Allocate and Update Sets
+    hzbDescriptorSets.resize(SwapChain::maxFramesInFlight());
+    for (int i = 0; i < SwapChain::maxFramesInFlight(); i++)
+    {
+      hzbDescriptorSets[i].resize(setsPerFrame);
+
+      std::vector<VkDescriptorSetLayout> layouts(setsPerFrame, hzbSetLayout);
+      VkDescriptorSetAllocateInfo        allocInfo{};
+      allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+      allocInfo.descriptorPool     = hzbDescriptorPool;
+      allocInfo.descriptorSetCount = setsPerFrame;
+      allocInfo.pSetLayouts        = layouts.data();
+
+      VkResult allocResult = vkAllocateDescriptorSets(device.device(), &allocInfo, hzbDescriptorSets[i].data());
+      if (allocResult != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to allocate HZB descriptor sets! Error: " + std::to_string(allocResult));
+      }
+
+      // Update sets for each mip transition: Input Mip k -> Output Mip k+1
+      for (uint32_t m = 0; m < setsPerFrame; m++)
+      {
+        VkImageView inputView  = offscreenFrameBuffer->getDepthMipImageView(i, m);
+        VkImageView outputView = offscreenFrameBuffer->getDepthMipImageView(i, m + 1);
+
+        if (inputView == VK_NULL_HANDLE || outputView == VK_NULL_HANDLE)
+        {
+          std::cout << "ERROR: Null View Handle! Frame " << i << ", Mip " << m << " -> " << (m + 1) << ". Input: " << inputView << ", Output: " << outputView
+                    << std::endl;
+        }
+
+        // Input: Mip m
+        VkDescriptorImageInfo inputInfo{};
+        inputInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // We will transition to this
+        inputInfo.imageView   = inputView;
+        inputInfo.sampler     = offscreenFrameBuffer->getDepthSampler();
+
+        // Output: Mip m+1
+        VkDescriptorImageInfo outputInfo{};
+        outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // Storage image needs GENERAL
+        outputInfo.imageView   = outputView;
+        outputInfo.sampler     = VK_NULL_HANDLE;
+
+        std::cout << "Updating Set: Frame " << i << ", Mip " << m << ". InputView: " << inputInfo.imageView << ", OutputView: " << outputInfo.imageView
+                  << std::endl;
+
+        VkWriteDescriptorSet descriptorWrites[2] = {};
+        descriptorWrites[0].sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet               = hzbDescriptorSets[i][m];
+        descriptorWrites[0].dstBinding           = 0;
+        descriptorWrites[0].dstArrayElement      = 0;
+        descriptorWrites[0].descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[0].descriptorCount      = 1;
+        descriptorWrites[0].pImageInfo           = &inputInfo;
+
+        descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet          = hzbDescriptorSets[i][m];
+        descriptorWrites[1].dstBinding      = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo      = &outputInfo;
+
+        vkUpdateDescriptorSets(device.device(), 2, descriptorWrites, 0, nullptr);
+      }
+    }
+  }
+
+  void Renderer::generateDepthPyramid(VkCommandBuffer commandBuffer)
+  {
+    if (!offscreenFrameBuffer) return;
+
+    VkExtent2D extent    = swapChain->getSwapChainExtent();
+    uint32_t   mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
+    if (mipLevels < 2) return;
+
+    // Transition Mip 0 to SHADER_READ_ONLY_OPTIMAL (it was DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+    // And all other mips to GENERAL (for writing)
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.image                           = offscreenFrameBuffer->getDepthImage(currentFrameIndex);
+    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount     = 1;
+
+    // 1. Transition Mip 0: Write -> Read
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount   = 1;
+    barrier.oldLayout                     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // Or UNDEFINED if we don't care? No we care.
+    barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask                 = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    barrier.dstAccessMask                 = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr,
+                         1,
+                         &barrier);
+
+    // 2. Transition Mips 1..N: Undefined -> General (for writing)
+    barrier.subresourceRange.baseMipLevel = 1;
+    barrier.subresourceRange.levelCount   = mipLevels - 1;
+    barrier.oldLayout                     = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout                     = VK_IMAGE_LAYOUT_GENERAL;
+    barrier.srcAccessMask                 = 0;
+    barrier.dstAccessMask                 = VK_ACCESS_SHADER_WRITE_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, hzbPipeline);
+
+    int32_t mipWidth  = extent.width;
+    int32_t mipHeight = extent.height;
+
+    for (uint32_t i = 0; i < mipLevels - 1; i++)
+    {
+      // Dispatch for Mip i -> Mip i+1
+      // Output size is Mip i+1 size
+      mipWidth  = mipWidth > 1 ? mipWidth / 2 : 1;
+      mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
+
+      vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, hzbPipelineLayout, 0, 1, &hzbDescriptorSets[currentFrameIndex][i], 0, nullptr);
+
+      // Group size is 32x32
+      vkCmdDispatch(commandBuffer, (mipWidth + 31) / 32, (mipHeight + 31) / 32, 1);
+
+      // Barrier: Wait for Mip i+1 write to finish before it becomes Mip i for next iteration
+      // Transition Mip i+1 from GENERAL (Write) to SHADER_READ_ONLY_OPTIMAL (Read)
+
+      VkImageMemoryBarrier mipBarrier{};
+      mipBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      mipBarrier.image                           = offscreenFrameBuffer->getDepthImage(currentFrameIndex);
+      mipBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      mipBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      mipBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+      mipBarrier.subresourceRange.baseArrayLayer = 0;
+      mipBarrier.subresourceRange.layerCount     = 1;
+      mipBarrier.subresourceRange.baseMipLevel   = i + 1;
+      mipBarrier.subresourceRange.levelCount     = 1;
+      mipBarrier.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+      mipBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      mipBarrier.srcAccessMask                   = VK_ACCESS_SHADER_WRITE_BIT;
+      mipBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+      vkCmdPipelineBarrier(commandBuffer,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           0,
+                           0,
+                           nullptr,
+                           0,
+                           nullptr,
+                           1,
+                           &mipBarrier);
+    }
+
+    // Finally, transition Mip 0 back to DEPTH_STENCIL_ATTACHMENT_OPTIMAL?
+    // Or leave it as READ_ONLY if we are done with it for this frame?
+    // If we use it for next frame's culling, READ_ONLY is fine.
+    // But at the start of next frame, render pass will transition it to ATTACHMENT_OPTIMAL (loadOp=CLEAR).
+    // So we are good.
   }
 
 } // namespace engine

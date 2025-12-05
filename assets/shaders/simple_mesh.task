@@ -44,14 +44,53 @@ layout(push_constant) uniform Push
 }
 push;
 
+struct PointLight
+{
+  vec4 position;
+  vec4 color;
+};
+
+struct DirectionalLight
+{
+  vec4 direction;
+  vec4 color;
+};
+
+struct SpotLight
+{
+  vec4  position;
+  vec4  direction;
+  vec4  color;
+  float outerCutoff;
+  float constantAtten;
+  float linearAtten;
+  float quadraticAtten;
+};
+
 layout(set = 0, binding = 0) uniform GlobalUbo
 {
-  mat4 projection;
-  mat4 view;
-  vec4 ambientLightColor;
-  vec4 cameraPosition;
+  mat4             projection;
+  mat4             view;
+  vec4             ambientLightColor;
+  vec4             cameraPosition;
+  PointLight       pointLights[16];
+  DirectionalLight directionalLights[16];
+  SpotLight        spotLights[16];
+  mat4             lightSpaceMatrices[16];
+  vec4             pointLightShadowData[4];
+  int              pointLightCount;
+  int              directionalLightCount;
+  int              spotLightCount;
+  int              shadowLightCount;
+  int              cubeShadowLightCount;
+  int              _pad1;
+  int              _pad2;
+  int              _pad3;
+  vec4             frustumPlanes[6];
 }
 ubo;
+
+layout(set = 0, binding = 2) uniform sampler2D hzbTexture;
 
 // Task payload to pass to mesh shader
 struct TaskPayload
@@ -68,25 +107,10 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
   vec3  worldCenter = (model * vec4(center, 1.0)).xyz;
   float radius      = meshlet.radius * max(length(model[0]), max(length(model[1]), length(model[2]))); // Approximate scale
 
-  // 2. Frustum Culling
-  mat4 vp   = ubo.projection * ubo.view;
-  mat4 vpT  = transpose(vp);
-  vec4 row0 = vpT[0];
-  vec4 row1 = vpT[1];
-  vec4 row2 = vpT[2];
-  vec4 row3 = vpT[3];
-
-  vec4 planes[6];
-  planes[0] = row3 + row0; // Left
-  planes[1] = row3 - row0; // Right
-  planes[2] = row3 + row1; // Bottom
-  planes[3] = row3 - row1; // Top
-  planes[4] = row2;        // Near
-  planes[5] = row3 - row2; // Far
-
+  // 2. Frustum Culling (Optimized)
   for (int i = 0; i < 6; i++)
   {
-    if (dot(planes[i], vec4(worldCenter, 1.0)) < -radius)
+    if (dot(ubo.frustumPlanes[i], vec4(worldCenter, 1.0)) < -radius)
     {
       return false;
     }
@@ -98,10 +122,19 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
   vec3 worldConeAxis = normalize(mat3(model) * coneAxis);
   vec3 viewDir       = normalize(cameraPos - worldCenter);
 
-  // If the cone points away from the camera more than the cutoff angle allows
-  if (dot(worldConeAxis, viewDir) >= meshlet.cone_cutoff)
+  // meshopt cone_cutoff is cos(semi_angle)
+  // We cull if dot(viewDir, worldConeAxis) < -sin(semi_angle)
+  // sin(semi_angle) = sqrt(1 - cos^2(semi_angle))
+  float coneCutoff = meshlet.cone_cutoff;
+  float coneSin    = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
+  
+  // Note: This assumes the cone is strictly defined. 
+  // If coneCutoff is 127/127 (byte) or similar, it might be 1.0.
+  // If coneCutoff >= 1.0, angle is 0.
+  
+  if (dot(worldConeAxis, viewDir) < -coneSin)
   {
-    return true; // Visible
+    return false; // Backface culled
   }
 
   // 4. Screen Size Culling (LOD)
@@ -115,6 +148,87 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     float pixelRadius     = projectedRadius * push.screenSize.y * 0.5;
 
     if (pixelRadius < 1.0)
+    {
+      return false;
+    }
+
+    // 5. Occlusion Culling (HZB)
+    // Project sphere to screen space
+    // We need a bounding box in screen space.
+    // A simple approximation is a square around the projected center.
+    
+    // Projected center
+    vec4 clipCenter = ubo.projection * viewCenter;
+    clipCenter.xyz /= clipCenter.w;
+    
+    // Check if inside screen (already done by frustum culling, but depth check needs valid coords)
+    if (clipCenter.z < 0.0 || clipCenter.z > 1.0) return true; // Should be caught by frustum culling
+    
+    // Convert to UV [0, 1]
+    vec2 uvCenter = clipCenter.xy * 0.5 + 0.5;
+    
+    // Projected radius in UV space
+    // radius / dist is tangent of half angle.
+    // projected length on screen (vertical) is radius * p11 / dist
+    // In UV space (0..1), it is radius * p11 / dist * 0.5
+    float uvRadius = projectedRadius * 0.5;
+    
+    // Calculate LOD level
+    // We want a mip level where the object covers roughly 2x2 pixels (or 4x4 for safety)
+    // Texture size
+    ivec2 texSize = textureSize(hzbTexture, 0);
+    float mip = floor(log2(max(texSize.x, texSize.y) * uvRadius * 2.0));
+    mip = max(0.0, mip);
+    
+    // Sample HZB
+    // We sample 4 texels covering the bounding box
+    // But for simplicity, let's just sample the center at a coarser mip.
+    // If we sample at 'mip', a single texel covers the object size.
+    // So one sample should be enough if aligned, but it might straddle texels.
+    // So we usually sample 4 texels or use a gather.
+    // Or just sample with linear filtering? No, we need conservative max depth.
+    // Our HZB generation does max reduction.
+    // If we sample with linear filter, we get an average, which is NOT conservative.
+    // We must use nearest filtering (which we set up in C++) or manual gather.
+    // But we set up nearest sampler.
+    // So textureLod(hzbTexture, uvCenter, mip).r will give us ONE texel.
+    // This is risky if the object overlaps multiple texels.
+    // To be safe, we should sample a mip level where the object is significantly smaller than a texel,
+    // or sample multiple texels.
+    // Common approach: Compute mip such that object fits in 4 texels max.
+    // Then sample those 4 texels.
+    // Or just be conservative and pick a higher mip level.
+    
+    // Let's try sampling at calculated mip.
+    float depth = textureLod(hzbTexture, uvCenter, mip).r;
+    
+    // Check visibility
+    // We are using standard Z (0=near, 1=far).
+    // HZB contains MAX depth of the tile.
+    // If object's nearest depth > tile's max depth, then object is occluded.
+    // Object's nearest depth = clipCenter.z - projectedRadius?
+    // Linear depth approximation:
+    // But we are in non-linear Z.
+    // Closest point on sphere in view space is (dist - radius).
+    // Project that to clip space Z.
+    // Z_clip = P33 * z_view + P34 * w_view
+    // z_ndc = Z_clip / w_clip
+    // w_clip = -z_view
+    // z_ndc = (P33 * z_view + P34) / -z_view = -P33 - P34/z_view
+    // P33 = -far/(far-near), P34 = -far*near/(far-near) (for [0,1] depth)
+    // Actually, let's just use the center depth minus some bias?
+    // Or project the nearest point of the sphere.
+    
+    vec4 nearPointView = viewCenter;
+    nearPointView.z += radius; // Closer to camera (z is negative)
+    vec4 nearPointClip = ubo.projection * nearPointView;
+    float nearDepth = nearPointClip.z / nearPointClip.w;
+    
+    // If nearDepth > HZB_depth, then occluded.
+    // HZB stores the FARTHEST point in the tile.
+    // If our CLOSEST point is farther than the tile's FARTHEST point, we are hidden.
+    
+    if (nearDepth > depth)
     {
       return false;
     }

@@ -15,9 +15,10 @@ namespace engine {
   class RenderContext
   {
   public:
-    explicit RenderContext(Device& device, MeshManager& meshManager);
+    explicit RenderContext(Device& device, MeshManager& meshManager, VkDescriptorImageInfo hzbImageInfo);
 
     void                  updateUBO(int frameIndex, const GlobalUbo& ubo);
+    void                  updateHZBDescriptor(int frameIndex, VkDescriptorImageInfo hzbImageInfo);
     VkDescriptorSet       getGlobalDescriptorSet(int frameIndex) const { return globalDescriptorSets_[frameIndex]; }
     VkDescriptorSetLayout getGlobalSetLayout() const { return globalSetLayout_->getDescriptorSetLayout(); }
 

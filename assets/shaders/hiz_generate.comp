@@ -1,0 +1,50 @@
+#version 450
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(binding = 0) uniform sampler2D inputDepth;
+layout(binding = 1, r32f) uniform writeonly image2D outputDepth;
+
+void main()
+{
+  ivec2 pos     = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 outSize = imageSize(outputDepth);
+
+  if (pos.x >= outSize.x || pos.y >= outSize.y)
+  {
+    return;
+  }
+
+  // Sample 4 texels from the previous level
+  // We want the conservative depth (farthest) for occlusion culling.
+  // Assuming standard Z (0=near, 1=far), we want the MINIMUM depth?
+  // Wait.
+  // If we want to know if an object at depth D is occluded by a tile.
+  // The tile must be FULLY closer than D.
+  // So every pixel in the tile must have depth < D.
+  // So max(tile_depths) < D.
+  // So we need the MAX reduction.
+
+  // Texture coordinates for the center of the 4 texels
+  // The input texture is 2x larger.
+  // We can use texelFetch.
+
+  ivec2 inPos = pos * 2;
+
+  float d1 = texelFetch(inputDepth, inPos + ivec2(0, 0), 0).r;
+  float d2 = texelFetch(inputDepth, inPos + ivec2(1, 0), 0).r;
+  float d3 = texelFetch(inputDepth, inPos + ivec2(0, 1), 0).r;
+  float d4 = texelFetch(inputDepth, inPos + ivec2(1, 1), 0).r;
+
+  // Handle boundaries if input size is odd?
+  // Texture sampling with clamp-to-edge handles it if we use texture() with linear?
+  // But we want exact texels.
+  // For now assume power of two or handle edge cases.
+  // If we are at the edge, texelFetch might be out of bounds?
+  // texelFetch is undefined if out of bounds? No, it depends on robustness.
+  // But usually we should clamp.
+
+  // Simple MAX reduction
+  float maxDepth = max(max(d1, d2), max(d3, d4));
+
+  imageStore(outputDepth, pos, vec4(maxDepth, 0.0, 0.0, 0.0));
+}

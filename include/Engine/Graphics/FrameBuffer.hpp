@@ -34,6 +34,12 @@ namespace engine {
 
     float getAspectRatio() const { return static_cast<float>(extent.width) / static_cast<float>(extent.height); }
 
+    // Accessors for HZB
+    VkImageView getDepthMipImageView(int frameIndex, int mipLevel) const { return depthMipImageViews[frameIndex][mipLevel]; }
+    VkImageView getDepthImageView(int frameIndex) const { return depthImageViews[frameIndex]; }
+    VkSampler   getDepthSampler() const { return depthSampler; }
+    VkImage     getDepthImage(int frameIndex) const { return depthImages[frameIndex]; }
+
   private:
     void createRenderPass();
     void createImages();
@@ -58,9 +64,13 @@ namespace engine {
     std::vector<VkImage>        depthImages;
     std::vector<VkDeviceMemory> depthImageMemorys;
     std::vector<VkImageView>    depthImageViews;
+    // Per-mip views for depth (for HZB generation)
+    // Outer vector: frame index, Inner vector: mip level
+    std::vector<std::vector<VkImageView>> depthMipImageViews;
 
     std::vector<VkFramebuffer> framebuffers;
     VkSampler                  sampler{VK_NULL_HANDLE};
+    VkSampler                  depthSampler{VK_NULL_HANDLE};
   };
 
 } // namespace engine

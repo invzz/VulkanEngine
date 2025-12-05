@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <iostream>
 #include <stdexcept>
 
 namespace engine {
@@ -62,10 +63,25 @@ namespace engine {
       vkFreeMemory(device.device(), memory, nullptr);
     }
 
+    for (auto& mipViews : depthMipImageViews)
+    {
+      for (auto imageView : mipViews)
+      {
+        vkDestroyImageView(device.device(), imageView, nullptr);
+      }
+    }
+    depthMipImageViews.clear();
+
     if (sampler != VK_NULL_HANDLE)
     {
       vkDestroySampler(device.device(), sampler, nullptr);
       sampler = VK_NULL_HANDLE;
+    }
+
+    if (depthSampler != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(device.device(), depthSampler, nullptr);
+      depthSampler = VK_NULL_HANDLE;
     }
   }
 
@@ -180,7 +196,8 @@ namespace engine {
     VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkFormat depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
                                                       VK_IMAGE_TILING_OPTIMAL,
-                                                      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+                                                      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                                                              VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
     for (uint32_t i = 0; i < frameCount; i++)
     {
@@ -239,14 +256,18 @@ namespace engine {
       depthImageInfo.extent.width  = extent.width;
       depthImageInfo.extent.height = extent.height;
       depthImageInfo.extent.depth  = 1;
-      depthImageInfo.mipLevels     = 1;
+      depthImageInfo.mipLevels     = mipLevels;
       depthImageInfo.arrayLayers   = 1;
       depthImageInfo.format        = depthFormat;
       depthImageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
       depthImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      depthImageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-      depthImageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-      depthImageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+      depthImageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+      if (useMipmaps)
+      {
+        depthImageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      }
+      depthImageInfo.samples     = VK_SAMPLE_COUNT_1_BIT;
+      depthImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
       device.getMemory().createImageWithInfo(depthImageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImages[i], depthImageMemorys[i]);
 
@@ -257,13 +278,31 @@ namespace engine {
       depthViewInfo.format                          = depthFormat;
       depthViewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
       depthViewInfo.subresourceRange.baseMipLevel   = 0;
-      depthViewInfo.subresourceRange.levelCount     = 1;
+      depthViewInfo.subresourceRange.levelCount     = 1; // Framebuffer needs single mip level
       depthViewInfo.subresourceRange.baseArrayLayer = 0;
       depthViewInfo.subresourceRange.layerCount     = 1;
 
       if (vkCreateImageView(device.device(), &depthViewInfo, nullptr, &depthImageViews[i]) != VK_SUCCESS)
       {
         throw std::runtime_error("failed to create depth image view!");
+      }
+
+      // Create per-mip views for HZB
+      depthMipImageViews.resize(frameCount);
+      depthMipImageViews[i].resize(mipLevels);
+      for (uint32_t mip = 0; mip < mipLevels; mip++)
+      {
+        VkImageViewCreateInfo mipViewInfo           = depthViewInfo;
+        mipViewInfo.subresourceRange.baseMipLevel   = mip;
+        mipViewInfo.subresourceRange.levelCount     = 1;
+        mipViewInfo.subresourceRange.baseArrayLayer = 0;
+        mipViewInfo.subresourceRange.layerCount     = 1;
+
+        if (vkCreateImageView(device.device(), &mipViewInfo, nullptr, &depthMipImageViews[i][mip]) != VK_SUCCESS)
+        {
+          throw std::runtime_error("failed to create depth mip image view!");
+        }
+        std::cout << "Created Depth Mip View: Frame " << i << ", Mip " << mip << ", Handle " << depthMipImageViews[i][mip] << std::endl;
       }
     }
 
@@ -285,6 +324,21 @@ namespace engine {
     if (vkCreateSampler(device.device(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS)
     {
       throw std::runtime_error("failed to create texture sampler!");
+    }
+
+    // Create Depth Sampler (Reduction Mode Min/Max if supported, otherwise Linear)
+    // For HZB we ideally want a reduction sampler, but for now we'll use a separate sampler for depth
+    VkSamplerCreateInfo depthSamplerInfo = samplerInfo;
+    // Use NEAREST for depth to avoid interpolation issues during HZB generation if we do it manually
+    // But for sampling in shader, we might want LINEAR if we do PCF or similar.
+    // For Occlusion Culling, we want conservative depth.
+    depthSamplerInfo.magFilter  = VK_FILTER_NEAREST;
+    depthSamplerInfo.minFilter  = VK_FILTER_NEAREST;
+    depthSamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+    if (vkCreateSampler(device.device(), &depthSamplerInfo, nullptr, &depthSampler) != VK_SUCCESS)
+    {
+      throw std::runtime_error("failed to create depth sampler!");
     }
   }
 

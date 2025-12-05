@@ -66,6 +66,9 @@ namespace engine {
 
     VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
 
+    VkCommandBuffer beginSingleTimeCommands();
+    void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
     PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT = nullptr;
 
   private:

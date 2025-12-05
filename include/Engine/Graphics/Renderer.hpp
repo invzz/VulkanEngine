@@ -31,12 +31,14 @@ namespace engine {
     void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
     void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
     void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
+    void generateDepthPyramid(VkCommandBuffer commandBuffer);
 
     // Accessors
     VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
     VkRenderPass getOffscreenRenderPass() const { return offscreenFrameBuffer->getRenderPass(); }
 
     VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
+    VkDescriptorImageInfo getDepthImageInfo(int index) const;
 
     bool isFrameInProgress() const { return isFrameStarted; }
 
@@ -60,6 +62,7 @@ namespace engine {
     void freeCommandBuffers();
     void recreateSwapChain();
     void createOffscreenResources();
+    void createHZBPipeline();
 
     Window&                      window;
     Device&                      device;
@@ -67,6 +70,15 @@ namespace engine {
     std::vector<VkCommandBuffer> commandBuffers;
 
     std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
+
+    // HZB Generation Resources
+    VkPipelineLayout      hzbPipelineLayout{VK_NULL_HANDLE};
+    VkPipeline            hzbPipeline{VK_NULL_HANDLE};
+    VkDescriptorSetLayout hzbSetLayout{VK_NULL_HANDLE};
+    VkDescriptorPool      hzbDescriptorPool{VK_NULL_HANDLE};
+    // Sets for each frame and each mip transition
+    // Outer: Frame, Inner: Mip Level
+    std::vector<std::vector<VkDescriptorSet>> hzbDescriptorSets;
 
     uint32_t currentImageIndex{0};
     // keep track of frame index for syncing [0, maxFramesInFlight]
