@@ -16,7 +16,7 @@ namespace engine {
   {
     if (!visible_) return;
 
-    if (ImGui::CollapsingHeader("Scene Objects"))
+    if (ImGui::Begin("Scene Objects", &visible_))
     {
       auto view = scene_.getRegistry().view<entt::entity>();
       ImGui::Text("Total: %zu", view.size());
@@ -56,6 +56,7 @@ namespace engine {
         ImGui::PopID();
       }
     }
+    ImGui::End();
   }
 
   void ScenePanel::processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId)

@@ -19,6 +19,12 @@ namespace engine {
     virtual void render(FrameInfo& frameInfo) = 0;
 
     /**
+     * @brief Check if the panel should be rendered in a separate window
+     * @return true if the panel should be rendered in a separate window, false otherwise
+     */
+    virtual bool isSeparateWindow() const { return false; }
+
+    /**
      * @brief Check if panel is visible
      */
     bool isVisible() const { return visible_; }

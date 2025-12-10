@@ -66,11 +66,23 @@ namespace engine {
     {
       if (panel->isVisible())
       {
-        panel->render(frameInfo);
+        if (!panel->isSeparateWindow())
+        {
+          panel->render(frameInfo);
+        }
       }
     }
 
     ImGui::End();
+
+    // Render separate window panels
+    for (auto& panel : panels_)
+    {
+      if (panel->isVisible() && panel->isSeparateWindow())
+      {
+        panel->render(frameInfo);
+      }
+    }
 
     // Render ImGui
     imguiManager_.render(commandBuffer);

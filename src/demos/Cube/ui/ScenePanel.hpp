@@ -18,6 +18,7 @@ namespace engine {
     ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem);
 
     void render(FrameInfo& frameInfo) override;
+    bool isSeparateWindow() const override { return true; }
     void processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
   private:
