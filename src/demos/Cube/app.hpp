@@ -77,5 +77,6 @@ namespace engine {
     ResourceManager resourceManager{device};
     Scene           scene;
     SceneSerializer sceneSerializer{scene, resourceManager};
+    int             debugMode = 0;
   };
 } // namespace engine

@@ -5,6 +5,7 @@ layout(location = 0) in vec2 inUV;
 layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform sampler2D sceneColor;
+layout(set = 0, binding = 1) uniform sampler2D depthMap;
 
 layout(push_constant) uniform PushConstants
 {
@@ -19,7 +20,12 @@ layout(push_constant) uniform PushConstants
   float fxaaSpanMax;
   float fxaaReduceMul;
   float fxaaReduceMin;
+  int   enableSSAO;
+  float ssaoRadius;
+  float ssaoBias;
   int   toneMappingMode; // 0: None, 1: ACES
+  mat4  inverseProjection;
+  mat4  projection;
 }
 push;
 
@@ -87,6 +93,84 @@ vec3 applyBloom(vec3 color, vec2 uv)
   return color + bloomColor * push.bloomIntensity;
 }
 
+// Helper to reconstruct view position
+vec3 getViewPos(vec2 uv)
+{
+  float depth = texture(depthMap, uv).r;
+  // Vulkan depth is [0, 1].
+  vec4 clipPos = vec4(uv * 2.0 - 1.0, depth, 1.0);
+  vec4 viewPos = push.inverseProjection * clipPos;
+  return viewPos.xyz / viewPos.w;
+}
+
+// Interleaved Gradient Noise
+float interleavedGradientNoise(vec2 position_screen)
+{
+  vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+  return fract(magic.z * fract(dot(position_screen, magic.xy)));
+}
+
+float computeSSAO(vec2 uv)
+{
+  vec3 viewPos = getViewPos(uv);
+
+  float depth = texture(depthMap, uv).r;
+  if (depth >= 0.9999) return 1.0;
+
+  vec3 dX     = dFdx(viewPos);
+  vec3 dY     = dFdy(viewPos);
+  vec3 normal = normalize(cross(dX, dY));
+
+  // Random vector based on screen position
+  vec2  screenPos = gl_FragCoord.xy;
+  float noiseVal  = interleavedGradientNoise(screenPos);
+
+  // Create random rotation vector
+  vec3 randomVec = normalize(vec3(noiseVal * 2.0 - 1.0, (1.0 - noiseVal) * 2.0 - 1.0, 0.0));
+
+  // Create TBN matrix
+  vec3 tangent   = normalize(randomVec - normal * dot(randomVec, normal));
+  vec3 bitangent = cross(normal, tangent);
+  mat3 TBN       = mat3(tangent, bitangent, normal);
+
+  float occlusion = 0.0;
+  int   samples   = 32;
+  float radius    = push.ssaoRadius;
+  float bias      = push.ssaoBias;
+
+  for (int i = 0; i < samples; ++i)
+  {
+    // Fibonacci Hemisphere Sampling
+    float index = float(i);
+    float count = float(samples);
+
+    float phi      = 2.3999632 * index;           // Golden Angle
+    float cosTheta = 1.0 - (index + 0.5) / count; // z from 1 down to 0
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+    vec3 sampleTangent = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+
+    // Scale samples to be distributed within the radius (accelerating towards center)
+    float scale = float(i) / float(samples);
+    scale       = mix(0.1, 1.0, scale * scale);
+    sampleTangent *= scale;
+
+    vec3 samplePos = viewPos + (TBN * sampleTangent) * radius;
+
+    vec4 offset = push.projection * vec4(samplePos, 1.0);
+    offset.xyz /= offset.w;
+    offset.xy = offset.xy * 0.5 + 0.5;
+
+    float sampleDepth = getViewPos(offset.xy).z;
+
+    float rangeCheck = smoothstep(0.0, 1.0, radius / abs(viewPos.z - sampleDepth));
+    occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
+  }
+
+  occlusion = 1.0 - (occlusion / float(samples));
+  return occlusion;
+}
+
 void main()
 {
   vec3 color;
@@ -98,6 +182,13 @@ void main()
   else
   {
     color = texture(sceneColor, inUV).rgb;
+  }
+
+  // SSAO
+  if (push.enableSSAO == 1)
+  {
+    float ssao = computeSSAO(inUV);
+    color *= ssao;
   }
 
   // Bloom

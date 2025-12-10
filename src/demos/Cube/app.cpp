@@ -45,6 +45,7 @@
 // UI Panels
 #include "ui/AnimationPanel.hpp"
 #include "ui/CameraPanel.hpp"
+#include "ui/DebugPanel.hpp"
 #include "ui/IBLPanel.hpp"
 #include "ui/LightsPanel.hpp"
 #include "ui/ModelImportPanel.hpp"
@@ -139,19 +140,24 @@ namespace engine {
     // Post Processing System
     auto postProcessPool = DescriptorPool::Builder(device)
                                    .setMaxSets(SwapChain::maxFramesInFlight())
-                                   .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight())
+                                   .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 2)
                                    .build();
 
-    auto postProcessSetLayout =
-            DescriptorSetLayout::Builder(device).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT).build();
+    auto postProcessSetLayout = DescriptorSetLayout::Builder(device)
+                                        .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                                        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                                        .build();
 
-    PostProcessingSystem postProcessingSystem{device, renderer.getSwapChainRenderPass(), {postProcessSetLayout->getDescriptorSetLayout()}};
+    auto postProcessingSystem = std::make_unique<PostProcessingSystem>(device,
+                                                                       renderer.getSwapChainRenderPass(),
+                                                                       std::vector<VkDescriptorSetLayout>{postProcessSetLayout->getDescriptorSetLayout()});
 
     std::vector<VkDescriptorSet> postProcessDescriptorSets(SwapChain::maxFramesInFlight());
     for (int i = 0; i < postProcessDescriptorSets.size(); i++)
     {
       auto imageInfo = renderer.getOffscreenImageInfo(i);
-      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).build(postProcessDescriptorSets[i]);
+      auto depthInfo = renderer.getDepthImageInfo(i);
+      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).writeImage(1, &depthInfo).build(postProcessDescriptorSets[i]);
     }
 
     // UI Manager with panels
@@ -180,6 +186,7 @@ namespace engine {
     uiManager.addPanel(std::make_unique<AnimationPanel>(scene));
     uiManager.addPanel(std::make_unique<ScenePanel>(device, scene, animationSystem));
     uiManager.addPanel(std::make_unique<PostProcessPanel>(postProcessPush));
+    uiManager.addPanel(std::make_unique<DebugPanel>(debugMode));
 
     // Selection state (persisted across frames)
     uint32_t     selectedObjectId = 0;
@@ -272,10 +279,9 @@ namespace engine {
       renderScenePhase(frameInfo, state);
       renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
 
-      if (postProcessPush.enableBloom)
-      {
-        renderer.generateOffscreenMipmaps(frameInfo.commandBuffer);
-      }
+      // Always generate mipmaps to ensure proper layout transition (COLOR_ATTACHMENT -> SHADER_READ_ONLY)
+      // even if bloom is disabled.
+      renderer.generateOffscreenMipmaps(frameInfo.commandBuffer);
 
       // Generate HZB for Occlusion Culling (Next Frame)
       renderer.generateDepthPyramid(frameInfo.commandBuffer);
@@ -302,9 +308,16 @@ namespace engine {
 
       // Update descriptor set for current frame
       auto imageInfo = renderer.getOffscreenImageInfo(frameInfo.frameIndex);
-      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).overwrite(postProcessDescriptorSets[frameInfo.frameIndex]);
+      auto depthInfo = renderer.getDepthImageInfo(frameInfo.frameIndex);
+      DescriptorWriter(*postProcessSetLayout, *postProcessPool)
+              .writeImage(0, &imageInfo)
+              .writeImage(1, &depthInfo)
+              .overwrite(postProcessDescriptorSets[frameInfo.frameIndex]);
 
-      postProcessingSystem.render(frameInfo, postProcessDescriptorSets[frameInfo.frameIndex], postProcessPush);
+      postProcessPush.inverseProjection = glm::inverse(camera.getProjection());
+      postProcessPush.projection        = camera.getProjection();
+
+      postProcessingSystem->render(frameInfo, postProcessDescriptorSets[frameInfo.frameIndex], postProcessPush);
 
       uiPhase(frameInfo, frameInfo.commandBuffer, state);
       renderer.endSwapChainRenderPass(frameInfo.commandBuffer);
@@ -335,6 +348,13 @@ namespace engine {
       // Begin frame - get command buffer for recording GPU commands
       if (auto commandBuffer = renderer.beginFrame())
       {
+        if (renderer.wasSwapChainRecreated())
+        {
+          postProcessingSystem = std::make_unique<PostProcessingSystem>(device,
+                                                                        renderer.getSwapChainRenderPass(),
+                                                                        std::vector<VkDescriptorSetLayout>{postProcessSetLayout->getDescriptorSetLayout()});
+        }
+
         int frameIndex = renderer.getFrameIndex();
 
         // Update HZB descriptor for this frame (using previous frame's depth or current if we had a pre-pass)
@@ -425,6 +445,7 @@ namespace engine {
     ubo.view             = frameInfo.camera.getView();
     ubo.cameraPosition   = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
     ubo.shadowLightCount = state.shadowSystem.getShadowLightCount();
+    ubo.debugMode        = debugMode;
 
     // Calculate Frustum Planes for Culling (Normalized)
     glm::mat4 vp   = ubo.projection * ubo.view;

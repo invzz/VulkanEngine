@@ -174,11 +174,13 @@ namespace engine {
     // TODO: recreate other resources dependent on swap chain (e.g.,
     // pipelines) the pipeline may not need to be recreated here if using
     // dynamic viewport/scissor
+    swapChainRecreated = true;
   }
 
   VkCommandBuffer Renderer::beginFrame()
   {
     assert(!isFrameStarted && "Can't call beginFrame while already in progress");
+    swapChainRecreated = false;
 
     uint32_t imageIndex;
     auto     result = swapChain->acquireNextImage(&imageIndex);
@@ -561,6 +563,10 @@ namespace engine {
     if (mipLevels < 2) return;
 
     // 1. Transition Depth Mip 0 to SHADER_READ_ONLY_OPTIMAL
+    // Note: The render pass dependency already handles the transition and visibility.
+    // So we don't strictly need this barrier if FrameBuffer dependencies are correct.
+    // Let's try removing it to see if it fixes the Device Lost error.
+    /*
     VkImageMemoryBarrier depthBarrier{};
     depthBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     depthBarrier.image                           = offscreenFrameBuffer->getDepthImage(currentFrameIndex);
@@ -571,7 +577,7 @@ namespace engine {
     depthBarrier.subresourceRange.layerCount     = 1;
     depthBarrier.subresourceRange.baseMipLevel   = 0;
     depthBarrier.subresourceRange.levelCount     = 1;
-    depthBarrier.oldLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthBarrier.oldLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     depthBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     depthBarrier.srcAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     depthBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
@@ -586,6 +592,7 @@ namespace engine {
                          nullptr,
                          1,
                          &depthBarrier);
+    */
 
     // 2. Transition HZB Mips to GENERAL (for writing)
     VkImageMemoryBarrier hzbBarrier{};

@@ -62,10 +62,11 @@ The current PBR fragment shader is functional and supports multiple workflows (M
 - Updated specular IBL calculation to correctly use the pre-integrated DFG LUT (`brdfLUT`) for proper energy conservation.
 
 ### C. Debugging Modes
-**Current State:** Debugging is done by commenting out code.
-**Improvement:**
-- Add a `debugMode` uniform (or push constant).
-- Allow switching output to visualize: Albedo, Normal, Roughness, Metallic, Lighting Only, etc.
+**Status:** ✅ Completed
+**Implementation:**
+- Added `debugMode` to `GlobalUbo` (C++) and `UBO` (GLSL).
+- Implemented debug visualization logic in `pbr_shader.frag` (Albedo, Normal, Roughness, Metallic, Lighting, AO).
+- Added `DebugPanel` to the UI to switch between debug modes.
 
 ## 4. Proposed Architecture
 

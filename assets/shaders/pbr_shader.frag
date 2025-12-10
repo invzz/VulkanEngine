@@ -48,7 +48,7 @@ layout(set = 0, binding = 0) uniform UBO
   int              spotLightCount;
   int              shadowLightCount;     // 2D shadow maps (directional + spot)
   int              cubeShadowLightCount; // Cube shadow maps (point lights)
-  int              _pad1;
+  int              debugMode;            // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting
   int              _pad2;
   int              _pad3;
   vec4             frustumPlanes[6];
@@ -218,6 +218,12 @@ float DistributionGGXAnisotropic(vec3 N, vec3 H, vec3 T, vec3 B, float roughness
   float w2 = a2 / v2;
 
   return a2 * w2 * w2 / PI;
+}
+
+// Specular Occlusion (Lagarde/Filament)
+float computeSpecularAO(float NdotV, float ao, float roughness)
+{
+  return clamp(pow(NdotV + ao, exp2(-16.0 * roughness - 1.0)) - 1.0 + ao, 0.0, 1.0);
 }
 
 vec3 evalIridescence(float NdotV, float thickness, float ior)
@@ -497,7 +503,11 @@ vec3 calculateIBL(Surface surf)
   float horizon = min(1.0 + dot(surf.R, surf.N), 1.0);
   specular *= horizon * horizon;
 
-  vec3 ambient = (kD * diffuse + specular) * surf.ao;
+  // Specular Occlusion: dampen specular reflection based on AO
+  float specularAO = computeSpecularAO(surf.NdotV, surf.ao, surf.roughness);
+  specular *= specularAO;
+
+  vec3 ambient = kD * diffuse * surf.ao + specular;
 
   // Add simple ambient as fallback/boost
   ambient += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * surf.albedo * surf.ao * 0.05;
@@ -608,6 +618,32 @@ void main()
     rimIntensity        = pow(rimIntensity, 2.0);
     vec3 selectionColor = vec3(1.0, 1.0, 1.0) * pulse * 0.5;
     color += selectionColor * rimIntensity;
+  }
+
+  // Debug modes
+  if (ubo.debugMode == 1) // Albedo
+  {
+    color = surf.albedo;
+  }
+  else if (ubo.debugMode == 2) // Normal
+  {
+    color = surf.N * 0.5 + 0.5;
+  }
+  else if (ubo.debugMode == 3) // Roughness
+  {
+    color = vec3(surf.roughness);
+  }
+  else if (ubo.debugMode == 4) // Metallic
+  {
+    color = vec3(surf.metallic);
+  }
+  else if (ubo.debugMode == 5) // Lighting Only
+  {
+    color = ambient + Lo;
+  }
+  else if (ubo.debugMode == 6) // AO
+  {
+    color = vec3(surf.ao);
   }
 
   outColor = vec4(color, surf.alpha * (1.0 - material.params[2][0]));

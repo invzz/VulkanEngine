@@ -44,6 +44,19 @@ namespace engine {
       ImGui::DragFloat("FXAA Reduce Min", &pushConstants.fxaaReduceMin, 0.0001f, 0.0f, 0.1f);
     }
 
+    ImGui::Separator();
+    ImGui::Text("SSAO");
+    bool ssao = pushConstants.enableSSAO == 1;
+    if (ImGui::Checkbox("Enable SSAO", &ssao))
+    {
+      pushConstants.enableSSAO = ssao ? 1 : 0;
+    }
+    if (ssao)
+    {
+      ImGui::DragFloat("SSAO Radius", &pushConstants.ssaoRadius, 0.01f, 0.0f, 2.0f);
+      ImGui::DragFloat("SSAO Bias", &pushConstants.ssaoBias, 0.001f, 0.0f, 0.5f);
+    }
+
     if (ImGui::Button("Reset"))
     {
       pushConstants.exposure        = 1.0f;
@@ -57,6 +70,9 @@ namespace engine {
       pushConstants.fxaaSpanMax     = 8.0f;
       pushConstants.fxaaReduceMul   = 0.125f;
       pushConstants.fxaaReduceMin   = 0.0078125f;
+      pushConstants.enableSSAO      = 1;
+      pushConstants.ssaoRadius      = 0.5f;
+      pushConstants.ssaoBias        = 0.025f;
       pushConstants.toneMappingMode = 1;
     }
 

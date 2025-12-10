@@ -41,6 +41,7 @@ namespace engine {
     VkDescriptorImageInfo getDepthImageInfo(int index) const;
 
     bool isFrameInProgress() const { return isFrameStarted; }
+    bool wasSwapChainRecreated() const { return swapChainRecreated; }
 
     VkCommandBuffer getCurrentCommandBuffer() const
     {
@@ -84,6 +85,7 @@ namespace engine {
     // keep track of frame index for syncing [0, maxFramesInFlight]
     int  currentFrameIndex{0};
     bool isFrameStarted{false};
+    bool swapChainRecreated{false};
   };
 
 } // namespace engine

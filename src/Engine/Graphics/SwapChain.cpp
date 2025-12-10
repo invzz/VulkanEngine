@@ -149,9 +149,10 @@ namespace engine {
     submitInfo.pSignalSemaphores    = signalSemaphores;
 
     vkResetFences(device.device(), 1, &inFlightFences[currentFrame]);
-    if (vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+    VkResult submitResult = vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]);
+    if (submitResult != VK_SUCCESS)
     {
-      throw CommandBufferSubmissionException("failed to submit draw command buffer!");
+      throw CommandBufferSubmissionException("failed to submit draw command buffer! Error: " + std::to_string(submitResult));
     }
 
     VkPresentInfoKHR presentInfo = {};
