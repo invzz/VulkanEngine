@@ -519,48 +519,56 @@ namespace engine {
           push.screenSize              = glm::vec2(frameInfo.extent.width, frameInfo.extent.height);
 
           MaterialUniformData matData{};
-          matData.isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
+          float               isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
 
           if (pMaterial)
           {
             const auto& material = *pMaterial;
 
-            uint32_t textureFlags = 0;
+            uint32_t textureFlags            = 0;
+            uint32_t albedoIndex             = 0;
+            uint32_t normalIndex             = 0;
+            uint32_t metallicIndex           = 0;
+            uint32_t roughnessIndex          = 0;
+            uint32_t aoIndex                 = 0;
+            uint32_t emissiveIndex           = 0;
+            uint32_t specularGlossinessIndex = 0;
+
             if (material.hasAlbedoMap())
             {
               textureFlags |= (1 << 0);
-              matData.albedoIndex = material.albedoMap->getGlobalIndex();
+              albedoIndex = material.albedoMap->getGlobalIndex();
             }
             if (material.hasNormalMap())
             {
               textureFlags |= (1 << 1);
-              matData.normalIndex = material.normalMap->getGlobalIndex();
+              normalIndex = material.normalMap->getGlobalIndex();
             }
             if (material.hasMetallicMap())
             {
               textureFlags |= (1 << 2);
-              matData.metallicIndex = material.metallicMap->getGlobalIndex();
+              metallicIndex = material.metallicMap->getGlobalIndex();
             }
             if (material.hasRoughnessMap())
             {
               textureFlags |= (1 << 3);
-              matData.roughnessIndex = material.roughnessMap->getGlobalIndex();
+              roughnessIndex = material.roughnessMap->getGlobalIndex();
             }
             if (material.hasAOMap())
             {
               textureFlags |= (1 << 4);
-              matData.aoIndex = material.aoMap->getGlobalIndex();
+              aoIndex = material.aoMap->getGlobalIndex();
             }
             if (material.hasEmissiveMap())
             {
               textureFlags |= (1 << 5);
-              matData.emissiveIndex = material.emissiveMap->getGlobalIndex();
+              emissiveIndex = material.emissiveMap->getGlobalIndex();
             }
 
             if (material.specularGlossinessMap)
             {
               textureFlags |= (1 << 8);
-              matData.specularGlossinessIndex = material.specularGlossinessMap->getGlobalIndex();
+              specularGlossinessIndex = material.specularGlossinessMap->getGlobalIndex();
             }
 
             if (material.useMetallicRoughnessTexture)
@@ -573,32 +581,77 @@ namespace engine {
             }
 
             matData.albedo                   = material.albedo;
-            matData.metallic                 = material.metallic;
-            matData.roughness                = material.roughness;
-            matData.ao                       = material.ao;
             matData.emissiveInfo             = glm::vec4(material.emissiveColor, material.emissiveStrength);
-            matData.clearcoat                = material.clearcoat;
-            matData.clearcoatRoughness       = material.clearcoatRoughness;
-            matData.anisotropic              = material.anisotropic;
-            matData.anisotropicRotation      = material.anisotropicRotation;
-            matData.transmission             = material.transmission;
-            matData.ior                      = material.ior;
-            matData.iridescence              = material.iridescence;
-            matData.iridescenceIOR           = material.iridescenceIOR;
-            matData.iridescenceThickness     = material.iridescenceThickness;
-            matData.useSpecularGlossiness    = material.useSpecularGlossinessWorkflow ? 1 : 0;
             matData.specularGlossinessFactor = glm::vec4(material.specularFactor, material.glossinessFactor);
-            matData.textureFlags             = textureFlags;
-            matData.uvScale                  = material.uvScale;
-            matData.alphaCutoff              = material.alphaCutoff;
-            matData.alphaMode                = static_cast<uint32_t>(material.alphaMode);
+
+            // Pack floats into mat4
+            // Col 0
+            matData.params[0][0] = material.metallic;
+            matData.params[0][1] = material.roughness;
+            matData.params[0][2] = material.ao;
+            matData.params[0][3] = isSelected;
+            // Col 1
+            matData.params[1][0] = material.clearcoat;
+            matData.params[1][1] = material.clearcoatRoughness;
+            matData.params[1][2] = material.anisotropic;
+            matData.params[1][3] = material.anisotropicRotation;
+            // Col 2
+            matData.params[2][0] = material.transmission;
+            matData.params[2][1] = material.ior;
+            matData.params[2][2] = material.iridescence;
+            matData.params[2][3] = material.iridescenceIOR;
+            // Col 3
+            matData.params[3][0] = material.iridescenceThickness;
+            matData.params[3][1] = material.uvScale;
+            matData.params[3][2] = material.alphaCutoff;
+            matData.params[3][3] = 0.0f; // Padding
+
+            // Pack uints
+            matData.flagsAndIndices0.x = textureFlags;
+            matData.flagsAndIndices0.y = static_cast<uint32_t>(material.alphaMode);
+            matData.flagsAndIndices0.z = albedoIndex;
+            matData.flagsAndIndices0.w = normalIndex;
+
+            matData.indices1.x = metallicIndex;
+            matData.indices1.y = roughnessIndex;
+            matData.indices1.z = aoIndex;
+            matData.indices1.w = emissiveIndex;
+
+            matData.indices2.x = specularGlossinessIndex;
+            matData.indices2.y = material.useSpecularGlossinessWorkflow ? 1 : 0;
+            matData.indices2.z = 0;
+            matData.indices2.w = 0;
           }
           else
           {
-            matData.albedo    = glm::vec4(1.0f);
-            matData.metallic  = 0.0f;
-            matData.roughness = 0.5f;
-            matData.ao        = 1.0f;
+            matData.albedo                   = glm::vec4(1.0f);
+            matData.emissiveInfo             = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            matData.specularGlossinessFactor = glm::vec4(1.0f);
+
+            // Defaults
+            matData.params[0][0] = 0.0f; // metallic
+            matData.params[0][1] = 0.5f; // roughness
+            matData.params[0][2] = 1.0f; // ao
+            matData.params[0][3] = isSelected;
+
+            matData.params[1][0] = 0.0f;  // clearcoat
+            matData.params[1][1] = 0.03f; // clearcoatRoughness
+            matData.params[1][2] = 0.0f;  // anisotropic
+            matData.params[1][3] = 0.0f;  // anisotropicRotation
+
+            matData.params[2][0] = 0.0f; // transmission
+            matData.params[2][1] = 1.5f; // ior
+            matData.params[2][2] = 0.0f; // iridescence
+            matData.params[2][3] = 1.3f; // iridescenceIOR
+
+            matData.params[3][0] = 100.0f; // iridescenceThickness
+            matData.params[3][1] = 1.0f;   // uvScale
+            matData.params[3][2] = 0.5f;   // alphaCutoff
+            matData.params[3][3] = 0.0f;   // Padding
+
+            matData.flagsAndIndices0 = glm::uvec4(0);
+            matData.indices1         = glm::uvec4(0);
+            matData.indices2         = glm::uvec4(0);
           }
 
           memcpy(mappedData + (dynamicOffsetIndex * atomSize), &matData, sizeof(MaterialUniformData));

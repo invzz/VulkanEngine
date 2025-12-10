@@ -73,38 +73,12 @@ layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
 layout(set = 4, binding = 0) uniform MaterialData
 {
   vec4  albedo;
-  float metallic;
-  float roughness;
-  float ao;
-  float isSelected;
-  float clearcoat;
-  float clearcoatRoughness;
-  float anisotropic;
-  float anisotropicRotation;
-  float transmission;
-  float ior;
-  float iridescence;
-  float iridescenceIOR;
-  float iridescenceThickness;
-  uint  textureFlags;
-  float uvScale;
-  float alphaCutoff;
-  uint  alphaMode;
-  uint  albedoIndex;
-  uint  normalIndex;
-  uint  metallicIndex;
-  uint  roughnessIndex;
-  uint  aoIndex;
-  uint  emissiveIndex;
-  uint  specularGlossinessIndex;
-  uint  _pad0;
-  uint  _pad1;
-  vec4  emissiveInfo; // rgb: color, a: strength
-  vec4  specularGlossinessFactor;
-  uint  useSpecularGlossiness;
-  uint  _pad2;
-  uint  _pad3;
-  uint  _pad4;
+  vec4  emissiveInfo;             // rgb: color, a: strength
+  vec4  specularGlossinessFactor; // rgb: specular, a: glossiness
+  mat4  params;                   // Packed float parameters
+  uvec4 flagsAndIndices0;         // Packed uint parameters
+  uvec4 indices1;
+  uvec4 indices2;
 }
 material;
 
@@ -287,9 +261,9 @@ vec3 calculateDirectLight(Surface surf, vec3 L, vec3 radiance)
   vec3  H = normalize(surf.V + L);
   float NDF;
 
-  if (material.anisotropic > 0.01)
+  if (material.params[1][2] > 0.01)
   {
-    NDF = DistributionGGXAnisotropic(surf.N, H, surf.T, surf.B, surf.roughness, material.anisotropic);
+    NDF = DistributionGGXAnisotropic(surf.N, H, surf.T, surf.B, surf.roughness, material.params[1][2]);
   }
   else
   {
@@ -314,8 +288,8 @@ vec3 calculateDirectLight(Surface surf, vec3 L, vec3 radiance)
 vec3 calculateClearcoat(Surface surf, vec3 L, vec3 radiance)
 {
   vec3  H   = normalize(surf.V + L);
-  float NDF = DistributionGGX(surf.N, H, material.clearcoatRoughness);
-  float G   = GeometrySmith(surf.N, surf.V, L, material.clearcoatRoughness);
+  float NDF = DistributionGGX(surf.N, H, material.params[1][1]);
+  float G   = GeometrySmith(surf.N, surf.V, L, material.params[1][1]);
   vec3  F   = fresnelSchlick(max(dot(H, surf.V), 0.0), vec3(0.04));
 
   vec3  numerator   = NDF * G * F;
@@ -329,78 +303,78 @@ vec3 calculateClearcoat(Surface surf, vec3 L, vec3 radiance)
 Surface getSurfaceProperties()
 {
   // Apply UV tiling scale
-  vec2 uv = fragUV * material.uvScale;
+  vec2 uv = fragUV * material.params[3][1];
 
   // Sample material properties from textures or use push constants as base values
   vec4  baseColor = material.albedo;
   vec3  albedo    = baseColor.rgb;
   float alpha     = baseColor.a;
-  float metallic  = material.metallic;
-  float roughness = material.roughness;
-  float ao        = material.ao;
+  float metallic  = material.params[0][0];
+  float roughness = material.params[0][1];
+  float ao        = material.params[0][2];
 
   // Texture sampling: Check flags to determine which textures are bound
-  if ((material.textureFlags & (1u << 0)) != 0u) // Albedo/BaseColor texture
+  if ((material.flagsAndIndices0.x & (1u << 0)) != 0u) // Albedo/BaseColor texture
   {
-    vec4 texColor = texture(globalTextures[nonuniformEXT(material.albedoIndex)], uv);
+    vec4 texColor = texture(globalTextures[nonuniformEXT(material.flagsAndIndices0.z)], uv);
     albedo        = texColor.rgb; // sRGB texture, auto-converted to linear by GPU
     alpha         = texColor.a;
   }
 
   // Alpha Masking
-  if (material.alphaMode == 1) // MASK
+  if (material.flagsAndIndices0.y == 1) // MASK
   {
-    if (alpha < material.alphaCutoff)
+    if (alpha < material.params[3][2])
     {
       discard;
     }
     alpha = 1.0; // Treat as opaque after test
   }
-  else if (material.alphaMode == 0) // OPAQUE
+  else if (material.flagsAndIndices0.y == 0) // OPAQUE
   {
     alpha = 1.0;
   }
 
   bool aoHandled = false;
 
-  if ((material.textureFlags & (1u << 7)) != 0u) // OcclusionRoughnessMetallic Packed
+  if ((material.flagsAndIndices0.x & (1u << 7)) != 0u) // OcclusionRoughnessMetallic Packed
   {
-    vec4 ormSample = texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv);
+    vec4 ormSample = texture(globalTextures[nonuniformEXT(material.indices1.y)], uv);
     ao             = ormSample.r;
     roughness      = ormSample.g;
     metallic       = ormSample.b;
     aoHandled      = true;
   }
-  else if ((material.textureFlags & (1u << 6)) != 0u) // MetallicRoughness Packed (glTF)
+  else if ((material.flagsAndIndices0.x & (1u << 6)) != 0u) // MetallicRoughness Packed (glTF)
   {
-    vec4 mrSample = texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv);
+    vec4 mrSample = texture(globalTextures[nonuniformEXT(material.indices1.y)], uv);
     metallic *= mrSample.b;
     roughness *= mrSample.g;
   }
   else
   {
-    if ((material.textureFlags & (1u << 2)) != 0u) // Metallic texture
+    if ((material.flagsAndIndices0.x & (1u << 2)) != 0u) // Metallic texture
     {
-      metallic *= texture(globalTextures[nonuniformEXT(material.metallicIndex)], uv).r;
+      metallic *= texture(globalTextures[nonuniformEXT(material.indices1.x)], uv).r;
     }
 
-    if ((material.textureFlags & (1u << 3)) != 0u) // Roughness texture
+    if ((material.flagsAndIndices0.x & (1u << 3)) != 0u) // Roughness texture
     {
-      roughness *= texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv).r;
+      roughness *= texture(globalTextures[nonuniformEXT(material.indices1.y)], uv).r;
     }
   }
 
-  if (!aoHandled && (material.textureFlags & (1u << 4)) != 0u) // Ambient Occlusion texture
+  if (!aoHandled && (material.flagsAndIndices0.x & (1u << 4)) != 0u) // Ambient Occlusion texture
   {
-    ao *= texture(globalTextures[nonuniformEXT(material.aoIndex)], uv).r;
+    ao *= texture(globalTextures[nonuniformEXT(material.indices1.z)], uv).r;
   }
 
   vec3 N = normalize(fragmentNormalWorld);
 
   // Normal mapping
-  if ((material.textureFlags & (1u << 1)) != 0u) // Normal map
+  if ((material.flagsAndIndices0.x & (1u << 1)) != 0u) // Normal map
   {
-    vec3 tangentNormal = texture(globalTextures[nonuniformEXT(material.normalIndex)], uv).xyz * 2.0 - 1.0;
+    vec3 tangentNormal = texture(globalTextures[nonuniformEXT(material.flagsAndIndices0.w)], uv).xyz * 2.0 - 1.0;
     tangentNormal.y    = -tangentNormal.y;
 
     vec3 T;
@@ -426,9 +400,9 @@ Surface getSurfaceProperties()
   if (length(T) < 0.01) T = normalize(cross(N, vec3(1.0, 0.0, 0.0)));
   vec3 B = cross(N, T);
 
-  if (material.anisotropic > 0.01)
+  if (material.params[1][2] > 0.01)
   {
-    float angle = material.anisotropicRotation * 2.0 * PI;
+    float angle = material.params[1][3] * 2.0 * PI;
     float cosA  = cos(angle);
     float sinA  = sin(angle);
     vec3  Trot  = cosA * T + sinA * B;
@@ -439,14 +413,14 @@ Surface getSurfaceProperties()
 
   vec3 F0 = vec3(0.04);
 
-  if (material.useSpecularGlossiness == 1)
+  if (material.indices2.y == 1)
   {
     vec3  specularColor = material.specularGlossinessFactor.rgb;
     float glossiness    = material.specularGlossinessFactor.a;
 
-    if ((material.textureFlags & (1u << 8)) != 0u)
+    if ((material.flagsAndIndices0.x & (1u << 8)) != 0u)
     {
-      vec4 sgSample = texture(globalTextures[nonuniformEXT(material.specularGlossinessIndex)], uv);
+      vec4 sgSample = texture(globalTextures[nonuniformEXT(material.indices2.x)], uv);
       specularColor *= sgSample.rgb;
       glossiness *= sgSample.a;
     }
@@ -457,19 +431,19 @@ Surface getSurfaceProperties()
   }
   else
   {
-    if (material.ior != 1.5)
+    if (material.params[2][1] != 1.5)
     {
-      float ior = material.ior;
+      float ior = material.params[2][1];
       float f   = (ior - 1.0) / (ior + 1.0);
       F0        = vec3(f * f);
     }
     F0 = mix(F0, albedo, metallic);
   }
 
-  if (material.iridescence > 0.0)
+  if (material.params[2][2] > 0.0)
   {
-    vec3 iridescenceColor = evalIridescence(max(dot(N, V), 0.1), material.iridescenceThickness, material.iridescenceIOR);
-    F0                    = mix(F0, iridescenceColor, material.iridescence);
+    vec3 iridescenceColor = evalIridescence(max(dot(N, V), 0.1), material.params[3][0], material.params[2][3]);
+    F0                    = mix(F0, iridescenceColor, material.params[2][2]);
   }
 
   Surface surf;
@@ -516,12 +490,12 @@ vec3 calculateIBL(Surface surf)
 
 vec3 calculateEmissive()
 {
-  vec2 uv       = fragUV * material.uvScale;
+  vec2 uv       = fragUV * material.params[3][1];
   vec3 emissive = material.emissiveInfo.rgb * material.emissiveInfo.a;
 
-  if ((material.textureFlags & (1u << 5)) != 0u) // Emissive texture
+  if ((material.flagsAndIndices0.x & (1u << 5)) != 0u) // Emissive texture
   {
-    vec3 emissiveTex = texture(globalTextures[nonuniformEXT(material.emissiveIndex)], uv).rgb;
+    vec3 emissiveTex = texture(globalTextures[nonuniformEXT(material.indices1.w)], uv).rgb;
     emissive *= emissiveTex;
   }
   return emissive;
@@ -557,7 +531,7 @@ void main()
 
     Lo += calculateDirectLight(surf, L, radiance) * shadow;
 
-    if (material.clearcoat > 0.01)
+    if (material.params[1][0] > 0.01)
     {
       clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
     }
@@ -577,7 +551,7 @@ void main()
 
     Lo += calculateDirectLight(surf, L, radiance) * shadow;
 
-    if (material.clearcoat > 0.01)
+    if (material.params[1][0] > 0.01)
     {
       clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
     }
@@ -609,15 +583,15 @@ void main()
 
     Lo += calculateDirectLight(surf, L, radiance) * shadow;
 
-    if (material.clearcoat > 0.01)
+    if (material.params[1][0] > 0.01)
     {
       clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
     }
   }
 
-  if (material.clearcoat > 0.01)
+  if (material.params[1][0] > 0.01)
   {
-    Lo = mix(Lo, Lo + clearcoatLo * material.clearcoat, material.clearcoat);
+    Lo = mix(Lo, Lo + clearcoatLo * material.params[1][0], material.params[1][0]);
   }
 
   vec3 ambient  = calculateIBL(surf);
@@ -625,7 +599,7 @@ void main()
 
   vec3 color = ambient + Lo + emissive;
 
-  if (material.isSelected > 0.5)
+  if (material.params[0][3] > 0.5)
   {
     float pulse         = 0.7 + 0.3 * sin(fragmentWorldPos.x + fragmentWorldPos.y + fragmentWorldPos.z);
     float rimIntensity  = 1.0 - abs(dot(surf.N, surf.V));
@@ -634,5 +608,5 @@ void main()
     color += selectionColor * rimIntensity;
   }
 
-  outColor = vec4(color, surf.alpha * (1.0 - material.transmission));
+  outColor = vec4(color, surf.alpha * (1.0 - material.params[2][0]));
 }
