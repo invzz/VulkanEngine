@@ -200,6 +200,9 @@ namespace engine {
       // glTF uses PBR metallic-roughness workflow
       const auto& pbr = gltfMat.pbrMetallicRoughness;
 
+      // Double Sided
+      matInfo.pbrMaterial.doubleSided = gltfMat.doubleSided;
+
       // Base color (albedo)
       matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
 
@@ -221,7 +224,8 @@ namespace engine {
       // Metallic and roughness
       matInfo.pbrMaterial.metallic  = static_cast<float>(pbr.metallicFactor);
       matInfo.pbrMaterial.roughness = static_cast<float>(pbr.roughnessFactor);
-      matInfo.pbrMaterial.ao        = 1.0f;
+
+      matInfo.pbrMaterial.ao = 1.0f;
 
       // Extract texture paths (handles both external URIs and embedded images)
       if (pbr.baseColorTexture.index >= 0)
@@ -315,6 +319,7 @@ namespace engine {
         if (ext.Has("transmissionFactor"))
         {
           matInfo.pbrMaterial.transmission = static_cast<float>(ext.Get("transmissionFactor").GetNumberAsDouble());
+          std::cout << "Material " << matInfo.name << " has transmission: " << matInfo.pbrMaterial.transmission << std::endl;
         }
         if (ext.Has("transmissionTexture"))
         {
@@ -430,9 +435,7 @@ namespace engine {
       std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << matInfo.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << ","
                 << matInfo.pbrMaterial.albedo.g << "," << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic
                 << ", roughness=" << matInfo.pbrMaterial.roughness << ", alphaMode=" << alphaModeStr << ")" << std::endl;
-    }
-
-    // Process all meshes in the scene
+    } // Process all meshes in the scene
     const tinygltf::Scene& scene = gltfModel.scenes[gltfModel.defaultScene >= 0 ? gltfModel.defaultScene : 0];
 
     std::unordered_map<Model::Vertex, uint32_t>    uniqueVertices{};

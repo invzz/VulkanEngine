@@ -340,8 +340,8 @@ Surface getSurfaceProperties()
   if ((material.flagsAndIndices0.x & (1u << 0)) != 0u) // Albedo/BaseColor texture
   {
     vec4 texColor = texture(globalTextures[nonuniformEXT(material.flagsAndIndices0.z)], uv);
-    albedo        = texColor.rgb; // sRGB texture, auto-converted to linear by GPU
-    alpha         = texColor.a;
+    albedo *= texColor.rgb; // sRGB texture, auto-converted to linear by GPU
+    alpha *= texColor.a;
   }
 
   // Alpha Masking
@@ -475,6 +475,8 @@ Surface getSurfaceProperties()
   {
     transmission *= texture(globalTextures[nonuniformEXT(material.indices2.z)], uv).r;
   }
+  // Transmission is disabled for metallic materials
+  // transmission *= (1.0 - metallic);
 
   // Clearcoat
   if ((material.flagsAndIndices0.x & (1u << 10)) != 0u)
@@ -507,7 +509,7 @@ Surface getSurfaceProperties()
   return surf;
 }
 
-vec3 calculateIBL(Surface surf)
+void calculateIBL(Surface surf, out vec3 outDiffuse, out vec3 outSpecular)
 {
   vec3 F_IBL       = surf.F0;
   vec3 F_roughness = fresnelSchlickRoughness(surf.NdotV, F_IBL, surf.roughness);
@@ -533,12 +535,11 @@ vec3 calculateIBL(Surface surf)
   float specularAO = computeSpecularAO(surf.NdotV, surf.ao, surf.roughness);
   specular *= specularAO;
 
-  vec3 ambient = kD * diffuse * surf.ao + specular;
+  outDiffuse  = kD * diffuse * surf.ao;
+  outSpecular = specular;
 
-  // Add simple ambient as fallback/boost
-  ambient += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * surf.albedo * surf.ao * 0.05;
-
-  return ambient;
+  // Add simple ambient as fallback/boost to diffuse
+  outDiffuse += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * surf.albedo * surf.ao * 0.05;
 }
 
 vec3 calculateEmissive()
@@ -633,18 +634,29 @@ void main()
     specularLo = mix(specularLo, specularLo + clearcoatLo * surf.clearcoatStrength, surf.clearcoatStrength);
   }
 
-  vec3 ambient  = calculateIBL(surf);
+  vec3 diffuseIBL, specularIBL;
+  calculateIBL(surf, diffuseIBL, specularIBL);
+
   vec3 emissive = calculateEmissive();
 
   // Final Composition with Premultiplied Alpha
   // Opacity = alpha * (1 - transmission)
-  float opacity = surf.alpha * (1.0 - surf.transmission);
+  // Improved Heuristic: Opacity should depend on Albedo Luminance.
+  // Darker colored glass absorbs more light, so it should be more opaque (blocking the background).
+  // Lighter colored glass transmits more light, so it should be more transparent.
+  float luminance = dot(surf.albedo, vec3(0.299, 0.587, 0.114));
+  // Factor ranges from ~0.3 (dark) to 0.85 (bright).
+  // Dark Blue (Lum 0.3) -> Factor 0.3 -> Opacity 0.7 (Visible Color)
+  // Bright Yellow (Lum 0.8) -> Factor 0.8 -> Opacity 0.2 (Transparent)
+  float transmissionFactor = clamp(luminance, 0.3, 0.85);
 
-  // Diffuse and Ambient are modulated by opacity (background shows through)
-  // Specular is additive (sits on top)
+  float opacity = surf.alpha * (1.0 - surf.transmission * transmissionFactor);
+
+  // Diffuse and Ambient Diffuse are modulated by opacity (background shows through)
+  // Specular (Direct + IBL) is additive (sits on top)
   // Emissive is additive
 
-  vec3 finalColor = (diffuseLo + ambient) * opacity + specularLo + emissive;
+  vec3 finalColor = (diffuseLo + diffuseIBL) * opacity + (specularLo + specularIBL) + emissive;
 
   if (material.params[0][3] > 0.5)
   {
@@ -678,7 +690,7 @@ void main()
   }
   else if (ubo.debugMode == 5) // Lighting Only
   {
-    finalColor = ambient + diffuseLo + specularLo;
+    finalColor = (diffuseIBL + specularIBL) + diffuseLo + specularLo;
     opacity    = 1.0;
   }
   else if (ubo.debugMode == 6) // AO

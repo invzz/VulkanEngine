@@ -27,6 +27,7 @@ namespace engine {
     // Alpha Blending
     AlphaMode alphaMode{AlphaMode::Opaque};
     float     alphaCutoff{0.5f};
+    bool      doubleSided{false};
 
     // Clearcoat layer (for car paint, lacquered surfaces)
     float clearcoat{0.0f};           // Clearcoat strength [0, 1]

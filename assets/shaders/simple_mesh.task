@@ -30,9 +30,9 @@ layout(buffer_reference, scalar) readonly buffer MeshletBuffer
 
 layout(push_constant) uniform Push
 {
-  mat4  modelMatrix;
-  mat4  normalMatrix;
-  uint  meshId;
+  mat4 modelMatrix;
+  mat4 normalMatrix;
+  uint meshId;
 
   uint64_t meshletBufferAddress;
   uint64_t meshletVerticesAddress;
@@ -41,6 +41,7 @@ layout(push_constant) uniform Push
   uint     meshletOffset;
   uint     meshletCount;
   vec2     screenSize;
+  uint     cullingFlags;
 }
 push;
 
@@ -117,26 +118,28 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
   }
 
   // 3. Cone Culling (Backface)
-  vec3 coneAxis = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
-  // Transform cone axis to world space (assuming uniform scale or close to it)
-  vec3 worldConeAxis = normalize(mat3(model) * coneAxis);
-  vec3 viewDir       = normalize(cameraPos - worldCenter);
-
-  // meshopt cone_cutoff is cos(semi_angle)
-  // We cull if dot(viewDir, worldConeAxis) < -sin(semi_angle)
-  // sin(semi_angle) = sqrt(1 - cos^2(semi_angle))
-  float coneCutoff = meshlet.cone_cutoff;
-  float coneSin    = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
-  
-  // Note: This assumes the cone is strictly defined. 
-  // If coneCutoff is 127/127 (byte) or similar, it might be 1.0.
-  // If coneCutoff >= 1.0, angle is 0.
-  
-  if (dot(worldConeAxis, viewDir) < -coneSin)
+  if ((push.cullingFlags & 1) == 0)
   {
-    return false; // Backface culled
-  }
+    vec3 coneAxis = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
+    // Transform cone axis to world space (assuming uniform scale or close to it)
+    vec3 worldConeAxis = normalize(mat3(model) * coneAxis);
+    vec3 viewDir       = normalize(cameraPos - worldCenter);
 
+    // meshopt cone_cutoff is cos(semi_angle)
+    // We cull if dot(viewDir, worldConeAxis) < -sin(semi_angle)
+    // sin(semi_angle) = sqrt(1 - cos^2(semi_angle))
+    float coneCutoff = meshlet.cone_cutoff;
+    float coneSin    = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
+    
+    // Note: This assumes the cone is strictly defined. 
+    // If coneCutoff is 127/127 (byte) or similar, it might be 1.0.
+    // If coneCutoff >= 1.0, angle is 0.
+    
+    if (dot(worldConeAxis, viewDir) < -coneSin)
+    {
+      return false; // Backface culled
+    }
+  }
   // 4. Screen Size Culling (LOD)
   vec4  viewCenter = ubo.view * vec4(worldCenter, 1.0);
   float dist       = -viewCenter.z;
@@ -156,30 +159,30 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     // Project sphere to screen space
     // We need a bounding box in screen space.
     // A simple approximation is a square around the projected center.
-    
+
     // Projected center
     vec4 clipCenter = ubo.projection * viewCenter;
     clipCenter.xyz /= clipCenter.w;
-    
+
     // Check if inside screen (already done by frustum culling, but depth check needs valid coords)
     if (clipCenter.z < 0.0 || clipCenter.z > 1.0) return true; // Should be caught by frustum culling
-    
+
     // Convert to UV [0, 1]
     vec2 uvCenter = clipCenter.xy * 0.5 + 0.5;
-    
+
     // Projected radius in UV space
     // radius / dist is tangent of half angle.
     // projected length on screen (vertical) is radius * p11 / dist
     // In UV space (0..1), it is radius * p11 / dist * 0.5
     float uvRadius = projectedRadius * 0.5;
-    
+
     // Calculate LOD level
     // We want a mip level where the object covers roughly 2x2 pixels (or 4x4 for safety)
     // Texture size
     ivec2 texSize = textureSize(hzbTexture, 0);
-    float mip = floor(log2(max(texSize.x, texSize.y) * uvRadius * 2.0));
-    mip = max(0.0, mip);
-    
+    float mip     = floor(log2(max(texSize.x, texSize.y) * uvRadius * 2.0));
+    mip           = max(0.0, mip);
+
     // Sample HZB
     // We sample 4 texels covering the bounding box
     // But for simplicity, let's just sample the center at a coarser mip.
@@ -198,10 +201,10 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     // Common approach: Compute mip such that object fits in 4 texels max.
     // Then sample those 4 texels.
     // Or just be conservative and pick a higher mip level.
-    
+
     // Let's try sampling at calculated mip.
     float depth = textureLod(hzbTexture, uvCenter, mip).r;
-    
+
     // Check visibility
     // We are using standard Z (0=near, 1=far).
     // HZB contains MAX depth of the tile.
@@ -218,16 +221,16 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     // P33 = -far/(far-near), P34 = -far*near/(far-near) (for [0,1] depth)
     // Actually, let's just use the center depth minus some bias?
     // Or project the nearest point of the sphere.
-    
+
     vec4 nearPointView = viewCenter;
     nearPointView.z += radius; // Closer to camera (z is negative)
-    vec4 nearPointClip = ubo.projection * nearPointView;
-    float nearDepth = nearPointClip.z / nearPointClip.w;
-    
+    vec4  nearPointClip = ubo.projection * nearPointView;
+    float nearDepth     = nearPointClip.z / nearPointClip.w;
+
     // If nearDepth > HZB_depth, then occluded.
     // HZB stores the FARTHEST point in the tile.
     // If our CLOSEST point is farther than the tile's FARTHEST point, we are hidden.
-    
+
     if (nearDepth > depth)
     {
       return false;
