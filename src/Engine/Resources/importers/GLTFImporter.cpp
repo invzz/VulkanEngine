@@ -316,6 +316,12 @@ namespace engine {
         {
           matInfo.pbrMaterial.transmission = static_cast<float>(ext.Get("transmissionFactor").GetNumberAsDouble());
         }
+        if (ext.Has("transmissionTexture"))
+        {
+          const auto& tex             = ext.Get("transmissionTexture");
+          int         index           = tex.Get("index").GetNumberAsInt();
+          matInfo.transmissionTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
       }
 
       // IOR
@@ -357,6 +363,24 @@ namespace engine {
         if (ext.Has("clearcoatRoughnessFactor"))
         {
           matInfo.pbrMaterial.clearcoatRoughness = static_cast<float>(ext.Get("clearcoatRoughnessFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("clearcoatTexture"))
+        {
+          const auto& tex          = ext.Get("clearcoatTexture");
+          int         index        = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+        if (ext.Has("clearcoatRoughnessTexture"))
+        {
+          const auto& tex                   = ext.Get("clearcoatRoughnessTexture");
+          int         index                 = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatRoughnessTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+        if (ext.Has("clearcoatNormalTexture"))
+        {
+          const auto& tex                = ext.Get("clearcoatNormalTexture");
+          int         index              = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatNormalTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
         }
       }
 

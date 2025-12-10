@@ -218,6 +218,22 @@ namespace engine {
         {
           mat.pbrMaterial.emissiveMap = resourceManager_.loadTexture(mat.emissiveTexPath, true, true);
         }
+        if (!mat.transmissionTexPath.empty())
+        {
+          mat.pbrMaterial.transmissionMap = resourceManager_.loadTexture(mat.transmissionTexPath, false, true);
+        }
+        if (!mat.clearcoatTexPath.empty())
+        {
+          mat.pbrMaterial.clearcoatMap = resourceManager_.loadTexture(mat.clearcoatTexPath, false, true);
+        }
+        if (!mat.clearcoatRoughnessTexPath.empty())
+        {
+          mat.pbrMaterial.clearcoatRoughnessMap = resourceManager_.loadTexture(mat.clearcoatRoughnessTexPath, false, true);
+        }
+        if (!mat.clearcoatNormalTexPath.empty())
+        {
+          mat.pbrMaterial.clearcoatNormalMap = resourceManager_.loadTexture(mat.clearcoatNormalTexPath, false, true);
+        }
       }
 
       auto entity = scene_.createEntity();

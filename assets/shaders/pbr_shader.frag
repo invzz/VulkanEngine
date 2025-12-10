@@ -79,6 +79,7 @@ layout(set = 4, binding = 0) uniform MaterialData
   uvec4 flagsAndIndices0;         // Packed uint parameters
   uvec4 indices1;
   uvec4 indices2;
+  uvec4 indices3;
 }
 material;
 
@@ -264,9 +265,10 @@ struct Surface
   float anisotropy;
   float NdotV;
   vec3  R;
+  float transmission;
 };
 
-vec3 calculateDirectLight(Surface surf, vec3 L, vec3 radiance)
+void calculateDirectLight(Surface surf, vec3 L, vec3 radiance, out vec3 diffuse, out vec3 specular)
 {
   vec3  H   = normalize(surf.V + L);
   float NDF = DistributionGGXAnisotropic(surf.N, H, surf.T, surf.B, surf.roughness, surf.anisotropy);
@@ -279,11 +281,12 @@ vec3 calculateDirectLight(Surface surf, vec3 L, vec3 radiance)
   vec3 kD = vec3(1.0) - kS;
   kD *= 1.0 - surf.metallic;
 
-  vec3  numerator   = NDF * G * F;
-  float denominator = 4.0 * surf.NdotV * NdotL + 0.0001;
-  vec3  specular    = numerator / denominator;
+  vec3  numerator    = NDF * G * F;
+  float denominator  = 4.0 * surf.NdotV * NdotL + 0.0001;
+  vec3  specularTerm = numerator / denominator;
 
-  return (kD * surf.albedo / PI + specular) * radiance * NdotL;
+  diffuse  = (kD * surf.albedo / PI) * radiance * NdotL;
+  specular = specularTerm * radiance * NdotL;
 }
 
 vec3 calculateClearcoat(Surface surf, vec3 L, vec3 radiance)
@@ -302,9 +305,14 @@ vec3 calculateClearcoat(Surface surf, vec3 L, vec3 radiance)
   return specular * radiance * NdotL;
 }
 
-void accumulateLight(Surface surf, vec3 L, vec3 radiance, float shadow, inout vec3 Lo, inout vec3 clearcoatLo)
+void accumulateLight(Surface surf, vec3 L, vec3 radiance, float shadow, inout vec3 diffuseLo, inout vec3 specularLo, inout vec3 clearcoatLo)
 {
-  Lo += calculateDirectLight(surf, L, radiance) * shadow;
+  vec3 diffuse  = vec3(0.0);
+  vec3 specular = vec3(0.0);
+  calculateDirectLight(surf, L, radiance, diffuse, specular);
+
+  diffuseLo += diffuse * shadow;
+  specularLo += specular * shadow;
 
   if (surf.clearcoatStrength > 0.01)
   {
@@ -461,6 +469,23 @@ Surface getSurfaceProperties()
     F0                    = mix(F0, iridescenceColor, material.params[2][2]);
   }
 
+  // Transmission
+  float transmission = material.params[2][0];
+  if ((material.flagsAndIndices0.x & (1u << 9)) != 0u)
+  {
+    transmission *= texture(globalTextures[nonuniformEXT(material.indices2.z)], uv).r;
+  }
+
+  // Clearcoat
+  if ((material.flagsAndIndices0.x & (1u << 10)) != 0u)
+  {
+    clearcoatStrength *= texture(globalTextures[nonuniformEXT(material.indices2.w)], uv).r;
+  }
+  if ((material.flagsAndIndices0.x & (1u << 11)) != 0u)
+  {
+    clearcoatRoughness *= texture(globalTextures[nonuniformEXT(material.indices3.x)], uv).g;
+  }
+
   Surface surf;
   surf.albedo             = albedo;
   surf.alpha              = alpha;
@@ -477,6 +502,7 @@ Surface getSurfaceProperties()
   surf.anisotropy         = anisotropy;
   surf.NdotV              = max(dot(N, V), 0.0);
   surf.R                  = reflect(-V, N);
+  surf.transmission       = transmission;
 
   return surf;
 }
@@ -533,7 +559,8 @@ void main()
   Surface surf = getSurfaceProperties();
 
   // Reflectance equation - Base layer
-  vec3 Lo          = vec3(0.0);
+  vec3 diffuseLo   = vec3(0.0);
+  vec3 specularLo  = vec3(0.0);
   vec3 clearcoatLo = vec3(0.0);
 
   // Point lights
@@ -556,7 +583,7 @@ void main()
       shadow = calculatePointLightShadow(fragmentWorldPos, i);
     }
 
-    accumulateLight(surf, L, radiance, shadow, Lo, clearcoatLo);
+    accumulateLight(surf, L, radiance, shadow, diffuseLo, specularLo, clearcoatLo);
   }
 
   // Directional lights
@@ -571,7 +598,7 @@ void main()
       shadow = calculateShadow(fragmentWorldPos, 0);
     }
 
-    accumulateLight(surf, L, radiance, shadow, Lo, clearcoatLo);
+    accumulateLight(surf, L, radiance, shadow, diffuseLo, specularLo, clearcoatLo);
   }
 
   // Spot lights
@@ -598,18 +625,26 @@ void main()
       shadow = calculateShadow(fragmentWorldPos, shadowIndex);
     }
 
-    accumulateLight(surf, L, radiance, shadow, Lo, clearcoatLo);
+    accumulateLight(surf, L, radiance, shadow, diffuseLo, specularLo, clearcoatLo);
   }
 
   if (surf.clearcoatStrength > 0.01)
   {
-    Lo = mix(Lo, Lo + clearcoatLo * surf.clearcoatStrength, surf.clearcoatStrength);
+    specularLo = mix(specularLo, specularLo + clearcoatLo * surf.clearcoatStrength, surf.clearcoatStrength);
   }
 
   vec3 ambient  = calculateIBL(surf);
   vec3 emissive = calculateEmissive();
 
-  vec3 color = ambient + Lo + emissive;
+  // Final Composition with Premultiplied Alpha
+  // Opacity = alpha * (1 - transmission)
+  float opacity = surf.alpha * (1.0 - surf.transmission);
+
+  // Diffuse and Ambient are modulated by opacity (background shows through)
+  // Specular is additive (sits on top)
+  // Emissive is additive
+
+  vec3 finalColor = (diffuseLo + ambient) * opacity + specularLo + emissive;
 
   if (material.params[0][3] > 0.5)
   {
@@ -617,34 +652,40 @@ void main()
     float rimIntensity  = 1.0 - abs(dot(surf.N, surf.V));
     rimIntensity        = pow(rimIntensity, 2.0);
     vec3 selectionColor = vec3(1.0, 1.0, 1.0) * pulse * 0.5;
-    color += selectionColor * rimIntensity;
+    finalColor += selectionColor * rimIntensity;
   }
 
   // Debug modes
   if (ubo.debugMode == 1) // Albedo
   {
-    color = surf.albedo;
+    finalColor = surf.albedo;
+    opacity    = 1.0;
   }
   else if (ubo.debugMode == 2) // Normal
   {
-    color = surf.N * 0.5 + 0.5;
+    finalColor = surf.N * 0.5 + 0.5;
+    opacity    = 1.0;
   }
   else if (ubo.debugMode == 3) // Roughness
   {
-    color = vec3(surf.roughness);
+    finalColor = vec3(surf.roughness);
+    opacity    = 1.0;
   }
   else if (ubo.debugMode == 4) // Metallic
   {
-    color = vec3(surf.metallic);
+    finalColor = vec3(surf.metallic);
+    opacity    = 1.0;
   }
   else if (ubo.debugMode == 5) // Lighting Only
   {
-    color = ambient + Lo;
+    finalColor = ambient + diffuseLo + specularLo;
+    opacity    = 1.0;
   }
   else if (ubo.debugMode == 6) // AO
   {
-    color = vec3(surf.ao);
+    finalColor = vec3(surf.ao);
+    opacity    = 1.0;
   }
 
-  outColor = vec4(color, surf.alpha * (1.0 - material.params[2][0]));
+  outColor = vec4(finalColor, opacity);
 }

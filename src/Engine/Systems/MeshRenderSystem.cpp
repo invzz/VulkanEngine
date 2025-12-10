@@ -320,7 +320,7 @@ namespace engine {
     // Create Transparent Pipeline
     PipelineConfigInfo transparentConfig                       = pipelineConfig;
     transparentConfig.colorBlendAttachment.blendEnable         = VK_TRUE;
-    transparentConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    transparentConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
     transparentConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
     transparentConfig.colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
     transparentConfig.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -533,6 +533,10 @@ namespace engine {
             uint32_t aoIndex                 = 0;
             uint32_t emissiveIndex           = 0;
             uint32_t specularGlossinessIndex = 0;
+            uint32_t transmissionIndex       = 0;
+            uint32_t clearcoatIndex          = 0;
+            uint32_t clearcoatRoughnessIndex = 0;
+            uint32_t clearcoatNormalIndex    = 0;
 
             if (material.hasAlbedoMap())
             {
@@ -569,6 +573,27 @@ namespace engine {
             {
               textureFlags |= (1 << 8);
               specularGlossinessIndex = material.specularGlossinessMap->getGlobalIndex();
+            }
+
+            if (material.hasTransmissionMap())
+            {
+              textureFlags |= (1 << 9);
+              transmissionIndex = material.transmissionMap->getGlobalIndex();
+            }
+            if (material.hasClearcoatMap())
+            {
+              textureFlags |= (1 << 10);
+              clearcoatIndex = material.clearcoatMap->getGlobalIndex();
+            }
+            if (material.hasClearcoatRoughnessMap())
+            {
+              textureFlags |= (1 << 11);
+              clearcoatRoughnessIndex = material.clearcoatRoughnessMap->getGlobalIndex();
+            }
+            if (material.hasClearcoatNormalMap())
+            {
+              textureFlags |= (1 << 12);
+              clearcoatNormalIndex = material.clearcoatNormalMap->getGlobalIndex();
             }
 
             if (material.useMetallicRoughnessTexture)
@@ -619,8 +644,11 @@ namespace engine {
 
             matData.indices2.x = specularGlossinessIndex;
             matData.indices2.y = material.useSpecularGlossinessWorkflow ? 1 : 0;
-            matData.indices2.z = 0;
-            matData.indices2.w = 0;
+            matData.indices2.z = transmissionIndex;
+            matData.indices2.w = clearcoatIndex;
+
+            matData.indices3.x = clearcoatRoughnessIndex;
+            matData.indices3.y = clearcoatNormalIndex;
           }
           else
           {

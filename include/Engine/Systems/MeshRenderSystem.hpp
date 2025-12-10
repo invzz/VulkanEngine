@@ -30,8 +30,10 @@ namespace engine {
     glm::uvec4 flagsAndIndices0{0};
     // x: metallicIndex, y: roughnessIndex, z: aoIndex, w: emissiveIndex
     glm::uvec4 indices1{0};
-    // x: specularGlossinessIndex, y: useSpecularGlossiness, z: pad, w: pad
+    // x: specularGlossinessIndex, y: useSpecularGlossiness, z: transmissionIndex, w: clearcoatIndex
     glm::uvec4 indices2{0};
+    // x: clearcoatRoughnessIndex, y: clearcoatNormalIndex, z: pad, w: pad
+    glm::uvec4 indices3{0};
   };
 
   class MeshRenderSystem

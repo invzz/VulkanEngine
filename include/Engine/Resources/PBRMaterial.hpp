@@ -69,6 +69,10 @@ namespace engine {
     std::shared_ptr<Texture> aoMap;                 // Ambient occlusion texture (linear)
     std::shared_ptr<Texture> emissiveMap;           // Emissive texture (sRGB)
     std::shared_ptr<Texture> specularGlossinessMap; // Specular (RGB) + Glossiness (A) texture
+    std::shared_ptr<Texture> transmissionMap;       // Transmission texture (R channel)
+    std::shared_ptr<Texture> clearcoatMap;          // Clearcoat texture (R channel)
+    std::shared_ptr<Texture> clearcoatRoughnessMap; // Clearcoat roughness texture (G channel)
+    std::shared_ptr<Texture> clearcoatNormalMap;    // Clearcoat normal map
 
     // Helper methods to check if textures are present
     bool hasAlbedoMap() const { return albedoMap != nullptr; }
@@ -77,6 +81,10 @@ namespace engine {
     bool hasRoughnessMap() const { return roughnessMap != nullptr; }
     bool hasAOMap() const { return aoMap != nullptr; }
     bool hasEmissiveMap() const { return emissiveMap != nullptr; }
+    bool hasTransmissionMap() const { return transmissionMap != nullptr; }
+    bool hasClearcoatMap() const { return clearcoatMap != nullptr; }
+    bool hasClearcoatRoughnessMap() const { return clearcoatRoughnessMap != nullptr; }
+    bool hasClearcoatNormalMap() const { return clearcoatNormalMap != nullptr; }
   };
 
 } // namespace engine
