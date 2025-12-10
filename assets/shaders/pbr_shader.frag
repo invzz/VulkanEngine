@@ -111,12 +111,10 @@ float GeometrySchlickGGX(float NdotV, float roughness)
   return num / denom;
 }
 
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+float GeometrySmith(float NdotV, float NdotL, float roughness)
 {
-  float NdotV = max(dot(N, V), 0.0);
-  float NdotL = max(dot(N, L), 0.0);
-  float ggx2  = GeometrySchlickGGX(NdotV, roughness);
-  float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+  float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+  float ggx1 = GeometrySchlickGGX(NdotL, roughness);
 
   return ggx1 * ggx2;
 }
@@ -206,8 +204,9 @@ float calculatePointLightShadow(vec3 worldPos, int lightIndex)
 // Anisotropic GGX Distribution
 float DistributionGGXAnisotropic(vec3 N, vec3 H, vec3 T, vec3 B, float roughness, float anisotropy)
 {
-  float at = max(roughness * (1.0 + anisotropy), 0.001);
-  float ab = max(roughness * (1.0 - anisotropy), 0.001);
+  float alpha = roughness * roughness;
+  float at    = max(alpha * (1.0 + anisotropy), 0.001);
+  float ab    = max(alpha * (1.0 - anisotropy), 0.001);
 
   float ToH = dot(T, H);
   float BoH = dot(B, H);
@@ -254,50 +253,57 @@ struct Surface
   vec3  F0;
   vec3  T;
   vec3  B;
+  float clearcoatStrength;
+  float clearcoatRoughness;
+  float anisotropy;
+  float NdotV;
+  vec3  R;
 };
 
 vec3 calculateDirectLight(Surface surf, vec3 L, vec3 radiance)
 {
-  vec3  H = normalize(surf.V + L);
-  float NDF;
+  vec3  H   = normalize(surf.V + L);
+  float NDF = DistributionGGXAnisotropic(surf.N, H, surf.T, surf.B, surf.roughness, surf.anisotropy);
 
-  if (material.params[1][2] > 0.01)
-  {
-    NDF = DistributionGGXAnisotropic(surf.N, H, surf.T, surf.B, surf.roughness, material.params[1][2]);
-  }
-  else
-  {
-    NDF = DistributionGGX(surf.N, H, surf.roughness);
-  }
-
-  float G = GeometrySmith(surf.N, surf.V, L, surf.roughness);
-  vec3  F = fresnelSchlick(max(dot(H, surf.V), 0.0), surf.F0);
+  float NdotL = max(dot(surf.N, L), 0.0);
+  float G     = GeometrySmith(surf.NdotV, NdotL, surf.roughness);
+  vec3  F     = fresnelSchlick(max(dot(H, surf.V), 0.0), surf.F0);
 
   vec3 kS = F;
   vec3 kD = vec3(1.0) - kS;
   kD *= 1.0 - surf.metallic;
 
   vec3  numerator   = NDF * G * F;
-  float denominator = 4.0 * max(dot(surf.N, surf.V), 0.0) * max(dot(surf.N, L), 0.0) + 0.0001;
+  float denominator = 4.0 * surf.NdotV * NdotL + 0.0001;
   vec3  specular    = numerator / denominator;
 
-  float NdotL = max(dot(surf.N, L), 0.0);
   return (kD * surf.albedo / PI + specular) * radiance * NdotL;
 }
 
 vec3 calculateClearcoat(Surface surf, vec3 L, vec3 radiance)
 {
   vec3  H   = normalize(surf.V + L);
-  float NDF = DistributionGGX(surf.N, H, material.params[1][1]);
-  float G   = GeometrySmith(surf.N, surf.V, L, material.params[1][1]);
-  vec3  F   = fresnelSchlick(max(dot(H, surf.V), 0.0), vec3(0.04));
-
-  vec3  numerator   = NDF * G * F;
-  float denominator = 4.0 * max(dot(surf.N, surf.V), 0.0) * max(dot(surf.N, L), 0.0) + 0.0001;
-  vec3  specular    = numerator / denominator;
+  float NDF = DistributionGGX(surf.N, H, surf.clearcoatRoughness);
 
   float NdotL = max(dot(surf.N, L), 0.0);
+  float G     = GeometrySmith(surf.NdotV, NdotL, surf.clearcoatRoughness);
+  vec3  F     = fresnelSchlick(max(dot(H, surf.V), 0.0), vec3(0.04));
+
+  vec3  numerator   = NDF * G * F;
+  float denominator = 4.0 * surf.NdotV * NdotL + 0.0001;
+  vec3  specular    = numerator / denominator;
+
   return specular * radiance * NdotL;
+}
+
+void accumulateLight(Surface surf, vec3 L, vec3 radiance, float shadow, inout vec3 Lo, inout vec3 clearcoatLo)
+{
+  Lo += calculateDirectLight(surf, L, radiance) * shadow;
+
+  if (surf.clearcoatStrength > 0.01)
+  {
+    clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
+  }
 }
 
 Surface getSurfaceProperties()
@@ -306,12 +312,15 @@ Surface getSurfaceProperties()
   vec2 uv = fragUV * material.params[3][1];
 
   // Sample material properties from textures or use push constants as base values
-  vec4  baseColor = material.albedo;
-  vec3  albedo    = baseColor.rgb;
-  float alpha     = baseColor.a;
-  float metallic  = material.params[0][0];
-  float roughness = material.params[0][1];
-  float ao        = material.params[0][2];
+  vec4  baseColor          = material.albedo;
+  vec3  albedo             = baseColor.rgb;
+  float alpha              = baseColor.a;
+  float metallic           = material.params[0][0];
+  float roughness          = material.params[0][1];
+  float ao                 = material.params[0][2];
+  float clearcoatStrength  = material.params[1][0];
+  float clearcoatRoughness = material.params[1][1];
+  float anisotropy         = material.params[1][2];
 
   // Texture sampling: Check flags to determine which textures are bound
   if ((material.flagsAndIndices0.x & (1u << 0)) != 0u) // Albedo/BaseColor texture
@@ -400,7 +409,7 @@ Surface getSurfaceProperties()
   if (length(T) < 0.01) T = normalize(cross(N, vec3(1.0, 0.0, 0.0)));
   vec3 B = cross(N, T);
 
-  if (material.params[1][2] > 0.01)
+  if (anisotropy > 0.01)
   {
     float angle = material.params[1][3] * 2.0 * PI;
     float cosA  = cos(angle);
@@ -447,16 +456,21 @@ Surface getSurfaceProperties()
   }
 
   Surface surf;
-  surf.albedo    = albedo;
-  surf.alpha     = alpha;
-  surf.metallic  = metallic;
-  surf.roughness = roughness;
-  surf.ao        = ao;
-  surf.N         = N;
-  surf.V         = V;
-  surf.F0        = F0;
-  surf.T         = T;
-  surf.B         = B;
+  surf.albedo             = albedo;
+  surf.alpha              = alpha;
+  surf.metallic           = metallic;
+  surf.roughness          = roughness;
+  surf.ao                 = ao;
+  surf.N                  = N;
+  surf.V                  = V;
+  surf.F0                 = F0;
+  surf.T                  = T;
+  surf.B                  = B;
+  surf.clearcoatStrength  = clearcoatStrength;
+  surf.clearcoatRoughness = clearcoatRoughness;
+  surf.anisotropy         = anisotropy;
+  surf.NdotV              = max(dot(N, V), 0.0);
+  surf.R                  = reflect(-V, N);
 
   return surf;
 }
@@ -464,7 +478,7 @@ Surface getSurfaceProperties()
 vec3 calculateIBL(Surface surf)
 {
   vec3 F_IBL       = surf.F0;
-  vec3 F_roughness = fresnelSchlickRoughness(max(dot(surf.N, surf.V), 0.0), F_IBL, surf.roughness);
+  vec3 F_roughness = fresnelSchlickRoughness(surf.NdotV, F_IBL, surf.roughness);
 
   vec3 kS = F_roughness;
   vec3 kD = 1.0 - kS;
@@ -474,11 +488,14 @@ vec3 calculateIBL(Surface surf)
   vec3 diffuse    = irradiance * surf.albedo;
 
   const float MAX_REFLECTION_LOD = 4.0;
-  vec3        R                  = reflect(-surf.V, surf.N);
-  vec3        prefilteredColor   = textureLod(prefilterMap, R, surf.roughness * MAX_REFLECTION_LOD).rgb;
+  vec3        prefilteredColor   = textureLod(prefilterMap, surf.R, surf.roughness * MAX_REFLECTION_LOD).rgb;
 
-  vec2 brdf     = texture(brdfLUT, vec2(max(dot(surf.N, surf.V), 0.0), surf.roughness)).rg;
-  vec3 specular = prefilteredColor * (F_roughness * brdf.x + brdf.y);
+  vec2 brdf     = texture(brdfLUT, vec2(surf.NdotV, surf.roughness)).rg;
+  vec3 specular = prefilteredColor * (surf.F0 * brdf.x + brdf.y);
+
+  // Horizon occlusion: dampen specular reflection for vectors pointing below the horizon
+  float horizon = min(1.0 + dot(surf.R, surf.N), 1.0);
+  specular *= horizon * horizon;
 
   vec3 ambient = (kD * diffuse + specular) * surf.ao;
 
@@ -529,12 +546,7 @@ void main()
       shadow = calculatePointLightShadow(fragmentWorldPos, i);
     }
 
-    Lo += calculateDirectLight(surf, L, radiance) * shadow;
-
-    if (material.params[1][0] > 0.01)
-    {
-      clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
-    }
+    accumulateLight(surf, L, radiance, shadow, Lo, clearcoatLo);
   }
 
   // Directional lights
@@ -549,12 +561,7 @@ void main()
       shadow = calculateShadow(fragmentWorldPos, 0);
     }
 
-    Lo += calculateDirectLight(surf, L, radiance) * shadow;
-
-    if (material.params[1][0] > 0.01)
-    {
-      clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
-    }
+    accumulateLight(surf, L, radiance, shadow, Lo, clearcoatLo);
   }
 
   // Spot lights
@@ -581,17 +588,12 @@ void main()
       shadow = calculateShadow(fragmentWorldPos, shadowIndex);
     }
 
-    Lo += calculateDirectLight(surf, L, radiance) * shadow;
-
-    if (material.params[1][0] > 0.01)
-    {
-      clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
-    }
+    accumulateLight(surf, L, radiance, shadow, Lo, clearcoatLo);
   }
 
-  if (material.params[1][0] > 0.01)
+  if (surf.clearcoatStrength > 0.01)
   {
-    Lo = mix(Lo, Lo + clearcoatLo * material.params[1][0], material.params[1][0]);
+    Lo = mix(Lo, Lo + clearcoatLo * surf.clearcoatStrength, surf.clearcoatStrength);
   }
 
   vec3 ambient  = calculateIBL(surf);

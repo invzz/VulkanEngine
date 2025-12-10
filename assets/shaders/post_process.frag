@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants
   float fxaaSpanMax;
   float fxaaReduceMul;
   float fxaaReduceMin;
-  float padding;
+  int   toneMappingMode; // 0: None, 1: ACES
 }
 push;
 
@@ -117,13 +117,17 @@ void main()
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   color           = mix(vec3(luminance), color, push.saturation);
 
-  // ACES Filmic Tone Mapping
-  float a      = 2.51f;
-  float b      = 0.03f;
-  float c      = 2.43f;
-  float d      = 0.59f;
-  float e      = 0.14f;
-  vec3  mapped = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+  vec3 mapped = color;
+
+  if (push.toneMappingMode == 1) // ACES Filmic
+  {
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    mapped  = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+  }
 
   // Gamma correction
   const float gamma = 2.2;

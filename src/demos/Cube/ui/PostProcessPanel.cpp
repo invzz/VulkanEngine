@@ -14,6 +14,9 @@ namespace engine {
     ImGui::DragFloat("Saturation", &pushConstants.saturation, 0.01f, 0.0f, 2.0f);
     ImGui::DragFloat("Vignette", &pushConstants.vignette, 0.01f, 0.0f, 5.0f);
 
+    const char* toneMappingItems[] = {"None", "ACES Filmic"};
+    ImGui::Combo("Tone Mapping", &pushConstants.toneMappingMode, toneMappingItems, IM_ARRAYSIZE(toneMappingItems));
+
     ImGui::Separator();
     ImGui::Text("Bloom");
     bool bloom = pushConstants.enableBloom == 1;
@@ -43,17 +46,18 @@ namespace engine {
 
     if (ImGui::Button("Reset"))
     {
-      pushConstants.exposure       = 1.0f;
-      pushConstants.contrast       = 1.0f;
-      pushConstants.saturation     = 1.0f;
-      pushConstants.vignette       = 0.4f;
-      pushConstants.enableBloom    = 1;
-      pushConstants.bloomIntensity = 0.04f;
-      pushConstants.bloomThreshold = 1.0f;
-      pushConstants.enableFXAA     = 1;
-      pushConstants.fxaaSpanMax    = 8.0f;
-      pushConstants.fxaaReduceMul  = 0.125f;
-      pushConstants.fxaaReduceMin  = 0.0078125f;
+      pushConstants.exposure        = 1.0f;
+      pushConstants.contrast        = 1.0f;
+      pushConstants.saturation      = 1.0f;
+      pushConstants.vignette        = 0.4f;
+      pushConstants.enableBloom     = 1;
+      pushConstants.bloomIntensity  = 0.04f;
+      pushConstants.bloomThreshold  = 1.0f;
+      pushConstants.enableFXAA      = 1;
+      pushConstants.fxaaSpanMax     = 8.0f;
+      pushConstants.fxaaReduceMul   = 0.125f;
+      pushConstants.fxaaReduceMin   = 0.0078125f;
+      pushConstants.toneMappingMode = 1;
     }
 
     ImGui::End();

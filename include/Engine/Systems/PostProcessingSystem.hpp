@@ -22,7 +22,7 @@ namespace engine {
     float fxaaSpanMax{8.0f};
     float fxaaReduceMul{0.125f};
     float fxaaReduceMin{0.0078125f};
-    float padding;
+    int   toneMappingMode{1}; // 0: None, 1: ACES
   };
 
   class PostProcessingSystem
