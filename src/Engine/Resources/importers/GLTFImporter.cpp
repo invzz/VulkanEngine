@@ -319,7 +319,6 @@ namespace engine {
         if (ext.Has("transmissionFactor"))
         {
           matInfo.pbrMaterial.transmission = static_cast<float>(ext.Get("transmissionFactor").GetNumberAsDouble());
-          std::cout << "Material " << matInfo.name << " has transmission: " << matInfo.pbrMaterial.transmission << std::endl;
         }
         if (ext.Has("transmissionTexture"))
         {

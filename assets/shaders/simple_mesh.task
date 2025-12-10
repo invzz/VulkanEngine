@@ -130,11 +130,11 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     // sin(semi_angle) = sqrt(1 - cos^2(semi_angle))
     float coneCutoff = meshlet.cone_cutoff;
     float coneSin    = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
-    
-    // Note: This assumes the cone is strictly defined. 
+
+    // Note: This assumes the cone is strictly defined.
     // If coneCutoff is 127/127 (byte) or similar, it might be 1.0.
     // If coneCutoff >= 1.0, angle is 0.
-    
+
     if (dot(worldConeAxis, viewDir) < -coneSin)
     {
       return false; // Backface culled
