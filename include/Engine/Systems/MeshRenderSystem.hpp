@@ -38,8 +38,12 @@ namespace engine {
     uint32_t  roughnessIndex{0};
     uint32_t  aoIndex{0};
     uint32_t  emissiveIndex{0};
-    uint32_t  _padding{0};
+    uint32_t  specularGlossinessIndex{0};
+    uint32_t  _pad0[2];
     glm::vec4 emissiveInfo{0.0f, 0.0f, 0.0f, 1.0f}; // rgb: color, a: strength
+    glm::vec4 specularGlossinessFactor{1.0f};       // rgb: specular, a: glossiness
+    uint32_t  useSpecularGlossiness{0};
+    uint32_t  _padding[3];
   };
 
   class MeshRenderSystem

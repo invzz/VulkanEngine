@@ -556,6 +556,13 @@ namespace engine {
               textureFlags |= (1 << 5);
               matData.emissiveIndex = material.emissiveMap->getGlobalIndex();
             }
+
+            if (material.specularGlossinessMap)
+            {
+              textureFlags |= (1 << 8);
+              matData.specularGlossinessIndex = material.specularGlossinessMap->getGlobalIndex();
+            }
+
             if (material.useMetallicRoughnessTexture)
             {
               textureFlags |= (1 << 6);
@@ -565,24 +572,26 @@ namespace engine {
               textureFlags |= (1 << 7);
             }
 
-            matData.albedo               = material.albedo;
-            matData.metallic             = material.metallic;
-            matData.roughness            = material.roughness;
-            matData.ao                   = material.ao;
-            matData.emissiveInfo         = glm::vec4(material.emissiveColor, material.emissiveStrength);
-            matData.clearcoat            = material.clearcoat;
-            matData.clearcoatRoughness   = material.clearcoatRoughness;
-            matData.anisotropic          = material.anisotropic;
-            matData.anisotropicRotation  = material.anisotropicRotation;
-            matData.transmission         = material.transmission;
-            matData.ior                  = material.ior;
-            matData.iridescence          = material.iridescence;
-            matData.iridescenceIOR       = material.iridescenceIOR;
-            matData.iridescenceThickness = material.iridescenceThickness;
-            matData.textureFlags         = textureFlags;
-            matData.uvScale              = material.uvScale;
-            matData.alphaCutoff          = material.alphaCutoff;
-            matData.alphaMode            = static_cast<uint32_t>(material.alphaMode);
+            matData.albedo                   = material.albedo;
+            matData.metallic                 = material.metallic;
+            matData.roughness                = material.roughness;
+            matData.ao                       = material.ao;
+            matData.emissiveInfo             = glm::vec4(material.emissiveColor, material.emissiveStrength);
+            matData.clearcoat                = material.clearcoat;
+            matData.clearcoatRoughness       = material.clearcoatRoughness;
+            matData.anisotropic              = material.anisotropic;
+            matData.anisotropicRotation      = material.anisotropicRotation;
+            matData.transmission             = material.transmission;
+            matData.ior                      = material.ior;
+            matData.iridescence              = material.iridescence;
+            matData.iridescenceIOR           = material.iridescenceIOR;
+            matData.iridescenceThickness     = material.iridescenceThickness;
+            matData.useSpecularGlossiness    = material.useSpecularGlossinessWorkflow ? 1 : 0;
+            matData.specularGlossinessFactor = glm::vec4(material.specularFactor, material.glossinessFactor);
+            matData.textureFlags             = textureFlags;
+            matData.uvScale                  = material.uvScale;
+            matData.alphaCutoff              = material.alphaCutoff;
+            matData.alphaMode                = static_cast<uint32_t>(material.alphaMode);
           }
           else
           {

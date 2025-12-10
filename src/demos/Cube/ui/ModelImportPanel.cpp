@@ -208,6 +208,12 @@ namespace engine {
         {
           mat.pbrMaterial.aoMap = resourceManager_.loadTexture(mat.aoTexPath, false, true);
         }
+        if (!mat.specularGlossinessTexPath.empty())
+        {
+          mat.pbrMaterial.specularGlossinessMap = resourceManager_.loadTexture(mat.specularGlossinessTexPath,
+                                                                               true,
+                                                                               true); // sRGB? Specular is color, glossiness is linear. Usually sRGB for color.
+        }
         if (!mat.emissiveTexPath.empty())
         {
           mat.pbrMaterial.emissiveMap = resourceManager_.loadTexture(mat.emissiveTexPath, true, true);

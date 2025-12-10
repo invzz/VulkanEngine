@@ -96,8 +96,15 @@ layout(set = 4, binding = 0) uniform MaterialData
   uint  roughnessIndex;
   uint  aoIndex;
   uint  emissiveIndex;
-  uint  _padding;
+  uint  specularGlossinessIndex;
+  uint  _pad0;
+  uint  _pad1;
   vec4  emissiveInfo; // rgb: color, a: strength
+  vec4  specularGlossinessFactor;
+  uint  useSpecularGlossiness;
+  uint  _pad2;
+  uint  _pad3;
+  uint  _pad4;
 }
 material;
 
@@ -261,7 +268,65 @@ vec3 evalIridescence(float NdotV, float thickness, float ior)
   return vec3(cos(phase.r), cos(phase.g), cos(phase.b)) * 0.5 + 0.5;
 }
 
-void main()
+struct Surface
+{
+  vec3  albedo;
+  float alpha;
+  float metallic;
+  float roughness;
+  float ao;
+  vec3  N;
+  vec3  V;
+  vec3  F0;
+  vec3  T;
+  vec3  B;
+};
+
+vec3 calculateDirectLight(Surface surf, vec3 L, vec3 radiance)
+{
+  vec3  H = normalize(surf.V + L);
+  float NDF;
+
+  if (material.anisotropic > 0.01)
+  {
+    NDF = DistributionGGXAnisotropic(surf.N, H, surf.T, surf.B, surf.roughness, material.anisotropic);
+  }
+  else
+  {
+    NDF = DistributionGGX(surf.N, H, surf.roughness);
+  }
+
+  float G = GeometrySmith(surf.N, surf.V, L, surf.roughness);
+  vec3  F = fresnelSchlick(max(dot(H, surf.V), 0.0), surf.F0);
+
+  vec3 kS = F;
+  vec3 kD = vec3(1.0) - kS;
+  kD *= 1.0 - surf.metallic;
+
+  vec3  numerator   = NDF * G * F;
+  float denominator = 4.0 * max(dot(surf.N, surf.V), 0.0) * max(dot(surf.N, L), 0.0) + 0.0001;
+  vec3  specular    = numerator / denominator;
+
+  float NdotL = max(dot(surf.N, L), 0.0);
+  return (kD * surf.albedo / PI + specular) * radiance * NdotL;
+}
+
+vec3 calculateClearcoat(Surface surf, vec3 L, vec3 radiance)
+{
+  vec3  H   = normalize(surf.V + L);
+  float NDF = DistributionGGX(surf.N, H, material.clearcoatRoughness);
+  float G   = GeometrySmith(surf.N, surf.V, L, material.clearcoatRoughness);
+  vec3  F   = fresnelSchlick(max(dot(H, surf.V), 0.0), vec3(0.04));
+
+  vec3  numerator   = NDF * G * F;
+  float denominator = 4.0 * max(dot(surf.N, surf.V), 0.0) * max(dot(surf.N, L), 0.0) + 0.0001;
+  vec3  specular    = numerator / denominator;
+
+  float NdotL = max(dot(surf.N, L), 0.0);
+  return specular * radiance * NdotL;
+}
+
+Surface getSurfaceProperties()
 {
   // Apply UV tiling scale
   vec2 uv = fragUV * material.uvScale;
@@ -275,8 +340,6 @@ void main()
   float ao        = material.ao;
 
   // Texture sampling: Check flags to determine which textures are bound
-  // Push constant values act as multipliers/fallbacks when textures are present
-
   if ((material.textureFlags & (1u << 0)) != 0u) // Albedo/BaseColor texture
   {
     vec4 texColor = texture(globalTextures[nonuniformEXT(material.albedoIndex)], uv);
@@ -302,7 +365,6 @@ void main()
 
   if ((material.textureFlags & (1u << 7)) != 0u) // OcclusionRoughnessMetallic Packed
   {
-    // glTF: Red = Occlusion, Green = Roughness, Blue = Metallic
     vec4 ormSample = texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv);
     ao             = ormSample.r;
     roughness      = ormSample.g;
@@ -311,8 +373,6 @@ void main()
   }
   else if ((material.textureFlags & (1u << 6)) != 0u) // MetallicRoughness Packed (glTF)
   {
-    // glTF: Blue = Metallic, Green = Roughness
-    // We assume the texture is bound to roughnessIndex
     vec4 mrSample = texture(globalTextures[nonuniformEXT(material.roughnessIndex)], uv);
     metallic *= mrSample.b;
     roughness *= mrSample.g;
@@ -321,7 +381,7 @@ void main()
   {
     if ((material.textureFlags & (1u << 2)) != 0u) // Metallic texture
     {
-      metallic *= texture(globalTextures[nonuniformEXT(material.metallicIndex)], uv).r; // Multiply push constant by texture value
+      metallic *= texture(globalTextures[nonuniformEXT(material.metallicIndex)], uv).r;
     }
 
     if ((material.textureFlags & (1u << 3)) != 0u) // Roughness texture
@@ -337,31 +397,25 @@ void main()
 
   vec3 N = normalize(fragmentNormalWorld);
 
-  // Normal mapping: Transform tangent-space normals to world space
+  // Normal mapping
   if ((material.textureFlags & (1u << 1)) != 0u) // Normal map
   {
-    // Sample tangent-space normal from texture (stored as [0,1], convert to [-1,1])
     vec3 tangentNormal = texture(globalTextures[nonuniformEXT(material.normalIndex)], uv).xyz * 2.0 - 1.0;
+    tangentNormal.y    = -tangentNormal.y;
 
-    // Flip Y for DirectX normal maps (OpenGL/Vulkan: Y-up, DirectX: Y-down)
-    tangentNormal.y = -tangentNormal.y;
-
-    // Construct TBN (Tangent-Bitangent-Normal) matrix for transformation to world space
-    // Handle horizontal surfaces (floor/ceiling) differently to avoid tangent instability
     vec3 T;
-    if (abs(N.y) > 0.99) // Surface is nearly horizontal (normal points up/down)
+    if (abs(N.y) > 0.99)
     {
-      T = vec3(1.0, 0.0, 0.0); // Use world X-axis as tangent
+      T = vec3(1.0, 0.0, 0.0);
     }
-    else // Regular vertical or angled surface
+    else
     {
-      T = normalize(cross(N, vec3(0.0, 1.0, 0.0))); // Derive tangent from normal and world up
+      T = normalize(cross(N, vec3(0.0, 1.0, 0.0)));
     }
     vec3 B   = normalize(cross(N, T));
-    T        = normalize(cross(B, N)); // Re-orthogonalize tangent
+    T        = normalize(cross(B, N));
     mat3 TBN = mat3(T, B, N);
 
-    // Transform tangent-space normal to world space
     N = normalize(TBN * tangentNormal);
   }
 
@@ -372,7 +426,6 @@ void main()
   if (length(T) < 0.01) T = normalize(cross(N, vec3(1.0, 0.0, 0.0)));
   vec3 B = cross(N, T);
 
-  // Rotate tangent for anisotropic direction
   if (material.anisotropic > 0.01)
   {
     float angle = material.anisotropicRotation * 2.0 * PI;
@@ -384,118 +437,150 @@ void main()
     B           = Brot;
   }
 
-  // Calculate reflectance at normal incidence
-  // For dielectrics use 0.04, for metals use albedo
   vec3 F0 = vec3(0.04);
 
-  // Apply IOR if provided (F0 = ((ior-1)/(ior+1))^2)
-  if (material.ior != 1.5)
+  if (material.useSpecularGlossiness == 1)
   {
-    float ior = material.ior;
-    float f   = (ior - 1.0) / (ior + 1.0);
-    F0        = vec3(f * f);
+    vec3  specularColor = material.specularGlossinessFactor.rgb;
+    float glossiness    = material.specularGlossinessFactor.a;
+
+    if ((material.textureFlags & (1u << 8)) != 0u)
+    {
+      vec4 sgSample = texture(globalTextures[nonuniformEXT(material.specularGlossinessIndex)], uv);
+      specularColor *= sgSample.rgb;
+      glossiness *= sgSample.a;
+    }
+
+    roughness = 1.0 - glossiness;
+    F0        = specularColor;
+    metallic  = 0.0;
+  }
+  else
+  {
+    if (material.ior != 1.5)
+    {
+      float ior = material.ior;
+      float f   = (ior - 1.0) / (ior + 1.0);
+      F0        = vec3(f * f);
+    }
+    F0 = mix(F0, albedo, metallic);
   }
 
-  // Apply Iridescence to F0
   if (material.iridescence > 0.0)
   {
     vec3 iridescenceColor = evalIridescence(max(dot(N, V), 0.1), material.iridescenceThickness, material.iridescenceIOR);
     F0                    = mix(F0, iridescenceColor, material.iridescence);
   }
 
-  F0 = mix(F0, albedo, metallic);
+  Surface surf;
+  surf.albedo    = albedo;
+  surf.alpha     = alpha;
+  surf.metallic  = metallic;
+  surf.roughness = roughness;
+  surf.ao        = ao;
+  surf.N         = N;
+  surf.V         = V;
+  surf.F0        = F0;
+  surf.T         = T;
+  surf.B         = B;
+
+  return surf;
+}
+
+vec3 calculateIBL(Surface surf)
+{
+  vec3 F_IBL       = surf.F0;
+  vec3 F_roughness = fresnelSchlickRoughness(max(dot(surf.N, surf.V), 0.0), F_IBL, surf.roughness);
+
+  vec3 kS = F_roughness;
+  vec3 kD = 1.0 - kS;
+  kD *= 1.0 - surf.metallic;
+
+  vec3 irradiance = texture(irradianceMap, surf.N).rgb;
+  vec3 diffuse    = irradiance * surf.albedo;
+
+  const float MAX_REFLECTION_LOD = 4.0;
+  vec3        R                  = reflect(-surf.V, surf.N);
+  vec3        prefilteredColor   = textureLod(prefilterMap, R, surf.roughness * MAX_REFLECTION_LOD).rgb;
+
+  vec2 brdf     = texture(brdfLUT, vec2(max(dot(surf.N, surf.V), 0.0), surf.roughness)).rg;
+  vec3 specular = prefilteredColor * (F_roughness * brdf.x + brdf.y);
+
+  vec3 ambient = (kD * diffuse + specular) * surf.ao;
+
+  // Add simple ambient as fallback/boost
+  ambient += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * surf.albedo * surf.ao * 0.05;
+
+  return ambient;
+}
+
+vec3 calculateEmissive()
+{
+  vec2 uv       = fragUV * material.uvScale;
+  vec3 emissive = material.emissiveInfo.rgb * material.emissiveInfo.a;
+
+  if ((material.textureFlags & (1u << 5)) != 0u) // Emissive texture
+  {
+    vec3 emissiveTex = texture(globalTextures[nonuniformEXT(material.emissiveIndex)], uv).rgb;
+    emissive *= emissiveTex;
+  }
+  return emissive;
+}
+
+void main()
+{
+  Surface surf = getSurfaceProperties();
 
   // Reflectance equation - Base layer
-  vec3 Lo = vec3(0.0);
+  vec3 Lo          = vec3(0.0);
+  vec3 clearcoatLo = vec3(0.0);
 
   // Point lights
   for (int i = 0; i < ubo.pointLightCount; i++)
   {
-    // Calculate per-light radiance
     vec3  lightDir  = ubo.pointLights[i].position.xyz - fragmentWorldPos;
     float distance2 = dot(lightDir, lightDir);
     float intensity = ubo.pointLights[i].color.w;
 
-    // Light Culling: Skip if contribution is negligible (approx < 1/255)
-    // intensity / distance2 < 0.004  =>  intensity / 0.004 < distance2
     if (distance2 > intensity * 250.0) continue;
 
     float distance    = sqrt(distance2);
-    vec3  L           = lightDir / distance; // normalize
-    vec3  H           = normalize(V + L);
+    vec3  L           = lightDir / distance;
     float attenuation = 1.0 / distance2;
     vec3  radiance    = ubo.pointLights[i].color.xyz * intensity * attenuation;
 
-    // Calculate shadow for point light using cube shadow map
     float shadow = 1.0;
     if (i < ubo.cubeShadowLightCount)
     {
       shadow = calculatePointLightShadow(fragmentWorldPos, i);
     }
 
-    // Cook-Torrance BRDF with optional anisotropy
-    float NDF;
-    if (material.anisotropic > 0.01)
+    Lo += calculateDirectLight(surf, L, radiance) * shadow;
+
+    if (material.clearcoat > 0.01)
     {
-      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, material.anisotropic);
+      clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
     }
-    else
-    {
-      NDF = DistributionGGX(N, H, roughness);
-    }
-
-    float G = GeometrySmith(N, V, L, roughness);
-    vec3  F = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    vec3  numerator   = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3  specular    = numerator / denominator;
-
-    float NdotL = max(dot(N, L), 0.0);
-    Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
   }
 
   // Directional lights
   for (int i = 0; i < ubo.directionalLightCount; i++)
   {
     vec3 L        = normalize(-ubo.directionalLights[i].direction.xyz);
-    vec3 H        = normalize(V + L);
     vec3 radiance = ubo.directionalLights[i].color.xyz * ubo.directionalLights[i].color.w;
 
-    // Calculate shadow for first directional light
     float shadow = 1.0;
     if (i == 0 && ubo.shadowLightCount > 0)
     {
       shadow = calculateShadow(fragmentWorldPos, 0);
     }
 
-    float NDF;
-    if (material.anisotropic > 0.01)
+    Lo += calculateDirectLight(surf, L, radiance) * shadow;
+
+    if (material.clearcoat > 0.01)
     {
-      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, material.anisotropic);
+      clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
     }
-    else
-    {
-      NDF = DistributionGGX(N, H, roughness);
-    }
-
-    float G = GeometrySmith(N, V, L, roughness);
-    vec3  F = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    vec3  numerator   = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3  specular    = numerator / denominator;
-
-    float NdotL = max(dot(N, L), 0.0);
-    Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
   }
 
   // Spot lights
@@ -504,22 +589,17 @@ void main()
     vec3  lightDir = ubo.spotLights[i].position.xyz - fragmentWorldPos;
     float distance = length(lightDir);
     vec3  L        = normalize(lightDir);
-    vec3  H        = normalize(V + L);
 
-    // Spotlight intensity calculation
     vec3  spotDir   = normalize(-ubo.spotLights[i].direction.xyz);
     float theta     = dot(L, spotDir);
     float epsilon   = ubo.spotLights[i].direction.w - ubo.spotLights[i].outerCutoff;
     float intensity = clamp((theta - ubo.spotLights[i].outerCutoff) / epsilon, 0.0, 1.0);
 
-    // Attenuation
     float attenuation =
             1.0 / (ubo.spotLights[i].constantAtten + ubo.spotLights[i].linearAtten * distance + ubo.spotLights[i].quadraticAtten * distance * distance);
 
     vec3 radiance = ubo.spotLights[i].color.xyz * ubo.spotLights[i].color.w * attenuation * intensity;
 
-    // Calculate shadow for this spotlight
-    // Shadow map index = 1 + i (index 0 is for directional light)
     int   shadowIndex = 1 + i;
     float shadow      = 1.0;
     if (shadowIndex < ubo.shadowLightCount)
@@ -527,171 +607,32 @@ void main()
       shadow = calculateShadow(fragmentWorldPos, shadowIndex);
     }
 
-    float NDF;
-    if (material.anisotropic > 0.01)
+    Lo += calculateDirectLight(surf, L, radiance) * shadow;
+
+    if (material.clearcoat > 0.01)
     {
-      NDF = DistributionGGXAnisotropic(N, H, T, B, roughness, material.anisotropic);
+      clearcoatLo += calculateClearcoat(surf, L, radiance) * shadow;
     }
-    else
-    {
-      NDF = DistributionGGX(N, H, roughness);
-    }
-
-    float G = GeometrySmith(N, V, L, roughness);
-    vec3  F = fresnelSchlick(max(dot(H, V), 0.0), F0);
-
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;
-
-    vec3  numerator   = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3  specular    = numerator / denominator;
-
-    float NdotL = max(dot(N, L), 0.0);
-    Lo += (kD * albedo / PI + specular) * radiance * NdotL * shadow;
   }
 
-  // Clearcoat layer (second specular lobe)
   if (material.clearcoat > 0.01)
   {
-    vec3 clearcoatF0 = vec3(0.04); // Dielectric clearcoat
-    vec3 clearcoatLo = vec3(0.0);
-
-    // Point lights
-    for (int i = 0; i < ubo.pointLightCount; i++)
-    {
-      vec3  lightDir    = ubo.pointLights[i].position.xyz - fragmentWorldPos;
-      float distance    = length(lightDir);
-      vec3  L           = normalize(lightDir);
-      vec3  H           = normalize(V + L);
-      float attenuation = 1.0 / (distance * distance);
-      vec3  radiance    = ubo.pointLights[i].color.xyz * ubo.pointLights[i].color.w * attenuation;
-
-      float clearNDF = DistributionGGX(N, H, material.clearcoatRoughness);
-      float clearG   = GeometrySmith(N, V, L, material.clearcoatRoughness);
-      vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
-
-      vec3  numerator   = clearNDF * clearG * clearF;
-      float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-      vec3  specular    = numerator / denominator;
-
-      float NdotL = max(dot(N, L), 0.0);
-      clearcoatLo += specular * radiance * NdotL;
-    }
-
-    // Directional lights
-    for (int i = 0; i < ubo.directionalLightCount; i++)
-    {
-      vec3 L        = normalize(-ubo.directionalLights[i].direction.xyz);
-      vec3 H        = normalize(V + L);
-      vec3 radiance = ubo.directionalLights[i].color.xyz * ubo.directionalLights[i].color.w;
-
-      float clearNDF = DistributionGGX(N, H, material.clearcoatRoughness);
-      float clearG   = GeometrySmith(N, V, L, material.clearcoatRoughness);
-      vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
-
-      vec3  numerator   = clearNDF * clearG * clearF;
-      float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-      vec3  specular    = numerator / denominator;
-
-      float NdotL = max(dot(N, L), 0.0);
-      clearcoatLo += specular * radiance * NdotL;
-    }
-
-    // Spot lights
-    for (int i = 0; i < ubo.spotLightCount; i++)
-    {
-      vec3  lightDir = ubo.spotLights[i].position.xyz - fragmentWorldPos;
-      float distance = length(lightDir);
-      vec3  L        = normalize(lightDir);
-      vec3  H        = normalize(V + L);
-
-      vec3  spotDir   = normalize(-ubo.spotLights[i].direction.xyz);
-      float theta     = dot(L, spotDir);
-      float epsilon   = ubo.spotLights[i].direction.w - ubo.spotLights[i].outerCutoff;
-      float intensity = clamp((theta - ubo.spotLights[i].outerCutoff) / epsilon, 0.0, 1.0);
-
-      float attenuation =
-              1.0 / (ubo.spotLights[i].constantAtten + ubo.spotLights[i].linearAtten * distance + ubo.spotLights[i].quadraticAtten * distance * distance);
-
-      vec3 radiance = ubo.spotLights[i].color.xyz * ubo.spotLights[i].color.w * attenuation * intensity;
-
-      float clearNDF = DistributionGGX(N, H, material.clearcoatRoughness);
-      float clearG   = GeometrySmith(N, V, L, material.clearcoatRoughness);
-      vec3  clearF   = fresnelSchlick(max(dot(H, V), 0.0), clearcoatF0);
-
-      vec3  numerator   = clearNDF * clearG * clearF;
-      float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-      vec3  specular    = numerator / denominator;
-
-      float NdotL = max(dot(N, L), 0.0);
-      clearcoatLo += specular * radiance * NdotL;
-    }
-
-    // Blend base layer with clearcoat
     Lo = mix(Lo, Lo + clearcoatLo * material.clearcoat, material.clearcoat);
   }
 
-  // Ambient lighting (IBL)
-  vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-
-  vec3 kS = F;
-  vec3 kD = 1.0 - kS;
-  kD *= 1.0 - metallic;
-
-  // Flip Y for Vulkan cube map sampling
-  // vec3 N_flip     = vec3(N.x, -N.y, N.z);
-  vec3 N_flip     = N;
-  vec3 irradiance = texture(irradianceMap, N_flip).rgb;
-  vec3 diffuse    = irradiance * albedo;
-
-  // Sample prefiltered map
-  const float MAX_REFLECTION_LOD = 4.0;
-  vec3        R                  = reflect(-V, N);
-  // vec3        R_flip             = vec3(R.x, -R.y, R.z);
-  vec3 R_flip           = R;
-  vec3 prefilteredColor = textureLod(prefilterMap, R_flip, roughness * MAX_REFLECTION_LOD).rgb;
-
-  // Sample BRDF LUT
-  vec2 brdf     = texture(brdfLUT, vec2(max(dot(N, V), 0.0), roughness)).rg;
-  vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
-
-  vec3 ambient = (kD * diffuse + specular) * ao;
-
-  // Add simple ambient as fallback/boost
-  ambient += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * albedo * ao * 0.05;
-
-  // DEBUG: Disable ambient to see emissive clearly
-  // ambient = vec3(0.0);
-
-  // Emissive
-  vec3 emissive = material.emissiveInfo.rgb * material.emissiveInfo.a;
-
-  if ((material.textureFlags & (1u << 5)) != 0u) // Emissive texture
-  {
-    vec3 emissiveTex = texture(globalTextures[nonuniformEXT(material.emissiveIndex)], uv).rgb;
-    emissive *= emissiveTex;
-  }
+  vec3 ambient  = calculateIBL(surf);
+  vec3 emissive = calculateEmissive();
 
   vec3 color = ambient + Lo + emissive;
 
-  // HDR tonemapping (Reinhard)
-  color = color / (color + vec3(1.0));
-  // Gamma correction
-  color = pow(color, vec3(1.0 / 2.2));
-
-  // Add selection highlight (bright cyan outline effect)
   if (material.isSelected > 0.5)
   {
-    // Create pulsing effect based on time (using position as pseudo-time)
-    float pulse = 0.7 + 0.3 * sin(fragmentWorldPos.x + fragmentWorldPos.y + fragmentWorldPos.z);
-    // Rim lighting effect for selection
-    float rimIntensity  = 1.0 - abs(dot(N, V));
+    float pulse         = 0.7 + 0.3 * sin(fragmentWorldPos.x + fragmentWorldPos.y + fragmentWorldPos.z);
+    float rimIntensity  = 1.0 - abs(dot(surf.N, surf.V));
     rimIntensity        = pow(rimIntensity, 2.0);
-    vec3 selectionColor = vec3(0.0, 1.0, 1.0) * pulse * 0.5; // Cyan highlight
+    vec3 selectionColor = vec3(1.0, 1.0, 1.0) * pulse * 0.5;
     color += selectionColor * rimIntensity;
   }
 
-  outColor = vec4(color, alpha * (1.0 - material.transmission));
+  outColor = vec4(color, surf.alpha * (1.0 - material.transmission));
 }

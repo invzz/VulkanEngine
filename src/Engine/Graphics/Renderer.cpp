@@ -397,10 +397,17 @@ namespace engine {
       shaderStageInfo.module = computeShaderModule;
       shaderStageInfo.pName  = "main";
 
+      VkPushConstantRange pushConstantRange{};
+      pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+      pushConstantRange.offset     = 0;
+      pushConstantRange.size       = sizeof(uint32_t);
+
       VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-      pipelineLayoutInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-      pipelineLayoutInfo.setLayoutCount = 1;
-      pipelineLayoutInfo.pSetLayouts    = &hzbSetLayout;
+      pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+      pipelineLayoutInfo.setLayoutCount         = 1;
+      pipelineLayoutInfo.pSetLayouts            = &hzbSetLayout;
+      pipelineLayoutInfo.pushConstantRangeCount = 1;
+      pipelineLayoutInfo.pPushConstantRanges    = &pushConstantRange;
 
       if (vkCreatePipelineLayout(device.device(), &pipelineLayoutInfo, nullptr, &hzbPipelineLayout) != VK_SUCCESS)
       {
@@ -432,8 +439,10 @@ namespace engine {
     VkExtent2D extent    = swapChain->getSwapChainExtent();
     uint32_t   mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
 
-    // We need sets for (mipLevels - 1) transitions per frame.
-    uint32_t setsPerFrame = mipLevels - 1;
+    // We need sets for mipLevels transitions per frame.
+    // Pass 0: Depth -> HZB0 (Copy)
+    // Pass 1..N: HZB(k-1) -> HZB(k) (Reduce)
+    uint32_t setsPerFrame = mipLevels;
     if (setsPerFrame == 0) return;
 
     uint32_t totalSets = setsPerFrame * SwapChain::maxFramesInFlight();
@@ -479,32 +488,47 @@ namespace engine {
         throw std::runtime_error("failed to allocate HZB descriptor sets! Error: " + std::to_string(allocResult));
       }
 
-      // Update sets for each mip transition: Input Mip k -> Output Mip k+1
+      // Update sets for each mip transition
       for (uint32_t m = 0; m < setsPerFrame; m++)
       {
-        VkImageView inputView  = offscreenFrameBuffer->getDepthMipImageView(i, m);
-        VkImageView outputView = offscreenFrameBuffer->getDepthMipImageView(i, m + 1);
+        VkImageView inputView;
+        VkImageView outputView;
+        VkSampler   inputSampler;
+
+        if (m == 0)
+        {
+          // Pass 0: Depth -> HZB0
+          inputView    = offscreenFrameBuffer->getDepthImageView(i);
+          outputView   = offscreenFrameBuffer->getHzbMipImageView(i, 0);
+          inputSampler = offscreenFrameBuffer->getDepthSampler();
+        }
+        else
+        {
+          // Pass m: HZB(m-1) -> HZB(m)
+          inputView    = offscreenFrameBuffer->getHzbMipImageView(i, m - 1);
+          outputView   = offscreenFrameBuffer->getHzbMipImageView(i, m);
+          inputSampler = offscreenFrameBuffer->getHzbSampler();
+        }
 
         if (inputView == VK_NULL_HANDLE || outputView == VK_NULL_HANDLE)
         {
-          std::cout << "ERROR: Null View Handle! Frame " << i << ", Mip " << m << " -> " << (m + 1) << ". Input: " << inputView << ", Output: " << outputView
-                    << std::endl;
+          std::cout << "ERROR: Null View Handle! Frame " << i << ", Mip " << m << ". Input: " << inputView << ", Output: " << outputView << std::endl;
         }
 
-        // Input: Mip m
+        // Input
         VkDescriptorImageInfo inputInfo{};
-        inputInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // We will transition to this
+        inputInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         inputInfo.imageView   = inputView;
-        inputInfo.sampler     = offscreenFrameBuffer->getDepthSampler();
+        inputInfo.sampler     = inputSampler;
 
-        // Output: Mip m+1
+        // Output
         VkDescriptorImageInfo outputInfo{};
-        outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL; // Storage image needs GENERAL
+        outputInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         outputInfo.imageView   = outputView;
         outputInfo.sampler     = VK_NULL_HANDLE;
 
-        std::cout << "Updating Set: Frame " << i << ", Mip " << m << ". InputView: " << inputInfo.imageView << ", OutputView: " << outputInfo.imageView
-                  << std::endl;
+        // std::cout << "Updating Set: Frame " << i << ", Mip " << m << ". InputView: " << inputInfo.imageView << ", OutputView: " << outputInfo.imageView <<
+        // std::endl;
 
         VkWriteDescriptorSet descriptorWrites[2] = {};
         descriptorWrites[0].sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -536,25 +560,21 @@ namespace engine {
     uint32_t   mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1;
     if (mipLevels < 2) return;
 
-    // Transition Mip 0 to SHADER_READ_ONLY_OPTIMAL (it was DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-    // And all other mips to GENERAL (for writing)
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.image                           = offscreenFrameBuffer->getDepthImage(currentFrameIndex);
-    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount     = 1;
-
-    // 1. Transition Mip 0: Write -> Read
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount   = 1;
-    barrier.oldLayout                     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // Or UNDEFINED if we don't care? No we care.
-    barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.srcAccessMask                 = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    barrier.dstAccessMask                 = VK_ACCESS_SHADER_READ_BIT;
+    // 1. Transition Depth Mip 0 to SHADER_READ_ONLY_OPTIMAL
+    VkImageMemoryBarrier depthBarrier{};
+    depthBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    depthBarrier.image                           = offscreenFrameBuffer->getDepthImage(currentFrameIndex);
+    depthBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    depthBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    depthBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+    depthBarrier.subresourceRange.baseArrayLayer = 0;
+    depthBarrier.subresourceRange.layerCount     = 1;
+    depthBarrier.subresourceRange.baseMipLevel   = 0;
+    depthBarrier.subresourceRange.levelCount     = 1;
+    depthBarrier.oldLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    depthBarrier.srcAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    depthBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
 
     vkCmdPipelineBarrier(commandBuffer,
                          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
@@ -565,47 +585,56 @@ namespace engine {
                          0,
                          nullptr,
                          1,
-                         &barrier);
+                         &depthBarrier);
 
-    // 2. Transition Mips 1..N: Undefined -> General (for writing)
-    barrier.subresourceRange.baseMipLevel = 1;
-    barrier.subresourceRange.levelCount   = mipLevels - 1;
-    barrier.oldLayout                     = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout                     = VK_IMAGE_LAYOUT_GENERAL;
-    barrier.srcAccessMask                 = 0;
-    barrier.dstAccessMask                 = VK_ACCESS_SHADER_WRITE_BIT;
+    // 2. Transition HZB Mips to GENERAL (for writing)
+    VkImageMemoryBarrier hzbBarrier{};
+    hzbBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    hzbBarrier.image                           = offscreenFrameBuffer->getHzbImage(currentFrameIndex);
+    hzbBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    hzbBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    hzbBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    hzbBarrier.subresourceRange.baseArrayLayer = 0;
+    hzbBarrier.subresourceRange.layerCount     = 1;
+    hzbBarrier.subresourceRange.baseMipLevel   = 0;
+    hzbBarrier.subresourceRange.levelCount     = mipLevels;
+    hzbBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+    hzbBarrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
+    hzbBarrier.srcAccessMask                   = 0;
+    hzbBarrier.dstAccessMask                   = VK_ACCESS_SHADER_WRITE_BIT;
 
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &hzbBarrier);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, hzbPipeline);
 
     int32_t mipWidth  = extent.width;
     int32_t mipHeight = extent.height;
 
-    for (uint32_t i = 0; i < mipLevels - 1; i++)
+    for (uint32_t i = 0; i < mipLevels; i++)
     {
-      // Dispatch for Mip i -> Mip i+1
-      // Output size is Mip i+1 size
-      mipWidth  = mipWidth > 1 ? mipWidth / 2 : 1;
-      mipHeight = mipHeight > 1 ? mipHeight / 2 : 1;
+      // Calculate dispatch size
+      int32_t currentWidth  = std::max(1, mipWidth >> i);
+      int32_t currentHeight = std::max(1, mipHeight >> i);
+
+      // Push Constant: 0 for copy (Pass 0), 1 for reduce (Pass > 0)
+      uint32_t mode = (i == 0) ? 0 : 1;
+      vkCmdPushConstants(commandBuffer, hzbPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t), &mode);
 
       vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, hzbPipelineLayout, 0, 1, &hzbDescriptorSets[currentFrameIndex][i], 0, nullptr);
 
-      // Group size is 32x32
-      vkCmdDispatch(commandBuffer, (mipWidth + 31) / 32, (mipHeight + 31) / 32, 1);
+      vkCmdDispatch(commandBuffer, (currentWidth + 31) / 32, (currentHeight + 31) / 32, 1);
 
-      // Barrier: Wait for Mip i+1 write to finish before it becomes Mip i for next iteration
-      // Transition Mip i+1 from GENERAL (Write) to SHADER_READ_ONLY_OPTIMAL (Read)
-
+      // Barrier: Wait for HZB Mip i write to finish before it becomes input for next iteration
+      // Transition HZB Mip i from GENERAL (Write) to SHADER_READ_ONLY_OPTIMAL (Read)
       VkImageMemoryBarrier mipBarrier{};
       mipBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-      mipBarrier.image                           = offscreenFrameBuffer->getDepthImage(currentFrameIndex);
+      mipBarrier.image                           = offscreenFrameBuffer->getHzbImage(currentFrameIndex);
       mipBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
       mipBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-      mipBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+      mipBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
       mipBarrier.subresourceRange.baseArrayLayer = 0;
       mipBarrier.subresourceRange.layerCount     = 1;
-      mipBarrier.subresourceRange.baseMipLevel   = i + 1;
+      mipBarrier.subresourceRange.baseMipLevel   = i;
       mipBarrier.subresourceRange.levelCount     = 1;
       mipBarrier.oldLayout                       = VK_IMAGE_LAYOUT_GENERAL;
       mipBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -623,12 +652,6 @@ namespace engine {
                            1,
                            &mipBarrier);
     }
-
-    // Finally, transition Mip 0 back to DEPTH_STENCIL_ATTACHMENT_OPTIMAL?
-    // Or leave it as READ_ONLY if we are done with it for this frame?
-    // If we use it for next frame's culling, READ_ONLY is fine.
-    // But at the start of next frame, render pass will transition it to ATTACHMENT_OPTIMAL (loadOp=CLEAR).
-    // So we are good.
   }
 
 } // namespace engine

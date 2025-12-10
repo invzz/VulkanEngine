@@ -51,6 +51,7 @@ namespace engine {
       std::string roughnessTexPath;
       std::string aoTexPath;
       std::string emissiveTexPath;
+      std::string specularGlossinessTexPath;
     };
 
     // Sub-mesh: a portion of the model using one material

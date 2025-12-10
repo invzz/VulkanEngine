@@ -258,6 +258,45 @@ namespace engine {
         matInfo.emissiveTexPath = getTexturePath(gltfModel, gltfMat.emissiveTexture.index, baseDir, cacheDir);
       }
 
+      // Specular Glossiness Workflow
+      if (gltfMat.extensions.find("KHR_materials_pbrSpecularGlossiness") != gltfMat.extensions.end())
+      {
+        const auto& ext                                   = gltfMat.extensions.at("KHR_materials_pbrSpecularGlossiness");
+        matInfo.pbrMaterial.useSpecularGlossinessWorkflow = true;
+
+        if (ext.Has("diffuseFactor"))
+        {
+          const auto& f = ext.Get("diffuseFactor");
+          matInfo.pbrMaterial.albedo =
+                  glm::vec4(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble(), f.Get(3).GetNumberAsDouble());
+        }
+
+        if (ext.Has("specularFactor"))
+        {
+          const auto& f                      = ext.Get("specularFactor");
+          matInfo.pbrMaterial.specularFactor = glm::vec3(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble());
+        }
+
+        if (ext.Has("glossinessFactor"))
+        {
+          matInfo.pbrMaterial.glossinessFactor = static_cast<float>(ext.Get("glossinessFactor").GetNumberAsDouble());
+        }
+
+        if (ext.Has("diffuseTexture"))
+        {
+          const auto& tex        = ext.Get("diffuseTexture");
+          int         index      = tex.Get("index").GetNumberAsInt();
+          matInfo.diffuseTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+
+        if (ext.Has("specularGlossinessTexture"))
+        {
+          const auto& tex                   = ext.Get("specularGlossinessTexture");
+          int         index                 = tex.Get("index").GetNumberAsInt();
+          matInfo.specularGlossinessTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+      }
+
       // Parse Extensions
       // Emissive Strength
       if (gltfMat.extensions.find("KHR_materials_emissive_strength") != gltfMat.extensions.end())

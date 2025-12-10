@@ -9,7 +9,7 @@ namespace engine {
     Camera camera{};
 
     // Perspective settings
-    float fovY  = 45.0f;
+    float fovY  = 80.0f;
     float nearZ = 0.1f;
     float farZ  = 100.0f;
 
