@@ -8,6 +8,8 @@ layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragmentWorldPos;
 layout(location = 2) in vec3 fragmentNormalWorld;
 layout(location = 3) in vec2 fragUV;
+layout(location = 4) in flat uint inMeshletId;
+layout(location = 5) in flat vec3 inConeAxis;
 
 struct PointLight
 {
@@ -739,6 +741,23 @@ void main()
   else if (ubo.debugMode == 6) // AO
   {
     finalColor = vec3(surf.ao);
+    opacity    = 1.0;
+  }
+  else if (ubo.debugMode == 7) // Meshlets
+  {
+    uint hash  = inMeshletId;
+    hash       = (hash ^ 61) ^ (hash >> 16);
+    hash       = hash + (hash << 3);
+    hash       = hash ^ (hash >> 4);
+    hash       = hash * 0x27d4eb2d;
+    hash       = hash ^ (hash >> 15);
+    vec3 color = vec3(float(hash & 255), float((hash >> 8) & 255), float((hash >> 16) & 255)) / 255.0;
+    finalColor = color;
+    opacity    = 1.0;
+  }
+  else if (ubo.debugMode == 8) // Meshlet Cones
+  {
+    finalColor = inConeAxis * 0.5 + 0.5;
     opacity    = 1.0;
   }
 

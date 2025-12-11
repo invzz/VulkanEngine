@@ -110,6 +110,25 @@ float interleavedGradientNoise(vec2 position_screen)
   return fract(magic.z * fract(dot(position_screen, magic.xy)));
 }
 
+const vec3 kernel[16] = vec3[](
+  vec3(0.0248, 0.0000, 0.0969),
+  vec3(-0.0323, 0.0296, 0.0938),
+  vec3(0.0054, -0.0610, 0.0962),
+  vec3(0.0500, 0.0652, 0.1028),
+  vec3(-0.1070, -0.0189, 0.1123),
+  vec3(0.1196, -0.0761, 0.1233),
+  vec3(-0.0473, 0.1761, 0.1345),
+  vec3(-0.1063, -0.2047, 0.1446),
+  vec3(0.2697, 0.0985, 0.1523),
+  vec3(-0.3250, 0.1341, 0.1563),
+  vec3(0.1797, -0.3841, 0.1552),
+  vec3(0.1509, 0.4811, 0.1478),
+  vec3(-0.5118, -0.2966, 0.1326),
+  vec3(0.6696, -0.1472, 0.1085),
+  vec3(-0.4518, 0.6427, 0.0740),
+  vec3(-0.1144, -0.8832, 0.0278)
+);
+
 float computeSSAO(vec2 uv)
 {
   vec3 viewPos = getViewPos(uv);
@@ -134,28 +153,13 @@ float computeSSAO(vec2 uv)
   mat3 TBN       = mat3(tangent, bitangent, normal);
 
   float occlusion = 0.0;
-  int   samples   = 32;
+  int   samples   = 16;
   float radius    = push.ssaoRadius;
   float bias      = push.ssaoBias;
 
   for (int i = 0; i < samples; ++i)
   {
-    // Fibonacci Hemisphere Sampling
-    float index = float(i);
-    float count = float(samples);
-
-    float phi      = 2.3999632 * index;           // Golden Angle
-    float cosTheta = 1.0 - (index + 0.5) / count; // z from 1 down to 0
-    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-
-    vec3 sampleTangent = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
-
-    // Scale samples to be distributed within the radius (accelerating towards center)
-    float scale = float(i) / float(samples);
-    scale       = mix(0.1, 1.0, scale * scale);
-    sampleTangent *= scale;
-
-    vec3 samplePos = viewPos + (TBN * sampleTangent) * radius;
+    vec3 samplePos = viewPos + (TBN * kernel[i]) * radius;
 
     vec4 offset = push.projection * vec4(samplePos, 1.0);
     offset.xyz /= offset.w;

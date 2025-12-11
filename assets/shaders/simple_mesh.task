@@ -21,6 +21,8 @@ struct Meshlet
 
   float cone_axis[3];
   float cone_cutoff;
+
+  uint padding[4];
 };
 
 layout(buffer_reference, scalar) readonly buffer MeshletBuffer
@@ -84,7 +86,7 @@ layout(set = 0, binding = 0) uniform GlobalUbo
   int              spotLightCount;
   int              shadowLightCount;
   int              cubeShadowLightCount;
-  int              _pad1;
+  int              debugMode;
   int              _pad2;
   int              _pad3;
   vec4             frustumPlanes[6];
@@ -100,6 +102,8 @@ struct TaskPayload
 };
 
 taskPayloadSharedEXT TaskPayload payload;
+
+shared uint sharedCount;
 
 bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
 {
@@ -118,28 +122,52 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
   }
 
   // 3. Cone Culling (Backface)
-  if ((push.cullingFlags & 1) == 0)
+  if (false && (push.cullingFlags & 1) == 0)
   {
     vec3 coneAxis = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
-    // Transform cone axis to world space (assuming uniform scale or close to it)
-    vec3 worldConeAxis = normalize(mat3(model) * coneAxis);
-    vec3 viewDir       = normalize(cameraPos - worldCenter);
+    // Use normal matrix to transform cone axis correctly (handles non-uniform scale)
+    vec3 worldConeAxis = normalize(mat3(push.normalMatrix) * coneAxis);
+    
+    vec3 toCamera = cameraPos - worldCenter;
+    float distSq = dot(toCamera, toCamera);
+    float dist = sqrt(distSq);
+    vec3 viewDir = toCamera / dist;
 
-    // meshopt cone_cutoff is cos(semi_angle)
-    // We cull if dot(viewDir, worldConeAxis) < -sin(semi_angle)
-    // sin(semi_angle) = sqrt(1 - cos^2(semi_angle))
     float coneCutoff = meshlet.cone_cutoff;
-    float coneSin    = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
-
-    // Note: This assumes the cone is strictly defined.
-    // If coneCutoff is 127/127 (byte) or similar, it might be 1.0.
-    // If coneCutoff >= 1.0, angle is 0.
-
-    if (dot(worldConeAxis, viewDir) < -coneSin)
+    
+    // Only cull if the cone is tight enough (angle < 90 degrees)
+    if (coneCutoff > 0.0)
     {
-      return false; // Backface culled
+        float coneSin = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
+        
+        // Conservative culling: account for perspective (meshlet radius)
+        // We effectively widen the cone by the angle subtended by the meshlet radius
+        // sin(gamma) = radius / dist
+        
+        // If we are inside the radius, don't cull
+        if (dist > radius)
+        {
+            float sinGamma = radius / dist;
+            float cosGamma = sqrt(max(0.0, 1.0 - sinGamma * sinGamma));
+            
+            // cos(alpha + gamma) = cos(alpha)cos(gamma) - sin(alpha)sin(gamma)
+            float cosAlphaPlusGamma = coneCutoff * cosGamma - coneSin * sinGamma;
+            
+            // Only cull if the expanded cone is still within 90 degrees
+            if (cosAlphaPlusGamma >= 0.0)
+            {
+                // sin(alpha + gamma) = sin(alpha)cos(gamma) + cos(alpha)sin(gamma)
+                float sinAlphaPlusGamma = coneSin * cosGamma + coneCutoff * sinGamma;
+                
+                if (dot(worldConeAxis, viewDir) < -sinAlphaPlusGamma)
+                {
+                    return false;
+                }
+            }
+        }
     }
   }
+
   // 4. Screen Size Culling (LOD)
   vec4  viewCenter = ubo.view * vec4(worldCenter, 1.0);
   float dist       = -viewCenter.z;
@@ -192,31 +220,10 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
 
     float depth = max(max(d1, d2), max(d3, d4));
 
-    // Check visibility
-    // We are using standard Z (0=near, 1=far).
-    // HZB contains MAX depth of the tile.
-    // If object's nearest depth > tile's max depth, then object is occluded.
-    // Object's nearest depth = clipCenter.z - projectedRadius?
-    // Linear depth approximation:
-    // But we are in non-linear Z.
-    // Closest point on sphere in view space is (dist - radius).
-    // Project that to clip space Z.
-    // Z_clip = P33 * z_view + P34 * w_view
-    // z_ndc = Z_clip / w_clip
-    // w_clip = -z_view
-    // z_ndc = (P33 * z_view + P34) / -z_view = -P33 - P34/z_view
-    // P33 = -far/(far-near), P34 = -far*near/(far-near) (for [0,1] depth)
-    // Actually, let's just use the center depth minus some bias?
-    // Or project the nearest point of the sphere.
-
     vec4 nearPointView = viewCenter;
     nearPointView.z += radius; // Closer to camera (z is negative)
     vec4  nearPointClip = ubo.projection * nearPointView;
     float nearDepth     = nearPointClip.z / nearPointClip.w;
-
-    // If nearDepth > HZB_depth, then occluded.
-    // HZB stores the FARTHEST point in the tile.
-    // If our CLOSEST point is farther than the tile's FARTHEST point, we are hidden.
 
     if (nearDepth > depth)
     {
@@ -247,18 +254,17 @@ void main()
 
   bool visible = isVisible(meshlet, push.modelMatrix, ubo.cameraPosition.xyz);
 
-  // Subgroup voting
-  uvec4 vote         = subgroupBallot(visible);
-  uint  visibleCount = subgroupBallotBitCount(vote);
-  uint  indexOffset  = subgroupBallotExclusiveBitCount(vote);
+  uvec4 ballot = subgroupBallot(visible);
+  uint count = subgroupBallotBitCount(ballot);
+  uint index = subgroupBallotExclusiveBitCount(ballot);
 
   if (visible)
   {
-    payload.meshletIndices[indexOffset] = meshletId;
+    payload.meshletIndices[index] = meshletId;
   }
 
   if (gl_LocalInvocationIndex == 0)
   {
-    EmitMeshTasksEXT(visibleCount, 1, 1);
+    EmitMeshTasksEXT(count, 1, 1);
   }
 }

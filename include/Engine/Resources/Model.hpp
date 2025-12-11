@@ -155,6 +155,8 @@ namespace engine {
 
       float cone_axis[3];
       float cone_cutoff;
+
+      uint32_t padding[4];
     };
 
     struct Builder
