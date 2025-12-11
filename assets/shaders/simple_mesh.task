@@ -127,44 +127,44 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     vec3 coneAxis = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
     // Use normal matrix to transform cone axis correctly (handles non-uniform scale)
     vec3 worldConeAxis = normalize(mat3(push.normalMatrix) * coneAxis);
-    
-    vec3 toCamera = cameraPos - worldCenter;
-    float distSq = dot(toCamera, toCamera);
-    float dist = sqrt(distSq);
-    vec3 viewDir = toCamera / dist;
+
+    vec3  toCamera = cameraPos - worldCenter;
+    float distSq   = dot(toCamera, toCamera);
+    float dist     = sqrt(distSq);
+    vec3  viewDir  = toCamera / dist;
 
     float coneCutoff = meshlet.cone_cutoff;
-    
+
     // Only cull if the cone is tight enough (angle < 90 degrees)
     if (coneCutoff > 0.0)
     {
-        float coneSin = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
-        
-        // Conservative culling: account for perspective (meshlet radius)
-        // We effectively widen the cone by the angle subtended by the meshlet radius
-        // sin(gamma) = radius / dist
-        
-        // If we are inside the radius, don't cull
-        if (dist > radius)
+      float coneSin = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
+
+      // Conservative culling: account for perspective (meshlet radius)
+      // We effectively widen the cone by the angle subtended by the meshlet radius
+      // sin(gamma) = radius / dist
+
+      // If we are inside the radius, don't cull
+      if (dist > radius)
+      {
+        float sinGamma = radius / dist;
+        float cosGamma = sqrt(max(0.0, 1.0 - sinGamma * sinGamma));
+
+        // cos(alpha + gamma) = cos(alpha)cos(gamma) - sin(alpha)sin(gamma)
+        float cosAlphaPlusGamma = coneCutoff * cosGamma - coneSin * sinGamma;
+
+        // Only cull if the expanded cone is still within 90 degrees
+        if (cosAlphaPlusGamma >= 0.0)
         {
-            float sinGamma = radius / dist;
-            float cosGamma = sqrt(max(0.0, 1.0 - sinGamma * sinGamma));
-            
-            // cos(alpha + gamma) = cos(alpha)cos(gamma) - sin(alpha)sin(gamma)
-            float cosAlphaPlusGamma = coneCutoff * cosGamma - coneSin * sinGamma;
-            
-            // Only cull if the expanded cone is still within 90 degrees
-            if (cosAlphaPlusGamma >= 0.0)
-            {
-                // sin(alpha + gamma) = sin(alpha)cos(gamma) + cos(alpha)sin(gamma)
-                float sinAlphaPlusGamma = coneSin * cosGamma + coneCutoff * sinGamma;
-                
-                if (dot(worldConeAxis, viewDir) < -sinAlphaPlusGamma)
-                {
-                    return false;
-                }
-            }
+          // sin(alpha + gamma) = sin(alpha)cos(gamma) + cos(alpha)sin(gamma)
+          float sinAlphaPlusGamma = coneSin * cosGamma + coneCutoff * sinGamma;
+
+          if (dot(worldConeAxis, viewDir) < -sinAlphaPlusGamma)
+          {
+            return false;
+          }
         }
+      }
     }
   }
 
@@ -255,8 +255,8 @@ void main()
   bool visible = isVisible(meshlet, push.modelMatrix, ubo.cameraPosition.xyz);
 
   uvec4 ballot = subgroupBallot(visible);
-  uint count = subgroupBallotBitCount(ballot);
-  uint index = subgroupBallotExclusiveBitCount(ballot);
+  uint  count  = subgroupBallotBitCount(ballot);
+  uint  index  = subgroupBallotExclusiveBitCount(ballot);
 
   if (visible)
   {
