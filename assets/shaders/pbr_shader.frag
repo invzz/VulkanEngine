@@ -75,6 +75,7 @@ layout(set = 4, binding = 0) uniform MaterialData
   vec4  albedo;
   vec4  emissiveInfo;             // rgb: color, a: strength
   vec4  specularGlossinessFactor; // rgb: specular, a: glossiness
+  vec4  attenuationColorAndDist;  // rgb: color, a: distance
   mat4  params;                   // Packed float parameters
   uvec4 flagsAndIndices0;         // Packed uint parameters
   uvec4 indices1;
@@ -639,15 +640,53 @@ void main()
 
   vec3 emissive = calculateEmissive();
 
+  // --- Advanced Transmission (Volume & Refraction) ---
+  float thickness           = material.params[3][3];
+  vec3  attenuationColor    = material.attenuationColorAndDist.rgb;
+  float attenuationDistance = material.attenuationColorAndDist.a;
+  float ior                 = material.params[2][1];
+
+  // 1. Volume Attenuation (Beer's Law)
+  vec3 volumeTransmission = vec3(1.0);
+  if (thickness > 0.0 && attenuationDistance > 0.0)
+  {
+    vec3 sigma         = -log(attenuationColor) / attenuationDistance;
+    volumeTransmission = exp(-sigma * thickness);
+  }
+
+  // 2. Refraction (Approximation using IBL)
+  // Since we don't have a scene color texture, we use the environment map (prefilterMap)
+  // to simulate looking through the object. This gives us "deformation" of the environment.
+  vec3 refractedColor = vec3(0.0);
+  if (surf.transmission > 0.0)
+  {
+    // Refract view vector
+    vec3 R_refract = refract(-surf.V, surf.N, 1.0 / ior);
+
+    // Check for Total Internal Reflection
+    if (length(R_refract) > 0.0)
+    {
+      const float MAX_REFLECTION_LOD = 4.0;
+      // Sample environment in the refracted direction
+      refractedColor = textureLod(prefilterMap, R_refract, surf.roughness * MAX_REFLECTION_LOD).rgb;
+
+      // Apply Volume Attenuation
+      refractedColor *= volumeTransmission;
+
+      // Tint with Albedo (standard PBR transmission tint)
+      refractedColor *= surf.albedo;
+    }
+  }
+
+  // Reduce Diffuse contribution based on Transmission
+  // (Energy conservation: Light that is transmitted is not reflected as diffuse)
+  diffuseLo *= (1.0 - surf.transmission);
+  diffuseIBL *= (1.0 - surf.transmission);
+
   // Final Composition with Premultiplied Alpha
   // Opacity = alpha * (1 - transmission)
   // Improved Heuristic: Opacity should depend on Albedo Luminance.
-  // Darker colored glass absorbs more light, so it should be more opaque (blocking the background).
-  // Lighter colored glass transmits more light, so it should be more transparent.
-  float luminance = dot(surf.albedo, vec3(0.299, 0.587, 0.114));
-  // Factor ranges from ~0.3 (dark) to 0.85 (bright).
-  // Dark Blue (Lum 0.3) -> Factor 0.3 -> Opacity 0.7 (Visible Color)
-  // Bright Yellow (Lum 0.8) -> Factor 0.8 -> Opacity 0.2 (Transparent)
+  float luminance          = dot(surf.albedo, vec3(0.299, 0.587, 0.114));
   float transmissionFactor = clamp(luminance, 0.3, 0.85);
 
   float opacity = surf.alpha * (1.0 - surf.transmission * transmissionFactor);
@@ -655,8 +694,12 @@ void main()
   // Diffuse and Ambient Diffuse are modulated by opacity (background shows through)
   // Specular (Direct + IBL) is additive (sits on top)
   // Emissive is additive
+  // Refraction is additive (simulating light coming through)
 
   vec3 finalColor = (diffuseLo + diffuseIBL) * opacity + (specularLo + specularIBL) + emissive;
+
+  // Add Refraction
+  finalColor += refractedColor * surf.transmission;
 
   if (material.params[0][3] > 0.5)
   {

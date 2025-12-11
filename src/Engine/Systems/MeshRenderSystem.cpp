@@ -600,6 +600,7 @@ namespace engine {
         matData.albedo                   = material.albedo;
         matData.emissiveInfo             = glm::vec4(material.emissiveColor, material.emissiveStrength);
         matData.specularGlossinessFactor = glm::vec4(material.specularFactor, material.glossinessFactor);
+        matData.attenuationColorAndDist  = glm::vec4(material.attenuationColor, material.attenuationDistance);
 
         // Pack floats into mat4
         // Col 0
@@ -621,7 +622,7 @@ namespace engine {
         matData.params[3][0] = material.iridescenceThickness;
         matData.params[3][1] = material.uvScale;
         matData.params[3][2] = material.alphaCutoff;
-        matData.params[3][3] = 0.0f; // Padding
+        matData.params[3][3] = material.thickness;
 
         // Pack uints
         matData.flagsAndIndices0.x = textureFlags;
@@ -647,6 +648,7 @@ namespace engine {
         matData.albedo                   = glm::vec4(1.0f);
         matData.emissiveInfo             = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         matData.specularGlossinessFactor = glm::vec4(1.0f);
+        matData.attenuationColorAndDist  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Defaults
         matData.params[0][0] = 0.0f; // metallic
@@ -667,7 +669,7 @@ namespace engine {
         matData.params[3][0] = 100.0f; // iridescenceThickness
         matData.params[3][1] = 1.0f;   // uvScale
         matData.params[3][2] = 0.5f;   // alphaCutoff
-        matData.params[3][3] = 0.0f;   // Padding
+        matData.params[3][3] = 0.0f;   // thickness
 
         matData.flagsAndIndices0 = glm::uvec4(0);
         matData.indices1         = glm::uvec4(0);

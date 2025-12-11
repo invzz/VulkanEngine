@@ -38,8 +38,11 @@ namespace engine {
     float anisotropicRotation{0.0f}; // Rotation of anisotropic direction [0, 1] (0 = tangent aligned)
 
     // Transmission (Refraction/Transparency)
-    float transmission{0.0f}; // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
-    float ior{1.5f};          // Index of Refraction (default 1.5)
+    float     transmission{0.0f};                 // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
+    float     ior{1.5f};                          // Index of Refraction (default 1.5)
+    float     thickness{0.0f};                    // Volume thickness (0 = thin walled)
+    glm::vec3 attenuationColor{1.0f, 1.0f, 1.0f}; // Color that white light turns into after traversing attenuationDistance
+    float     attenuationDistance{1.0f};          // Distance at which light color becomes attenuationColor
 
     // Iridescence (Thin film interference)
     float iridescence{0.0f};            // Iridescence intensity [0, 1]

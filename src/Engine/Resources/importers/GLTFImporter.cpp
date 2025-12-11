@@ -388,6 +388,25 @@ namespace engine {
         }
       }
 
+      // Volume
+      if (gltfMat.extensions.find("KHR_materials_volume") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_volume");
+        if (ext.Has("thicknessFactor"))
+        {
+          matInfo.pbrMaterial.thickness = static_cast<float>(ext.Get("thicknessFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("attenuationDistance"))
+        {
+          matInfo.pbrMaterial.attenuationDistance = static_cast<float>(ext.Get("attenuationDistance").GetNumberAsDouble());
+        }
+        if (ext.Has("attenuationColor"))
+        {
+          const auto& f                        = ext.Get("attenuationColor");
+          matInfo.pbrMaterial.attenuationColor = glm::vec3(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble());
+        }
+      }
+
       // Texture Transform (KHR_texture_transform)
       // We currently only support a single global UV scale, so we check textures in priority order
       const tinygltf::ExtensionMap* textureExtensions = nullptr;
