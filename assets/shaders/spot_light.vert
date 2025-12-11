@@ -34,36 +34,30 @@ layout(push_constant) uniform push_t
 }
 push;
 
+const float PI       = 3.14159265359;
+const int   SEGMENTS = 32;
+
 vec3 getConeVertex(int index, float angle)
 {
-  // Cone apex at origin
-  if (index == 0) return vec3(0.0, 0.0, 0.0);
+  int triangleIndex = index / 3;
+  int vertexIndex   = index % 3;
 
-  // Cone base circle (16 segments) at z = 2.0 (positive Z)
-  float radius      = tan(angle) * 2.0;
-  int   circleIndex = index - 1;
-
-  if (circleIndex < 16)
+  // Apex
+  if (vertexIndex == 0)
   {
-    float theta = float(circleIndex) * 2.0 * 3.14159265359 / 16.0;
-    return vec3(radius * cos(theta), radius * sin(theta), 2.0);
+    return vec3(0.0, 0.0, 0.0);
   }
 
-  // Lines from apex to circle (every other point for clarity)
-  int lineIndex = circleIndex - 16;
-  if (lineIndex < 8)
-  {
-    if (lineIndex % 2 == 0)
-      return vec3(0.0, 0.0, 0.0); // Apex
-    else
-    {
-      int   circlePoint = (lineIndex / 2) * 2;
-      float theta       = float(circlePoint) * 2.0 * 3.14159265359 / 16.0;
-      return vec3(radius * cos(theta), radius * sin(theta), 2.0);
-    }
-  }
+  // Cone base circle at z = 2.0 (positive Z)
+  float length = 2.0;
+  float radius = tan(angle) * length;
 
-  return vec3(0.0);
+  // For vertexIndex 1, use triangleIndex
+  // For vertexIndex 2, use triangleIndex + 1
+  int circleIndex = triangleIndex + (vertexIndex - 1);
+
+  float theta = float(circleIndex) * 2.0 * PI / float(SEGMENTS);
+  return vec3(radius * cos(theta), radius * sin(theta), length);
 }
 
 void main()

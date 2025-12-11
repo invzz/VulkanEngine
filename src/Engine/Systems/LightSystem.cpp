@@ -179,8 +179,8 @@ namespace engine {
 
       vkCmdPushConstants(frameInfo.commandBuffer, spotPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
-      // Draw cone base circle (16 vertices) + 8 lines from apex = 24 vertices
-      vkCmdDraw(frameInfo.commandBuffer, 25, 1, 0, 0);
+      // Draw cone: 32 segments * 3 vertices per triangle = 96 vertices
+      vkCmdDraw(frameInfo.commandBuffer, 96, 1, 0, 0);
     }
   }
 
@@ -349,9 +349,11 @@ namespace engine {
     Pipeline::defaultPipelineConfigInfo(pipelineConfig);
     pipelineConfig.attributeDescriptions.clear();
     pipelineConfig.bindingDescriptions.clear();
-    pipelineConfig.renderPass                 = renderPass;
-    pipelineConfig.pipelineLayout             = spotPipelineLayout;
-    pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    pipelineConfig.renderPass                        = renderPass;
+    pipelineConfig.pipelineLayout                    = spotPipelineLayout;
+    pipelineConfig.inputAssemblyInfo.topology        = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    pipelineConfig.rasterizationInfo.cullMode        = VK_CULL_MODE_NONE;
+    pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
     // Enable alpha blending for semi-transparent cone
     pipelineConfig.colorBlendAttachment.blendEnable         = VK_TRUE;

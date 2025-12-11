@@ -72,12 +72,38 @@ namespace engine {
           label = scene_.getRegistry().get<NameComponent>(entity).name + " " + std::to_string(id);
         }
 
-        if (scene_.getRegistry().all_of<ModelComponent>(entity))
+        const char* icon  = "[OBJ]";
+        ImVec4      color = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+
+        if (scene_.getRegistry().all_of<CameraComponent>(entity))
         {
-          label += " (Model)";
+          icon  = "[CAM]";
+          color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+        else if (scene_.getRegistry().all_of<DirectionalLightComponent>(entity))
+        {
+          icon  = "[DIR]";
+          color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+        }
+        else if (scene_.getRegistry().all_of<PointLightComponent>(entity))
+        {
+          icon  = "[PNT]";
+          color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+        }
+        else if (scene_.getRegistry().all_of<SpotLightComponent>(entity))
+        {
+          icon  = "[SPT]";
+          color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+        }
+        else if (scene_.getRegistry().all_of<ModelComponent>(entity))
+        {
+          icon  = "[MDL]";
+          color = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
         }
 
-        ImGui::BulletText("%s", label.c_str());
+        ImGui::TextColored(color, "%s", icon);
+        ImGui::SameLine();
+        ImGui::Text("%s", label.c_str());
         ImGui::SameLine();
 
         if (ImGui::SmallButton("Select"))
@@ -86,6 +112,22 @@ namespace engine {
           frameInfo.selectedEntity   = entity;
         }
         ImGui::SameLine();
+
+        if (scene_.getRegistry().all_of<CameraComponent>(entity))
+        {
+          if (entity == frameInfo.cameraEntity)
+          {
+            ImGui::TextDisabled("Active");
+          }
+          else
+          {
+            if (ImGui::SmallButton("Set Active"))
+            {
+              frameInfo.cameraEntity = entity;
+            }
+          }
+          ImGui::SameLine();
+        }
 
         if (entity == frameInfo.cameraEntity)
         {

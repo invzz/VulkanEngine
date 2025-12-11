@@ -5,5 +5,5 @@ layout(location = 0) out vec4 outColor;
 
 void main()
 {
-  outColor = vec4(fragColor, 0.3); // Slightly transparent
+  outColor = vec4(fragColor, 1.0);
 }

@@ -95,7 +95,7 @@ namespace engine {
     // Update Systems:
     ObjectSelectionSystem objectSelectionSystem{keyboard};      // Handles object picking with mouse
     InputSystem           inputSystem{keyboard, mouse, window}; // Camera movement and controls
-    CameraSystem          cameraSystem{};                       // Camera matrix calculations
+    CameraSystem          cameraSystem{device, renderer.getOffscreenRenderPass(), renderContext.getGlobalSetLayout()};
 
     // Compute Systems:
     AnimationSystem animationSystem{device}; // Animations: morph targets, skeletal, procedural
@@ -397,6 +397,7 @@ namespace engine {
         // Note: This needs to happen after the graph execution because UI/Selection systems modify it
         selectedObjectId = frameInfo.selectedObjectId;
         selectedEntity   = frameInfo.selectedEntity;
+        cameraEntity     = frameInfo.cameraEntity;
 
         renderer.endFrame();
       }
@@ -488,7 +489,8 @@ namespace engine {
     }
 
     state.meshRenderSystem.render(frameInfo);
-    state.lightSystem.render(frameInfo); // Draw light debug visualizations
+    state.lightSystem.render(frameInfo);  // Draw light debug visualizations
+    state.cameraSystem.render(frameInfo); // Draw camera debug visualizations
   }
 
   void App::uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state)
