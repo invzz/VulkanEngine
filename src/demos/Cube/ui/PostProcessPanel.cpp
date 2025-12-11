@@ -7,7 +7,7 @@ namespace engine {
 
   void PostProcessPanel::render(FrameInfo& frameInfo)
   {
-    ImGui::Begin("Post Processing");
+    // ImGui::Begin("Post Processing");
 
     ImGui::DragFloat("Exposure", &pushConstants.exposure, 0.01f, 0.1f, 10.0f);
     ImGui::DragFloat("Contrast", &pushConstants.contrast, 0.01f, 0.1f, 2.0f);
@@ -76,6 +76,6 @@ namespace engine {
       pushConstants.toneMappingMode = 1;
     }
 
-    ImGui::End();
+    // ImGui::End();
   }
 } // namespace engine

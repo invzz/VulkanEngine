@@ -34,10 +34,11 @@ namespace engine {
     ModelImportPanel(Device& device, Scene& scene, AnimationSystem& animationSystem, ResourceManager& resourceManager);
 
     void render(FrameInfo& frameInfo) override;
+    bool isSeparateWindow() const override { return true; }
 
   private:
     void loadModelIndex();
-    void loadModel(const std::string& path);
+    void loadModel(const std::string& path, const std::string& name = "ImportedModel");
 
     Device&                 device_;
     Scene&                  scene_;

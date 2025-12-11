@@ -22,6 +22,7 @@
 #include "Engine/Resources/TextureManager.hpp"
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 // Systems
@@ -43,22 +44,17 @@
 #include "SceneLoader.hpp"
 
 // UI Panels
-#include "ui/AnimationPanel.hpp"
-#include "ui/CameraPanel.hpp"
-#include "ui/DebugPanel.hpp"
-#include "ui/IBLPanel.hpp"
-#include "ui/LightsPanel.hpp"
+#include "ui/InspectorPanel.hpp"
 #include "ui/ModelImportPanel.hpp"
-#include "ui/PostProcessPanel.hpp"
 #include "ui/ScenePanel.hpp"
-#include "ui/TransformPanel.hpp"
+#include "ui/SettingsPanel.hpp"
 #include "ui/UIManager.hpp"
 
 namespace engine {
 
   App::App()
   {
-    SceneLoader::loadScene(device, scene, resourceManager);
+    // SceneLoader::loadScene(device, scene, resourceManager);
   }
   App::~App() = default;
 
@@ -82,7 +78,9 @@ namespace engine {
     Mouse    mouse{window};
 
     auto cameraEntity = scene.createEntity();
+
     scene.getRegistry().emplace<TransformComponent>(cameraEntity);
+    scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
     scene.getRegistry().get<TransformComponent>(cameraEntity).translation = {0.0f, -0.2f, -2.5f};
     scene.getRegistry().emplace<CameraComponent>(cameraEntity);
 
@@ -179,14 +177,9 @@ namespace engine {
     });
 
     uiManager.addPanel(std::make_unique<ModelImportPanel>(device, scene, animationSystem, resourceManager));
-    uiManager.addPanel(std::make_unique<CameraPanel>(cameraEntity, &scene));
-    uiManager.addPanel(std::make_unique<TransformPanel>(scene));
-    uiManager.addPanel(std::make_unique<LightsPanel>(scene));
-    uiManager.addPanel(std::make_unique<IBLPanel>(iblSystem, *skybox));
-    uiManager.addPanel(std::make_unique<AnimationPanel>(scene));
     uiManager.addPanel(std::make_unique<ScenePanel>(device, scene, animationSystem));
-    uiManager.addPanel(std::make_unique<PostProcessPanel>(postProcessPush));
-    uiManager.addPanel(std::make_unique<DebugPanel>(debugMode));
+    uiManager.addPanel(std::make_unique<InspectorPanel>(scene));
+    uiManager.addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, iblSystem, *skybox, postProcessPush, debugMode));
 
     // Selection state (persisted across frames)
     uint32_t     selectedObjectId = 0;
@@ -500,7 +493,10 @@ namespace engine {
 
   void App::uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state)
   {
-    state.uiManager.render(frameInfo, commandBuffer);
+    if (window.isCursorVisible())
+    {
+      state.uiManager.render(frameInfo, commandBuffer);
+    }
   }
 
 } // namespace engine

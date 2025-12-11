@@ -5,8 +5,13 @@
 #include <iostream>
 #include <string>
 
+#include "Engine/Scene/components/CameraComponent.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Scene/components/PointLightComponent.hpp"
+#include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 namespace engine {
 
@@ -18,6 +23,40 @@ namespace engine {
 
     if (ImGui::Begin("Scene Objects", &visible_))
     {
+      if (ImGui::Button("Add Camera"))
+      {
+        auto entity = scene_.createEntity();
+        scene_.getRegistry().emplace<TransformComponent>(entity);
+        scene_.getRegistry().emplace<CameraComponent>(entity);
+        scene_.getRegistry().emplace<NameComponent>(entity, "Camera");
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Add Point Light"))
+      {
+        auto entity = scene_.createEntity();
+        scene_.getRegistry().emplace<TransformComponent>(entity);
+        scene_.getRegistry().emplace<PointLightComponent>(entity);
+        scene_.getRegistry().emplace<NameComponent>(entity, "Point Light");
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Add Dir Light"))
+      {
+        auto entity = scene_.createEntity();
+        scene_.getRegistry().emplace<TransformComponent>(entity);
+        scene_.getRegistry().emplace<DirectionalLightComponent>(entity);
+        scene_.getRegistry().emplace<NameComponent>(entity, "Directional Light");
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("Add Spot Light"))
+      {
+        auto entity = scene_.createEntity();
+        scene_.getRegistry().emplace<TransformComponent>(entity);
+        scene_.getRegistry().emplace<SpotLightComponent>(entity);
+        scene_.getRegistry().emplace<NameComponent>(entity, "Spot Light");
+      }
+
+      ImGui::Separator();
+
       auto view = scene_.getRegistry().view<entt::entity>();
       ImGui::Text("Total: %zu", view.size());
 
@@ -48,9 +87,17 @@ namespace engine {
         }
         ImGui::SameLine();
 
-        if (ImGui::SmallButton("Delete"))
+        if (entity == frameInfo.cameraEntity)
         {
-          toDelete_.push_back(entity);
+          ImGui::TextDisabled("Delete");
+          if (ImGui::IsItemHovered()) ImGui::SetTooltip("Cannot delete the active camera");
+        }
+        else
+        {
+          if (ImGui::SmallButton("Delete"))
+          {
+            toDelete_.push_back(entity);
+          }
         }
 
         ImGui::PopID();

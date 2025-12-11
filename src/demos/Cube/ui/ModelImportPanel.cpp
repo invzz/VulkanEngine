@@ -28,76 +28,83 @@ namespace engine {
   {
     if (!visible_) return;
 
-    if (ImGui::CollapsingHeader("Import Model", ImGuiTreeNodeFlags_DefaultOpen))
+    if (ImGui::Begin("Assets", &visible_))
     {
-      ImGui::InputText("glTF Path", modelPath_, sizeof(modelPath_));
-      ImGui::SameLine();
-      if (ImGui::Button("Browse"))
+      if (ImGui::CollapsingHeader("Import Model", ImGuiTreeNodeFlags_DefaultOpen))
       {
-        // Set default path to models directory
-        std::string defaultPath = std::string(MODEL_PATH) + "/glTF/";
-        strncpy(modelPath_, defaultPath.c_str(), sizeof(modelPath_) - 1);
+        ImGui::InputText("glTF Path", modelPath_, sizeof(modelPath_));
+        ImGui::SameLine();
+        if (ImGui::Button("Browse"))
+        {
+          // Set default path to models directory
+          std::string defaultPath = std::string(MODEL_PATH) + "/glTF/";
+          strncpy(modelPath_, defaultPath.c_str(), sizeof(modelPath_) - 1);
+        }
+
+        if (ImGui::Button("Load Model"))
+        {
+          // Create full path if it's relative
+          std::string fullPath = modelPath_;
+          if (fullPath[0] != '/')
+          {
+            fullPath = std::string(MODEL_PATH) + "/" + fullPath;
+          }
+          loadModel(fullPath);
+        }
       }
 
-      if (ImGui::Button("Load Model"))
+      if (ImGui::CollapsingHeader("Available Models", ImGuiTreeNodeFlags_DefaultOpen))
       {
-        // Create full path if it's relative
-        std::string fullPath = modelPath_;
-        if (fullPath[0] != '/')
+        ImGui::BeginChild("AvailableModelsScroll", ImVec2(0, 0), true); // Use 0 height to fill remaining space
+
+        float       windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        ImGuiStyle& style           = ImGui::GetStyle();
+        float       buttonSize      = 128.0f;
+        float       spacing         = style.ItemSpacing.x;
+
+        for (size_t i = 0; i < availableModels_.size(); i++)
         {
-          fullPath = std::string(MODEL_PATH) + "/" + fullPath;
+          const auto& entry = availableModels_[i];
+
+          ImGui::PushID((int)i);
+
+          // Image Button
+          if (entry.descriptorSet != VK_NULL_HANDLE)
+          {
+            if (ImGui::ImageButton("##image", (ImTextureID)entry.descriptorSet, ImVec2(buttonSize, buttonSize)))
+            {
+              std::string fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
+              loadModel(fullPath, entry.name);
+            }
+          }
+          else
+          {
+            if (ImGui::Button(entry.name.c_str(), ImVec2(buttonSize, buttonSize)))
+            {
+              std::string fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
+              loadModel(fullPath, entry.name);
+            }
+          }
+
+          // Tooltip
+          if (ImGui::IsItemHovered())
+          {
+            ImGui::BeginTooltip();
+            ImGui::Text("%s", entry.name.c_str());
+            ImGui::EndTooltip();
+          }
+
+          // Layout logic for grid
+          float lastButtonX2 = ImGui::GetItemRectMax().x;
+          float nextButtonX2 = lastButtonX2 + spacing + buttonSize;
+          if (i + 1 < availableModels_.size() && nextButtonX2 < windowVisibleX2) ImGui::SameLine();
+
+          ImGui::PopID();
         }
-        loadModel(fullPath);
+        ImGui::EndChild();
       }
     }
-
-    if (ImGui::CollapsingHeader("Available Models"))
-    {
-      float       windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-      ImGuiStyle& style           = ImGui::GetStyle();
-      float       buttonSize      = 128.0f;
-      float       spacing         = style.ItemSpacing.x;
-
-      for (size_t i = 0; i < availableModels_.size(); i++)
-      {
-        const auto& entry = availableModels_[i];
-
-        ImGui::PushID((int)i);
-
-        // Image Button
-        if (entry.descriptorSet != VK_NULL_HANDLE)
-        {
-          if (ImGui::ImageButton("##image", (ImTextureID)entry.descriptorSet, ImVec2(buttonSize, buttonSize)))
-          {
-            std::string fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
-            loadModel(fullPath);
-          }
-        }
-        else
-        {
-          if (ImGui::Button(entry.name.c_str(), ImVec2(buttonSize, buttonSize)))
-          {
-            std::string fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
-            loadModel(fullPath);
-          }
-        }
-
-        // Tooltip
-        if (ImGui::IsItemHovered())
-        {
-          ImGui::BeginTooltip();
-          ImGui::Text("%s", entry.name.c_str());
-          ImGui::EndTooltip();
-        }
-
-        // Layout logic for grid
-        float lastButtonX2 = ImGui::GetItemRectMax().x;
-        float nextButtonX2 = lastButtonX2 + spacing + buttonSize;
-        if (i + 1 < availableModels_.size() && nextButtonX2 < windowVisibleX2) ImGui::SameLine();
-
-        ImGui::PopID();
-      }
-    }
+    ImGui::End();
   }
 
   void ModelImportPanel::loadModelIndex()
@@ -182,7 +189,7 @@ namespace engine {
     }
   }
 
-  void ModelImportPanel::loadModel(const std::string& fullPath)
+  void ModelImportPanel::loadModel(const std::string& fullPath, const std::string& name)
   {
     try
     {
@@ -239,7 +246,7 @@ namespace engine {
       auto entity = scene_.createEntity();
       scene_.getRegistry().emplace<TransformComponent>(entity);
       scene_.getRegistry().emplace<ModelComponent>(entity, std::move(modelPtr));
-      scene_.getRegistry().emplace<NameComponent>(entity, "ImportedModel");
+      scene_.getRegistry().emplace<NameComponent>(entity, name);
 
       auto& transform       = scene_.getRegistry().get<TransformComponent>(entity);
       transform.scale       = {1.0f, 1.0f, 1.0f};

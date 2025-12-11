@@ -180,30 +180,17 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
     // We want a mip level where the object covers roughly 2x2 pixels (or 4x4 for safety)
     // Texture size
     ivec2 texSize = textureSize(hzbTexture, 0);
-    float mip     = floor(log2(max(texSize.x, texSize.y) * uvRadius * 2.0));
+    float mip     = ceil(log2(max(texSize.x, texSize.y) * uvRadius * 2.0));
     mip           = max(0.0, mip);
 
     // Sample HZB
     // We sample 4 texels covering the bounding box
-    // But for simplicity, let's just sample the center at a coarser mip.
-    // If we sample at 'mip', a single texel covers the object size.
-    // So one sample should be enough if aligned, but it might straddle texels.
-    // So we usually sample 4 texels or use a gather.
-    // Or just sample with linear filtering? No, we need conservative max depth.
-    // Our HZB generation does max reduction.
-    // If we sample with linear filter, we get an average, which is NOT conservative.
-    // We must use nearest filtering (which we set up in C++) or manual gather.
-    // But we set up nearest sampler.
-    // So textureLod(hzbTexture, uvCenter, mip).r will give us ONE texel.
-    // This is risky if the object overlaps multiple texels.
-    // To be safe, we should sample a mip level where the object is significantly smaller than a texel,
-    // or sample multiple texels.
-    // Common approach: Compute mip such that object fits in 4 texels max.
-    // Then sample those 4 texels.
-    // Or just be conservative and pick a higher mip level.
+    float d1 = textureLod(hzbTexture, uvCenter + vec2(-uvRadius, -uvRadius), mip).r;
+    float d2 = textureLod(hzbTexture, uvCenter + vec2(uvRadius, -uvRadius), mip).r;
+    float d3 = textureLod(hzbTexture, uvCenter + vec2(-uvRadius, uvRadius), mip).r;
+    float d4 = textureLod(hzbTexture, uvCenter + vec2(uvRadius, uvRadius), mip).r;
 
-    // Let's try sampling at calculated mip.
-    float depth = textureLod(hzbTexture, uvCenter, mip).r;
+    float depth = max(max(d1, d2), max(d3, d4));
 
     // Check visibility
     // We are using standard Z (0=near, 1=far).

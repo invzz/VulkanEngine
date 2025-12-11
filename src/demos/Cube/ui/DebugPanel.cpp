@@ -7,11 +7,11 @@ namespace engine {
 
   void DebugPanel::render(FrameInfo& frameInfo)
   {
-    ImGui::Begin("Debug Settings");
+    // ImGui::Begin("Debug Settings");
 
     const char* debugItems[] = {"None", "Albedo", "Normal", "Roughness", "Metallic", "Lighting Only", "AO"};
     ImGui::Combo("Debug View", &debugMode_, debugItems, IM_ARRAYSIZE(debugItems));
 
-    ImGui::End();
+    // ImGui::End();
   }
 } // namespace engine
