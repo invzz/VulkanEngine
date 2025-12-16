@@ -71,12 +71,12 @@ void main()
   // Let's assume they are lit by the sun.
   // We don't have shadows here, so we assume they are lit.
   // We can add a simple phase function:
-  vec3 viewDir = normalize(worldPos - camPos);
-  vec3 sunDir = normalize(push.sunDirection.xyz);
+  vec3  viewDir  = normalize(worldPos - camPos);
+  vec3  sunDir   = normalize(push.sunDirection.xyz);
   float cosTheta = dot(viewDir, sunDir);
   // Henyey-Greenstein phase function approximation or just simple forward scattering boost
-  float scattering = 1.0 + max(0.0, cosTheta) * 2.0; 
-  
+  float scattering = 1.0 + max(0.0, cosTheta) * 2.0;
+
   vec3 lighting = push.sunColor.rgb * scattering + push.ambientColor.rgb;
 
   outColor = lighting;
