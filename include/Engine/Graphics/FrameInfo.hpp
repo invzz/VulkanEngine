@@ -54,6 +54,12 @@ namespace engine {
     int              _pad2;
     int              _pad3;
     glm::vec4        frustumPlanes[6]; // Frustum planes for culling (Left, Right, Bottom, Top, Near, Far)
+    glm::vec4        fogColor;         // xyz = Horizon Color, w = density
+    glm::vec4        fogZenithColor;   // xyz = Zenith Color, w = unused
+    float            fogHeight;
+    float            fogHeightDensity;
+    float            _pad4;
+    float            _pad5;
   };
 
   struct FrameInfo

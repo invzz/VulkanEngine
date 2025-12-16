@@ -24,6 +24,12 @@ layout(push_constant) uniform PushConstants
   float ssaoRadius;
   float ssaoBias;
   int   toneMappingMode; // 0: None, 1: ACES
+  float _padding;
+  vec4  sunScreenPos; // xy = screen pos [0,1], z = isVisible (1.0/0.0), w = padding
+  float godRayDensity;
+  float godRayWeight;
+  float godRayDecay;
+  float godRayExposure;
   mat4  inverseProjection;
   mat4  projection;
 }
@@ -197,6 +203,44 @@ void main()
   if (push.enableBloom == 1 && push.bloomIntensity > 0.0)
   {
     color = applyBloom(color, inUV);
+  }
+
+  // God Rays (Volumetric Light Scattering)
+  if (push.sunScreenPos.z > 0.5)
+  {
+    int  NUM_SAMPLES   = 100; // Increased samples
+    vec2 deltaTexCoord = (inUV - push.sunScreenPos.xy);
+    deltaTexCoord *= 1.0 / float(NUM_SAMPLES) * push.godRayDensity;
+
+    float illuminationDecay = 1.0;
+    vec3  godRayColor       = vec3(0.0);
+    vec2  coord             = inUV;
+
+    // Dithering: Randomize start position to trade banding for noise
+    float noise = interleavedGradientNoise(gl_FragCoord.xy);
+    coord -= deltaTexCoord * noise;
+
+    for (int i = 0; i < NUM_SAMPLES; i++)
+    {
+      coord -= deltaTexCoord;
+
+      // Boundary check
+      if (coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0) break;
+
+      float d = texture(depthMap, coord).r;
+
+      // Only accumulate if it's the sky (depth ~ 1.0)
+      if (d >= 0.99)
+      {
+        vec3 sampleColor = texture(sceneColor, coord).rgb;
+        sampleColor *= illuminationDecay * push.godRayWeight;
+        godRayColor += sampleColor;
+      }
+
+      illuminationDecay *= push.godRayDecay;
+    }
+
+    color += godRayColor * push.godRayExposure;
   }
 
   // Exposure

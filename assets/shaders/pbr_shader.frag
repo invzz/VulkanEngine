@@ -54,6 +54,12 @@ layout(set = 0, binding = 0) uniform UBO
   int              _pad2;
   int              _pad3;
   vec4             frustumPlanes[6];
+  vec4             fogColor;       // xyz = Horizon Color, w = density
+  vec4             fogZenithColor; // xyz = Zenith Color, w = unused
+  float            fogHeight;
+  float            fogHeightDensity;
+  float            _pad4;
+  float            _pad5;
 }
 ubo;
 
@@ -759,6 +765,30 @@ void main()
   {
     finalColor = inConeAxis * 0.5 + 0.5;
     opacity    = 1.0;
+  }
+
+  // Apply Fog
+  float fogDensity = ubo.fogColor.w;
+  if (fogDensity > 0.0)
+  {
+    float distance  = length(ubo.cameraPosition.xyz - fragmentWorldPos);
+    float fogFactor = 1.0 - exp(-distance * fogDensity);
+
+    // Height Fog
+    if (ubo.fogHeightDensity > 0.0)
+    {
+      float heightFactor = exp(-(fragmentWorldPos.y - ubo.fogHeight) * ubo.fogHeightDensity);
+      fogFactor          = 1.0 - exp(-distance * fogDensity * heightFactor);
+    }
+
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+
+    // Fog Color Mixing (Horizon -> Zenith)
+    vec3  rayDir      = normalize(fragmentWorldPos - ubo.cameraPosition.xyz);
+    float t           = clamp(rayDir.y, 0.0, 1.0);
+    vec3  skyFogColor = mix(ubo.fogColor.rgb, ubo.fogZenithColor.rgb, t);
+
+    finalColor = mix(finalColor, skyFogColor, fogFactor);
   }
 
   outColor = vec4(finalColor, opacity);

@@ -4,6 +4,7 @@
 
 #include "CameraPanel.hpp"
 #include "DebugPanel.hpp"
+#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 #include "IBLPanel.hpp"
 #include "PostProcessPanel.hpp"
@@ -19,6 +20,8 @@ namespace engine {
                   IBLSystem&                iblSystem,
                   Skybox&                   skybox,
                   SkyboxSettings&           skySettings,
+                  DustSettings&             dustSettings,
+                  FogSettings&              fogSettings,
                   float&                    timeOfDay,
                   PostProcessPushConstants& pushConstants,
                   int&                      debugMode);
@@ -33,6 +36,8 @@ namespace engine {
     std::unique_ptr<DebugPanel>       debugPanel_;
 
     SkyboxSettings& skySettings_;
+    DustSettings&   dustSettings_;
+    FogSettings&    fogSettings_;
     float&          timeOfDay_;
   };
 

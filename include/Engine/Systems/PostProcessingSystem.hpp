@@ -27,6 +27,11 @@ namespace engine {
     float     ssaoBias{0.025f};
     int       toneMappingMode{1}; // 0: None, 1: ACES
     float     _padding{0.0f};
+    glm::vec4 sunScreenPos; // xy = screen pos [0,1], z = isVisible (1.0/0.0), w = padding
+    float     godRayDensity{1.0f};
+    float     godRayWeight{0.01f};
+    float     godRayDecay{1.0f};
+    float     godRayExposure{1.0f};
     glm::mat4 inverseProjection{1.0f};
     glm::mat4 projection{1.0f};
   };

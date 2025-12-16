@@ -123,6 +123,7 @@ namespace engine {
     // Render Systems
     std::cout << "[App] Creating render systems..." << std::endl;
     skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPass());
+    dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPass());
     meshRenderSystem   = std::make_unique<MeshRenderSystem>(device,
                                                           renderer.getOffscreenRenderPass(),
                                                           renderContext->getGlobalSetLayout(),
@@ -173,7 +174,9 @@ namespace engine {
     uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
-    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, *skybox, skySettings, timeOfDay, postProcessPush, debugMode));
+    uiManager->addPanel(
+            std::make_unique<
+                    SettingsPanel>(cameraEntity, &scene, *iblSystem, *skybox, skySettings, dustSettings, fogSettings, timeOfDay, postProcessPush, debugMode));
   }
 
   void App::setupRenderGraph()
@@ -192,10 +195,12 @@ namespace engine {
               .lightSystem           = *lightSystem,
               .shadowSystem          = *shadowSystem,
               .skyboxRenderSystem    = *skyboxRenderSystem,
+              .dustRenderSystem      = *dustRenderSystem,
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
               .skySettings           = skySettings,
+              .dustSettings          = dustSettings,
       };
       updatePhase(frameInfo, state);
     }));
@@ -212,10 +217,12 @@ namespace engine {
               .lightSystem           = *lightSystem,
               .shadowSystem          = *shadowSystem,
               .skyboxRenderSystem    = *skyboxRenderSystem,
+              .dustRenderSystem      = *dustRenderSystem,
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
               .skySettings           = skySettings,
+              .dustSettings          = dustSettings,
       };
       computePhase(frameInfo, state);
     }));
@@ -232,10 +239,12 @@ namespace engine {
               .lightSystem           = *lightSystem,
               .shadowSystem          = *shadowSystem,
               .skyboxRenderSystem    = *skyboxRenderSystem,
+              .dustRenderSystem      = *dustRenderSystem,
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
               .skySettings           = skySettings,
+              .dustSettings          = dustSettings,
       };
       shadowPhase(frameInfo, state);
     }));
@@ -252,10 +261,12 @@ namespace engine {
               .lightSystem           = *lightSystem,
               .shadowSystem          = *shadowSystem,
               .skyboxRenderSystem    = *skyboxRenderSystem,
+              .dustRenderSystem      = *dustRenderSystem,
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
               .skySettings           = skySettings,
+              .dustSettings          = dustSettings,
       };
       renderer.beginOffscreenRenderPass(frameInfo.commandBuffer);
       renderScenePhase(frameInfo, state);
@@ -277,10 +288,12 @@ namespace engine {
               .lightSystem           = *lightSystem,
               .shadowSystem          = *shadowSystem,
               .skyboxRenderSystem    = *skyboxRenderSystem,
+              .dustRenderSystem      = *dustRenderSystem,
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
               .skySettings           = skySettings,
+              .dustSettings          = dustSettings,
       };
 
       renderer.beginSwapChainRenderPass(frameInfo.commandBuffer);
@@ -294,6 +307,52 @@ namespace engine {
 
       postProcessPush.inverseProjection = glm::inverse(camera->getProjection());
       postProcessPush.projection        = camera->getProjection();
+
+      // God Rays Setup
+      if (skySettings.useProcedural && fogSettings.enableGodRays)
+      {
+        glm::vec3 sunDir = glm::vec3(skySettings.sunDirection);
+        sunDir.y         = -sunDir.y; // Flip back to world space
+
+        glm::vec3 sunWorldPos = camera->getPosition() + sunDir * 1000.0f;
+        glm::vec4 clipPos     = camera->getProjection() * camera->getView() * glm::vec4(sunWorldPos, 1.0f);
+
+        if (clipPos.w > 0.0f)
+        {
+          glm::vec3 ndc                = glm::vec3(clipPos) / clipPos.w;
+          glm::vec2 screenPos          = glm::vec2(ndc.x, ndc.y) * 0.5f + 0.5f;
+          postProcessPush.sunScreenPos = glm::vec4(screenPos, 1.0f, 0.0f);
+        }
+        else
+        {
+          postProcessPush.sunScreenPos = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
+
+        // Dynamic Time-of-Day Adjustment (Golden Hour Boost)
+        float sunHeight           = -skySettings.sunDirection.y;
+        float intensityMultiplier = 1.0f;
+        float decayModifier       = 0.0f;
+
+        // Boost when sun is low (Height -0.1 to 0.5)
+        if (sunHeight > -0.1f && sunHeight < 0.5f)
+        {
+          // Peak effect at height 0.1 (just above horizon)
+          float dist  = glm::abs(sunHeight - 0.1f);
+          float boost = glm::max(0.0f, 1.0f - (dist / 0.4f)); // 0.0 to 1.0
+
+          intensityMultiplier = 1.0f + (boost * 2.0f); // Up to 3x intensity
+          decayModifier       = boost * 0.015f;        // Slightly increase decay for longer rays
+        }
+
+        postProcessPush.godRayDensity  = fogSettings.godRayDensity;
+        postProcessPush.godRayWeight   = fogSettings.godRayWeight * intensityMultiplier;
+        postProcessPush.godRayDecay    = glm::clamp(fogSettings.godRayDecay + decayModifier, 0.0f, 0.995f);
+        postProcessPush.godRayExposure = fogSettings.godRayExposure * intensityMultiplier;
+      }
+      else
+      {
+        postProcessPush.sunScreenPos = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+      }
 
       postProcessingSystem->render(frameInfo, postProcessDescriptorSets[frameInfo.frameIndex], postProcessPush);
 
@@ -380,20 +439,60 @@ namespace engine {
         auto& transform = view.get<TransformComponent>(entity);
         auto& light     = view.get<DirectionalLightComponent>(entity);
 
-        // Update light color/intensity
-        light.color     = glm::vec3(skySettings.sunColor);
-        light.intensity = skySettings.sunDirection.w;
+        // Determine if we should use Sun or Moon light
+        // If Sun is down (height < -0.2), switch to Moon
+        if (height > -0.2f)
+        {
+          // --- SUN MODE ---
+          light.color     = glm::vec3(skySettings.sunColor);
+          light.intensity = skySettings.sunDirection.w;
 
-        // Update rotation (Light direction = -SunPos)
-        // We can reconstruct SunPos from skySettings by flipping Y back, or just use -skySettings with flipped Y
-        glm::vec3 lightDir = -glm::vec3(skySettings.sunDirection);
-        lightDir.y         = -lightDir.y; // Flip Y back to match world space
+          // Light direction = -SunPos
+          glm::vec3 lightDir = -glm::vec3(skySettings.sunDirection);
+          lightDir.y         = -lightDir.y; // Flip Y back to match world space
 
-        // Convert to Euler (YXZ)
-        // Assuming default forward is +Z
-        transform.rotation.y = glm::atan(lightDir.x, lightDir.z);
-        transform.rotation.x = glm::asin(-lightDir.y);
-        transform.rotation.z = 0.0f;
+          // Convert to Euler (YXZ)
+          transform.rotation.y = glm::atan(lightDir.x, lightDir.z);
+          transform.rotation.x = glm::asin(-lightDir.y);
+          transform.rotation.z = 0.0f;
+        }
+        else
+        {
+          // --- MOON MODE ---
+          // Moon is opposite to Sun
+          // Moon Height = -height
+          float moonHeight    = -height;
+          float moonIntensity = 0.0f;
+
+          // Moon Color (Cool Blue-White)
+          glm::vec3 moonColor        = glm::vec3(0.6f, 0.7f, 0.9f);
+          float     maxMoonIntensity = 0.2f; // Much dimmer than sun
+
+          if (moonHeight > 0.2f)
+          {
+            moonIntensity = maxMoonIntensity;
+          }
+          else if (moonHeight > -0.2f)
+          {
+            // Fade in/out
+            float t       = (moonHeight + 0.2f) / 0.4f;
+            moonIntensity = glm::mix(0.0f, maxMoonIntensity, t);
+          }
+
+          light.color     = moonColor;
+          light.intensity = moonIntensity;
+
+          // Light direction = -MoonPos
+          // MoonPos = -SunPos
+          // LightDir = -(-SunPos) = SunPos
+          glm::vec3 lightDir = glm::vec3(skySettings.sunDirection);
+          lightDir.y         = -lightDir.y; // Flip Y back to match world space
+
+          // Convert to Euler (YXZ)
+          transform.rotation.y = glm::atan(lightDir.x, lightDir.z);
+          transform.rotation.x = glm::asin(-lightDir.y);
+          transform.rotation.z = 0.0f;
+        }
       }
 
       // Lazy IBL update
@@ -485,6 +584,58 @@ namespace engine {
     ubo.shadowLightCount = state.shadowSystem.getShadowLightCount();
     ubo.debugMode        = debugMode;
 
+    // Fog Logic
+    glm::vec3 horizonColor   = fogSettings.color;
+    glm::vec3 zenithColor    = fogSettings.color;
+    float     currentDensity = fogSettings.density;
+
+    if (fogSettings.useSkyColor)
+    {
+      float visualSunHeight = -skySettings.sunDirection.y;
+
+      glm::vec3 dayHorizon = glm::vec3(0.7f, 0.8f, 0.9f);
+      glm::vec3 dayZenith  = glm::vec3(0.2f, 0.4f, 0.8f);
+
+      glm::vec3 sunsetHorizon = glm::vec3(0.8f, 0.4f, 0.1f);
+      glm::vec3 sunsetZenith  = glm::vec3(0.2f, 0.2f, 0.4f);
+
+      // Darker night colors to match the starry sky and prevent "glowing fog"
+      glm::vec3 nightHorizon = glm::vec3(0.01f, 0.01f, 0.02f);
+      glm::vec3 nightZenith  = glm::vec3(0.0f, 0.0f, 0.005f);
+
+      if (visualSunHeight > 0.2f)
+      {
+        horizonColor = dayHorizon;
+        zenithColor  = dayZenith;
+      }
+      else if (visualSunHeight > -0.1f)
+      {
+        float t      = (visualSunHeight + 0.1f) / 0.3f;
+        horizonColor = glm::mix(sunsetHorizon, dayHorizon, t);
+        zenithColor  = glm::mix(sunsetZenith, dayZenith, t);
+      }
+      else if (visualSunHeight > -0.3f)
+      {
+        float t      = (visualSunHeight + 0.3f) / 0.2f;
+        horizonColor = glm::mix(nightHorizon, sunsetHorizon, t);
+        zenithColor  = glm::mix(nightZenith, sunsetZenith, t);
+
+        // Reduce density at night (fade from 100% to 20%)
+        currentDensity = fogSettings.density * glm::mix(0.2f, 1.0f, t);
+      }
+      else
+      {
+        horizonColor   = nightHorizon;
+        zenithColor    = nightZenith;
+        currentDensity = fogSettings.density * 0.2f; // 20% density at night
+      }
+    }
+
+    ubo.fogColor         = glm::vec4(horizonColor, currentDensity);
+    ubo.fogZenithColor   = glm::vec4(zenithColor, 0.0f);
+    ubo.fogHeight        = fogSettings.height;
+    ubo.fogHeightDensity = fogSettings.heightDensity;
+
     // Calculate Frustum Planes for Culling (Normalized)
     glm::mat4 vp   = ubo.projection * ubo.view;
     glm::mat4 vpT  = glm::transpose(vp);
@@ -532,7 +683,35 @@ namespace engine {
       state.skyboxRenderSystem.render(frameInfo, state.skybox, state.skySettings);
     }
 
+    // Calculate sun color for dust
+    glm::vec3 sunColor     = glm::vec3(1.0f);
+    glm::vec3 ambientColor = glm::vec3(0.1f); // Default ambient
+
+    if (state.skySettings.useProcedural)
+    {
+      // Simple approximation based on height
+      float height = -state.skySettings.sunDirection.y;
+      if (height > 0.1f)
+      {
+        sunColor     = glm::vec3(1.0f, 0.95f, 0.9f); // Day
+        ambientColor = glm::vec3(0.2f, 0.2f, 0.3f);  // Day ambient
+      }
+      else if (height > -0.1f)
+      {
+        sunColor     = glm::vec3(1.0f, 0.6f, 0.3f); // Sunset
+        ambientColor = glm::vec3(0.3f, 0.2f, 0.2f); // Sunset ambient
+      }
+      else
+      {
+        sunColor     = glm::vec3(0.05f, 0.05f, 0.1f);  // Night
+        ambientColor = glm::vec3(0.01f, 0.01f, 0.02f); // Night ambient
+      }
+    }
+
     state.meshRenderSystem.render(frameInfo);
+
+    state.dustRenderSystem.render(frameInfo, state.dustSettings, state.skySettings.sunDirection, sunColor, ambientColor);
+
     state.lightSystem.render(frameInfo);  // Draw light debug visualizations
     state.cameraSystem.render(frameInfo); // Draw camera debug visualizations
   }

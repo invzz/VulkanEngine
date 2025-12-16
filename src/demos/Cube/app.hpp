@@ -17,6 +17,7 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -51,10 +52,12 @@ namespace engine {
     LightSystem&           lightSystem;
     ShadowSystem&          shadowSystem;
     SkyboxRenderSystem&    skyboxRenderSystem;
+    DustRenderSystem&      dustRenderSystem;
     RenderContext&         renderContext;
     UIManager&             uiManager;
     Skybox*                skybox;
     SkyboxSettings&        skySettings;
+    DustSettings&          dustSettings;
   };
 
   class App
@@ -116,6 +119,7 @@ namespace engine {
 
     // Render Systems
     std::unique_ptr<SkyboxRenderSystem>   skyboxRenderSystem;
+    std::unique_ptr<DustRenderSystem>     dustRenderSystem;
     std::unique_ptr<MeshRenderSystem>     meshRenderSystem;
     std::unique_ptr<LightSystem>          lightSystem;
     std::unique_ptr<PostProcessingSystem> postProcessingSystem;
@@ -123,9 +127,12 @@ namespace engine {
     // Scene Resources
     std::unique_ptr<Skybox> skybox;
     SkyboxSettings          skySettings;
-    float                   timeOfDay{0.0f};
-    float                   daySpeed{0.1f};
-    glm::vec4               lastSunDirection{0.0f};
+    DustSettings            dustSettings;
+    FogSettings             fogSettings;
+
+    float     timeOfDay{0.0f};
+    float     daySpeed{0.1f};
+    glm::vec4 lastSunDirection{0.0f};
 
     // UI
     std::unique_ptr<ImGuiManager> imguiManager;
