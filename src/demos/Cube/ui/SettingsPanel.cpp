@@ -8,8 +8,11 @@ namespace engine {
                                Scene*                    scene,
                                IBLSystem&                iblSystem,
                                Skybox&                   skybox,
+                               SkyboxSettings&           skySettings,
+                               float&                    timeOfDay,
                                PostProcessPushConstants& pushConstants,
                                int&                      debugMode)
+      : skySettings_(skySettings), timeOfDay_(timeOfDay)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
@@ -23,6 +26,17 @@ namespace engine {
 
     if (ImGui::Begin("Settings", &visible_))
     {
+      if (ImGui::CollapsingHeader("Sky"))
+      {
+        ImGui::Checkbox("Use Procedural Sky", &skySettings_.useProcedural);
+        if (skySettings_.useProcedural)
+        {
+          ImGui::SliderFloat("Time of Day", &timeOfDay_, 0.0f, 6.28318f);
+          ImGui::SliderFloat("Rayleigh", &skySettings_.rayleigh, 0.0f, 10.0f);
+          ImGui::SliderFloat("Mie", &skySettings_.mie, 0.0f, 1.0f);
+          ImGui::SliderFloat("Mie Eccentricity", &skySettings_.mieEccentricity, -1.0f, 1.0f);
+        }
+      }
       if (ImGui::CollapsingHeader("Camera"))
       {
         cameraPanel_->render(frameInfo);

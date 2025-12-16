@@ -104,7 +104,8 @@ namespace engine {
     configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
 
     // Cull front faces to reduce peter-panning
-    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+    // configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
     // Use the render pass from the first shadow map (all are identical)
     configInfo.renderPass     = shadowMaps_[0]->getRenderPass();

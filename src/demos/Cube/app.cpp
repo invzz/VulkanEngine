@@ -21,6 +21,7 @@
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/TextureManager.hpp"
 #include "Engine/Scene/Camera.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
@@ -89,6 +90,12 @@ namespace engine {
     scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
     scene.getRegistry().get<TransformComponent>(cameraEntity).translation = {0.0f, -0.2f, -2.5f};
     scene.getRegistry().emplace<CameraComponent>(cameraEntity);
+
+    // Create Sun
+    auto sunEntity = scene.createEntity();
+    scene.getRegistry().emplace<TransformComponent>(sunEntity);
+    scene.getRegistry().emplace<NameComponent>(sunEntity, "Sun");
+    scene.getRegistry().emplace<DirectionalLightComponent>(sunEntity);
 
     // Load Skybox
     std::cout << "[App] Loading skybox..." << std::endl;
@@ -166,7 +173,7 @@ namespace engine {
     uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
-    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, *skybox, postProcessPush, debugMode));
+    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, *skybox, skySettings, timeOfDay, postProcessPush, debugMode));
   }
 
   void App::setupRenderGraph()
@@ -188,6 +195,7 @@ namespace engine {
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
+              .skySettings           = skySettings,
       };
       updatePhase(frameInfo, state);
     }));
@@ -207,6 +215,7 @@ namespace engine {
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
+              .skySettings           = skySettings,
       };
       computePhase(frameInfo, state);
     }));
@@ -226,6 +235,7 @@ namespace engine {
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
+              .skySettings           = skySettings,
       };
       shadowPhase(frameInfo, state);
     }));
@@ -245,6 +255,7 @@ namespace engine {
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
+              .skySettings           = skySettings,
       };
       renderer.beginOffscreenRenderPass(frameInfo.commandBuffer);
       renderScenePhase(frameInfo, state);
@@ -269,6 +280,7 @@ namespace engine {
               .renderContext         = *renderContext,
               .uiManager             = *uiManager,
               .skybox                = skybox.get(),
+              .skySettings           = skySettings,
       };
 
       renderer.beginSwapChainRenderPass(frameInfo.commandBuffer);
@@ -318,6 +330,83 @@ namespace engine {
     }
 
     iblSystem->update();
+
+    // Update Sun
+    if (skySettings.useProcedural)
+    {
+      // timeOfDay += frameTime * daySpeed; // Auto-advance or let UI control it
+
+      // Calculate sun direction (Simple orbit)
+      // 0 = Noon (Top), PI/2 = Sunset, PI = Midnight, 3PI/2 = Sunrise
+      // We add PI to align 0 with Noon (Visual Top)
+      float     sunAngle = timeOfDay + glm::pi<float>();
+      glm::vec3 sunPos   = glm::vec3(0.0f, glm::cos(sunAngle), glm::sin(sunAngle));
+
+      // The procedural sky shader has an inverted Y coordinate system.
+      // To make the sun appear at the correct height, we need to flip the Y component
+      // of the direction vector passed to the shader.
+      glm::vec3 shaderSunDir   = sunPos;
+      shaderSunDir.y           = -shaderSunDir.y;
+      skySettings.sunDirection = glm::vec4(shaderSunDir, 1.0f);
+
+      // Simple color change based on height
+      // Visual height is inverted relative to sunPos.y due to the shader flip
+      float height       = -sunPos.y;
+      float sunIntensity = 0.0f;
+
+      if (height > 0.2f)
+      {
+        skySettings.sunColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f); // Day
+        sunIntensity         = 1.0f;
+      }
+      else if (height > -0.2f)
+      {
+        // Lerp to orange
+        float t              = (height + 0.2f) / 0.4f;
+        skySettings.sunColor = glm::mix(glm::vec4(1.0f, 0.4f, 0.1f, 1.0f), glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), t);
+        sunIntensity         = glm::mix(0.0f, 1.0f, t);
+      }
+      else
+      {
+        skySettings.sunColor = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Night
+        sunIntensity         = 0.0f;
+      }
+
+      skySettings.sunDirection.w = sunIntensity;
+      // Update Directional Light in Scene
+      auto view = scene.getRegistry().view<DirectionalLightComponent, TransformComponent>();
+      for (auto entity : view)
+      {
+        auto& transform = view.get<TransformComponent>(entity);
+        auto& light     = view.get<DirectionalLightComponent>(entity);
+
+        // Update light color/intensity
+        light.color     = glm::vec3(skySettings.sunColor);
+        light.intensity = skySettings.sunDirection.w;
+
+        // Update rotation (Light direction = -SunPos)
+        // We can reconstruct SunPos from skySettings by flipping Y back, or just use -skySettings with flipped Y
+        glm::vec3 lightDir = -glm::vec3(skySettings.sunDirection);
+        lightDir.y         = -lightDir.y; // Flip Y back to match world space
+
+        // Convert to Euler (YXZ)
+        // Assuming default forward is +Z
+        transform.rotation.y = glm::atan(lightDir.x, lightDir.z);
+        transform.rotation.x = glm::asin(-lightDir.y);
+        transform.rotation.z = 0.0f;
+      }
+
+      // Lazy IBL update
+      if (glm::distance(skySettings.sunDirection, lastSunDirection) > 0.05f) // Update every ~3 degrees
+      {
+        // Only update if we have a valid skyboxRenderSystem (it should be valid here)
+        if (skyboxRenderSystem)
+        {
+          iblSystem->generateFromProcedural(*skyboxRenderSystem, skySettings);
+          lastSunDirection = skySettings.sunDirection;
+        }
+      }
+    }
   }
 
   void App::render(float frameTime)
@@ -388,7 +477,7 @@ namespace engine {
     state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO (rotates them)
 
     // Render shadow maps for all shadow-casting lights (after positions are updated)
-    state.shadowSystem.renderShadowMaps(frameInfo, 30.0f);
+    state.shadowSystem.renderShadowMaps(frameInfo, 50.0f);
 
     ubo.projection       = frameInfo.camera.getProjection();
     ubo.view             = frameInfo.camera.getView();
@@ -438,9 +527,9 @@ namespace engine {
     // RENDER SYSTEMS - These issue actual draw calls
 
     // Render skybox first (renders at z=1.0, behind everything)
-    if (state.skybox)
+    if (state.skybox || state.skySettings.useProcedural)
     {
-      state.skyboxRenderSystem.render(frameInfo, *state.skybox);
+      state.skyboxRenderSystem.render(frameInfo, state.skybox, state.skySettings);
     }
 
     state.meshRenderSystem.render(frameInfo);

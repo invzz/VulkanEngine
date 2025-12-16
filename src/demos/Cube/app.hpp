@@ -18,6 +18,7 @@
 #include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 namespace engine {
 
@@ -30,14 +31,12 @@ namespace engine {
   class LightSystem;
   class RenderContext;
   class ShadowSystem;
-  class SkyboxRenderSystem;
   class LODSystem;
   class UIManager;
   class Camera;
   class Keyboard;
   class Mouse;
   class IBLSystem;
-  class PostProcessingSystem;
   class ImGuiManager;
   class RenderGraph;
 
@@ -55,6 +54,7 @@ namespace engine {
     RenderContext&         renderContext;
     UIManager&             uiManager;
     Skybox*                skybox;
+    SkyboxSettings&        skySettings;
   };
 
   class App
@@ -122,6 +122,10 @@ namespace engine {
 
     // Scene Resources
     std::unique_ptr<Skybox> skybox;
+    SkyboxSettings          skySettings;
+    float                   timeOfDay{0.0f};
+    float                   daySpeed{0.1f};
+    glm::vec4               lastSunDirection{0.0f};
 
     // UI
     std::unique_ptr<ImGuiManager> imguiManager;

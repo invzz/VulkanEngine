@@ -10,6 +10,12 @@ namespace engine {
   struct SkyboxPushConstants
   {
     glm::mat4 viewProjection;
+    glm::vec4 sunDirection; // w = intensity
+    glm::vec4 sunColor;     // w = padding
+    float     rayleigh;
+    float     mie;
+    float     mieEccentricity;
+    float     padding;
   };
 
   SkyboxRenderSystem::SkyboxRenderSystem(Device& device, VkRenderPass renderPass) : device_{device}
@@ -17,6 +23,7 @@ namespace engine {
     createDescriptorSetLayout();
     createPipelineLayout();
     createPipeline(renderPass);
+    createProceduralPipeline(renderPass);
   }
 
   SkyboxRenderSystem::~SkyboxRenderSystem()
@@ -28,6 +35,10 @@ namespace engine {
     if (pipelineLayout_ != VK_NULL_HANDLE)
     {
       vkDestroyPipelineLayout(device_.device(), pipelineLayout_, nullptr);
+    }
+    if (proceduralPipelineLayout_ != VK_NULL_HANDLE)
+    {
+      vkDestroyPipelineLayout(device_.device(), proceduralPipelineLayout_, nullptr);
     }
     if (descriptorSetLayout_ != VK_NULL_HANDLE)
     {
@@ -89,7 +100,7 @@ namespace engine {
   void SkyboxRenderSystem::createPipelineLayout()
   {
     VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset     = 0;
     pushConstantRange.size       = sizeof(SkyboxPushConstants);
 
@@ -103,6 +114,15 @@ namespace engine {
     if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &pipelineLayout_) != VK_SUCCESS)
     {
       throw std::runtime_error("Failed to create skybox pipeline layout");
+    }
+
+    // Procedural Pipeline Layout (No descriptors)
+    layoutInfo.setLayoutCount = 0;
+    layoutInfo.pSetLayouts    = nullptr;
+
+    if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &proceduralPipelineLayout_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create procedural skybox pipeline layout");
     }
   }
 
@@ -131,47 +151,92 @@ namespace engine {
     pipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/skybox.vert.spv", SHADER_PATH "/skybox.frag.spv", configInfo);
   }
 
-  void SkyboxRenderSystem::render(FrameInfo& frameInfo, Skybox& skybox)
+  void SkyboxRenderSystem::createProceduralPipeline(VkRenderPass renderPass)
   {
-    // Update descriptor set with skybox texture
-    VkDescriptorImageInfo imageInfo = skybox.getDescriptorInfo();
+    PipelineConfigInfo configInfo{};
+    Pipeline::defaultPipelineConfigInfo(configInfo);
 
-    VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet          = descriptorSets_[frameInfo.frameIndex];
-    descriptorWrite.dstBinding      = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pImageInfo      = &imageInfo;
+    // No vertex input - we generate vertices in the shader
+    configInfo.bindingDescriptions.clear();
+    configInfo.attributeDescriptions.clear();
 
-    vkUpdateDescriptorSets(device_.device(), 1, &descriptorWrite, 0, nullptr);
+    // Draw triangles
+    configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-    // Bind pipeline
-    pipeline_->bind(frameInfo.commandBuffer);
+    // Disable depth test - skybox renders first, everything else will overdraw
+    configInfo.depthStencilInfo.depthTestEnable  = VK_FALSE;
+    configInfo.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
-    // Bind descriptor set
-    vkCmdBindDescriptorSets(frameInfo.commandBuffer,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipelineLayout_,
-                            0, // first set
-                            1, // set count
-                            &descriptorSets_[frameInfo.frameIndex],
-                            0,
-                            nullptr);
+    // Disable culling for debugging
+    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
+    configInfo.renderPass     = renderPass;
+    configInfo.pipelineLayout = proceduralPipelineLayout_;
+
+    proceduralPipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/procedural_sky.vert.spv", SHADER_PATH "/procedural_sky.frag.spv", configInfo);
+  }
+
+  void SkyboxRenderSystem::render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings)
+  {
     // Create view-projection matrix without translation
-    // This keeps the skybox centered on the camera
     glm::mat4 view = frameInfo.camera.getView();
     view[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Remove translation
 
     SkyboxPushConstants push{};
-    push.viewProjection = frameInfo.camera.getProjection() * view;
+    push.viewProjection  = frameInfo.camera.getProjection() * view;
+    push.sunDirection    = settings.sunDirection;
+    push.sunColor        = settings.sunColor;
+    push.rayleigh        = settings.rayleigh;
+    push.mie             = settings.mie;
+    push.mieEccentricity = settings.mieEccentricity;
 
-    vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(SkyboxPushConstants), &push);
+    if (settings.useProcedural)
+    {
+      proceduralPipeline_->bind(frameInfo.commandBuffer);
+      vkCmdPushConstants(frameInfo.commandBuffer,
+                         proceduralPipelineLayout_,
+                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0,
+                         sizeof(SkyboxPushConstants),
+                         &push);
+      vkCmdDraw(frameInfo.commandBuffer, 36, 1, 0, 0);
+    }
+    else if (skybox)
+    {
+      // Update descriptor set with skybox texture
+      VkDescriptorImageInfo imageInfo = skybox->getDescriptorInfo();
 
-    // Draw cube (36 vertices, no vertex buffer)
-    vkCmdDraw(frameInfo.commandBuffer, 36, 1, 0, 0);
+      VkWriteDescriptorSet descriptorWrite{};
+      descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      descriptorWrite.dstSet          = descriptorSets_[frameInfo.frameIndex];
+      descriptorWrite.dstBinding      = 0;
+      descriptorWrite.dstArrayElement = 0;
+      descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrite.descriptorCount = 1;
+      descriptorWrite.pImageInfo      = &imageInfo;
+
+      vkUpdateDescriptorSets(device_.device(), 1, &descriptorWrite, 0, nullptr);
+
+      pipeline_->bind(frameInfo.commandBuffer);
+
+      vkCmdBindDescriptorSets(frameInfo.commandBuffer,
+                              VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              pipelineLayout_,
+                              0, // first set
+                              1, // set count
+                              &descriptorSets_[frameInfo.frameIndex],
+                              0,
+                              nullptr);
+
+      vkCmdPushConstants(frameInfo.commandBuffer,
+                         pipelineLayout_,
+                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                         0,
+                         sizeof(SkyboxPushConstants),
+                         &push);
+
+      vkCmdDraw(frameInfo.commandBuffer, 36, 1, 0, 0);
+    }
   }
 
 } // namespace engine

@@ -6,6 +6,7 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 namespace engine {
 
@@ -42,6 +43,13 @@ namespace engine {
      * @param skybox Source environment cubemap
      */
     void generateFromSkybox(Skybox& skybox);
+
+    /**
+     * @brief Generate all IBL textures from procedural sky
+     * @param skyRenderSystem System to render the sky
+     * @param settings Sky settings (sun pos, etc)
+     */
+    void generateFromProcedural(SkyboxRenderSystem& skyRenderSystem, const SkyboxSettings& settings);
 
     void requestRegeneration(const Settings& settings, Skybox& skybox);
     void update();

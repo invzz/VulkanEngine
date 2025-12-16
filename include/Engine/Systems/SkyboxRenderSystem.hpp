@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <glm/glm.hpp>
 #include <memory>
 #include <vector>
 
@@ -11,6 +12,16 @@
 #include "Engine/Scene/Skybox.hpp"
 
 namespace engine {
+
+  struct SkyboxSettings
+  {
+    bool      useProcedural{false};
+    glm::vec4 sunDirection{0.0f, 1.0f, 0.0f, 1.0f}; // w = intensity
+    glm::vec4 sunColor{1.0f, 1.0f, 1.0f, 1.0f};
+    float     rayleigh{1.0f};
+    float     mie{0.02f};
+    float     mieEccentricity{0.76f};
+  };
 
   /**
    * @brief Render system for skybox/environment maps
@@ -31,21 +42,26 @@ namespace engine {
     /**
      * @brief Render the skybox
      * @param frameInfo Current frame information (camera, etc.)
-     * @param skybox The skybox cubemap to render
+     * @param skybox The skybox cubemap to render (can be null if using procedural)
+     * @param settings Skybox configuration
      */
-    void render(FrameInfo& frameInfo, Skybox& skybox);
+    void render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings);
 
   private:
     void createDescriptorSetLayout();
     void createPipelineLayout();
     void createPipeline(VkRenderPass renderPass);
+    void createProceduralPipeline(VkRenderPass renderPass);
 
     Device& device_;
 
     std::unique_ptr<Pipeline> pipeline_;
-    VkPipelineLayout          pipelineLayout_      = VK_NULL_HANDLE;
-    VkDescriptorSetLayout     descriptorSetLayout_ = VK_NULL_HANDLE;
-    VkDescriptorPool          descriptorPool_      = VK_NULL_HANDLE;
+    std::unique_ptr<Pipeline> proceduralPipeline_;
+
+    VkPipelineLayout      pipelineLayout_           = VK_NULL_HANDLE;
+    VkPipelineLayout      proceduralPipelineLayout_ = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayout_      = VK_NULL_HANDLE;
+    VkDescriptorPool      descriptorPool_           = VK_NULL_HANDLE;
 
     // Pre-allocated descriptor sets per frame
     std::vector<VkDescriptorSet> descriptorSets_;
