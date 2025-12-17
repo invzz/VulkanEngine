@@ -51,6 +51,11 @@ namespace engine {
       std::string roughnessTexPath;
       std::string aoTexPath;
       std::string emissiveTexPath;
+      std::string specularGlossinessTexPath;
+      std::string transmissionTexPath;
+      std::string clearcoatTexPath;
+      std::string clearcoatRoughnessTexPath;
+      std::string clearcoatNormalTexPath;
     };
 
     // Sub-mesh: a portion of the model using one material
@@ -150,6 +155,8 @@ namespace engine {
 
       float cone_axis[3];
       float cone_cutoff;
+
+      uint32_t padding[4];
     };
 
     struct Builder

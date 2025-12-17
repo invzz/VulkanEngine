@@ -21,6 +21,8 @@ struct Meshlet
 
   float cone_axis[3];
   float cone_cutoff;
+
+  uint padding[4];
 };
 
 layout(buffer_reference, scalar) readonly buffer MeshletBuffer
@@ -54,9 +56,9 @@ layout(buffer_reference, scalar) readonly buffer VertexBuffer
 
 layout(push_constant) uniform Push
 {
-  mat4  modelMatrix;
-  mat4  normalMatrix;
-  uint  meshId;
+  mat4 modelMatrix;
+  mat4 normalMatrix;
+  uint meshId;
 
   uint64_t meshletBufferAddress;
   uint64_t meshletVerticesAddress;
@@ -68,10 +70,49 @@ layout(push_constant) uniform Push
 }
 push;
 
+struct PointLight
+{
+  vec4 position;
+  vec4 color;
+};
+
+struct DirectionalLight
+{
+  vec4 direction;
+  vec4 color;
+};
+
+struct SpotLight
+{
+  vec4  position;
+  vec4  direction;
+  vec4  color;
+  float outerCutoff;
+  float constantAtten;
+  float linearAtten;
+  float quadraticAtten;
+};
+
 layout(set = 0, binding = 0) uniform GlobalUbo
 {
-  mat4 projection;
-  mat4 view;
+  mat4             projection;
+  mat4             view;
+  vec4             ambientLightColor;
+  vec4             cameraPosition;
+  PointLight       pointLights[16];
+  DirectionalLight directionalLights[16];
+  SpotLight        spotLights[16];
+  mat4             lightSpaceMatrices[16];
+  vec4             pointLightShadowData[4];
+  int              pointLightCount;
+  int              directionalLightCount;
+  int              spotLightCount;
+  int              shadowLightCount;
+  int              cubeShadowLightCount;
+  int              debugMode;
+  int              _pad2;
+  int              _pad3;
+  vec4             frustumPlanes[6];
 }
 ubo;
 
@@ -79,6 +120,8 @@ layout(location = 0) out vec3 outColor[];
 layout(location = 1) out vec3 outWorldPos[];
 layout(location = 2) out vec3 outNormal[];
 layout(location = 3) out vec2 outUV[];
+layout(location = 4) out flat uint outMeshletId[];
+layout(location = 5) out flat vec3 outConeAxis[];
 
 struct TaskPayload
 {
@@ -109,10 +152,12 @@ void main()
 
     gl_MeshVerticesEXT[i].gl_Position = ubo.projection * ubo.view * push.modelMatrix * vec4(v.position, 1.0);
 
-    outColor[i]    = v.color;
-    outWorldPos[i] = (push.modelMatrix * vec4(v.position, 1.0)).xyz;
-    outNormal[i]   = normalize(normalMatrix * v.normal);
-    outUV[i]       = v.uv;
+    outColor[i]     = v.color;
+    outWorldPos[i]  = (push.modelMatrix * vec4(v.position, 1.0)).xyz;
+    outNormal[i]    = normalize(normalMatrix * v.normal);
+    outUV[i]        = v.uv;
+    outMeshletId[i] = meshletId;
+    outConeAxis[i]  = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
   }
 
   MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);

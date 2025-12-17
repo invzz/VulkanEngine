@@ -17,6 +17,8 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 namespace engine {
 
@@ -29,10 +31,14 @@ namespace engine {
   class LightSystem;
   class RenderContext;
   class ShadowSystem;
-  class SkyboxRenderSystem;
   class LODSystem;
   class UIManager;
   class Camera;
+  class Keyboard;
+  class Mouse;
+  class IBLSystem;
+  class ImGuiManager;
+  class RenderGraph;
 
   struct GameLoopState
   {
@@ -48,6 +54,7 @@ namespace engine {
     RenderContext&         renderContext;
     UIManager&             uiManager;
     Skybox*                skybox;
+    SkyboxSettings&        skySettings;
   };
 
   class App
@@ -66,16 +73,74 @@ namespace engine {
     void run();
 
   private:
-    void            updatePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void            computePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void            shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
-    void            renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void            uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
+    void init();
+    void setupSystems();
+    void setupScene();
+    void setupUI();
+    void setupRenderGraph();
+
+    void update(float frameTime);
+    void render(float frameTime);
+
+    void updatePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void computePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
+    void renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
+
     Window          window{width(), height(), "Engine App"};
     Device          device{window};
     Renderer        renderer{window, device};
     ResourceManager resourceManager{device};
     Scene           scene;
     SceneSerializer sceneSerializer{scene, resourceManager};
+    int             debugMode = 0;
+
+    // Core Systems
+    std::unique_ptr<RenderContext> renderContext;
+
+    // Input & Camera
+    std::unique_ptr<Camera>   camera;
+    std::unique_ptr<Keyboard> keyboard;
+    std::unique_ptr<Mouse>    mouse;
+    entt::entity              cameraEntity{entt::null};
+
+    // Game Systems
+    std::unique_ptr<ObjectSelectionSystem> objectSelectionSystem;
+    std::unique_ptr<InputSystem>           inputSystem;
+    std::unique_ptr<CameraSystem>          cameraSystem;
+    std::unique_ptr<AnimationSystem>       animationSystem;
+    std::unique_ptr<LODSystem>             lodSystem;
+    std::unique_ptr<ShadowSystem>          shadowSystem;
+    std::unique_ptr<IBLSystem>             iblSystem;
+
+    // Render Systems
+    std::unique_ptr<SkyboxRenderSystem>   skyboxRenderSystem;
+    std::unique_ptr<MeshRenderSystem>     meshRenderSystem;
+    std::unique_ptr<LightSystem>          lightSystem;
+    std::unique_ptr<PostProcessingSystem> postProcessingSystem;
+
+    // Scene Resources
+    std::unique_ptr<Skybox> skybox;
+    SkyboxSettings          skySettings;
+    float                   timeOfDay{0.0f};
+    float                   daySpeed{0.1f};
+    glm::vec4               lastSunDirection{0.0f};
+
+    // UI
+    std::unique_ptr<ImGuiManager> imguiManager;
+    std::unique_ptr<UIManager>    uiManager;
+
+    // Render Graph
+    std::unique_ptr<RenderGraph> renderGraph;
+
+    // State
+    std::unique_ptr<DescriptorPool>      postProcessPool;
+    std::unique_ptr<DescriptorSetLayout> postProcessSetLayout;
+    std::vector<VkDescriptorSet>         postProcessDescriptorSets;
+    PostProcessPushConstants             postProcessPush{};
+
+    uint32_t     selectedObjectId = 0;
+    entt::entity selectedEntity   = entt::null;
   };
 } // namespace engine

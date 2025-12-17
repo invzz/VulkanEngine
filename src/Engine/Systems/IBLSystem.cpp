@@ -8,6 +8,7 @@
 
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
+#include "Engine/Scene/Camera.hpp"
 
 namespace engine {
 
@@ -254,6 +255,164 @@ namespace engine {
 
     // Wait for everything to finish
     vkDeviceWaitIdle(device_.device());
+  }
+
+  void IBLSystem::generateFromProcedural(SkyboxRenderSystem& skyRenderSystem, const SkyboxSettings& settings)
+  {
+    // 1. Create temporary Skybox (512x512)
+    Skybox tempSkybox(device_, 512);
+
+    // 2. Create RenderPass
+    VkRenderPass renderPass;
+    {
+      VkAttachmentDescription attachmentDescription{};
+      attachmentDescription.format         = VK_FORMAT_R8G8B8A8_UNORM;
+      attachmentDescription.samples        = VK_SAMPLE_COUNT_1_BIT;
+      attachmentDescription.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      attachmentDescription.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+      attachmentDescription.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      attachmentDescription.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+      attachmentDescription.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+      VkAttachmentReference colorReference{};
+      colorReference.attachment = 0;
+      colorReference.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+      VkSubpassDescription subpass{};
+      subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+      subpass.colorAttachmentCount = 1;
+      subpass.pColorAttachments    = &colorReference;
+
+      VkSubpassDependency dependency{};
+      dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
+      dependency.dstSubpass    = 0;
+      dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dependency.srcAccessMask = 0;
+      dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      VkRenderPassCreateInfo renderPassInfo{};
+      renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+      renderPassInfo.attachmentCount = 1;
+      renderPassInfo.pAttachments    = &attachmentDescription;
+      renderPassInfo.subpassCount    = 1;
+      renderPassInfo.pSubpasses      = &subpass;
+      renderPassInfo.dependencyCount = 1;
+      renderPassInfo.pDependencies   = &dependency;
+
+      if (vkCreateRenderPass(device_.device(), &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+      {
+        throw std::runtime_error("Failed to create skybox generation render pass");
+      }
+    }
+
+    // 3. Create Framebuffers (one for each face)
+    std::vector<VkImageView>   faceViews(6);
+    std::vector<VkFramebuffer> framebuffers(6);
+
+    for (int i = 0; i < 6; i++)
+    {
+      VkImageViewCreateInfo viewInfo{};
+      viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      viewInfo.image                           = tempSkybox.getImage();
+      viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+      viewInfo.format                          = VK_FORMAT_R8G8B8A8_UNORM;
+      viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewInfo.subresourceRange.baseMipLevel   = 0;
+      viewInfo.subresourceRange.levelCount     = 1;
+      viewInfo.subresourceRange.baseArrayLayer = i;
+      viewInfo.subresourceRange.layerCount     = 1;
+
+      vkCreateImageView(device_.device(), &viewInfo, nullptr, &faceViews[i]);
+
+      VkFramebufferCreateInfo framebufferInfo{};
+      framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+      framebufferInfo.renderPass      = renderPass;
+      framebufferInfo.attachmentCount = 1;
+      framebufferInfo.pAttachments    = &faceViews[i];
+      framebufferInfo.width           = 512;
+      framebufferInfo.height          = 512;
+      framebufferInfo.layers          = 1;
+
+      vkCreateFramebuffer(device_.device(), &framebufferInfo, nullptr, &framebuffers[i]);
+    }
+
+    // 4. Render
+    VkCommandBuffer commandBuffer = device_.beginSingleTimeCommands();
+
+    Camera cam;
+    cam.setPerspectiveProjection(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+
+    // Standard cubemap faces
+    struct Face
+    {
+      glm::vec3 target;
+      glm::vec3 up;
+    };
+    Face faces[] = {
+            {{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}},  // +X
+            {{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}}, // -X
+            {{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}}, // +Y (Top) - Vulkan Y down, so -Y is up? No, +Y is down.
+                                                        // Wait, if +Y is down, then Top is -Y.
+                                                        // Standard cubemap: +Y is Top.
+                                                        // In Vulkan, if we render to an image, +Y is down in UV space.
+                                                        // But 3D direction +Y is usually Up in world space.
+                                                        // Let's stick to standard lookAt.
+            {{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},   // -Y (Bottom)
+            {{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}},  // +Z
+            {{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}}  // -Z
+    };
+
+    // Correct faces for Vulkan coordinate system (Y down)
+    // Actually, we want to render the world as seen from center.
+    // World +Y is Up.
+    // Camera Up should be -Y if we want the image to be upright?
+    // No, Camera Up is (0, -1, 0) means "Up" in camera space (which is -Y) aligns with World -Y?
+    // Let's use the standard GL cubemap targets, but flip Y in projection if needed.
+    // I already flipped Y in projection: captureProjection[1][1] *= -1;
+    // Wait, I didn't do that here yet.
+
+    // cam.setPerspectiveProjection handles the Vulkan clip space (Y down) if implemented correctly?
+    // Usually setPerspectiveProjection creates a standard GL matrix.
+    // If so, we need to flip Y.
+    // But let's check Camera::setPerspectiveProjection.
+
+    for (int i = 0; i < 6; ++i)
+    {
+      cam.setViewTarget(glm::vec3(0.0f), faces[i].target, faces[i].up);
+
+      VkRenderPassBeginInfo renderPassInfo{};
+      renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+      renderPassInfo.renderPass        = renderPass;
+      renderPassInfo.framebuffer       = framebuffers[i];
+      renderPassInfo.renderArea.offset = {0, 0};
+      renderPassInfo.renderArea.extent = {512, 512};
+
+      VkClearValue clearValue        = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+      renderPassInfo.clearValueCount = 1;
+      renderPassInfo.pClearValues    = &clearValue;
+
+      vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+      FrameInfo frameInfo{.frameIndex = 0, .frameTime = 0.0f, .commandBuffer = commandBuffer, .camera = cam};
+
+      skyRenderSystem.render(frameInfo, nullptr, settings);
+
+      vkCmdEndRenderPass(commandBuffer);
+    }
+
+    device_.endSingleTimeCommands(commandBuffer);
+
+    // Cleanup render pass resources
+    vkDestroyRenderPass(device_.device(), renderPass, nullptr);
+    for (auto fb : framebuffers)
+      vkDestroyFramebuffer(device_.device(), fb, nullptr);
+    for (auto view : faceViews)
+      vkDestroyImageView(device_.device(), view, nullptr);
+
+    // 5. Generate IBL maps
+    generateFromSkybox(tempSkybox);
   }
 
   // Helper to create image

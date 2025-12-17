@@ -72,6 +72,30 @@ namespace engine {
     }
     depthMipImageViews.clear();
 
+    for (auto imageView : hzbImageViews)
+    {
+      vkDestroyImageView(device.device(), imageView, nullptr);
+    }
+
+    for (auto image : hzbImages)
+    {
+      vkDestroyImage(device.device(), image, nullptr);
+    }
+
+    for (auto memory : hzbImageMemorys)
+    {
+      vkFreeMemory(device.device(), memory, nullptr);
+    }
+
+    for (auto& mipViews : hzbMipImageViews)
+    {
+      for (auto imageView : mipViews)
+      {
+        vkDestroyImageView(device.device(), imageView, nullptr);
+      }
+    }
+    hzbMipImageViews.clear();
+
     if (sampler != VK_NULL_HANDLE)
     {
       vkDestroySampler(device.device(), sampler, nullptr);
@@ -82,6 +106,12 @@ namespace engine {
     {
       vkDestroySampler(device.device(), depthSampler, nullptr);
       depthSampler = VK_NULL_HANDLE;
+    }
+
+    if (hzbSampler != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(device.device(), hzbSampler, nullptr);
+      hzbSampler = VK_NULL_HANDLE;
     }
   }
 
@@ -123,11 +153,11 @@ namespace engine {
                                                         VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
     depthAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
     depthAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthAttachment.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkAttachmentReference depthAttachmentRef{};
     depthAttachmentRef.attachment = 1;
@@ -143,17 +173,17 @@ namespace engine {
 
     dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass      = 0;
-    dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependencies[0].srcAccessMask   = VK_ACCESS_SHADER_READ_BIT;
-    dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
     dependencies[1].srcSubpass      = 0;
     dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
-    dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependencies[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependencies[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     dependencies[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
     dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
@@ -192,6 +222,12 @@ namespace engine {
     depthImages.resize(frameCount);
     depthImageMemorys.resize(frameCount);
     depthImageViews.resize(frameCount);
+
+    // HZB Vectors
+    hzbImages.resize(frameCount);
+    hzbImageMemorys.resize(frameCount);
+    hzbImageViews.resize(frameCount);
+    hzbMipImageViews.resize(frameCount);
 
     VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkFormat depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
@@ -302,7 +338,56 @@ namespace engine {
         {
           throw std::runtime_error("failed to create depth mip image view!");
         }
-        std::cout << "Created Depth Mip View: Frame " << i << ", Mip " << mip << ", Handle " << depthMipImageViews[i][mip] << std::endl;
+        // std::cout << "Created Depth Mip View: Frame " << i << ", Mip " << mip << ", Handle " << depthMipImageViews[i][mip] << std::endl;
+      }
+
+      // Create HZB Images (R32_SFLOAT)
+      VkImageCreateInfo hzbImageInfo{};
+      hzbImageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+      hzbImageInfo.imageType     = VK_IMAGE_TYPE_2D;
+      hzbImageInfo.extent.width  = extent.width;
+      hzbImageInfo.extent.height = extent.height;
+      hzbImageInfo.extent.depth  = 1;
+      hzbImageInfo.mipLevels     = mipLevels;
+      hzbImageInfo.arrayLayers   = 1;
+      hzbImageInfo.format        = VK_FORMAT_R32_SFLOAT;
+      hzbImageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+      hzbImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      hzbImageInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      hzbImageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+      hzbImageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+      device.getMemory().createImageWithInfo(hzbImageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, hzbImages[i], hzbImageMemorys[i]);
+
+      // Full View
+      VkImageViewCreateInfo hzbViewInfo{};
+      hzbViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      hzbViewInfo.image                           = hzbImages[i];
+      hzbViewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+      hzbViewInfo.format                          = VK_FORMAT_R32_SFLOAT;
+      hzbViewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+      hzbViewInfo.subresourceRange.baseMipLevel   = 0;
+      hzbViewInfo.subresourceRange.levelCount     = mipLevels;
+      hzbViewInfo.subresourceRange.baseArrayLayer = 0;
+      hzbViewInfo.subresourceRange.layerCount     = 1;
+
+      if (vkCreateImageView(device.device(), &hzbViewInfo, nullptr, &hzbImageViews[i]) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create HZB image view!");
+      }
+
+      // Per-Mip Views
+      hzbMipImageViews[i].resize(mipLevels);
+      for (uint32_t mip = 0; mip < mipLevels; mip++)
+      {
+        VkImageViewCreateInfo mipViewInfo         = hzbViewInfo;
+        mipViewInfo.subresourceRange.baseMipLevel = mip;
+        mipViewInfo.subresourceRange.levelCount   = 1;
+
+        if (vkCreateImageView(device.device(), &mipViewInfo, nullptr, &hzbMipImageViews[i][mip]) != VK_SUCCESS)
+        {
+          throw std::runtime_error("failed to create HZB mip image view!");
+        }
       }
     }
 
@@ -339,6 +424,17 @@ namespace engine {
     if (vkCreateSampler(device.device(), &depthSamplerInfo, nullptr, &depthSampler) != VK_SUCCESS)
     {
       throw std::runtime_error("failed to create depth sampler!");
+    }
+
+    // Create HZB Sampler
+    VkSamplerCreateInfo hzbSamplerInfo = samplerInfo;
+    hzbSamplerInfo.magFilter           = VK_FILTER_NEAREST;
+    hzbSamplerInfo.minFilter           = VK_FILTER_NEAREST;
+    hzbSamplerInfo.mipmapMode          = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+    if (vkCreateSampler(device.device(), &hzbSamplerInfo, nullptr, &hzbSampler) != VK_SUCCESS)
+    {
+      throw std::runtime_error("failed to create HZB sampler!");
     }
   }
 

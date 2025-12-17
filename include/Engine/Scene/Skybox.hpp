@@ -35,6 +35,13 @@ namespace engine {
      */
     static std::unique_ptr<Skybox> loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension = "jpg");
 
+    /**
+     * @brief Create an empty skybox for rendering (e.g. procedural sky)
+     * @param device Vulkan device
+     * @param size Resolution of each face (e.g. 1024)
+     */
+    Skybox(Device& device, uint32_t size);
+
     ~Skybox();
 
     Skybox(const Skybox&)            = delete;
@@ -44,6 +51,7 @@ namespace engine {
 
     VkImageView getImageView() const { return imageView_; }
     VkSampler   getSampler() const { return sampler_; }
+    VkImage     getImage() const { return image_; }
 
     VkDescriptorImageInfo getDescriptorInfo() const
     {

@@ -200,6 +200,9 @@ namespace engine {
       // glTF uses PBR metallic-roughness workflow
       const auto& pbr = gltfMat.pbrMetallicRoughness;
 
+      // Double Sided
+      matInfo.pbrMaterial.doubleSided = gltfMat.doubleSided;
+
       // Base color (albedo)
       matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
 
@@ -221,7 +224,8 @@ namespace engine {
       // Metallic and roughness
       matInfo.pbrMaterial.metallic  = static_cast<float>(pbr.metallicFactor);
       matInfo.pbrMaterial.roughness = static_cast<float>(pbr.roughnessFactor);
-      matInfo.pbrMaterial.ao        = 1.0f;
+
+      matInfo.pbrMaterial.ao = 1.0f;
 
       // Extract texture paths (handles both external URIs and embedded images)
       if (pbr.baseColorTexture.index >= 0)
@@ -258,6 +262,45 @@ namespace engine {
         matInfo.emissiveTexPath = getTexturePath(gltfModel, gltfMat.emissiveTexture.index, baseDir, cacheDir);
       }
 
+      // Specular Glossiness Workflow
+      if (gltfMat.extensions.find("KHR_materials_pbrSpecularGlossiness") != gltfMat.extensions.end())
+      {
+        const auto& ext                                   = gltfMat.extensions.at("KHR_materials_pbrSpecularGlossiness");
+        matInfo.pbrMaterial.useSpecularGlossinessWorkflow = true;
+
+        if (ext.Has("diffuseFactor"))
+        {
+          const auto& f = ext.Get("diffuseFactor");
+          matInfo.pbrMaterial.albedo =
+                  glm::vec4(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble(), f.Get(3).GetNumberAsDouble());
+        }
+
+        if (ext.Has("specularFactor"))
+        {
+          const auto& f                      = ext.Get("specularFactor");
+          matInfo.pbrMaterial.specularFactor = glm::vec3(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble());
+        }
+
+        if (ext.Has("glossinessFactor"))
+        {
+          matInfo.pbrMaterial.glossinessFactor = static_cast<float>(ext.Get("glossinessFactor").GetNumberAsDouble());
+        }
+
+        if (ext.Has("diffuseTexture"))
+        {
+          const auto& tex        = ext.Get("diffuseTexture");
+          int         index      = tex.Get("index").GetNumberAsInt();
+          matInfo.diffuseTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+
+        if (ext.Has("specularGlossinessTexture"))
+        {
+          const auto& tex                   = ext.Get("specularGlossinessTexture");
+          int         index                 = tex.Get("index").GetNumberAsInt();
+          matInfo.specularGlossinessTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+      }
+
       // Parse Extensions
       // Emissive Strength
       if (gltfMat.extensions.find("KHR_materials_emissive_strength") != gltfMat.extensions.end())
@@ -276,6 +319,12 @@ namespace engine {
         if (ext.Has("transmissionFactor"))
         {
           matInfo.pbrMaterial.transmission = static_cast<float>(ext.Get("transmissionFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("transmissionTexture"))
+        {
+          const auto& tex             = ext.Get("transmissionTexture");
+          int         index           = tex.Get("index").GetNumberAsInt();
+          matInfo.transmissionTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
         }
       }
 
@@ -318,6 +367,43 @@ namespace engine {
         if (ext.Has("clearcoatRoughnessFactor"))
         {
           matInfo.pbrMaterial.clearcoatRoughness = static_cast<float>(ext.Get("clearcoatRoughnessFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("clearcoatTexture"))
+        {
+          const auto& tex          = ext.Get("clearcoatTexture");
+          int         index        = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+        if (ext.Has("clearcoatRoughnessTexture"))
+        {
+          const auto& tex                   = ext.Get("clearcoatRoughnessTexture");
+          int         index                 = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatRoughnessTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+        if (ext.Has("clearcoatNormalTexture"))
+        {
+          const auto& tex                = ext.Get("clearcoatNormalTexture");
+          int         index              = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatNormalTexPath = getTexturePath(gltfModel, index, baseDir, cacheDir);
+        }
+      }
+
+      // Volume
+      if (gltfMat.extensions.find("KHR_materials_volume") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_volume");
+        if (ext.Has("thicknessFactor"))
+        {
+          matInfo.pbrMaterial.thickness = static_cast<float>(ext.Get("thicknessFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("attenuationDistance"))
+        {
+          matInfo.pbrMaterial.attenuationDistance = static_cast<float>(ext.Get("attenuationDistance").GetNumberAsDouble());
+        }
+        if (ext.Has("attenuationColor"))
+        {
+          const auto& f                        = ext.Get("attenuationColor");
+          matInfo.pbrMaterial.attenuationColor = glm::vec3(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble());
         }
       }
 
@@ -367,9 +453,7 @@ namespace engine {
       std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << matInfo.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << ","
                 << matInfo.pbrMaterial.albedo.g << "," << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic
                 << ", roughness=" << matInfo.pbrMaterial.roughness << ", alphaMode=" << alphaModeStr << ")" << std::endl;
-    }
-
-    // Process all meshes in the scene
+    } // Process all meshes in the scene
     const tinygltf::Scene& scene = gltfModel.scenes[gltfModel.defaultScene >= 0 ? gltfModel.defaultScene : 0];
 
     std::unordered_map<Model::Vertex, uint32_t>    uniqueVertices{};

@@ -7,12 +7,15 @@ namespace engine {
 
   void PostProcessPanel::render(FrameInfo& frameInfo)
   {
-    ImGui::Begin("Post Processing");
+    // ImGui::Begin("Post Processing");
 
     ImGui::DragFloat("Exposure", &pushConstants.exposure, 0.01f, 0.1f, 10.0f);
     ImGui::DragFloat("Contrast", &pushConstants.contrast, 0.01f, 0.1f, 2.0f);
     ImGui::DragFloat("Saturation", &pushConstants.saturation, 0.01f, 0.0f, 2.0f);
     ImGui::DragFloat("Vignette", &pushConstants.vignette, 0.01f, 0.0f, 5.0f);
+
+    const char* toneMappingItems[] = {"None", "ACES Filmic"};
+    ImGui::Combo("Tone Mapping", &pushConstants.toneMappingMode, toneMappingItems, IM_ARRAYSIZE(toneMappingItems));
 
     ImGui::Separator();
     ImGui::Text("Bloom");
@@ -41,21 +44,38 @@ namespace engine {
       ImGui::DragFloat("FXAA Reduce Min", &pushConstants.fxaaReduceMin, 0.0001f, 0.0f, 0.1f);
     }
 
-    if (ImGui::Button("Reset"))
+    ImGui::Separator();
+    ImGui::Text("SSAO");
+    bool ssao = pushConstants.enableSSAO == 1;
+    if (ImGui::Checkbox("Enable SSAO", &ssao))
     {
-      pushConstants.exposure       = 1.0f;
-      pushConstants.contrast       = 1.0f;
-      pushConstants.saturation     = 1.0f;
-      pushConstants.vignette       = 0.4f;
-      pushConstants.enableBloom    = 1;
-      pushConstants.bloomIntensity = 0.04f;
-      pushConstants.bloomThreshold = 1.0f;
-      pushConstants.enableFXAA     = 1;
-      pushConstants.fxaaSpanMax    = 8.0f;
-      pushConstants.fxaaReduceMul  = 0.125f;
-      pushConstants.fxaaReduceMin  = 0.0078125f;
+      pushConstants.enableSSAO = ssao ? 1 : 0;
+    }
+    if (ssao)
+    {
+      ImGui::DragFloat("SSAO Radius", &pushConstants.ssaoRadius, 0.01f, 0.0f, 2.0f);
+      ImGui::DragFloat("SSAO Bias", &pushConstants.ssaoBias, 0.001f, 0.0f, 0.5f);
     }
 
-    ImGui::End();
+    if (ImGui::Button("Reset"))
+    {
+      pushConstants.exposure        = 1.0f;
+      pushConstants.contrast        = 1.0f;
+      pushConstants.saturation      = 1.0f;
+      pushConstants.vignette        = 0.4f;
+      pushConstants.enableBloom     = 1;
+      pushConstants.bloomIntensity  = 0.04f;
+      pushConstants.bloomThreshold  = 1.0f;
+      pushConstants.enableFXAA      = 1;
+      pushConstants.fxaaSpanMax     = 8.0f;
+      pushConstants.fxaaReduceMul   = 0.125f;
+      pushConstants.fxaaReduceMin   = 0.0078125f;
+      pushConstants.enableSSAO      = 1;
+      pushConstants.ssaoRadius      = 0.5f;
+      pushConstants.ssaoBias        = 0.025f;
+      pushConstants.toneMappingMode = 1;
+    }
+
+    // ImGui::End();
   }
 } // namespace engine

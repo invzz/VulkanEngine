@@ -40,6 +40,12 @@ namespace engine {
     VkSampler   getDepthSampler() const { return depthSampler; }
     VkImage     getDepthImage(int frameIndex) const { return depthImages[frameIndex]; }
 
+    // Accessors for HZB Texture (R32_SFLOAT)
+    VkImageView getHzbMipImageView(int frameIndex, int mipLevel) const { return hzbMipImageViews[frameIndex][mipLevel]; }
+    VkImageView getHzbImageView(int frameIndex) const { return hzbImageViews[frameIndex]; }
+    VkImage     getHzbImage(int frameIndex) const { return hzbImages[frameIndex]; }
+    VkSampler   getHzbSampler() const { return hzbSampler; }
+
   private:
     void createRenderPass();
     void createImages();
@@ -68,9 +74,16 @@ namespace engine {
     // Outer vector: frame index, Inner vector: mip level
     std::vector<std::vector<VkImageView>> depthMipImageViews;
 
+    // HZB attachment (R32_SFLOAT)
+    std::vector<VkImage>                  hzbImages;
+    std::vector<VkDeviceMemory>           hzbImageMemorys;
+    std::vector<VkImageView>              hzbImageViews;
+    std::vector<std::vector<VkImageView>> hzbMipImageViews;
+
     std::vector<VkFramebuffer> framebuffers;
     VkSampler                  sampler{VK_NULL_HANDLE};
     VkSampler                  depthSampler{VK_NULL_HANDLE};
+    VkSampler                  hzbSampler{VK_NULL_HANDLE};
   };
 
 } // namespace engine

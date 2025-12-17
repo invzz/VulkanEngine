@@ -5,6 +5,7 @@ layout(location = 0) in vec2 inUV;
 layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform sampler2D sceneColor;
+layout(set = 0, binding = 1) uniform sampler2D depthMap;
 
 layout(push_constant) uniform PushConstants
 {
@@ -19,7 +20,12 @@ layout(push_constant) uniform PushConstants
   float fxaaSpanMax;
   float fxaaReduceMul;
   float fxaaReduceMin;
-  float padding;
+  int   enableSSAO;
+  float ssaoRadius;
+  float ssaoBias;
+  int   toneMappingMode; // 0: None, 1: ACES
+  mat4  inverseProjection;
+  mat4  projection;
 }
 push;
 
@@ -87,6 +93,86 @@ vec3 applyBloom(vec3 color, vec2 uv)
   return color + bloomColor * push.bloomIntensity;
 }
 
+// Helper to reconstruct view position
+vec3 getViewPos(vec2 uv)
+{
+  float depth = texture(depthMap, uv).r;
+  // Vulkan depth is [0, 1].
+  vec4 clipPos = vec4(uv * 2.0 - 1.0, depth, 1.0);
+  vec4 viewPos = push.inverseProjection * clipPos;
+  return viewPos.xyz / viewPos.w;
+}
+
+// Interleaved Gradient Noise
+float interleavedGradientNoise(vec2 position_screen)
+{
+  vec3 magic = vec3(0.06711056, 0.00583715, 52.9829189);
+  return fract(magic.z * fract(dot(position_screen, magic.xy)));
+}
+
+const vec3 kernel[16] = vec3[](vec3(0.0248, 0.0000, 0.0969),
+                               vec3(-0.0323, 0.0296, 0.0938),
+                               vec3(0.0054, -0.0610, 0.0962),
+                               vec3(0.0500, 0.0652, 0.1028),
+                               vec3(-0.1070, -0.0189, 0.1123),
+                               vec3(0.1196, -0.0761, 0.1233),
+                               vec3(-0.0473, 0.1761, 0.1345),
+                               vec3(-0.1063, -0.2047, 0.1446),
+                               vec3(0.2697, 0.0985, 0.1523),
+                               vec3(-0.3250, 0.1341, 0.1563),
+                               vec3(0.1797, -0.3841, 0.1552),
+                               vec3(0.1509, 0.4811, 0.1478),
+                               vec3(-0.5118, -0.2966, 0.1326),
+                               vec3(0.6696, -0.1472, 0.1085),
+                               vec3(-0.4518, 0.6427, 0.0740),
+                               vec3(-0.1144, -0.8832, 0.0278));
+
+float computeSSAO(vec2 uv)
+{
+  vec3 viewPos = getViewPos(uv);
+
+  float depth = texture(depthMap, uv).r;
+  if (depth >= 0.9999) return 1.0;
+
+  vec3 dX     = dFdx(viewPos);
+  vec3 dY     = dFdy(viewPos);
+  vec3 normal = normalize(cross(dX, dY));
+
+  // Random vector based on screen position
+  vec2  screenPos = gl_FragCoord.xy;
+  float noiseVal  = interleavedGradientNoise(screenPos);
+
+  // Create random rotation vector
+  vec3 randomVec = normalize(vec3(noiseVal * 2.0 - 1.0, (1.0 - noiseVal) * 2.0 - 1.0, 0.0));
+
+  // Create TBN matrix
+  vec3 tangent   = normalize(randomVec - normal * dot(randomVec, normal));
+  vec3 bitangent = cross(normal, tangent);
+  mat3 TBN       = mat3(tangent, bitangent, normal);
+
+  float occlusion = 0.0;
+  int   samples   = 16;
+  float radius    = push.ssaoRadius;
+  float bias      = push.ssaoBias;
+
+  for (int i = 0; i < samples; ++i)
+  {
+    vec3 samplePos = viewPos + (TBN * kernel[i]) * radius;
+
+    vec4 offset = push.projection * vec4(samplePos, 1.0);
+    offset.xyz /= offset.w;
+    offset.xy = offset.xy * 0.5 + 0.5;
+
+    float sampleDepth = getViewPos(offset.xy).z;
+
+    float rangeCheck = smoothstep(0.0, 1.0, radius / abs(viewPos.z - sampleDepth));
+    occlusion += (sampleDepth >= samplePos.z + bias ? 1.0 : 0.0) * rangeCheck;
+  }
+
+  occlusion = 1.0 - (occlusion / float(samples));
+  return occlusion;
+}
+
 void main()
 {
   vec3 color;
@@ -98,6 +184,13 @@ void main()
   else
   {
     color = texture(sceneColor, inUV).rgb;
+  }
+
+  // SSAO
+  if (push.enableSSAO == 1)
+  {
+    float ssao = computeSSAO(inUV);
+    color *= ssao;
   }
 
   // Bloom
@@ -117,13 +210,17 @@ void main()
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   color           = mix(vec3(luminance), color, push.saturation);
 
-  // ACES Filmic Tone Mapping
-  float a      = 2.51f;
-  float b      = 0.03f;
-  float c      = 2.43f;
-  float d      = 0.59f;
-  float e      = 0.14f;
-  vec3  mapped = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+  vec3 mapped = color;
+
+  if (push.toneMappingMode == 1) // ACES Filmic
+  {
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    mapped  = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+  }
 
   // Gamma correction
   const float gamma = 2.2;

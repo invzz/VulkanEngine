@@ -15,31 +15,26 @@ namespace engine {
   struct MaterialUniformData
   {
     glm::vec4 albedo{1.0f};
-    float     metallic{0.0f};
-    float     roughness{0.5f};
-    float     ao{1.0f};
-    float     isSelected{0.0f};
-    float     clearcoat{0.0f};
-    float     clearcoatRoughness{0.03f};
-    float     anisotropic{0.0f};
-    float     anisotropicRotation{0.0f};
-    float     transmission{0.0f};
-    float     ior{1.5f};
-    float     iridescence{0.0f};
-    float     iridescenceIOR{1.3f};
-    float     iridescenceThickness{100.0f};
-    uint32_t  textureFlags{0};
-    float     uvScale{1.0f};
-    float     alphaCutoff{0.5f};
-    uint32_t  alphaMode{0};
-    uint32_t  albedoIndex{0};
-    uint32_t  normalIndex{0};
-    uint32_t  metallicIndex{0};
-    uint32_t  roughnessIndex{0};
-    uint32_t  aoIndex{0};
-    uint32_t  emissiveIndex{0};
-    uint32_t  _padding{0};
-    glm::vec4 emissiveInfo{0.0f, 0.0f, 0.0f, 1.0f}; // rgb: color, a: strength
+    glm::vec4 emissiveInfo{0.0f, 0.0f, 0.0f, 1.0f};            // rgb: color, a: strength
+    glm::vec4 specularGlossinessFactor{1.0f};                  // rgb: specular, a: glossiness
+    glm::vec4 attenuationColorAndDist{1.0f, 1.0f, 1.0f, 1.0f}; // rgb: color, a: distance
+
+    // Packed float parameters
+    // Col 0: metallic, roughness, ao, isSelected
+    // Col 1: clearcoat, clearcoatRoughness, anisotropic, anisotropicRotation
+    // Col 2: transmission, ior, iridescence, iridescenceIOR
+    // Col 3: iridescenceThickness, uvScale, alphaCutoff, thickness
+    glm::mat4 params{0.0f};
+
+    // Packed uint parameters
+    // x: textureFlags, y: alphaMode, z: albedoIndex, w: normalIndex
+    glm::uvec4 flagsAndIndices0{0};
+    // x: metallicIndex, y: roughnessIndex, z: aoIndex, w: emissiveIndex
+    glm::uvec4 indices1{0};
+    // x: specularGlossinessIndex, y: useSpecularGlossiness, z: transmissionIndex, w: clearcoatIndex
+    glm::uvec4 indices2{0};
+    // x: clearcoatRoughnessIndex, y: clearcoatNormalIndex, z: pad, w: pad
+    glm::uvec4 indices3{0};
   };
 
   class MeshRenderSystem

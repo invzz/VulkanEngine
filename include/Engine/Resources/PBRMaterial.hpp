@@ -27,6 +27,7 @@ namespace engine {
     // Alpha Blending
     AlphaMode alphaMode{AlphaMode::Opaque};
     float     alphaCutoff{0.5f};
+    bool      doubleSided{false};
 
     // Clearcoat layer (for car paint, lacquered surfaces)
     float clearcoat{0.0f};           // Clearcoat strength [0, 1]
@@ -37,8 +38,11 @@ namespace engine {
     float anisotropicRotation{0.0f}; // Rotation of anisotropic direction [0, 1] (0 = tangent aligned)
 
     // Transmission (Refraction/Transparency)
-    float transmission{0.0f}; // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
-    float ior{1.5f};          // Index of Refraction (default 1.5)
+    float     transmission{0.0f};                 // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
+    float     ior{1.5f};                          // Index of Refraction (default 1.5)
+    float     thickness{0.0f};                    // Volume thickness (0 = thin walled)
+    glm::vec3 attenuationColor{1.0f, 1.0f, 1.0f}; // Color that white light turns into after traversing attenuationDistance
+    float     attenuationDistance{1.0f};          // Distance at which light color becomes attenuationColor
 
     // Iridescence (Thin film interference)
     float iridescence{0.0f};            // Iridescence intensity [0, 1]
@@ -52,17 +56,27 @@ namespace engine {
     // Workflow
     bool useMetallicRoughnessTexture{false};          // If true, metallic/roughness are packed in roughnessMap (B/G channels)
     bool useOcclusionRoughnessMetallicTexture{false}; // If true, occlusion/roughness/metallic are packed in roughnessMap (R/G/B channels)
+    bool useSpecularGlossinessWorkflow{false};        // If true, use KHR_materials_pbrSpecularGlossiness workflow
+
+    // Specular Glossiness Workflow
+    glm::vec3 specularFactor{1.0f};   // Specular color (F0)
+    float     glossinessFactor{1.0f}; // Glossiness (1 - roughness)
 
     // Texture tiling
     float uvScale{1.0f}; // UV coordinate scale for texture tiling
 
     // Texture maps (optional - nullptr means use constant values above)
-    std::shared_ptr<Texture> albedoMap;    // Base color texture (sRGB)
-    std::shared_ptr<Texture> normalMap;    // Normal map (tangent space)
-    std::shared_ptr<Texture> metallicMap;  // Metallic texture (linear)
-    std::shared_ptr<Texture> roughnessMap; // Roughness texture (linear)
-    std::shared_ptr<Texture> aoMap;        // Ambient occlusion texture (linear)
-    std::shared_ptr<Texture> emissiveMap;  // Emissive texture (sRGB)
+    std::shared_ptr<Texture> albedoMap;             // Base color texture (sRGB)
+    std::shared_ptr<Texture> normalMap;             // Normal map (tangent space)
+    std::shared_ptr<Texture> metallicMap;           // Metallic texture (linear)
+    std::shared_ptr<Texture> roughnessMap;          // Roughness texture (linear)
+    std::shared_ptr<Texture> aoMap;                 // Ambient occlusion texture (linear)
+    std::shared_ptr<Texture> emissiveMap;           // Emissive texture (sRGB)
+    std::shared_ptr<Texture> specularGlossinessMap; // Specular (RGB) + Glossiness (A) texture
+    std::shared_ptr<Texture> transmissionMap;       // Transmission texture (R channel)
+    std::shared_ptr<Texture> clearcoatMap;          // Clearcoat texture (R channel)
+    std::shared_ptr<Texture> clearcoatRoughnessMap; // Clearcoat roughness texture (G channel)
+    std::shared_ptr<Texture> clearcoatNormalMap;    // Clearcoat normal map
 
     // Helper methods to check if textures are present
     bool hasAlbedoMap() const { return albedoMap != nullptr; }
@@ -71,6 +85,10 @@ namespace engine {
     bool hasRoughnessMap() const { return roughnessMap != nullptr; }
     bool hasAOMap() const { return aoMap != nullptr; }
     bool hasEmissiveMap() const { return emissiveMap != nullptr; }
+    bool hasTransmissionMap() const { return transmissionMap != nullptr; }
+    bool hasClearcoatMap() const { return clearcoatMap != nullptr; }
+    bool hasClearcoatRoughnessMap() const { return clearcoatRoughnessMap != nullptr; }
+    bool hasClearcoatNormalMap() const { return clearcoatNormalMap != nullptr; }
   };
 
 } // namespace engine

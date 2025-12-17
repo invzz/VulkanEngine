@@ -13,7 +13,7 @@ namespace engine {
 
   void IBLPanel::render(FrameInfo& frameInfo)
   {
-    ImGui::Begin("IBL Settings");
+    // ImGui::Begin("IBL Settings");
 
     bool changed = false;
 
@@ -64,6 +64,6 @@ namespace engine {
       iblSystem_.requestRegeneration(settings_, skybox_);
     }
 
-    ImGui::End();
+    // ImGui::End();
   }
 } // namespace engine
