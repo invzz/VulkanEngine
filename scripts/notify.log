@@ -1,0 +1,376 @@
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/CacheRecords.ucl ********
+
+Wrong package tag (0041FEFF) in file System/CacheRecords.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/OnslaughtBP.ucl ********
+
+Wrong package tag (6174754D) in file System/OnslaughtBP.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/DM-BP2-GoopGod.ucl ********
+
+Wrong package tag (3D70614D) in file System/DM-BP2-GoopGod.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/DM-BP2-Calandras.ucl ********
+
+Wrong package tag (3D70614D) in file System/DM-BP2-Calandras.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/CTF-BP2-Pistola.ucl ********
+
+Wrong package tag (3D70614D) in file System/CTF-BP2-Pistola.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/CTF-BP2-Concentrate.ucl ********
+
+Wrong package tag (3D70614D) in file System/CTF-BP2-Concentrate.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/AS-BP2-Thrust.ucl ********
+
+Wrong package tag (3D70614D) in file System/AS-BP2-Thrust.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/AS-BP2-SubRosa.ucl ********
+
+Wrong package tag (3D70614D) in file System/AS-BP2-SubRosa.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/AS-BP2-Outback.ucl ********
+
+Wrong package tag (3D70614D) in file System/AS-BP2-Outback.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/AS-BP2-Jumpship.ucl ********
+
+Wrong package tag (3D70614D) in file System/AS-BP2-Jumpship.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/AS-BP2-Acatana.ucl ********
+
+Wrong package tag (3D70614D) in file System/AS-BP2-Acatana.ucl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/xaplayersl3.upl ********
+
+Wrong package tag (6275505B) in file System/xaplayersl3.upl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/xplayersL1.upl ********
+
+Wrong package tag (6275505B) in file System/xplayersL1.upl. Probably the file is encrypted.
+
+******** /home/ac/.local/share/Steam/steamapps/common/Unreal Tournament 2004/System/xplayersL2.upl ********
+
+Wrong package tag (6275505B) in file System/xplayersL2.upl. Probably the file is encrypted.
+
+******** Loading object StaticMesh'DanielsMeshes.ball' ********
+
+ERROR: Package "StaticMeshes/DanielsMeshes.usx": wrong name index 178111707
+UnPackage::SerializeFName: pos=0000010A <- FPropertyTag<< <- CTypeInfo::SerializeUnrealProps <- CTypeInfo::ReadUnrealProperty: (UStaticMesh.Materials, Type=9, Size=3, TagPos=FA) <- CTypeInfo::SerializeUnrealProps <- UObject::Serialize <- UPrimitive::Serialize <- UStaticMesh::Serialize <- LoadObject: StaticMesh'DanielsMeshes.ball', pos=10A, ver=115/0, game=ut2 <- UObject::EndLoad <- LoadWholePackage: StaticMeshes/DanielsMeshes.usx <- ExportPackages <- Main: umodel_build=1584
+
+
+******** StaticMeshes/Nirvana.usx ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/AS-BP2-Acatana.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/AS-BP2-Outback.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/AS-BP2-SubRosa.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/AS-BP2-Thrust.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/AS-Glacier.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/AS-Junkyard.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-Anubis.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-Bifrost.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-Canyon.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-Colossus.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-IceFields.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-Serenity.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-Slaughterhouse.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/BR-TwinTombs.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-1on1-Joust.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-Avaris.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-BP2-Concentrate.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-BP2-Pistola.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-Citadel.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-Colossus.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-December.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-FaceClassic.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-Grassyknoll.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-January.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-Lostfaith.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-Maul.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-MoonDragon.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/CTF-TwinTombs.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-1on1-Albatross.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-1on1-Irondust.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-1on1-Serpentine.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Antalus.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-BP2-GoopGod.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Corrugation.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Curse4.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-DE-Osiris2.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-DesertIsle.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Flux2.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Inferno.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Junkyard.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Metallurgy.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-Rustatorium.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DM-TokaraForest.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-Atlantis.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-Junkyard.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-Renascent.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-Ruination.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-ScorchedEarth.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-SepukkuGorge.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/DOM-Suntemple.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/MOV-UT2004-Intro.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Adara.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-ArcticStronghold.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Crossfire.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Dawn.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Dria.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-FrostBite.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-IslandHop.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Primeval.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-RedPlanet.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Severance.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Torlan.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/ONS-Tricky.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/TUT-BR.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/TUT-DOM2.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** maps/TUT-ONS.ut2 ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** Textures/PC_ConvoyTextures.utx ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** Textures/X_AW-Convert.utx ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
+
+******** Textures/X_CliffTest.utx ********
+
+Unknown UE2 texture format: TEXF_G16 (10)
