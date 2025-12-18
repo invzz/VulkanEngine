@@ -46,6 +46,68 @@ float phaseMie(float mu, float g)
   return 3.0 * (1.0 - g2) * (1.0 + mu * mu) / (8.0 * PI * (2.0 + g2) * pow(1.0 + g2 - 2.0 * g * mu, 1.5));
 }
 
+// --- Stars & Moon ---
+
+// Hash function for noise
+float hash(vec3 p)
+{
+  p = fract(p * 0.3183099 + 0.1);
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+// 3D Noise
+float noise(vec3 x)
+{
+  vec3 i = floor(x);
+  vec3 f = fract(x);
+  f      = f * f * (3.0 - 2.0 * f);
+
+  return mix(mix(mix(hash(i + vec3(0, 0, 0)), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
+             f.z);
+}
+
+// Star field
+vec3 getStars(vec3 viewDir)
+{
+  // Frequency controls star density/size
+  float n = noise(viewDir * 150.0);
+  // Threshold to create sparse stars
+  float stars = smoothstep(0.95, 1.0, n);
+  // Twinkle effect (optional, requires time)
+  return vec3(stars);
+}
+
+// Moon
+vec3 getMoon(vec3 viewDir, vec3 sunDir)
+{
+  vec3  moonDir    = -sunDir; // Moon opposite to sun
+  float moonRadius = 0.03;    // Angular radius (approx)
+  float dist       = dot(viewDir, moonDir);
+
+  if (dist > (1.0 - moonRadius))
+  {
+    // Moon disk
+    float moonMask = smoothstep(1.0 - moonRadius, 1.0 - moonRadius + 0.002, dist);
+
+    // Simple crater noise
+    float craters   = noise(viewDir * 50.0);
+    vec3  moonColor = vec3(0.8) * (0.8 + 0.2 * craters);
+
+    // Phase (lit by sun)
+    // Since moon is opposite to sun, it should be full moon.
+    // But to make it interesting, let's offset the light slightly or just render full moon for now.
+    // Realistically, if moon is opposite to sun, it IS full moon.
+
+    // Let's add a glow
+    float glow = exp(-100.0 * (1.0 - dist));
+
+    return moonColor * moonMask + vec3(glow * 0.2);
+  }
+  return vec3(0.0);
+}
+
 void main()
 {
   // Flip Y to match the coordinate system used by the skybox mesh/projection
@@ -119,6 +181,23 @@ void main()
   // Calculate transmittance along the view ray (using the accumulated optical depth)
   vec3 extinction    = push.rayleigh * 1e-5 * vec3(5.8, 13.5, 33.1) * opticalDepth.x + push.mie * 1e-5 * 21.0 * opticalDepth.y;
   vec3 transmittance = exp(-extinction);
+
+  // --- Night Sky (Stars + Moon) ---
+  // Only visible when transmittance is high (atmosphere is transparent/dark)
+  // and sun is down (intensity low or direction below horizon)
+
+  // Calculate background (space)
+  vec3 nightSky = vec3(0.0);
+
+  // Stars
+  nightSky += getStars(rd);
+
+  // Moon
+  nightSky += getMoon(rd, sunDir);
+
+  // Apply atmospheric extinction to the background objects
+  // This ensures they fade out near the horizon or during the day
+  color += nightSky * transmittance;
 
   // Draw sun disk if looking at the sun
   // 0.999 corresponds to roughly 2.5 degrees, which is a bit large but good for games

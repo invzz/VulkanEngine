@@ -1,0 +1,1160 @@
+newmtl bas04HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas04HA.png
+
+newmtl bas05bHA.mask.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.mask.flat.two-sided.translucent.no-Smooth.unlit.alpha
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.mask.two-sided.enviro.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas20HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas20HA.png
+
+newmtl bas05bHA.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl SC-Bronz2_Shiny
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl ihatethisproblemthatitrytofufjffb.modulate.enviro.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl houreroxxor
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.mask.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.mask.modulate.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl hourepillarcorreced
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring.translucent.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl BioRiflePickup
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/BioRiflePickup.png
+
+newmtl skyline-skyring.mask.translucent.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas05bHA.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl hourelamp1bluehader
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl skyline-skycap
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skycap.png
+
+newmtl SC-BronzPipeSkin_Shiny
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas03HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas03HA.png
+
+newmtl bas05bHA.modulate.translucent.no-Smooth.alpha
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl sky-floorcloud
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/sky-floorcloud.png
+
+newmtl bas02HAb
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas02HAb.png
+
+newmtl dingesslightcglass
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.translucent
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.mask.translucent.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl ihatethisproblemthatitrytofufjffb.mask.modulate.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl skyline-skyring.mask.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl skyline-skyring.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas05bHA.mask.two-sided.translucent.enviro.no-Smooth.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring.mask.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl hourerwaterpudleshadered.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl hourewooood.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl flr02HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/flr02HA.png
+
+newmtl flr04HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/flr04HA.png
+
+newmtl bas16go
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/AbaddonArchitecture/Texture/bas16go.png
+
+newmtl ihatethisproblemthatitrytofufjffb.mask.modulate.enviro.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl skyline-skyring.mask.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas28HA.mask.modulate.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl FlakAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/FlakAmmoTex.png
+
+newmtl weaponBaseTEX
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/2K4Chargers/Texture/weaponBaseTEX.png
+
+newmtl SC-BronzPipeSkin2_Shiny
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.flat.two-sided.translucent.no-Smooth.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl AdrenalineInnerP
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.mask.two-sided.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl hourepillarcorreced.two-sided.enviro.alpha
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl gmothazijnespinneweb.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas38HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas38HA.png
+
+newmtl hourerwaterpudleshadered
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl gmothazijnespinneweb
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.mask.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl SepSkyFrontA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/XceptOne/Texture/SepSkyFrontA.png
+
+newmtl MinigunAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/MinigunAmmoTex.png
+
+newmtl ihatethisproblemthatitrytofufjffb.modulate.translucent.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl wal17HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/wal17HA.png
+
+newmtl wallwheel01HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidHardwareBrush/Texture/wallwheel01HA.png
+
+newmtl bas04AL
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/AlleriaArchitecture/Texture/bas04AL.png
+
+newmtl bas05bHA.mask.modulate.flat.translucent.enviro.no-Smooth.alpha
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring.mask.modulate.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas28HA.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl bas05bHA.mask.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl hourerwaterpudleshadered.mask.modulate.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl skyline-skyring.mask.modulate.translucent.enviro.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl hourepillarcorreced.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.mask.translucent.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl wal19HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture2/Texture/wal19HA.png
+
+newmtl gmothazijnespinneweb.mask.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl hourepillarcorreced.modulate.flat.two-sided.translucent.enviro.alpha
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl BRPickupC
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl hourewooood.modulate.flat.two-sided.no-Smooth.unlit.alpha.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bdr02HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bdr02HA.png
+
+newmtl hourepillarcorreced.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl LinkAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/LinkAmmoTex.png
+
+newmtl sky-floorcloud.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/sky-floorcloud.png
+
+newmtl hourelightunlitterwurenzo
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas06HAb
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas06HAb.png
+
+newmtl bas28HA.mask.modulate.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl bas05bHA.modulate.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas28HA.mask.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl hourerwaterpudleshadered.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.modulate.flat.two-sided.translucent.enviro.unlit.alpha.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl hourewooood
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl adrenalin
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/XGameTextures/Texture/adrenalin.png
+
+newmtl SC-WalkwayBrace_Shiny
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.modulate.flat.two-sided.translucent.no-Smooth
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl flr03HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/flr03HA.png
+
+newmtl bas05bHA.mask.modulate.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl gmothazijnespinneweb.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.translucent.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.modulate.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl hourepillarcorreced.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl houreroxxor.two-sided
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl hourewooood.mask.modulate.flat.two-sided.translucent.enviro.no-Smooth.unlit.alpha.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl shaiBricks1b
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl SmallBranchesTwoSided
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl ShockAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/ShockAmmoTex.png
+
+newmtl RocketAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/RocketAmmoTex.png
+
+newmtl bottleshaderenzo
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl hourerustybarrelwur
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas28go
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/AbaddonArchitecture/Texture/bas28go.png
+
+newmtl BarkSimple
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/TowerTerrain/Texture/BarkSimple.png
+
+newmtl ihatethisproblemthatitrytofufjffb.modulate.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA.modulate.translucent.no-Smooth.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas15go
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/AbaddonArchitecture/Texture/bas15go.png
+
+newmtl ihatethisproblemthatitrytofufjffb.modulate.translucent.enviro.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl hourerwaterpudleshadered.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl gmothazijnespinneweb.mask.modulate.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas12HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas12HA.png
+
+newmtl hourelamp1yellowshader
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas05bHA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring.mask.translucent.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas05bHA.mask.no-Smooth.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl AssaultAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/AssaultAmmoTex.png
+
+newmtl ShieldChargerTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/XGameTextures/Texture/ShieldChargerTex.png
+
+newmtl bas28HA.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl bas28HA.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl skyline-skyring.mask.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas02HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas02HA.png
+
+newmtl bas05bHA.mask.modulate.translucent.enviro.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl hourepillarcorreced.mask.modulate.flat.two-sided.translucent.enviro.no-Smooth.alpha.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl gmothazijnespinneweb.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl skyline-skyring.flat.no-Smooth.unlit.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas05bHA.mask.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl skyline-skyring.mask.modulate.enviro.unlit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl bas05bHA.mask.modulate.flat.two-sided.translucent
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas05bHA.mask.modulate.flat.two-sided.translucent.enviro.no-Smooth.unlit.alpha.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl hourerwaterpudleshadered.mask.translucent.enviro
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl DefaultTexture
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/Engine/Texture/DefaultTexture.png
+
+newmtl bas13go
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/AbaddonArchitecture/Texture/bas13go.png
+
+newmtl SniperAmmoTex
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/WeaponSkins/Texture/SniperAmmoTex.png
+
+newmtl hourelightbatunlitter
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl bas43HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas43HA.png
+
+newmtl MHInnerS
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
+newmtl skyline-skyring.translucent.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl skyline-skyring.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/skyline-epic/Texture/skyline-skyring.png
+
+newmtl MHPickup
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/XGameTextures/Texture/MHPickup.png
+
+newmtl flr02ar
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/ArboreaTerrain/Texture/flr02ar.png
+
+newmtl HealthBaseTEX
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/2K4Chargers/Texture/HealthBaseTEX.png
+
+newmtl bas05bHA.translucent.enviro.special-lit
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas05bHA.png
+
+newmtl bas28HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas28HA.png
+
+newmtl bas01HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas01HA.png
+
+newmtl GeoWallA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/GeoThermalTextures/Texture/GeoWallA.png
+
+newmtl bas27HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas27HA.png
+
+newmtl bas13HA
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+map_Kd ../../../../../UT2004_Exports/utx/Textures/HumanoidArchitecture/Texture/bas13HA.png
+
+newmtl ihatethisproblemthatitrytofufjffb
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+d 1.0
+illum 2
+
