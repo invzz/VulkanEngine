@@ -1,4 +1,5 @@
 #include "Engine/Graphics/Profiler.hpp"
+#include "Engine/Graphics/Device.hpp"
 #include <iomanip>
 #include <filesystem>
 
@@ -27,6 +28,13 @@ Profiler::Profiler()
 
 Profiler::~Profiler()
 {
+  // Destroy query pool if created
+  if (timestampQueryPool_ != VK_NULL_HANDLE && deviceHandle_ != VK_NULL_HANDLE)
+  {
+    vkDestroyQueryPool(deviceHandle_, timestampQueryPool_, nullptr);
+    timestampQueryPool_ = VK_NULL_HANDLE;
+  }
+
   flush();
   if (csvFile_.is_open())
     csvFile_.close();
@@ -40,10 +48,117 @@ void Profiler::startCpuFrame()
   std::lock_guard<std::mutex> lg(mutex_);
   currentCpuPasses_.clear();
   activeCpuPasses_.clear();
-  // Clear last GPU data as well (it will be set by logGpuFrame)
-  lastGpuFrameNumber_ = -1;
+  // Clear last GPU data as well (it will be set by collect)
+  lastGpuAvailable_ = false;
   lastGpuPassMs_.clear();
   lastGpuPassNames_.clear();
+}
+
+void Profiler::initGpuQueryPool(VkDevice device, const VkPhysicalDeviceProperties &props, uint32_t maxFramesInFlight, uint32_t queriesPerFrame)
+{
+  std::lock_guard<std::mutex> lg(mutex_);
+  if (timestampQueryPool_ != VK_NULL_HANDLE) return; // already inited
+
+  deviceHandle_ = device;
+  maxFramesInFlight_ = maxFramesInFlight;
+  queriesPerFrame_ = queriesPerFrame;
+  timestampPeriodNs_ = static_cast<double>(props.limits.timestampPeriod);
+
+  VkQueryPoolCreateInfo poolInfo{};
+  poolInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+  poolInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+  poolInfo.queryCount = maxFramesInFlight_ * queriesPerFrame_;
+
+  if (vkCreateQueryPool(deviceHandle_, &poolInfo, nullptr, &timestampQueryPool_) != VK_SUCCESS)
+  {
+    timestampQueryPool_ = VK_NULL_HANDLE;
+    std::cerr << "Failed to create timestamp query pool" << std::endl;
+    return;
+  }
+
+  perFrameNames_.assign(maxFramesInFlight_, {});
+  perFrameUsedCount_.assign(maxFramesInFlight_, 0);
+}
+
+void Profiler::beginFrameRecording(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+  if (!enabled_ || timestampQueryPool_ == VK_NULL_HANDLE) return;
+  std::lock_guard<std::mutex> lg(mutex_);
+  if (frameIndex >= maxFramesInFlight_) return;
+
+  // Reset per-frame state
+  perFrameNames_[frameIndex].clear();
+  perFrameUsedCount_[frameIndex] = 0;
+
+  // Reset the query pool range for this frame in the GPU command buffer
+  const uint32_t baseQuery = frameIndex * queriesPerFrame_;
+  vkCmdResetQueryPool(cmd, timestampQueryPool_, baseQuery, queriesPerFrame_);
+}
+
+void Profiler::markGpuTimestamp(VkCommandBuffer cmd, uint32_t frameIndex, const std::string &name, VkPipelineStageFlagBits stage)
+{
+  if (!enabled_ || timestampQueryPool_ == VK_NULL_HANDLE) return;
+  std::lock_guard<std::mutex> lg(mutex_);
+  if (frameIndex >= maxFramesInFlight_) return;
+
+  uint32_t localIdx = perFrameUsedCount_[frameIndex];
+  if (localIdx >= queriesPerFrame_)
+  {
+    // no more queries available for this frame
+    return;
+  }
+
+  perFrameNames_[frameIndex].push_back(name);
+  perFrameUsedCount_[frameIndex] = localIdx + 1;
+
+  const uint32_t globalIdx = frameIndex * queriesPerFrame_ + localIdx;
+  vkCmdWriteTimestamp(cmd, stage, timestampQueryPool_, globalIdx);
+}
+
+bool Profiler::tryCollectResultsForFrame(uint32_t frameIndex)
+{
+  if (!enabled_ || timestampQueryPool_ == VK_NULL_HANDLE) return false;
+  std::lock_guard<std::mutex> lg(mutex_);
+  if (frameIndex >= maxFramesInFlight_) return false;
+  uint32_t used = perFrameUsedCount_[frameIndex];
+  if (used <= 1) return false; // need at least two points to measure durations
+
+  std::vector<uint64_t> results(used);
+  const uint32_t baseQuery = frameIndex * queriesPerFrame_;
+
+  VkResult r = vkGetQueryPoolResults(
+      deviceHandle_,
+      timestampQueryPool_,
+      baseQuery,
+      used,
+      sizeof(uint64_t) * used,
+      results.data(),
+      sizeof(uint64_t),
+      VK_QUERY_RESULT_64_BIT);
+
+  if (r == VK_NOT_READY)
+    return false; // not yet available
+  if (r != VK_SUCCESS)
+  {
+    // unexpected error
+    return false;
+  }
+
+  // Convert to ms deltas and build labels
+  std::vector<double> gpuMs;
+  std::vector<std::string> gpuNames;
+  for (uint32_t i = 1; i < used; ++i)
+  {
+    uint64_t delta = results[i] - results[i - 1];
+    double ms = static_cast<double>(delta) * timestampPeriodNs_ / 1e6;
+    gpuMs.push_back(ms);
+    // label is the name of the later boundary (perFrameNames_[frameIndex][i])
+    gpuNames.push_back(perFrameNames_[frameIndex][i]);
+  }
+
+  // Write to CSV and make available for CPU frame attach
+  logGpuFrame(frameIndex, gpuMs, gpuNames);
+  return true;
 }
 
 void Profiler::endCpuFrame()
@@ -83,11 +198,12 @@ void Profiler::endCpuFrame()
     fp.cpuPassMs.push_back(p.second);
   }
 
-  // Attach GPU data if present
-  if (lastGpuFrameNumber_ == currentFrame_)
+  // Attach GPU data if it was just recorded
+  if (lastGpuAvailable_)
   {
     fp.gpuPassMs = lastGpuPassMs_;
     fp.gpuPassNames = lastGpuPassNames_;
+    lastGpuAvailable_ = false; // consume
   }
 
   recentFrames_.push_back(std::move(fp));
@@ -160,8 +276,9 @@ void Profiler::logGpuFrame(int frameNumber, const std::vector<double>& gpuPassMs
   csvFile_ << std::endl;
 
   // Store last GPU info to be attached at endCpuFrame
-  lastGpuFrameNumber_ = frameNumber + 1; // endCpuFrame increments currentFrame_ before storing
+  lastGpuAvailable_ = true;
   lastGpuPassMs_ = gpuPassMs;
+  lastGpuPassNames_.clear();
   if (!gpuPassNames.empty())
     lastGpuPassNames_ = gpuPassNames;
 }

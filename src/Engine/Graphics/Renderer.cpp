@@ -30,7 +30,8 @@ namespace engine {
     recreateSwapChain();
     createCommandBuffers();
 #ifdef ENABLE_PROFILING
-    createTimestampQueryPool();
+    // Initialize profiler GPU query pool
+    engine::Profiler::instance().initGpuQueryPool(device.device(), device.getProperties(), SwapChain::maxFramesInFlight(), 32);
 #endif
   }
 

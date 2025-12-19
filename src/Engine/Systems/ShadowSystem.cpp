@@ -69,7 +69,8 @@ namespace engine {
   void ShadowSystem::createPipelineLayout()
   {
     VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    // Shadow shaders use vertex + fragment stages for small push constants
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset     = 0;
     pushConstantRange.size       = sizeof(ShadowPushConstants);
 

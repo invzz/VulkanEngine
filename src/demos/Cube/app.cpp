@@ -178,6 +178,9 @@ namespace engine {
     uiManager->addPanel(
             std::make_unique<
                     SettingsPanel>(cameraEntity, &scene, *iblSystem, *skybox, skySettings, dustSettings, fogSettings, timeOfDay, postProcessPush, debugMode));
+
+    // Profiling panel
+    uiManager->addPanel(std::make_unique<ProfilingPanel>());
   }
 
   void App::setupRenderGraph()

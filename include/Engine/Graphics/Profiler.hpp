@@ -71,9 +71,37 @@ private:
   static constexpr size_t kRecentFrames = 1024;
 
   // Last GPU data waiting to be consumed by endCpuFrame
-  int                              lastGpuFrameNumber_ = -1;
+  bool                              lastGpuAvailable_ = false;
   std::vector<double>              lastGpuPassMs_;
   std::vector<std::string>         lastGpuPassNames_;
+
+  // Runtime enabled flag
+  bool enabled_ = false;
+
+  // GPU query pool and per-frame state
+  VkQueryPool                       timestampQueryPool_{VK_NULL_HANDLE};
+  uint32_t                          queriesPerFrame_ = 32; // configurable
+  uint32_t                          maxFramesInFlight_ = 0;
+  VkDevice                          deviceHandle_{VK_NULL_HANDLE};
+  double                            timestampPeriodNs_ = 1.0; // ns per tick
+
+  // Per-frame ordered names for boundaries and used count
+  std::vector<std::vector<std::string>> perFrameNames_;
+  std::vector<uint32_t>                 perFrameUsedCount_; 
+
+public:
+  // Profiler initialization for GPU timestamps
+  void initGpuQueryPool(VkDevice device, const VkPhysicalDeviceProperties &props, uint32_t maxFramesInFlight, uint32_t queriesPerFrame = 32);
+
+  // Called at the start of a frame recording (resets queries for that frame)
+  void beginFrameRecording(VkCommandBuffer cmd, uint32_t frameIndex);
+
+  // Mark a named GPU timestamp boundary in the given command buffer for the given frame
+  void markGpuTimestamp(VkCommandBuffer cmd, uint32_t frameIndex, const std::string &name, VkPipelineStageFlagBits stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+  // Try to collect query results for an older frame (non-blocking). Returns true if results were collected.
+  bool tryCollectResultsForFrame(uint32_t frameIndex);
+
 };
 
 } // namespace engine

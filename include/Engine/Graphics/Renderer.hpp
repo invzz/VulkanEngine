@@ -82,11 +82,7 @@ namespace engine {
     std::vector<std::vector<VkDescriptorSet>> hzbDescriptorSets;
 
 #ifdef ENABLE_PROFILING
-    // Simple GPU timestamp profiling
-    VkQueryPool timestampQueryPool{VK_NULL_HANDLE};
-    static constexpr int TIMESTAMP_POINTS = 4; // frame start, after offscreen, after main, frame end
-    void createTimestampQueryPool();
-    void writeTimestamp(VkCommandBuffer cmd, int pointIndex, VkPipelineStageFlagBits stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    // Profiling: we no longer store a local query pool here — Profiler owns it and provides APIs
 #endif
 
     uint32_t currentImageIndex{0};
