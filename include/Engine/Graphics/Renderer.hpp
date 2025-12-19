@@ -81,6 +81,14 @@ namespace engine {
     // Outer: Frame, Inner: Mip Level
     std::vector<std::vector<VkDescriptorSet>> hzbDescriptorSets;
 
+#ifdef ENABLE_PROFILING
+    // Simple GPU timestamp profiling
+    VkQueryPool timestampQueryPool{VK_NULL_HANDLE};
+    static constexpr int TIMESTAMP_POINTS = 4; // frame start, after offscreen, after main, frame end
+    void createTimestampQueryPool();
+    void writeTimestamp(VkCommandBuffer cmd, int pointIndex, VkPipelineStageFlagBits stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+#endif
+
     uint32_t currentImageIndex{0};
     // keep track of frame index for syncing [0, maxFramesInFlight]
     int  currentFrameIndex{0};

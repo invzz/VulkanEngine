@@ -30,10 +30,18 @@ namespace engine {
   void MorphTargetCompute::createDescriptorSetLayout()
   {
     descriptorSetLayout_ = DescriptorSetLayout::Builder(device_)
-                                   .addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Base vertices
-                                   .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Morph deltas
-                                   .addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Weights
-                                   .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Output
+                                   .addBinding(0,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Base vertices
+                                   .addBinding(1,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Morph deltas
+                                   .addBinding(2,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Weights
+                                   .addBinding(3,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Output
                                    .build();
   }
 

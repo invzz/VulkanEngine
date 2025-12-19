@@ -156,7 +156,8 @@ namespace engine {
                                     const std::string&        fragFilePath,
                                     const PipelineConfigInfo& configInfo)
   {
-    assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in configInfo");
+    assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in "
+                                                          "configInfo");
     assert(configInfo.renderPass != VK_NULL_HANDLE && "Cannot create graphics pipeline: no render pass provided in configInfo");
 
     auto taskShaderCode = readFile(taskFilePath);
@@ -199,10 +200,12 @@ namespace engine {
     };
 
     VkGraphicsPipelineCreateInfo pipelineInfo{
-            .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount          = 3,
-            .pStages             = shaderStages,
-            .pVertexInputState   = &vertexInputInfo, // Ignored by mesh shaders but required by validation layers sometimes? No, should be null or empty.
+            .sType             = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount        = 3,
+            .pStages           = shaderStages,
+            .pVertexInputState = &vertexInputInfo, // Ignored by mesh shaders but required by
+                                                   // validation layers sometimes? No, should be null
+                                                   // or empty.
             .pInputAssemblyState = &configInfo.inputAssemblyInfo,
             .pViewportState      = &configInfo.viewportInfo,
             .pRasterizationState = &configInfo.rasterizationInfo,

@@ -226,16 +226,17 @@ namespace engine {
     if (generated_)
     {
       cleanup();
-      // Reset handles to null just in case cleanup doesn't do it (it should if implemented correctly)
-      // cleanup() calls vkDestroy... but doesn't necessarily set handles to null unless we do it.
-      // Let's check cleanup().
+      // Reset handles to null just in case cleanup doesn't do it (it should if
+      // implemented correctly) cleanup() calls vkDestroy... but doesn't
+      // necessarily set handles to null unless we do it. Let's check cleanup().
       // It just calls vkDestroy. It doesn't set to null.
       // So we should set them to null or ensure create... handles it.
       // create... calls createImageHelper which calls create...
-      // It's safer to set generated_ = false and rely on create... overwriting the handles.
-      // But if we don't set handles to null, cleanup() might try to destroy them again if called twice?
-      // cleanup() checks `if (handle)`. If we don't null them, it will crash on second cleanup.
-      // So cleanup() MUST set handles to null.
+      // It's safer to set generated_ = false and rely on create... overwriting
+      // the handles. But if we don't set handles to null, cleanup() might try to
+      // destroy them again if called twice? cleanup() checks `if (handle)`. If we
+      // don't null them, it will crash on second cleanup. So cleanup() MUST set
+      // handles to null.
     }
 
     createIrradianceMap();
@@ -353,12 +354,12 @@ namespace engine {
     Face faces[] = {
             {{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}},  // +X
             {{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}}, // -X
-            {{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}}, // +Y (Top) - Vulkan Y down, so -Y is up? No, +Y is down.
-                                                        // Wait, if +Y is down, then Top is -Y.
+            {{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}}, // +Y (Top) - Vulkan Y down, so -Y is up? No, +Y is
+                                                        // down. Wait, if +Y is down, then Top is -Y.
                                                         // Standard cubemap: +Y is Top.
-                                                        // In Vulkan, if we render to an image, +Y is down in UV space.
-                                                        // But 3D direction +Y is usually Up in world space.
-                                                        // Let's stick to standard lookAt.
+                                                        // In Vulkan, if we render to an image, +Y is down
+                                                        // in UV space. But 3D direction +Y is usually Up
+                                                        // in world space. Let's stick to standard lookAt.
             {{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},   // -Y (Bottom)
             {{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}},  // +Z
             {{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}}  // -Z
@@ -368,15 +369,15 @@ namespace engine {
     // Actually, we want to render the world as seen from center.
     // World +Y is Up.
     // Camera Up should be -Y if we want the image to be upright?
-    // No, Camera Up is (0, -1, 0) means "Up" in camera space (which is -Y) aligns with World -Y?
-    // Let's use the standard GL cubemap targets, but flip Y in projection if needed.
-    // I already flipped Y in projection: captureProjection[1][1] *= -1;
-    // Wait, I didn't do that here yet.
+    // No, Camera Up is (0, -1, 0) means "Up" in camera space (which is -Y) aligns
+    // with World -Y? Let's use the standard GL cubemap targets, but flip Y in
+    // projection if needed. I already flipped Y in projection:
+    // captureProjection[1][1] *= -1; Wait, I didn't do that here yet.
 
-    // cam.setPerspectiveProjection handles the Vulkan clip space (Y down) if implemented correctly?
-    // Usually setPerspectiveProjection creates a standard GL matrix.
-    // If so, we need to flip Y.
-    // But let's check Camera::setPerspectiveProjection.
+    // cam.setPerspectiveProjection handles the Vulkan clip space (Y down) if
+    // implemented correctly? Usually setPerspectiveProjection creates a standard
+    // GL matrix. If so, we need to flip Y. But let's check
+    // Camera::setPerspectiveProjection.
 
     for (int i = 0; i < 6; ++i)
     {
@@ -790,8 +791,8 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.attributeDescriptions.clear();
 
-    auto vertCode = Pipeline::readFile(SHADER_PATH "/irradiance_convolution.vert.spv");
-    auto fragCode = Pipeline::readFile(SHADER_PATH "/irradiance_convolution.frag.spv");
+    auto vertCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(irradiance_convolution.vert.spv)");
+    auto fragCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(irradiance_convolution.frag.spv)");
 
     VkShaderModule vertModule, fragModule;
 
@@ -1065,7 +1066,7 @@ namespace engine {
     VkPushConstantRange pushConstantRange{};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConstantRange.offset     = 0;
-    pushConstantRange.size       = sizeof(glm::mat4) + sizeof(int) + sizeof(float) + sizeof(uint); // ViewProj + FaceIndex + Roughness + SampleCount
+    pushConstantRange.size       = sizeof(glm::mat4) + sizeof(int) + sizeof(float) + sizeof(uint32_t); // ViewProj + FaceIndex + Roughness + SampleCount
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -1090,8 +1091,8 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.attributeDescriptions.clear();
 
-    auto vertCode = Pipeline::readFile(SHADER_PATH "/prefilter_envmap.vert.spv");
-    auto fragCode = Pipeline::readFile(SHADER_PATH "/prefilter_envmap.frag.spv");
+    auto vertCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(prefilter_envmap.vert.spv)");
+    auto fragCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(prefilter_envmap.frag.spv)");
 
     VkShaderModule vertModule, fragModule;
 
@@ -1352,7 +1353,7 @@ namespace engine {
     }
 
     // Compute Pipeline
-    auto compCode = Pipeline::readFile(SHADER_PATH "/brdf_lut.comp.spv");
+    auto compCode = Pipeline::readFile(std::string(SHADER_PATH) + "brdf_lut.comp.spv");
 
     VkShaderModule           compModule;
     VkShaderModuleCreateInfo createInfo{};

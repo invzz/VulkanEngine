@@ -1,6 +1,7 @@
 #include "Engine/Systems/MeshRenderSystem.hpp"
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Profiler.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/Texture.hpp"
@@ -314,9 +315,9 @@ namespace engine {
     pipelineConfig.pipelineLayout = pipelineLayout;
 
     pipeline = std::make_unique<Pipeline>(device,
-                                          SHADER_PATH "/simple_mesh.task.spv",
-                                          SHADER_PATH "/simple_mesh.mesh.spv",
-                                          SHADER_PATH "/pbr_shader.frag.spv",
+                                          std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                          std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                          std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
                                           pipelineConfig);
 
     // Create Transparent Pipeline
@@ -336,9 +337,9 @@ namespace engine {
     transparentConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
     transparentPipeline = std::make_unique<Pipeline>(device,
-                                                     SHADER_PATH "/simple_mesh.task.spv",
-                                                     SHADER_PATH "/simple_mesh.mesh.spv",
-                                                     SHADER_PATH "/pbr_shader.frag.spv",
+                                                     std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                     std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                     std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
                                                      transparentConfig);
   }
 
@@ -354,6 +355,8 @@ namespace engine {
 
   void MeshRenderSystem::render(FrameInfo& frameInfo)
   {
+    engine::Profiler::instance().startCpuPass("main_geometry");
+
     pipeline->bind(frameInfo.commandBuffer);
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
@@ -466,6 +469,7 @@ namespace engine {
     {
       atomSize = (atomSize + minAlignment - 1) & ~(minAlignment - 1);
     }
+
 
     char*    mappedData         = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
     uint32_t dynamicOffsetIndex = 0;
@@ -761,5 +765,7 @@ namespace engine {
     {
       renderItem(item.entity, *item.subMesh, item.material, item.modelMatrix);
     }
+
+    engine::Profiler::instance().endCpuPass("main_geometry");
   }
 } // namespace engine

@@ -49,6 +49,7 @@
 #include "ui/ModelImportPanel.hpp"
 #include "ui/ScenePanel.hpp"
 #include "ui/SettingsPanel.hpp"
+#include "ui/ProfilingPanel.hpp"
 #include "ui/UIManager.hpp"
 
 namespace engine {
@@ -402,8 +403,8 @@ namespace engine {
       glm::vec3 sunPos   = glm::vec3(0.0f, glm::cos(sunAngle), glm::sin(sunAngle));
 
       // The procedural sky shader has an inverted Y coordinate system.
-      // To make the sun appear at the correct height, we need to flip the Y component
-      // of the direction vector passed to the shader.
+      // To make the sun appear at the correct height, we need to flip the Y
+      // component of the direction vector passed to the shader.
       glm::vec3 shaderSunDir   = sunPos;
       shaderSunDir.y           = -shaderSunDir.y;
       skySettings.sunDirection = glm::vec4(shaderSunDir, 1.0f);
@@ -498,7 +499,8 @@ namespace engine {
       // Lazy IBL update
       if (glm::distance(skySettings.sunDirection, lastSunDirection) > 0.05f) // Update every ~3 degrees
       {
-        // Only update if we have a valid skyboxRenderSystem (it should be valid here)
+        // Only update if we have a valid skyboxRenderSystem (it should be valid
+        // here)
         if (skyboxRenderSystem)
         {
           iblSystem->generateFromProcedural(*skyboxRenderSystem, skySettings);
@@ -563,19 +565,24 @@ namespace engine {
   void App::computePhase(FrameInfo& frameInfo, GameLoopState& state)
   {
     // Update all animations (BEFORE render pass)
-    // - Updates AnimationControllers (interpolates morph weights, skeletal transforms)
-    // - Dispatches compute shaders for morph targets: baseVertices + deltas * weights → blended
+    // - Updates AnimationControllers (interpolates morph weights, skeletal
+    // transforms)
+    // - Dispatches compute shaders for morph targets: baseVertices + deltas *
+    // weights → blended
     state.animationSystem.update(frameInfo);
   }
 
   void App::shadowPhase(FrameInfo& frameInfo, GameLoopState& state)
   {
-    // Update uniform buffer with per-frame data FIRST (this also rotates point lights)
+    // Update uniform buffer with per-frame data FIRST (this also rotates point
+    // lights)
     GlobalUbo ubo{};
 
-    state.lightSystem.update(frameInfo, ubo); // Update light positions in UBO (rotates them)
+    state.lightSystem.update(frameInfo,
+                             ubo); // Update light positions in UBO (rotates them)
 
-    // Render shadow maps for all shadow-casting lights (after positions are updated)
+    // Render shadow maps for all shadow-casting lights (after positions are
+    // updated)
     state.shadowSystem.renderShadowMaps(frameInfo, 50.0f);
 
     ubo.projection       = frameInfo.camera.getProjection();

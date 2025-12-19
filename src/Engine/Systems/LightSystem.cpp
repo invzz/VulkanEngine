@@ -80,7 +80,10 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.renderPass     = renderPass;
     pipelineConfig.pipelineLayout = pipelineLayout;
-    pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/point_light.vert.spv", SHADER_PATH "/point_light.frag.spv", pipelineConfig);
+    pipeline                      = std::make_unique<Pipeline>(device,
+                                          std::string(SHADER_PATH) + R"(point_light.vert.spv)",
+                                          std::string(SHADER_PATH) + R"(point_light.frag.spv)",
+                                          pipelineConfig);
   }
 
   void LightSystem::render(FrameInfo& frameInfo)
@@ -313,8 +316,10 @@ namespace engine {
     pipelineConfig.renderPass                 = renderPass;
     pipelineConfig.pipelineLayout             = directionalPipelineLayout;
     pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    directionalPipeline =
-            std::make_unique<Pipeline>(device, SHADER_PATH "/directional_light.vert.spv", SHADER_PATH "/directional_light.frag.spv", pipelineConfig);
+    directionalPipeline                       = std::make_unique<Pipeline>(device,
+                                                     std::string(SHADER_PATH) + R"(directional_light.vert.spv)",
+                                                     std::string(SHADER_PATH) + R"(directional_light.frag.spv)",
+                                                     pipelineConfig);
   }
 
   void LightSystem::createSpotLightPipelineLayout(VkDescriptorSetLayout globalSetLayout)

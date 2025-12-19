@@ -5,6 +5,7 @@
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/CubeShadowMap.hpp"
+#include "Engine/Graphics/Profiler.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -111,7 +112,8 @@ namespace engine {
     configInfo.renderPass     = shadowMaps_[0]->getRenderPass();
     configInfo.pipelineLayout = pipelineLayout_;
 
-    pipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/shadow.vert.spv", SHADER_PATH "/shadow.frag.spv", configInfo);
+    pipeline_ =
+            std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(shadow.vert.spv)", std::string(SHADER_PATH) + R"(shadow.frag.spv)", configInfo);
   }
 
   glm::mat4 ShadowSystem::calculateDirectionalLightMatrix(const glm::vec3& lightDirection, const glm::vec3& sceneCenter, float sceneRadius)
@@ -171,6 +173,7 @@ namespace engine {
   void ShadowSystem::renderToShadowMap(FrameInfo& frameInfo, ShadowMap& shadowMap, const glm::mat4& lightSpaceMatrix)
   {
     // Begin shadow render pass
+    engine::Profiler::instance().startCpuPass("shadow");
     shadowMap.beginRenderPass(frameInfo.commandBuffer);
 
     // Bind shadow pipeline
@@ -195,6 +198,7 @@ namespace engine {
 
     // End shadow render pass
     shadowMap.endRenderPass(frameInfo.commandBuffer);
+    engine::Profiler::instance().endCpuPass("shadow");
   }
 
   void ShadowSystem::renderShadowMaps(FrameInfo& frameInfo, float sceneRadius)
@@ -214,8 +218,8 @@ namespace engine {
       renderToShadowMap(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
       shadowLightCount_++;
 
-      // Only one directional light shadow for now? The old code took dirLights[0].
-      // I'll break after one.
+      // Only one directional light shadow for now? The old code took
+      // dirLights[0]. I'll break after one.
       break;
     }
 
@@ -287,7 +291,10 @@ namespace engine {
     configInfo.pipelineLayout = cubePipelineLayout_;
 
     // Use specialized cube shadow shaders that write linear depth
-    cubePipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/cube_shadow.vert.spv", SHADER_PATH "/cube_shadow.frag.spv", configInfo);
+    cubePipeline_ = std::make_unique<Pipeline>(device_,
+                                               std::string(SHADER_PATH) + R"(cube_shadow.vert.spv)",
+                                               std::string(SHADER_PATH) + R"(cube_shadow.frag.spv)",
+                                               configInfo);
   }
 
   void ShadowSystem::renderPointLightShadowMaps(FrameInfo& frameInfo)
@@ -344,6 +351,7 @@ namespace engine {
                                       float            farPlane)
   {
     // Begin render pass for this face
+    engine::Profiler::instance().startCpuPass("cube_shadow");
     cubeShadowMap.beginRenderPass(frameInfo.commandBuffer, face);
 
     // Bind cube shadow pipeline
@@ -373,6 +381,7 @@ namespace engine {
     }
 
     cubeShadowMap.endRenderPass(frameInfo.commandBuffer);
+    engine::Profiler::instance().endCpuPass("cube_shadow");
   }
 
 } // namespace engine

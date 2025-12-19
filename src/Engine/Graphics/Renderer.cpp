@@ -12,6 +12,7 @@
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
+#include "Engine/Graphics/Profiler.hpp"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
@@ -28,6 +29,9 @@ namespace engine {
   {
     recreateSwapChain();
     createCommandBuffers();
+#ifdef ENABLE_PROFILING
+    createTimestampQueryPool();
+#endif
   }
 
   Renderer::~Renderer()
@@ -208,6 +212,20 @@ namespace engine {
     {
       throw CommandBufferRecordingException("failed to begin recording command buffer!");
     }
+
+#ifdef ENABLE_PROFILING
+    // CPU frame start
+    engine::Profiler::instance().startCpuFrame();
+
+    // Reset and write timestamp for this frame
+    if (timestampQueryPool != VK_NULL_HANDLE)
+    {
+      const uint32_t baseQuery = static_cast<uint32_t>(currentFrameIndex) * TIMESTAMP_POINTS;
+      vkCmdResetQueryPool(commandBuffer, timestampQueryPool, baseQuery, TIMESTAMP_POINTS);
+      writeTimestamp(commandBuffer, 0, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+    }
+#endif
+
     return commandBuffer;
   }
 
@@ -216,6 +234,13 @@ namespace engine {
     assert(isFrameStarted && "Can't call endFrame while frame not in progress");
 
     auto commandBuffer = getCurrentCommandBuffer();
+#ifdef ENABLE_PROFILING
+    // write end timestamp for this frame
+    if (timestampQueryPool != VK_NULL_HANDLE)
+    {
+      writeTimestamp(commandBuffer, 3, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
+#endif
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     {
       throw CommandBufferRecordingException("failed to record command buffer!");
@@ -231,6 +256,43 @@ namespace engine {
     {
       throw SwapChainCreationException("failed to present swap chain image!");
     }
+
+#ifdef ENABLE_PROFILING
+    // Read and log timestamps for the just-submitted frame.
+    if (timestampQueryPool != VK_NULL_HANDLE)
+    {
+      const uint32_t baseQuery = static_cast<uint32_t>(currentFrameIndex) * TIMESTAMP_POINTS;
+      std::array<uint64_t, TIMESTAMP_POINTS> results{};
+      VkResult r = vkGetQueryPoolResults(
+          device.device(),
+          timestampQueryPool,
+          baseQuery,
+          TIMESTAMP_POINTS,
+          sizeof(results),
+          results.data(),
+          sizeof(uint64_t),
+          VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+      if (r == VK_SUCCESS)
+      {
+        // compute GPU pass durations
+        const auto& props = device.getProperties();
+        double periodNs = static_cast<double>(props.limits.timestampPeriod);
+        std::vector<double> gpuMs;
+        // Offscreen
+        gpuMs.push_back(static_cast<double>(results[1] - results[0]) * periodNs / 1e6);
+        // Main pass
+        gpuMs.push_back(static_cast<double>(results[2] - results[1]) * periodNs / 1e6);
+        // Post / frame end
+        gpuMs.push_back(static_cast<double>(results[3] - results[2]) * periodNs / 1e6);
+
+        // Provide named GPU pass data (keep names in sync with timestamp points)
+        std::vector<std::string> gpuPassNames = {"offscreen", "main", "post"};
+        engine::Profiler::instance().logGpuFrame(currentFrameIndex, gpuMs, gpuPassNames);
+        engine::Profiler::instance().endCpuFrame();
+        engine::Profiler::instance().flush();
+      }
+    }
+#endif
 
     isFrameStarted    = false;
     currentFrameIndex = (currentFrameIndex + 1) % SwapChain::maxFramesInFlight();
@@ -285,6 +347,13 @@ namespace engine {
     assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different "
                                                          "frame");
     vkCmdEndRenderPass(commandBuffer);
+#ifdef ENABLE_PROFILING
+    // mark after main swapchain pass
+    if (timestampQueryPool != VK_NULL_HANDLE)
+    {
+      const_cast<Renderer*>(this)->writeTimestamp(commandBuffer, 2, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
+#endif
   }
 
   void Renderer::createOffscreenResources()
@@ -319,6 +388,14 @@ namespace engine {
     assert(isFrameStarted && "Can't end render pass when frame not in progress");
     assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different frame");
     offscreenFrameBuffer->endRenderPass(commandBuffer);
+#ifdef ENABLE_PROFILING
+    // mark after offscreen pass
+    if (timestampQueryPool != VK_NULL_HANDLE)
+    {
+      // timestamp point 1
+      const_cast<Renderer*>(this)->writeTimestamp(commandBuffer, 1, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    }
+#endif
   }
 
   VkDescriptorImageInfo Renderer::getOffscreenImageInfo(int index) const
@@ -660,5 +737,33 @@ namespace engine {
                            &mipBarrier);
     }
   }
+
+#ifdef ENABLE_PROFILING
+  void Renderer::createTimestampQueryPool()
+  {
+    if (timestampQueryPool != VK_NULL_HANDLE)
+      return;
+
+    VkQueryPoolCreateInfo poolInfo{};
+    poolInfo.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    poolInfo.queryType  = VK_QUERY_TYPE_TIMESTAMP;
+    poolInfo.queryCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight()) * TIMESTAMP_POINTS;
+
+    if (vkCreateQueryPool(device.device(), &poolInfo, nullptr, &timestampQueryPool) != VK_SUCCESS)
+    {
+      timestampQueryPool = VK_NULL_HANDLE;
+      std::cerr << "Failed to create timestamp query pool" << std::endl;
+    }
+  }
+
+  void Renderer::writeTimestamp(VkCommandBuffer cmd, int pointIndex, VkPipelineStageFlagBits stage)
+  {
+    if (timestampQueryPool == VK_NULL_HANDLE)
+      return;
+
+    const uint32_t queryIndex = static_cast<uint32_t>(currentFrameIndex) * TIMESTAMP_POINTS + static_cast<uint32_t>(pointIndex);
+    vkCmdWriteTimestamp(cmd, stage, timestampQueryPool, queryIndex);
+  }
+#endif
 
 } // namespace engine

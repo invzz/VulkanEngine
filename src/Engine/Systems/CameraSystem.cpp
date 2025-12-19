@@ -3,7 +3,6 @@
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
@@ -67,7 +66,10 @@ namespace engine {
     pipelineConfig.pipelineLayout             = pipelineLayout;
     pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
-    pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/debug_frustum.vert.spv", SHADER_PATH "/debug_frustum.frag.spv", pipelineConfig);
+    pipeline = std::make_unique<Pipeline>(device,
+                                          std::string(SHADER_PATH) + "debug_frustum.vert.spv",
+                                          std::string(SHADER_PATH) + "debug_frustum.frag.spv",
+                                          pipelineConfig);
   }
 
   void CameraSystem::render(FrameInfo& frameInfo) const

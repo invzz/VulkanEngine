@@ -88,7 +88,7 @@ namespace engine {
       if (&target == &morphSet.targets[0])
       {
         std::cout << "[MorphTargetManager] Position index mapping sample: ";
-        for (size_t i = 0; i < std::min(6ul, morphSet.positionIndices.size()); i++)
+        for (size_t i = 0; i < std::min(static_cast<size_t>(6), morphSet.positionIndices.size()); i++)
         {
           std::cout << i << "->" << morphSet.positionIndices[i] << " ";
         }

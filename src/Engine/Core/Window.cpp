@@ -15,6 +15,10 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
 
+// Forward ImGui GLFW callbacks so the app can choose to install or forward
+// events instead of relying on the backend to auto-install them.
+#include <imgui_impl_glfw.h>
+
 // Small helpers to keep initWindow simple and readable.
 namespace window_detail {
 
@@ -182,6 +186,11 @@ namespace engine {
     // Setup user pointer and callbacks
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
+    // Input callbacks are now installed by ImGui (we initialize ImGui with
+    // install_callbacks=true). If you need custom app-level callbacks, install
+    // them and call through to ImGui's handlers (e.g. ImGui_ImplGlfw_KeyCallback)
+    // to keep ImGui input working.
 
     // If we have a target monitor, compute centered position and request
     // it. Note: on Wayland compositors (Hyperland) the compositor may

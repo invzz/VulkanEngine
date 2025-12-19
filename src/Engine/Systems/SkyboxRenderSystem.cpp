@@ -148,7 +148,8 @@ namespace engine {
     configInfo.renderPass     = renderPass;
     configInfo.pipelineLayout = pipelineLayout_;
 
-    pipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/skybox.vert.spv", SHADER_PATH "/skybox.frag.spv", configInfo);
+    pipeline_ =
+            std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(skybox.vert.spv)", std::string(SHADER_PATH) + R"(skybox.frag.spv)", configInfo);
   }
 
   void SkyboxRenderSystem::createProceduralPipeline(VkRenderPass renderPass)
@@ -173,7 +174,10 @@ namespace engine {
     configInfo.renderPass     = renderPass;
     configInfo.pipelineLayout = proceduralPipelineLayout_;
 
-    proceduralPipeline_ = std::make_unique<Pipeline>(device_, SHADER_PATH "/procedural_sky.vert.spv", SHADER_PATH "/procedural_sky.frag.spv", configInfo);
+    proceduralPipeline_ = std::make_unique<Pipeline>(device_,
+                                                     std::string(SHADER_PATH) + R"(procedural_sky.vert.spv)",
+                                                     std::string(SHADER_PATH) + R"(procedural_sky.frag.spv)",
+                                                     configInfo);
   }
 
   void SkyboxRenderSystem::render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings)
