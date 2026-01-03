@@ -7,89 +7,82 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameBuffer.hpp"
+#include "Engine/Graphics/HZBGenerator.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 
 namespace engine {
 
-  class Renderer
-  {
-  public:
-    Renderer(Window& window, Device& device);
-    ~Renderer();
-    // delete copy operations
-    Renderer(const Renderer&)            = delete;
-    Renderer& operator=(const Renderer&) = delete;
+class Renderer {
+public:
+  Renderer(Window &window, Device &device);
+  ~Renderer();
+  // delete copy operations
+  Renderer(const Renderer &) = delete;
+  Renderer &operator=(const Renderer &) = delete;
 
-    // Frame rendering helpers
-    VkCommandBuffer beginFrame();
-    void            endFrame();
+  // Frame rendering helpers
+  VkCommandBuffer beginFrame();
+  void endFrame();
 
-    // Render pass helpers
-    void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
-    void endSwapChainRenderPass(VkCommandBuffer commandBuffer) const;
+  // Render pass helpers
+  void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
+  void endSwapChainRenderPass(VkCommandBuffer commandBuffer) const;
+  void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
+  void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
+  void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
+  void generateDepthPyramid(VkCommandBuffer commandBuffer);
 
-    void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
-    void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
-    void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
-    void generateDepthPyramid(VkCommandBuffer commandBuffer);
+  // Accessors
+  VkRenderPass getSwapChainRenderPass() const {
+    return swapChain->getRenderPass();
+  }
+  VkRenderPass getOffscreenRenderPass() const {
+    return offscreenFrameBuffer->getRenderPass();
+  }
 
-    // Accessors
-    VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
-    VkRenderPass getOffscreenRenderPass() const { return offscreenFrameBuffer->getRenderPass(); }
+  VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
+  VkDescriptorImageInfo getDepthImageInfo(int index) const;
 
-    VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
-    VkDescriptorImageInfo getDepthImageInfo(int index) const;
+  bool isFrameInProgress() const { return isFrameStarted; }
+  bool wasSwapChainRecreated() const { return swapChainRecreated; }
 
-    bool isFrameInProgress() const { return isFrameStarted; }
-    bool wasSwapChainRecreated() const { return swapChainRecreated; }
+  VkCommandBuffer getCurrentCommandBuffer() const {
+    assert(isFrameStarted &&
+           "Cannot get command buffer when frame not in progress");
+    return commandBuffers[currentFrameIndex];
+  }
 
-    VkCommandBuffer getCurrentCommandBuffer() const
-    {
-      assert(isFrameStarted && "Cannot get command buffer when frame not in progress");
-      return commandBuffers[currentFrameIndex];
-    }
+  int getFrameIndex() const {
+    assert(isFrameStarted &&
+           "Cannot get frame index when frame not in progress");
+    return currentFrameIndex;
+  }
 
-    int getFrameIndex() const
-    {
-      assert(isFrameStarted && "Cannot get frame index when frame not in progress");
-      return currentFrameIndex;
-    }
+  float getAspectRatio() const { return swapChain->extentAspectRatio(); }
+  VkExtent2D getSwapChainExtent() const {
+    return swapChain->getSwapChainExtent();
+  }
 
-    float      getAspectRatio() const { return swapChain->extentAspectRatio(); }
-    VkExtent2D getSwapChainExtent() const { return swapChain->getSwapChainExtent(); }
+private:
+  void createCommandBuffers();
+  void freeCommandBuffers();
+  void recreateSwapChain();
+  void createOffscreenResources();
+  void createHZBPipeline();
 
-  private:
-    void createCommandBuffers();
-    void freeCommandBuffers();
-    void recreateSwapChain();
-    void createOffscreenResources();
-    void createHZBPipeline();
+  Window &window;
+  Device &device;
+  HZBGenerator hzbGenerator;
+  std::unique_ptr<SwapChain> swapChain;
+  std::vector<VkCommandBuffer> commandBuffers;
 
-    Window&                      window;
-    Device&                      device;
-    std::unique_ptr<SwapChain>   swapChain;
-    std::vector<VkCommandBuffer> commandBuffers;
+  std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
 
-    std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
-
-    // HZB Generation Resources
-    VkPipelineLayout      hzbPipelineLayout{VK_NULL_HANDLE};
-    VkPipeline            hzbPipeline{VK_NULL_HANDLE};
-    VkDescriptorSetLayout hzbSetLayout{VK_NULL_HANDLE};
-    VkDescriptorPool      hzbDescriptorPool{VK_NULL_HANDLE};
-    // Sets for each frame and each mip transition
-    // Outer: Frame, Inner: Mip Level
-    std::vector<std::vector<VkDescriptorSet>> hzbDescriptorSets;
-
-#ifdef ENABLE_PROFILING
-    // Profiling: we no longer store a local query pool here — Profiler owns it and provides APIs
-#endif
-
-    uint32_t currentImageIndex{0};
-    // keep track of frame index for syncing [0, maxFramesInFlight]
-    int  currentFrameIndex{0};
-    bool isFrameStarted{false};
-    bool swapChainRecreated{false};
-  };
+  uint32_t currentImageIndex{0};
+  // keep track of frame index for syncing [0, maxFramesInFlight]
+  int currentFrameIndex{0};
+  bool isFrameStarted{false};
+  bool swapChainRecreated{false};
+};
 
 } // namespace engine

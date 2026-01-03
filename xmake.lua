@@ -19,6 +19,35 @@ add_defines("GLFW_INCLUDE_VULKAN")
 
 -- Use Vulkan SDK loader on Windows (do not define VK_NO_PROTOTYPES)
 
+task("tidy_changed")
+    set_menu {
+        usage = "xmake tidy_changed [options]",
+        description = "Run clang-tidy on files changed vs a base ref",
+        options = {
+            {"b", "base", "kv", "HEAD~1", "Base git ref to diff against (default: HEAD~1; use main for PRs)"},
+            {"j", "jobs", "kv", "1", "Parallel jobs (PowerShell 7+ on Windows)"}
+        }
+    }
+    on_run(function ()
+        local option = import("core.base.option")
+        local base = option.get("base") or "HEAD~1"
+        local jobs = option.get("jobs") or "1"
+
+        if is_host("windows") then
+            os.execv("powershell", {
+                "-NoProfile",
+                "-ExecutionPolicy", "Bypass",
+                "-File", path.join(os.projectdir(), "scripts", "run_clang_tidy_changed.ps1"),
+                "-Base", base,
+                "-Jobs", jobs
+            })
+        else
+            os.execv("bash", {path.join(os.projectdir(), "scripts", "run_clang_tidy_changed.sh"), base})
+        end
+    end)
+
+task_end()
+
 -- Package dependencies - use Vulkan SDK on Windows
 if is_plat("windows") then
     add_requires("glfw")
@@ -31,9 +60,26 @@ if is_plat("windows") then
     add_requires("meshoptimizer")
     add_requires("entt")
     add_requires("imgui v1.92.1-docking", {configs = {glfw = true, vulkan = true}})
-    -- Explicit Vulkan SDK include and lib paths for Windows
-    add_includedirs("C:/VulkanSDK/1.4.335.0/Include", {public = true})
-    add_linkdirs("C:/VulkanSDK/1.4.335.0/Lib", {public = true})
+
+    -- Vulkan SDK paths for Windows (require VULKAN_SDK env var)
+    local vulkan_sdk = os.getenv("VULKAN_SDK")
+    if not vulkan_sdk then
+        raise("VULKAN_SDK is not set. Install the Vulkan SDK and set VULKAN_SDK (or run setup_windows.ps1).")
+    end
+
+    local vulkan_include = path.join(vulkan_sdk, "Include")
+    local vulkan_lib = path.join(vulkan_sdk, "Lib")
+
+    if not os.isdir(vulkan_include) then
+        raise("VULKAN_SDK Include directory not found: " .. vulkan_include)
+    end
+    if not os.isdir(vulkan_lib) then
+        raise("VULKAN_SDK Lib directory not found: " .. vulkan_lib)
+    end
+
+    -- Treat SDK headers as system headers to reduce warnings/tidy noise.
+    add_sysincludedirs(vulkan_include, {public = true})
+    add_linkdirs(vulkan_lib, {public = true})
 else
     add_requires("glfw")
     add_requires("glm")

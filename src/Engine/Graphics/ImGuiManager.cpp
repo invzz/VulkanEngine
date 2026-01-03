@@ -149,40 +149,6 @@ void ImGuiManager::setupVulkanBackend(uint32_t imageCount) {
     std::cerr << "vkQueueWaitIdle returned error: " << r2 << std::endl;
   }
 
-  // Log device-level function pointers used by ImGui backend
-  std::cerr << "vkCreateDescriptorPool ptr: " << (void *)vkCreateDescriptorPool
-            << std::endl;
-  std::cerr << "vkCreateDescriptorSetLayout ptr: "
-            << (void *)vkCreateDescriptorSetLayout << std::endl;
-  std::cerr << "vkCreatePipelineLayout ptr: " << (void *)vkCreatePipelineLayout
-            << std::endl;
-  std::cerr << "vkCreateSampler ptr: " << (void *)vkCreateSampler << std::endl;
-  std::cerr << "vkAllocateDescriptorSets ptr: "
-            << (void *)vkAllocateDescriptorSets << std::endl;
-  std::cerr << "vkUpdateDescriptorSets ptr: " << (void *)vkUpdateDescriptorSets
-            << std::endl;
-  std::cerr << "vkCreateImage ptr: " << (void *)vkCreateImage << std::endl;
-  std::cerr << "vkCreateImageView ptr: " << (void *)vkCreateImageView
-            << std::endl;
-  std::cerr << "vkCreateBuffer ptr: " << (void *)vkCreateBuffer << std::endl;
-  std::cerr << "vkAllocateCommandBuffers ptr: "
-            << (void *)vkAllocateCommandBuffers << std::endl;
-  std::cerr << "vkBeginCommandBuffer ptr: " << (void *)vkBeginCommandBuffer
-            << std::endl;
-  std::cerr << "vkEndCommandBuffer ptr: " << (void *)vkEndCommandBuffer
-            << std::endl;
-  std::cerr << "vkQueueSubmit ptr: " << (void *)vkQueueSubmit << std::endl;
-  std::cerr << "vkQueueWaitIdle ptr: " << (void *)vkQueueWaitIdle << std::endl;
-
-  // Ensure key device-level functions are loaded
-  if (!vkCreateDescriptorPool || !vkCreateDescriptorSetLayout ||
-      !vkCreatePipelineLayout || !vkCreateSampler) {
-    std::cerr << "One or more Vulkan device function pointers required by "
-                 "ImGui are null. Aborting ImGui init."
-              << std::endl;
-    return;
-  }
-
   // Run minimal Vulkan sanity checks (create/destroy sampler, descriptor set
   // layout, pipeline layout)
   VkSampler testSampler = VK_NULL_HANDLE;
