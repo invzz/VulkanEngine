@@ -327,10 +327,17 @@ namespace engine {
     pipelineConfig.pipelineLayout = pipelineLayout;
 
     pipeline = std::make_unique<Pipeline>(device,
-                                          std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                                          std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                                          std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
-                                          pipelineConfig);
+                        std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                        std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                        std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
+                        pipelineConfig);
+
+    // Standard pipeline variant: expensive rarely-used features compiled out.
+    standardPipeline = std::make_unique<Pipeline>(device,
+                            std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                            std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                            std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
+                            pipelineConfig);
 
     // Create Transparent Pipeline
     PipelineConfigInfo transparentConfig                       = pipelineConfig;
@@ -349,10 +356,16 @@ namespace engine {
     transparentConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
     transparentPipeline = std::make_unique<Pipeline>(device,
-                                                     std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                                                     std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                                                     std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
-                                                     transparentConfig);
+                             std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                             std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                             std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
+                             transparentConfig);
+
+    standardTransparentPipeline = std::make_unique<Pipeline>(device,
+                                 std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                 std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                 std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
+                                 transparentConfig);
   }
 
   void MeshRenderSystem::setShadowSystem(ShadowSystem* shadowSystem)
@@ -367,7 +380,43 @@ namespace engine {
 
   void MeshRenderSystem::render(FrameInfo& frameInfo)
   {
-    pipeline->bind(frameInfo.commandBuffer);
+    constexpr float kFeatureEpsCpu = 0.01f;
+
+    auto materialNeedsFullVariant = [&](const PBRMaterial* mat) {
+      if (frameInfo.debugMode != 0) {
+        return true;
+      }
+      if (mat == nullptr) {
+        return false;
+      }
+      if (mat->useSpecularGlossinessWorkflow) {
+        return true;
+      }
+      if (mat->iridescence > kFeatureEpsCpu) {
+        return true;
+      }
+      if (mat->transmission > kFeatureEpsCpu || mat->hasTransmissionMap()) {
+        return true;
+      }
+      if (mat->clearcoat > kFeatureEpsCpu || mat->hasClearcoatMap() || mat->hasClearcoatRoughnessMap() || mat->hasClearcoatNormalMap()) {
+        return true;
+      }
+      if (mat->anisotropic > kFeatureEpsCpu || mat->anisotropic < -kFeatureEpsCpu) {
+        return true;
+      }
+      return false;
+    };
+
+    Pipeline* boundPipeline = nullptr;
+    auto bindPipelineIfNeeded = [&](Pipeline* p) {
+      if (p != nullptr && boundPipeline != p) {
+        p->bind(frameInfo.commandBuffer);
+        boundPipeline = p;
+      }
+    };
+
+    // Default bind for the first opaque draw.
+    bindPipelineIfNeeded(standardPipeline.get());
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &frameInfo.globalTextureSet, 0, nullptr);
@@ -733,6 +782,8 @@ namespace engine {
 
         if (!isTransparent)
         {
+          Pipeline* desired = materialNeedsFullVariant(pMaterial) ? pipeline.get() : standardPipeline.get();
+          bindPipelineIfNeeded(desired);
           renderItem(entity, subMesh, pMaterial, transform.modelTransform());
         }
         else
@@ -749,9 +800,11 @@ namespace engine {
     std::sort(transparentItems.begin(), transparentItems.end(), [](const TransparentRenderItem& a, const TransparentRenderItem& b) { return a.distance > b.distance; });
 
     // 3. Render Transparent Objects
-    transparentPipeline->bind(frameInfo.commandBuffer);
+    boundPipeline = nullptr;
     for (const auto& item : transparentItems)
     {
+      Pipeline* desired = materialNeedsFullVariant(item.material) ? transparentPipeline.get() : standardTransparentPipeline.get();
+      bindPipelineIfNeeded(desired);
       renderItem(item.entity, *item.subMesh, item.material, item.modelMatrix);
     }
   }

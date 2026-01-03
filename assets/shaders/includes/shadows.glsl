@@ -6,8 +6,7 @@
 
 // Calculate shadow factor using PCF (Percentage Closer Filtering)
 float calculateShadow(vec3 worldPos, int lightIndex) {
-    if (lightIndex >= ubo.shadowLightCount)
-    return 1.0;
+    if (lightIndex >= ubo.shadowLightCount) return 1.0;
 
     // Transform world position to light space
     vec4 lightSpacePos = ubo.lightSpaceMatrices[lightIndex] * vec4(worldPos, 1.0);
@@ -41,8 +40,7 @@ float calculateShadow(vec3 worldPos, int lightIndex) {
 
 // Calculate shadow factor for point light using cube shadow map
 float calculatePointLightShadow(vec3 worldPos, int lightIndex) {
-    if (lightIndex >= ubo.cubeShadowLightCount)
-    return 1.0;
+    if (lightIndex >= ubo.cubeShadowLightCount) return 1.0;
 
     vec3 lightPos = ubo.pointLightShadowData[lightIndex].xyz;
     float farPlane = ubo.pointLightShadowData[lightIndex].w;
@@ -52,8 +50,7 @@ float calculatePointLightShadow(vec3 worldPos, int lightIndex) {
     float currentDepth = length(lightToFrag);
 
     // Check if outside light range
-    if (currentDepth > farPlane)
-    return 1.0;
+    if (currentDepth > farPlane) return 1.0;
 
     // For Vulkan cube maps, flip Y to match the rendering coordinate system
     vec3 sampleDir = vec3(lightToFrag.x, -lightToFrag.y, lightToFrag.z);

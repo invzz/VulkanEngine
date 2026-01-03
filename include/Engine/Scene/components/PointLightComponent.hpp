@@ -10,7 +10,7 @@ namespace engine {
   {
     float     intensity{1.0f};
     glm::vec3 color{1.0f, 1.0f, 1.0f};
-    float     radius{0.1f};
+    float     radius{15.0f};
   };
 
 } // namespace engine

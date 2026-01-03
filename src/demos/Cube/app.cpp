@@ -533,6 +533,7 @@ namespace engine {
               .cameraEntity        = cameraEntity,
               .morphManager        = animationSystem->getMorphManager(),
               .extent              = renderer.getSwapChainExtent(),
+              .debugMode           = debugMode,
       };
 
       renderGraph->execute(frameInfo);

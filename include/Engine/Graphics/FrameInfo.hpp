@@ -15,6 +15,10 @@ namespace engine {
   {
     glm::vec4 position; // w component unused
     glm::vec4 color;    // w component is intensity
+    float     radius2{0.0f};
+    float     _pad0{0.0f};
+    float     _pad1{0.0f};
+    float     _pad2{0.0f};
   };
 
   struct DirectionalLight
@@ -32,6 +36,10 @@ namespace engine {
     float     constantAtten;  // Constant attenuation
     float     linearAtten;    // Linear attenuation
     float     quadraticAtten; // Quadratic attenuation
+    float     radius2{0.0f};
+    float     _pad0{0.0f};
+    float     _pad1{0.0f};
+    float     _pad2{0.0f};
   };
 
   struct GlobalUbo
@@ -80,6 +88,7 @@ namespace engine {
     entt::entity        cameraEntity;     // Camera entity handle
     MorphTargetManager* morphManager;     // Manager for morph target animations (nullptr if not used)
     VkExtent2D          extent;           // Screen extent
+    int                 debugMode{0};     // Mirrors GlobalUbo::debugMode for pipeline selection
   };
 
 } // namespace engine

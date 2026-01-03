@@ -189,7 +189,7 @@ namespace engine {
           auto& pointLight     = scene.getRegistry().emplace<PointLightComponent>(entity);
           pointLight.intensity = pl.value("intensity", 1.0f);
           pointLight.color     = pl.value("color", glm::vec3(1.0f));
-          pointLight.radius    = pl.value("radius", 0.1f);
+          pointLight.radius    = pl.value("radius", 15.0f);
         }
 
         if (objJson.contains("directionalLight"))

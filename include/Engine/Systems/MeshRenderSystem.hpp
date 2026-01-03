@@ -61,6 +61,8 @@ namespace engine {
     Device&                   device;
     std::unique_ptr<Pipeline> pipeline;
     std::unique_ptr<Pipeline> transparentPipeline;
+    std::unique_ptr<Pipeline> standardPipeline;
+    std::unique_ptr<Pipeline> standardTransparentPipeline;
     VkPipelineLayout          pipelineLayout;
 
     ShadowSystem* currentShadowSystem_{nullptr};
