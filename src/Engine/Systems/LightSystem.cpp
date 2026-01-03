@@ -80,10 +80,7 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.renderPass     = renderPass;
     pipelineConfig.pipelineLayout = pipelineLayout;
-    pipeline                      = std::make_unique<Pipeline>(device,
-                                          std::string(SHADER_PATH) + R"(point_light.vert.spv)",
-                                          std::string(SHADER_PATH) + R"(point_light.frag.spv)",
-                                          pipelineConfig);
+    pipeline                      = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(point_light.vert.spv)", std::string(SHADER_PATH) + R"(point_light.frag.spv)", pipelineConfig);
   }
 
   void LightSystem::render(FrameInfo& frameInfo)
@@ -102,26 +99,14 @@ namespace engine {
       push.color    = glm::vec4(pointLight.color, pointLight.intensity);
       push.radius   = transform.scale.x;
 
-      vkCmdPushConstants(frameInfo.commandBuffer,
-                         pipelineLayout,
-                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                         0,
-                         sizeof(PointLightPushConstants),
-                         &push);
+      vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PointLightPushConstants), &push);
       // inefficient to draw a quad for each light, but okay for demo purposes
       vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
     }
 
     // Render directional lights as arrows
     directionalPipeline->bind(frameInfo.commandBuffer);
-    vkCmdBindDescriptorSets(frameInfo.commandBuffer,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            directionalPipelineLayout,
-                            0,
-                            1,
-                            &frameInfo.globalDescriptorSet,
-                            0,
-                            nullptr);
+    vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, directionalPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
     auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
     for (auto entity : dirView)
@@ -316,10 +301,7 @@ namespace engine {
     pipelineConfig.renderPass                 = renderPass;
     pipelineConfig.pipelineLayout             = directionalPipelineLayout;
     pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    directionalPipeline                       = std::make_unique<Pipeline>(device,
-                                                     std::string(SHADER_PATH) + R"(directional_light.vert.spv)",
-                                                     std::string(SHADER_PATH) + R"(directional_light.frag.spv)",
-                                                     pipelineConfig);
+    directionalPipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(directional_light.vert.spv)", std::string(SHADER_PATH) + R"(directional_light.frag.spv)", pipelineConfig);
   }
 
   void LightSystem::createSpotLightPipelineLayout(VkDescriptorSetLayout globalSetLayout)

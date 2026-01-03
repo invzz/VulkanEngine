@@ -22,1215 +22,1232 @@
 
 // Hash function for Model::Vertex
 namespace std {
-template <> struct hash<engine::Model::Vertex> {
-  size_t operator()(engine::Model::Vertex const &vertex) const {
-    size_t seed = 0;
-    engine::hashCombine(seed, vertex.position, vertex.color, vertex.normal,
-                        vertex.uv);
-    return seed;
-  }
-};
+  template <> struct hash<engine::Model::Vertex>
+  {
+    size_t operator()(engine::Model::Vertex const& vertex) const
+    {
+      size_t seed = 0;
+      engine::hashCombine(seed, vertex.position, vertex.color, vertex.normal, vertex.uv);
+      return seed;
+    }
+  };
 } // namespace std
 
 namespace engine {
 
-// Helper function to get texture path from glTF, handling both URI and embedded
-// images
-static std::string getTexturePath(const tinygltf::Model &model,
-                                  int textureIndex, const std::string &baseDir,
-                                  const std::string &cacheDir) {
-  if (textureIndex < 0 ||
-      textureIndex >= static_cast<int>(model.textures.size())) {
-    return "";
-  }
+  // Helper function to get texture path from glTF, handling both URI and embedded
+  // images
+  static std::string getTexturePath(const tinygltf::Model& model, int textureIndex, const std::string& baseDir, const std::string& cacheDir)
+  {
+    if (textureIndex < 0 || textureIndex >= static_cast<int>(model.textures.size()))
+    {
+      return "";
+    }
 
-  const tinygltf::Texture &texture = model.textures[textureIndex];
-  if (texture.source < 0 ||
-      texture.source >= static_cast<int>(model.images.size())) {
-    return "";
-  }
+    const tinygltf::Texture& texture = model.textures[textureIndex];
+    if (texture.source < 0 || texture.source >= static_cast<int>(model.images.size()))
+    {
+      return "";
+    }
 
-  const tinygltf::Image &image = model.images[texture.source];
+    const tinygltf::Image& image = model.images[texture.source];
 
-  // If image has a URI, it's an external file
-  if (!image.uri.empty()) {
-    // Check if it's a data URI (base64 embedded)
-    if (image.uri.find("data:") == 0) {
-      // It's a data URI - tinygltf has already decoded it into image.image
-      // We need to write it to a cache file
+    // If image has a URI, it's an external file
+    if (!image.uri.empty())
+    {
+      // Check if it's a data URI (base64 embedded)
+      if (image.uri.find("data:") == 0)
+      {
+        // It's a data URI - tinygltf has already decoded it into image.image
+        // We need to write it to a cache file
+        std::string extension = ".png"; // Default to PNG
+        if (image.mimeType == "image/jpeg")
+          extension = ".jpg";
+        else if (image.mimeType == "image/png")
+          extension = ".png";
+
+        std::string cachePath = cacheDir + "/texture_" + std::to_string(texture.source) + extension;
+
+        // Create cache directory if it doesn't exist
+        std::filesystem::create_directories(cacheDir);
+
+        // Write the image data to file
+        std::ofstream outFile(cachePath, std::ios::binary);
+        if (outFile.is_open())
+        {
+          outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
+          outFile.close();
+          return cachePath;
+        }
+        else
+        {
+          std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << std::endl;
+          return "";
+        }
+      }
+      else
+      {
+        // Regular file URI - return path relative to base directory
+        return baseDir + image.uri;
+      }
+    }
+    // Image is embedded in a bufferView
+    else if (image.bufferView >= 0)
+    {
+      // Image data is embedded in the glTF file
+      // tinygltf has already loaded it into image.image
       std::string extension = ".png"; // Default to PNG
       if (image.mimeType == "image/jpeg")
         extension = ".jpg";
       else if (image.mimeType == "image/png")
         extension = ".png";
 
-      std::string cachePath =
-          cacheDir + "/texture_" + std::to_string(texture.source) + extension;
+      std::string cachePath = cacheDir + "/embedded_texture_" + std::to_string(texture.source) + extension;
 
       // Create cache directory if it doesn't exist
       std::filesystem::create_directories(cacheDir);
 
       // Write the image data to file
       std::ofstream outFile(cachePath, std::ios::binary);
-      if (outFile.is_open()) {
-        outFile.write(reinterpret_cast<const char *>(image.image.data()),
-                      image.image.size());
+      if (outFile.is_open())
+      {
+        outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
         outFile.close();
         return cachePath;
-      } else {
-        std::cerr << YELLOW
-                  << "[GLTFImporter] Warning: Failed to write cached texture: "
-                  << cachePath << RESET << std::endl;
+      }
+      else
+      {
+        std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << std::endl;
         return "";
       }
-    } else {
-      // Regular file URI - return path relative to base directory
-      return baseDir + image.uri;
     }
+
+    return "";
   }
-  // Image is embedded in a bufferView
-  else if (image.bufferView >= 0) {
-    // Image data is embedded in the glTF file
-    // tinygltf has already loaded it into image.image
-    std::string extension = ".png"; // Default to PNG
-    if (image.mimeType == "image/jpeg")
-      extension = ".jpg";
-    else if (image.mimeType == "image/png")
-      extension = ".png";
 
-    std::string cachePath = cacheDir + "/embedded_texture_" +
-                            std::to_string(texture.source) + extension;
+  bool GLTFImporter::load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ)
+  {
+    tinygltf::Model    gltfModel;
+    tinygltf::TinyGLTF loader;
+    std::string        err;
+    std::string        warn;
 
-    // Create cache directory if it doesn't exist
-    std::filesystem::create_directories(cacheDir);
-
-    // Write the image data to file
-    std::ofstream outFile(cachePath, std::ios::binary);
-    if (outFile.is_open()) {
-      outFile.write(reinterpret_cast<const char *>(image.image.data()),
-                    image.image.size());
-      outFile.close();
-      return cachePath;
-    } else {
-      std::cerr << YELLOW
-                << "[GLTFImporter] Warning: Failed to write embedded texture: "
-                << cachePath << RESET << std::endl;
-      return "";
+    // Determine file type and load
+    bool ret = false;
+    if (filepath.find(".glb") != std::string::npos)
+    {
+      ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filepath);
     }
-  }
+    else
+    {
+      ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filepath);
+    }
 
-  return "";
-}
+    if (!warn.empty())
+    {
+      std::cout << YELLOW << "[GLTFImporter] Warning: " << RESET << warn << std::endl;
+    }
 
-bool GLTFImporter::load(Model::Builder &builder, const std::string &filepath,
-                        bool flipX, bool flipY, bool flipZ) {
-  tinygltf::Model gltfModel;
-  tinygltf::TinyGLTF loader;
-  std::string err;
-  std::string warn;
+    if (!err.empty())
+    {
+      std::cerr << RED << "[GLTFImporter] Error: " << RESET << err << std::endl;
+      return false;
+    }
 
-  // Determine file type and load
-  bool ret = false;
-  if (filepath.find(".glb") != std::string::npos) {
-    ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filepath);
-  } else {
-    ret = loader.LoadASCIIFromFile(&gltfModel, &err, &warn, filepath);
-  }
+    if (!ret)
+    {
+      std::cerr << RED << "[GLTFImporter] Failed to load glTF file: " << RESET << filepath << std::endl;
+      return false;
+    }
 
-  if (!warn.empty()) {
-    std::cout << YELLOW << "[GLTFImporter] Warning: " << RESET << warn
-              << std::endl;
-  }
+    std::cout << "[" << GREEN << "GLTFImporter" << RESET << "]: File loaded successfully" << std::endl;
 
-  if (!err.empty()) {
-    std::cerr << RED << "[GLTFImporter] Error: " << RESET << err << std::endl;
-    return false;
-  }
+    // Check if model has animations (we'll skip baking transforms if it does)
+    bool hasAnimations = !gltfModel.animations.empty();
+    if (hasAnimations)
+    {
+      std::cout << YELLOW
+                << "[GLTFImporter] Model has animations - vertices will remain "
+                   "in local space"
+                << RESET << std::endl;
+    }
 
-  if (!ret) {
-    std::cerr << RED << "[GLTFImporter] Failed to load glTF file: " << RESET
-              << filepath << std::endl;
-    return false;
-  }
+    // Get base directory for texture paths
+    std::string baseDir  = filepath.substr(0, filepath.find_last_of("/\\") + 1);
+    std::string cacheDir = baseDir + ".gltf_texture_cache";
 
-  std::cout << "[" << GREEN << "GLTFImporter" << RESET
-            << "]: File loaded successfully" << std::endl;
+    // Flip multipliers
+    float xMultiplier = flipX ? -1.0f : 1.0f;
+    float yMultiplier = flipY ? -1.0f : 1.0f;
+    float zMultiplier = flipZ ? -1.0f : 1.0f;
 
-  // Check if model has animations (we'll skip baking transforms if it does)
-  bool hasAnimations = !gltfModel.animations.empty();
-  if (hasAnimations) {
-    std::cout << YELLOW
-              << "[GLTFImporter] Model has animations - vertices will remain "
-                 "in local space"
-              << RESET << std::endl;
-  }
+    builder.vertices.clear();
+    builder.indices.clear();
+    builder.materials.clear();
+    builder.subMeshes.clear();
 
-  // Get base directory for texture paths
-  std::string baseDir = filepath.substr(0, filepath.find_last_of("/\\") + 1);
-  std::string cacheDir = baseDir + ".gltf_texture_cache";
+    // Track vertex offsets and counts for each mesh primitive (for morph targets)
+    // Key: "meshIndex_primitiveIndex", Value: vertex offset/count in
+    // builder.vertices
+    std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
+    std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
+    // Map from builder vertex index to original glTF position index (for morph
+    // targets)
+    std::unordered_map<uint32_t, uint32_t> vertexToPositionIndex;
 
-  // Flip multipliers
-  float xMultiplier = flipX ? -1.0f : 1.0f;
-  float yMultiplier = flipY ? -1.0f : 1.0f;
-  float zMultiplier = flipZ ? -1.0f : 1.0f;
+    // Load materials (extracted)
+    loadMaterials(builder, gltfModel, baseDir, cacheDir);
 
-  builder.vertices.clear();
-  builder.indices.clear();
-  builder.materials.clear();
-  builder.subMeshes.clear();
+    // Load meshes (handles node traversal, vertex/index creation, submesh
+    // grouping)
+    loadMeshes(builder, gltfModel, flipX, flipY, flipZ, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex, hasAnimations);
 
-  // Track vertex offsets and counts for each mesh primitive (for morph targets)
-  // Key: "meshIndex_primitiveIndex", Value: vertex offset/count in
-  // builder.vertices
-  std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
-  std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
-  // Map from builder vertex index to original glTF position index (for morph
-  // targets)
-  std::unordered_map<uint32_t, uint32_t> vertexToPositionIndex;
+    // Load morph targets (requires primitive offsets/counts created in
+    // loadMeshes)
+    loadMorphTargets(builder, gltfModel, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex);
 
-  // Load materials (extracted)
-  loadMaterials(builder, gltfModel, baseDir, cacheDir);
+    // Load animations
+    loadAnimations(builder, gltfModel);
 
-  // Load meshes (handles node traversal, vertex/index creation, submesh
-  // grouping)
-  loadMeshes(builder, gltfModel, flipX, flipY, flipZ, primitiveVertexOffsets,
-             primitiveVertexCounts, vertexToPositionIndex, hasAnimations);
+    std::cout << GREEN << "[GLTFImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << std::endl;
 
-  // Load morph targets (requires primitive offsets/counts created in
-  // loadMeshes)
-  loadMorphTargets(builder, gltfModel, primitiveVertexOffsets,
-                   primitiveVertexCounts, vertexToPositionIndex);
+    // Load nodes (store original transforms before animation)
+    builder.nodes.resize(gltfModel.nodes.size());
+    for (size_t i = 0; i < gltfModel.nodes.size(); i++)
+    {
+      const auto& gltfNode = gltfModel.nodes[i];
+      auto&       node     = builder.nodes[i];
 
-  // Load animations
-  loadAnimations(builder, gltfModel);
+      node.name = gltfNode.name;
+      node.mesh = gltfNode.mesh;
 
-  std::cout << GREEN << "[GLTFImporter] Loaded " << builder.materials.size()
-            << " materials, " << builder.subMeshes.size() << " sub-meshes"
-            << RESET << std::endl;
-
-  // Load nodes (store original transforms before animation)
-  builder.nodes.resize(gltfModel.nodes.size());
-  for (size_t i = 0; i < gltfModel.nodes.size(); i++) {
-    const auto &gltfNode = gltfModel.nodes[i];
-    auto &node = builder.nodes[i];
-
-    node.name = gltfNode.name;
-    node.mesh = gltfNode.mesh;
-
-    if (gltfNode.matrix.size() == 16) {
-      node.matrix = glm::make_mat4(gltfNode.matrix.data());
-    } else {
-      if (gltfNode.translation.size() == 3) {
-        node.translation =
-            glm::vec3(gltfNode.translation[0], gltfNode.translation[1],
-                      gltfNode.translation[2]);
+      if (gltfNode.matrix.size() == 16)
+      {
+        node.matrix = glm::make_mat4(gltfNode.matrix.data());
       }
-      if (gltfNode.rotation.size() == 4) {
-        node.rotation = glm::quat(static_cast<float>(gltfNode.rotation[3]),
-                                  static_cast<float>(gltfNode.rotation[0]),
-                                  static_cast<float>(gltfNode.rotation[1]),
-                                  static_cast<float>(gltfNode.rotation[2]));
+      else
+      {
+        if (gltfNode.translation.size() == 3)
+        {
+          node.translation = glm::vec3(gltfNode.translation[0], gltfNode.translation[1], gltfNode.translation[2]);
+        }
+        if (gltfNode.rotation.size() == 4)
+        {
+          node.rotation =
+                  glm::quat(static_cast<float>(gltfNode.rotation[3]), static_cast<float>(gltfNode.rotation[0]), static_cast<float>(gltfNode.rotation[1]), static_cast<float>(gltfNode.rotation[2]));
+        }
+        if (gltfNode.scale.size() == 3)
+        {
+          node.scale = glm::vec3(gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]);
+        }
       }
-      if (gltfNode.scale.size() == 3) {
-        node.scale =
-            glm::vec3(gltfNode.scale[0], gltfNode.scale[1], gltfNode.scale[2]);
+
+      for (int childIdx : gltfNode.children)
+      {
+        node.children.push_back(childIdx);
+      }
+
+      // Load morph target weights if present
+      if (!gltfNode.weights.empty())
+      {
+        node.morphWeights.resize(gltfNode.weights.size());
+        for (size_t w = 0; w < gltfNode.weights.size(); w++)
+        {
+          node.morphWeights[w] = static_cast<float>(gltfNode.weights[w]);
+        }
       }
     }
 
-    for (int childIdx : gltfNode.children) {
-      node.children.push_back(childIdx);
-    }
+    // Load morph targets from meshes
+    for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++)
+    {
+      const auto& gltfMesh = gltfModel.meshes[meshIdx];
 
-    // Load morph target weights if present
-    if (!gltfNode.weights.empty()) {
-      node.morphWeights.resize(gltfNode.weights.size());
-      for (size_t w = 0; w < gltfNode.weights.size(); w++) {
-        node.morphWeights[w] = static_cast<float>(gltfNode.weights[w]);
+      for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++)
+      {
+        const auto& primitive = gltfMesh.primitives[primIdx];
+
+        if (primitive.targets.empty())
+        {
+          continue; // No morph targets
+        }
+
+        Model::MorphTargetSet morphSet;
+
+        // Get the vertex offset and count for this primitive
+        std::string key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
+        std::cout << "[GLTFImporter] Looking up morph target key: " << key << std::endl;
+        if (primitiveVertexOffsets.find(key) != primitiveVertexOffsets.end())
+        {
+          morphSet.vertexOffset = primitiveVertexOffsets[key];
+          morphSet.vertexCount  = primitiveVertexCounts[key]; // Use actual vertex count
+
+          // Store position index mapping for morph targets
+          morphSet.positionIndices.resize(morphSet.vertexCount);
+          for (uint32_t i = 0; i < morphSet.vertexCount; i++)
+          {
+            uint32_t vertexIdx          = morphSet.vertexOffset + i;
+            morphSet.positionIndices[i] = vertexToPositionIndex[vertexIdx];
+          }
+
+          std::cout << "[GLTFImporter] Found vertex offset: " << morphSet.vertexOffset << ", count: " << morphSet.vertexCount << std::endl;
+        }
+        else
+        {
+          morphSet.vertexOffset = 0;
+          morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
+          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << std::endl;
+        }
+
+        // Initialize weights from mesh or node
+        if (!gltfMesh.weights.empty())
+        {
+          morphSet.weights.resize(gltfMesh.weights.size());
+          for (size_t w = 0; w < gltfMesh.weights.size(); w++)
+          {
+            morphSet.weights[w] = static_cast<float>(gltfMesh.weights[w]);
+          }
+        }
+        else
+        {
+          morphSet.weights.resize(primitive.targets.size(), 0.0f);
+        }
+
+        // Load each morph target
+        for (const auto& target : primitive.targets)
+        {
+          Model::MorphTarget morphTarget;
+
+          // Load position deltas
+          if (target.find("POSITION") != target.end())
+          {
+            const auto&  posAccessor   = gltfModel.accessors[target.at("POSITION")];
+            const auto&  posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
+            const auto&  posBuffer     = gltfModel.buffers[posBufferView.buffer];
+            const float* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
+
+            morphTarget.positionDeltas.resize(posAccessor.count);
+            for (size_t i = 0; i < posAccessor.count; i++)
+            {
+              morphTarget.positionDeltas[i] = glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
+            }
+          }
+
+          // Load normal deltas
+          if (target.find("NORMAL") != target.end())
+          {
+            const auto&  normAccessor   = gltfModel.accessors[target.at("NORMAL")];
+            const auto&  normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
+            const auto&  normBuffer     = gltfModel.buffers[normBufferView.buffer];
+            const float* normals        = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
+
+            morphTarget.normalDeltas.resize(normAccessor.count);
+            for (size_t i = 0; i < normAccessor.count; i++)
+            {
+              morphTarget.normalDeltas[i] = glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
+            }
+          }
+
+          morphSet.targets.push_back(morphTarget);
+        }
+
+        if (!morphSet.targets.empty())
+        {
+          builder.morphTargetSets.push_back(morphSet);
+          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << std::endl;
+        }
       }
     }
+
+    // Load animations
+    for (const auto& gltfAnim : gltfModel.animations)
+    {
+      Model::Animation animation;
+      animation.name = gltfAnim.name.empty() ? "animation_" + std::to_string(builder.animations.size()) : gltfAnim.name;
+
+      // Load samplers
+      for (const auto& gltfSampler : gltfAnim.samplers)
+      {
+        Model::AnimationSampler sampler;
+
+        // Get time values
+        const auto&  timeAccessor   = gltfModel.accessors[gltfSampler.input];
+        const auto&  timeBufferView = gltfModel.bufferViews[timeAccessor.bufferView];
+        const auto&  timeBuffer     = gltfModel.buffers[timeBufferView.buffer];
+        const float* times          = reinterpret_cast<const float*>(&timeBuffer.data[timeBufferView.byteOffset + timeAccessor.byteOffset]);
+
+        sampler.times.resize(timeAccessor.count);
+        for (size_t i = 0; i < timeAccessor.count; i++)
+        {
+          sampler.times[i] = times[i];
+          if (sampler.times[i] > animation.duration)
+          {
+            animation.duration = sampler.times[i];
+          }
+        }
+
+        // Get output values
+        const auto&  outputAccessor   = gltfModel.accessors[gltfSampler.output];
+        const auto&  outputBufferView = gltfModel.bufferViews[outputAccessor.bufferView];
+        const auto&  outputBuffer     = gltfModel.buffers[outputBufferView.buffer];
+        const float* outputs          = reinterpret_cast<const float*>(&outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
+
+        // Store values (type determined by channel target path)
+        if (outputAccessor.type == TINYGLTF_TYPE_VEC3)
+        {
+          sampler.translations.resize(outputAccessor.count);
+          sampler.scales.resize(outputAccessor.count);
+          for (size_t i = 0; i < outputAccessor.count; i++)
+          {
+            sampler.translations[i] = glm::vec3(outputs[i * 3 + 0], outputs[i * 3 + 1], outputs[i * 3 + 2]);
+            sampler.scales[i]       = sampler.translations[i]; // Same storage
+          }
+        }
+        else if (outputAccessor.type == TINYGLTF_TYPE_VEC4)
+        {
+          sampler.rotations.resize(outputAccessor.count);
+          for (size_t i = 0; i < outputAccessor.count; i++)
+          {
+            sampler.rotations[i] = glm::quat(outputs[i * 4 + 3], outputs[i * 4 + 0], outputs[i * 4 + 1], outputs[i * 4 + 2]);
+          }
+        }
+        else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR)
+        {
+          // Morph target weights - multiple scalars per keyframe
+          // Count weights per keyframe by dividing total count by time count
+          size_t weightsPerFrame = outputAccessor.count / timeAccessor.count;
+          sampler.morphWeights.resize(timeAccessor.count);
+
+          for (size_t i = 0; i < timeAccessor.count; i++)
+          {
+            sampler.morphWeights[i].resize(weightsPerFrame);
+            for (size_t w = 0; w < weightsPerFrame; w++)
+            {
+              sampler.morphWeights[i][w] = outputs[i * weightsPerFrame + w];
+            }
+          }
+        }
+
+        // Interpolation type
+        if (gltfSampler.interpolation == "LINEAR")
+          sampler.interpolation = Model::AnimationSampler::LINEAR;
+        else if (gltfSampler.interpolation == "STEP")
+          sampler.interpolation = Model::AnimationSampler::STEP;
+        else if (gltfSampler.interpolation == "CUBICSPLINE")
+          sampler.interpolation = Model::AnimationSampler::CUBICSPLINE;
+
+        animation.samplers.push_back(sampler);
+      }
+
+      // Load channels
+      for (const auto& gltfChannel : gltfAnim.channels)
+      {
+        Model::AnimationChannel channel;
+        channel.samplerIndex = gltfChannel.sampler;
+        channel.targetNode   = gltfChannel.target_node;
+
+        if (gltfChannel.target_path == "translation")
+          channel.path = Model::AnimationChannel::TRANSLATION;
+        else if (gltfChannel.target_path == "rotation")
+          channel.path = Model::AnimationChannel::ROTATION;
+        else if (gltfChannel.target_path == "scale")
+          channel.path = Model::AnimationChannel::SCALE;
+        else if (gltfChannel.target_path == "weights")
+        {
+          channel.path = Model::AnimationChannel::WEIGHTS;
+          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << std::endl;
+        }
+        else
+        {
+          // Skip unsupported paths
+          continue;
+        }
+
+        animation.channels.push_back(channel);
+      }
+
+      if (animation.channels.empty())
+      {
+        std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << std::endl;
+        continue;
+      }
+
+      builder.animations.push_back(animation);
+      std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << std::endl;
+    }
+
+    return true;
   }
 
-  // Load morph targets from meshes
-  for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++) {
-    const auto &gltfMesh = gltfModel.meshes[meshIdx];
+  // --- Refactored helper method implementations ---
 
-    for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++) {
-      const auto &primitive = gltfMesh.primitives[primIdx];
+  void GLTFImporter::loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir)
+  {
+    for (size_t i = 0; i < model.materials.size(); i++)
+    {
+      const auto&         gltfMat = model.materials[i];
+      Model::MaterialInfo matInfo;
+      matInfo.name       = gltfMat.name;
+      matInfo.materialId = static_cast<int>(i);
 
-      if (primitive.targets.empty()) {
-        continue; // No morph targets
+      // glTF uses PBR metallic-roughness workflow
+      const auto& pbr = gltfMat.pbrMetallicRoughness;
+
+      // Double Sided
+      matInfo.pbrMaterial.doubleSided = gltfMat.doubleSided;
+
+      // Base color (albedo)
+      matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
+
+      // Alpha Mode
+      if (gltfMat.alphaMode == "MASK")
+      {
+        matInfo.pbrMaterial.alphaMode   = AlphaMode::Mask;
+        matInfo.pbrMaterial.alphaCutoff = static_cast<float>(gltfMat.alphaCutoff);
+      }
+      else if (gltfMat.alphaMode == "BLEND")
+      {
+        matInfo.pbrMaterial.alphaMode = AlphaMode::Blend;
+      }
+      else
+      {
+        matInfo.pbrMaterial.alphaMode = AlphaMode::Opaque;
       }
 
-      Model::MorphTargetSet morphSet;
+      // Metallic and roughness
+      // glTF spec defaults: metallicFactor = 0.0 (non-metal), roughnessFactor = 1.0 (fully rough).
+      // Some loaders/structs may set different defaults internally, so prefer explicit fallbacks when value is not present.
+      matInfo.pbrMaterial.metallic  = (pbr.metallicFactor >= 0.0) ? static_cast<float>(pbr.metallicFactor) : 0.0f;
+      matInfo.pbrMaterial.roughness = (pbr.roughnessFactor >= 0.0) ? static_cast<float>(pbr.roughnessFactor) : 1.0f;
 
-      // Get the vertex offset and count for this primitive
-      std::string key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
-      std::cout << "[GLTFImporter] Looking up morph target key: " << key
+      matInfo.pbrMaterial.ao = 1.0f;
+
+      // Extract texture paths (handles both external URIs and embedded images)
+      if (pbr.baseColorTexture.index >= 0)
+      {
+        matInfo.diffuseTexPath = getTexturePath(model, pbr.baseColorTexture.index, baseDir, cacheDir);
+      }
+
+      if (gltfMat.normalTexture.index >= 0)
+      {
+        matInfo.normalTexPath = getTexturePath(model, gltfMat.normalTexture.index, baseDir, cacheDir);
+      }
+
+      if (pbr.metallicRoughnessTexture.index >= 0)
+      {
+        matInfo.roughnessTexPath                        = getTexturePath(model, pbr.metallicRoughnessTexture.index, baseDir, cacheDir);
+        matInfo.pbrMaterial.useMetallicRoughnessTexture = true;
+
+        if (gltfMat.occlusionTexture.index == pbr.metallicRoughnessTexture.index)
+        {
+          matInfo.pbrMaterial.useOcclusionRoughnessMetallicTexture = true;
+        }
+      }
+
+      if (gltfMat.occlusionTexture.index >= 0)
+      {
+        matInfo.aoTexPath = getTexturePath(model, gltfMat.occlusionTexture.index, baseDir, cacheDir);
+      }
+
+      // Emissive Factor
+      matInfo.pbrMaterial.emissiveColor = glm::vec3(gltfMat.emissiveFactor[0], gltfMat.emissiveFactor[1], gltfMat.emissiveFactor[2]);
+
+      if (gltfMat.emissiveTexture.index >= 0)
+      {
+        matInfo.emissiveTexPath = getTexturePath(model, gltfMat.emissiveTexture.index, baseDir, cacheDir);
+      }
+
+      // Specular Glossiness Workflow
+      if (gltfMat.extensions.find("KHR_materials_pbrSpecularGlossiness") != gltfMat.extensions.end())
+      {
+        const auto& ext                                   = gltfMat.extensions.at("KHR_materials_pbrSpecularGlossiness");
+        matInfo.pbrMaterial.useSpecularGlossinessWorkflow = true;
+
+        if (ext.Has("diffuseFactor"))
+        {
+          const auto& f              = ext.Get("diffuseFactor");
+          matInfo.pbrMaterial.albedo = glm::vec4(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble(), f.Get(3).GetNumberAsDouble());
+        }
+
+        if (ext.Has("specularFactor"))
+        {
+          const auto& f                      = ext.Get("specularFactor");
+          matInfo.pbrMaterial.specularFactor = glm::vec3(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble());
+        }
+
+        if (ext.Has("glossinessFactor"))
+        {
+          matInfo.pbrMaterial.glossinessFactor = static_cast<float>(ext.Get("glossinessFactor").GetNumberAsDouble());
+        }
+
+        if (ext.Has("diffuseTexture"))
+        {
+          const auto& tex        = ext.Get("diffuseTexture");
+          int         index      = tex.Get("index").GetNumberAsInt();
+          matInfo.diffuseTexPath = getTexturePath(model, index, baseDir, cacheDir);
+        }
+
+        if (ext.Has("specularGlossinessTexture"))
+        {
+          const auto& tex                   = ext.Get("specularGlossinessTexture");
+          int         index                 = tex.Get("index").GetNumberAsInt();
+          matInfo.specularGlossinessTexPath = getTexturePath(model, index, baseDir, cacheDir);
+        }
+      }
+
+      // Parse Extensions (emissive strength, transmission, ior, iridescence,
+      // clearcoat, volume)
+      if (gltfMat.extensions.find("KHR_materials_emissive_strength") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_emissive_strength");
+        if (ext.Has("emissiveStrength"))
+        {
+          matInfo.pbrMaterial.emissiveStrength = static_cast<float>(ext.Get("emissiveStrength").GetNumberAsDouble());
+        }
+      }
+
+      if (gltfMat.extensions.find("KHR_materials_transmission") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_transmission");
+        if (ext.Has("transmissionFactor"))
+        {
+          matInfo.pbrMaterial.transmission = static_cast<float>(ext.Get("transmissionFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("transmissionTexture"))
+        {
+          const auto& tex             = ext.Get("transmissionTexture");
+          int         index           = tex.Get("index").GetNumberAsInt();
+          matInfo.transmissionTexPath = getTexturePath(model, index, baseDir, cacheDir);
+        }
+      }
+
+      if (gltfMat.extensions.find("KHR_materials_ior") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_ior");
+        if (ext.Has("ior"))
+        {
+          matInfo.pbrMaterial.ior = static_cast<float>(ext.Get("ior").GetNumberAsDouble());
+        }
+      }
+
+      if (gltfMat.extensions.find("KHR_materials_iridescence") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_iridescence");
+        if (ext.Has("iridescenceFactor"))
+        {
+          matInfo.pbrMaterial.iridescence = static_cast<float>(ext.Get("iridescenceFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("iridescenceIor"))
+        {
+          matInfo.pbrMaterial.iridescenceIOR = static_cast<float>(ext.Get("iridescenceIor").GetNumberAsDouble());
+        }
+        if (ext.Has("iridescenceThicknessMaximum"))
+        {
+          matInfo.pbrMaterial.iridescenceThickness = static_cast<float>(ext.Get("iridescenceThicknessMaximum").GetNumberAsDouble());
+        }
+      }
+
+      if (gltfMat.extensions.find("KHR_materials_clearcoat") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_clearcoat");
+        if (ext.Has("clearcoatFactor"))
+        {
+          matInfo.pbrMaterial.clearcoat = static_cast<float>(ext.Get("clearcoatFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("clearcoatRoughnessFactor"))
+        {
+          matInfo.pbrMaterial.clearcoatRoughness = static_cast<float>(ext.Get("clearcoatRoughnessFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("clearcoatTexture"))
+        {
+          const auto& tex          = ext.Get("clearcoatTexture");
+          int         index        = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatTexPath = getTexturePath(model, index, baseDir, cacheDir);
+        }
+        if (ext.Has("clearcoatRoughnessTexture"))
+        {
+          const auto& tex                   = ext.Get("clearcoatRoughnessTexture");
+          int         index                 = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatRoughnessTexPath = getTexturePath(model, index, baseDir, cacheDir);
+        }
+        if (ext.Has("clearcoatNormalTexture"))
+        {
+          const auto& tex                = ext.Get("clearcoatNormalTexture");
+          int         index              = tex.Get("index").GetNumberAsInt();
+          matInfo.clearcoatNormalTexPath = getTexturePath(model, index, baseDir, cacheDir);
+        }
+      }
+
+      if (gltfMat.extensions.find("KHR_materials_volume") != gltfMat.extensions.end())
+      {
+        const auto& ext = gltfMat.extensions.at("KHR_materials_volume");
+        if (ext.Has("thicknessFactor"))
+        {
+          matInfo.pbrMaterial.thickness = static_cast<float>(ext.Get("thicknessFactor").GetNumberAsDouble());
+        }
+        if (ext.Has("attenuationDistance"))
+        {
+          matInfo.pbrMaterial.attenuationDistance = static_cast<float>(ext.Get("attenuationDistance").GetNumberAsDouble());
+        }
+        if (ext.Has("attenuationColor"))
+        {
+          const auto& f                        = ext.Get("attenuationColor");
+          matInfo.pbrMaterial.attenuationColor = glm::vec3(f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(), f.Get(2).GetNumberAsDouble());
+        }
+      }
+
+      // Texture transform (KHR_texture_transform)
+      const tinygltf::ExtensionMap* textureExtensions = nullptr;
+      if (gltfMat.normalTexture.index >= 0 && gltfMat.normalTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &gltfMat.normalTexture.extensions;
+      }
+      else if (pbr.baseColorTexture.index >= 0 && pbr.baseColorTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &pbr.baseColorTexture.extensions;
+      }
+      else if (pbr.metallicRoughnessTexture.index >= 0 && pbr.metallicRoughnessTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &pbr.metallicRoughnessTexture.extensions;
+      }
+      else if (gltfMat.occlusionTexture.index >= 0 && gltfMat.occlusionTexture.extensions.count("KHR_texture_transform"))
+      {
+        textureExtensions = &gltfMat.occlusionTexture.extensions;
+      }
+
+      if (textureExtensions)
+      {
+        const auto& ext = textureExtensions->at("KHR_texture_transform");
+        if (ext.Has("scale"))
+        {
+          const auto& scale = ext.Get("scale");
+          if (scale.IsArray() && scale.ArrayLen() >= 1)
+          {
+            matInfo.pbrMaterial.uvScale = static_cast<float>(scale.Get(0).GetNumberAsDouble());
+          }
+        }
+      }
+
+      builder.materials.push_back(matInfo);
+
+      std::string alphaModeStr = "OPAQUE";
+      if (matInfo.pbrMaterial.alphaMode == AlphaMode::Mask)
+        alphaModeStr = "MASK";
+      else if (matInfo.pbrMaterial.alphaMode == AlphaMode::Blend)
+        alphaModeStr = "BLEND";
+
+      std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << matInfo.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << "," << matInfo.pbrMaterial.albedo.g << ","
+                << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ", alphaMode=" << alphaModeStr << ")"
                 << std::endl;
-      if (primitiveVertexOffsets.find(key) != primitiveVertexOffsets.end()) {
-        morphSet.vertexOffset = primitiveVertexOffsets[key];
-        morphSet.vertexCount =
-            primitiveVertexCounts[key]; // Use actual vertex count
-
-        // Store position index mapping for morph targets
-        morphSet.positionIndices.resize(morphSet.vertexCount);
-        for (uint32_t i = 0; i < morphSet.vertexCount; i++) {
-          uint32_t vertexIdx = morphSet.vertexOffset + i;
-          morphSet.positionIndices[i] = vertexToPositionIndex[vertexIdx];
-        }
-
-        std::cout << "[GLTFImporter] Found vertex offset: "
-                  << morphSet.vertexOffset
-                  << ", count: " << morphSet.vertexCount << std::endl;
-      } else {
-        morphSet.vertexOffset = 0;
-        morphSet.vertexCount =
-            gltfModel.accessors[primitive.attributes.at("POSITION")].count;
-        std::cerr
-            << RED
-            << "[GLTFImporter] Warning: Could not find vertex offset for mesh "
-            << meshIdx << " primitive " << primIdx << RESET << std::endl;
-      }
-
-      // Initialize weights from mesh or node
-      if (!gltfMesh.weights.empty()) {
-        morphSet.weights.resize(gltfMesh.weights.size());
-        for (size_t w = 0; w < gltfMesh.weights.size(); w++) {
-          morphSet.weights[w] = static_cast<float>(gltfMesh.weights[w]);
-        }
-      } else {
-        morphSet.weights.resize(primitive.targets.size(), 0.0f);
-      }
-
-      // Load each morph target
-      for (const auto &target : primitive.targets) {
-        Model::MorphTarget morphTarget;
-
-        // Load position deltas
-        if (target.find("POSITION") != target.end()) {
-          const auto &posAccessor = gltfModel.accessors[target.at("POSITION")];
-          const auto &posBufferView =
-              gltfModel.bufferViews[posAccessor.bufferView];
-          const auto &posBuffer = gltfModel.buffers[posBufferView.buffer];
-          const float *positions = reinterpret_cast<const float *>(
-              &posBuffer
-                   .data[posBufferView.byteOffset + posAccessor.byteOffset]);
-
-          morphTarget.positionDeltas.resize(posAccessor.count);
-          for (size_t i = 0; i < posAccessor.count; i++) {
-            morphTarget.positionDeltas[i] =
-                glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1],
-                          positions[i * 3 + 2]);
-          }
-        }
-
-        // Load normal deltas
-        if (target.find("NORMAL") != target.end()) {
-          const auto &normAccessor = gltfModel.accessors[target.at("NORMAL")];
-          const auto &normBufferView =
-              gltfModel.bufferViews[normAccessor.bufferView];
-          const auto &normBuffer = gltfModel.buffers[normBufferView.buffer];
-          const float *normals = reinterpret_cast<const float *>(
-              &normBuffer
-                   .data[normBufferView.byteOffset + normAccessor.byteOffset]);
-
-          morphTarget.normalDeltas.resize(normAccessor.count);
-          for (size_t i = 0; i < normAccessor.count; i++) {
-            morphTarget.normalDeltas[i] = glm::vec3(
-                normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
-          }
-        }
-
-        morphSet.targets.push_back(morphTarget);
-      }
-
-      if (!morphSet.targets.empty()) {
-        builder.morphTargetSets.push_back(morphSet);
-        std::cout << GREEN << "[GLTFImporter] Loaded "
-                  << morphSet.targets.size() << " morph targets for mesh "
-                  << meshIdx << RESET << std::endl;
-      }
     }
   }
 
-  // Load animations
-  for (const auto &gltfAnim : gltfModel.animations) {
-    Model::Animation animation;
-    animation.name =
-        gltfAnim.name.empty()
-            ? "animation_" + std::to_string(builder.animations.size())
-            : gltfAnim.name;
+  glm::mat4 GLTFImporter::computeNodeTransform(const tinygltf::Node& node) const
+  {
+    glm::mat4 nodeTransform = glm::mat4(1.0f);
 
-    // Load samplers
-    for (const auto &gltfSampler : gltfAnim.samplers) {
-      Model::AnimationSampler sampler;
-
-      // Get time values
-      const auto &timeAccessor = gltfModel.accessors[gltfSampler.input];
-      const auto &timeBufferView =
-          gltfModel.bufferViews[timeAccessor.bufferView];
-      const auto &timeBuffer = gltfModel.buffers[timeBufferView.buffer];
-      const float *times = reinterpret_cast<const float *>(
-          &timeBuffer
-               .data[timeBufferView.byteOffset + timeAccessor.byteOffset]);
-
-      sampler.times.resize(timeAccessor.count);
-      for (size_t i = 0; i < timeAccessor.count; i++) {
-        sampler.times[i] = times[i];
-        if (sampler.times[i] > animation.duration) {
-          animation.duration = sampler.times[i];
-        }
+    if (node.matrix.size() == 16)
+    {
+      nodeTransform = glm::make_mat4(node.matrix.data());
+    }
+    else
+    {
+      if (node.translation.size() == 3)
+      {
+        nodeTransform = glm::translate(nodeTransform, glm::vec3(node.translation[0], node.translation[1], node.translation[2]));
       }
 
-      // Get output values
-      const auto &outputAccessor = gltfModel.accessors[gltfSampler.output];
-      const auto &outputBufferView =
-          gltfModel.bufferViews[outputAccessor.bufferView];
-      const auto &outputBuffer = gltfModel.buffers[outputBufferView.buffer];
-      const float *outputs = reinterpret_cast<const float *>(
-          &outputBuffer
-               .data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
-
-      // Store values (type determined by channel target path)
-      if (outputAccessor.type == TINYGLTF_TYPE_VEC3) {
-        sampler.translations.resize(outputAccessor.count);
-        sampler.scales.resize(outputAccessor.count);
-        for (size_t i = 0; i < outputAccessor.count; i++) {
-          sampler.translations[i] = glm::vec3(
-              outputs[i * 3 + 0], outputs[i * 3 + 1], outputs[i * 3 + 2]);
-          sampler.scales[i] = sampler.translations[i]; // Same storage
-        }
-      } else if (outputAccessor.type == TINYGLTF_TYPE_VEC4) {
-        sampler.rotations.resize(outputAccessor.count);
-        for (size_t i = 0; i < outputAccessor.count; i++) {
-          sampler.rotations[i] =
-              glm::quat(outputs[i * 4 + 3], outputs[i * 4 + 0],
-                        outputs[i * 4 + 1], outputs[i * 4 + 2]);
-        }
-      } else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR) {
-        // Morph target weights - multiple scalars per keyframe
-        // Count weights per keyframe by dividing total count by time count
-        size_t weightsPerFrame = outputAccessor.count / timeAccessor.count;
-        sampler.morphWeights.resize(timeAccessor.count);
-
-        for (size_t i = 0; i < timeAccessor.count; i++) {
-          sampler.morphWeights[i].resize(weightsPerFrame);
-          for (size_t w = 0; w < weightsPerFrame; w++) {
-            sampler.morphWeights[i][w] = outputs[i * weightsPerFrame + w];
-          }
-        }
+      if (node.rotation.size() == 4)
+      {
+        glm::quat q(static_cast<float>(node.rotation[3]), static_cast<float>(node.rotation[0]), static_cast<float>(node.rotation[1]), static_cast<float>(node.rotation[2]));
+        nodeTransform *= glm::mat4_cast(q);
       }
 
-      // Interpolation type
-      if (gltfSampler.interpolation == "LINEAR")
-        sampler.interpolation = Model::AnimationSampler::LINEAR;
-      else if (gltfSampler.interpolation == "STEP")
-        sampler.interpolation = Model::AnimationSampler::STEP;
-      else if (gltfSampler.interpolation == "CUBICSPLINE")
-        sampler.interpolation = Model::AnimationSampler::CUBICSPLINE;
-
-      animation.samplers.push_back(sampler);
+      if (node.scale.size() == 3)
+      {
+        nodeTransform = glm::scale(nodeTransform, glm::vec3(node.scale[0], node.scale[1], node.scale[2]));
+      }
     }
 
-    // Load channels
-    for (const auto &gltfChannel : gltfAnim.channels) {
-      Model::AnimationChannel channel;
-      channel.samplerIndex = gltfChannel.sampler;
-      channel.targetNode = gltfChannel.target_node;
+    return nodeTransform;
+  }
 
-      if (gltfChannel.target_path == "translation")
-        channel.path = Model::AnimationChannel::TRANSLATION;
-      else if (gltfChannel.target_path == "rotation")
-        channel.path = Model::AnimationChannel::ROTATION;
-      else if (gltfChannel.target_path == "scale")
-        channel.path = Model::AnimationChannel::SCALE;
-      else if (gltfChannel.target_path == "weights") {
-        channel.path = Model::AnimationChannel::WEIGHTS;
-        std::cout
-            << GREEN
-            << "[GLTFImporter] Found morph target weight animation channel"
-            << RESET << std::endl;
-      } else {
-        // Skip unsupported paths
+  void GLTFImporter::processMesh(Model::Builder&                                 builder,
+                                 const tinygltf::Model&                          model,
+                                 int                                             meshIndex,
+                                 const glm::mat4&                                globalTransform,
+                                 std::unordered_map<Model::Vertex, uint32_t>&    uniqueVertices,
+                                 std::unordered_map<int, std::vector<uint32_t>>& indicesByMaterial,
+                                 std::unordered_map<std::string, uint32_t>&      primitiveVertexOffsets,
+                                 std::unordered_map<std::string, uint32_t>&      primitiveVertexCounts,
+                                 std::unordered_map<uint32_t, uint32_t>&         vertexToPositionIndex,
+                                 bool                                            hasAnimations,
+                                 float                                           xMultiplier,
+                                 float                                           yMultiplier,
+                                 float                                           zMultiplier)
+  {
+    const tinygltf::Mesh& mesh = model.meshes[meshIndex];
+
+    for (size_t primIdx = 0; primIdx < mesh.primitives.size(); primIdx++)
+    {
+      const auto& primitive = mesh.primitives[primIdx];
+
+      // Record the starting vertex offset for this primitive (for morph targets)
+      uint32_t    primitiveVertexOffset = static_cast<uint32_t>(builder.vertices.size());
+      std::string key                   = std::to_string(meshIndex) + "_" + std::to_string(primIdx);
+      primitiveVertexOffsets[key]       = primitiveVertexOffset;
+      // Check if this primitive has morph targets - if so, disable deduplication
+      bool hasMorphTargets = !primitive.targets.empty();
+
+      int          materialId    = primitive.material; // Get accessors for vertex attributes
+      const auto&  posAccessor   = model.accessors[primitive.attributes.at("POSITION")];
+      const auto&  posBufferView = model.bufferViews[posAccessor.bufferView];
+      const auto&  posBuffer     = model.buffers[posBufferView.buffer];
+      const float* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
+
+      const float* normals   = nullptr;
+      const float* texCoords = nullptr;
+
+      if (primitive.attributes.find("NORMAL") != primitive.attributes.end())
+      {
+        const auto& normAccessor   = model.accessors[primitive.attributes.at("NORMAL")];
+        const auto& normBufferView = model.bufferViews[normAccessor.bufferView];
+        const auto& normBuffer     = model.buffers[normBufferView.buffer];
+        normals                    = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
+      }
+
+      if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end())
+      {
+        const auto& uvAccessor   = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+        const auto& uvBufferView = model.bufferViews[uvAccessor.bufferView];
+        const auto& uvBuffer     = model.buffers[uvBufferView.buffer];
+        texCoords                = reinterpret_cast<const float*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
+      }
+
+      // Check if primitive has indices
+      if (primitive.indices < 0)
+      {
+        // No indices - use direct vertex access (not commonly used, skip for now)
+        std::cerr << YELLOW
+                  << "[GLTFImporter] Warning: Primitive without indices not "
+                     "supported yet"
+                  << RESET << std::endl;
         continue;
       }
 
-      animation.channels.push_back(channel);
-    }
+      // Get indices
+      const auto&    indAccessor   = model.accessors[primitive.indices];
+      const auto&    indBufferView = model.bufferViews[indAccessor.bufferView];
+      const auto&    indBuffer     = model.buffers[indBufferView.buffer];
+      const uint8_t* indData       = &indBuffer.data[indBufferView.byteOffset + indAccessor.byteOffset];
 
-    if (animation.channels.empty()) {
-      std::cout << YELLOW << "[GLTFImporter] Warning: Animation '"
-                << animation.name << "' has no supported channels, skipping"
-                << RESET << std::endl;
-      continue;
-    }
-
-    builder.animations.push_back(animation);
-    std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE
-              << animation.name << RESET << " (" << animation.duration << "s, "
-              << animation.channels.size() << " channels)" << std::endl;
-  }
-
-  return true;
-}
-
-// --- Refactored helper method implementations ---
-
-void GLTFImporter::loadMaterials(Model::Builder &builder,
-                                 const tinygltf::Model &model,
-                                 const std::string &baseDir,
-                                 const std::string &cacheDir) {
-  for (size_t i = 0; i < model.materials.size(); i++) {
-    const auto &gltfMat = model.materials[i];
-    Model::MaterialInfo matInfo;
-    matInfo.name = gltfMat.name;
-    matInfo.materialId = static_cast<int>(i);
-
-    // glTF uses PBR metallic-roughness workflow
-    const auto &pbr = gltfMat.pbrMetallicRoughness;
-
-    // Double Sided
-    matInfo.pbrMaterial.doubleSided = gltfMat.doubleSided;
-
-    // Base color (albedo)
-    matInfo.pbrMaterial.albedo =
-        glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1],
-                  pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
-
-    // Alpha Mode
-    if (gltfMat.alphaMode == "MASK") {
-      matInfo.pbrMaterial.alphaMode = AlphaMode::Mask;
-      matInfo.pbrMaterial.alphaCutoff = static_cast<float>(gltfMat.alphaCutoff);
-    } else if (gltfMat.alphaMode == "BLEND") {
-      matInfo.pbrMaterial.alphaMode = AlphaMode::Blend;
-    } else {
-      matInfo.pbrMaterial.alphaMode = AlphaMode::Opaque;
-    }
-
-    // Metallic and roughness
-    // glTF spec defaults: metallicFactor = 0.0 (non-metal), roughnessFactor = 1.0 (fully rough).
-    // Some loaders/structs may set different defaults internally, so prefer explicit fallbacks when value is not present.
-    matInfo.pbrMaterial.metallic = (pbr.metallicFactor >= 0.0) ? static_cast<float>(pbr.metallicFactor) : 0.0f;
-    matInfo.pbrMaterial.roughness = (pbr.roughnessFactor >= 0.0) ? static_cast<float>(pbr.roughnessFactor) : 1.0f;
-
-    matInfo.pbrMaterial.ao = 1.0f;
-
-    // Extract texture paths (handles both external URIs and embedded images)
-    if (pbr.baseColorTexture.index >= 0) {
-      matInfo.diffuseTexPath =
-          getTexturePath(model, pbr.baseColorTexture.index, baseDir, cacheDir);
-    }
-
-    if (gltfMat.normalTexture.index >= 0) {
-      matInfo.normalTexPath =
-          getTexturePath(model, gltfMat.normalTexture.index, baseDir, cacheDir);
-    }
-
-    if (pbr.metallicRoughnessTexture.index >= 0) {
-      matInfo.roughnessTexPath = getTexturePath(
-          model, pbr.metallicRoughnessTexture.index, baseDir, cacheDir);
-      matInfo.pbrMaterial.useMetallicRoughnessTexture = true;
-
-      if (gltfMat.occlusionTexture.index ==
-          pbr.metallicRoughnessTexture.index) {
-        matInfo.pbrMaterial.useOcclusionRoughnessMetallicTexture = true;
-      }
-    }
-
-    if (gltfMat.occlusionTexture.index >= 0) {
-      matInfo.aoTexPath = getTexturePath(model, gltfMat.occlusionTexture.index,
-                                         baseDir, cacheDir);
-    }
-
-    // Emissive Factor
-    matInfo.pbrMaterial.emissiveColor =
-        glm::vec3(gltfMat.emissiveFactor[0], gltfMat.emissiveFactor[1],
-                  gltfMat.emissiveFactor[2]);
-
-    if (gltfMat.emissiveTexture.index >= 0) {
-      matInfo.emissiveTexPath = getTexturePath(
-          model, gltfMat.emissiveTexture.index, baseDir, cacheDir);
-    }
-
-    // Specular Glossiness Workflow
-    if (gltfMat.extensions.find("KHR_materials_pbrSpecularGlossiness") !=
-        gltfMat.extensions.end()) {
-      const auto &ext =
-          gltfMat.extensions.at("KHR_materials_pbrSpecularGlossiness");
-      matInfo.pbrMaterial.useSpecularGlossinessWorkflow = true;
-
-      if (ext.Has("diffuseFactor")) {
-        const auto &f = ext.Get("diffuseFactor");
-        matInfo.pbrMaterial.albedo = glm::vec4(
-            f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(),
-            f.Get(2).GetNumberAsDouble(), f.Get(3).GetNumberAsDouble());
-      }
-
-      if (ext.Has("specularFactor")) {
-        const auto &f = ext.Get("specularFactor");
-        matInfo.pbrMaterial.specularFactor = glm::vec3(
-            f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(),
-            f.Get(2).GetNumberAsDouble());
-      }
-
-      if (ext.Has("glossinessFactor")) {
-        matInfo.pbrMaterial.glossinessFactor =
-            static_cast<float>(ext.Get("glossinessFactor").GetNumberAsDouble());
-      }
-
-      if (ext.Has("diffuseTexture")) {
-        const auto &tex = ext.Get("diffuseTexture");
-        int index = tex.Get("index").GetNumberAsInt();
-        matInfo.diffuseTexPath =
-            getTexturePath(model, index, baseDir, cacheDir);
-      }
-
-      if (ext.Has("specularGlossinessTexture")) {
-        const auto &tex = ext.Get("specularGlossinessTexture");
-        int index = tex.Get("index").GetNumberAsInt();
-        matInfo.specularGlossinessTexPath =
-            getTexturePath(model, index, baseDir, cacheDir);
-      }
-    }
-
-    // Parse Extensions (emissive strength, transmission, ior, iridescence,
-    // clearcoat, volume)
-    if (gltfMat.extensions.find("KHR_materials_emissive_strength") !=
-        gltfMat.extensions.end()) {
-      const auto &ext =
-          gltfMat.extensions.at("KHR_materials_emissive_strength");
-      if (ext.Has("emissiveStrength")) {
-        matInfo.pbrMaterial.emissiveStrength =
-            static_cast<float>(ext.Get("emissiveStrength").GetNumberAsDouble());
-      }
-    }
-
-    if (gltfMat.extensions.find("KHR_materials_transmission") !=
-        gltfMat.extensions.end()) {
-      const auto &ext = gltfMat.extensions.at("KHR_materials_transmission");
-      if (ext.Has("transmissionFactor")) {
-        matInfo.pbrMaterial.transmission = static_cast<float>(
-            ext.Get("transmissionFactor").GetNumberAsDouble());
-      }
-      if (ext.Has("transmissionTexture")) {
-        const auto &tex = ext.Get("transmissionTexture");
-        int index = tex.Get("index").GetNumberAsInt();
-        matInfo.transmissionTexPath =
-            getTexturePath(model, index, baseDir, cacheDir);
-      }
-    }
-
-    if (gltfMat.extensions.find("KHR_materials_ior") !=
-        gltfMat.extensions.end()) {
-      const auto &ext = gltfMat.extensions.at("KHR_materials_ior");
-      if (ext.Has("ior")) {
-        matInfo.pbrMaterial.ior =
-            static_cast<float>(ext.Get("ior").GetNumberAsDouble());
-      }
-    }
-
-    if (gltfMat.extensions.find("KHR_materials_iridescence") !=
-        gltfMat.extensions.end()) {
-      const auto &ext = gltfMat.extensions.at("KHR_materials_iridescence");
-      if (ext.Has("iridescenceFactor")) {
-        matInfo.pbrMaterial.iridescence = static_cast<float>(
-            ext.Get("iridescenceFactor").GetNumberAsDouble());
-      }
-      if (ext.Has("iridescenceIor")) {
-        matInfo.pbrMaterial.iridescenceIOR =
-            static_cast<float>(ext.Get("iridescenceIor").GetNumberAsDouble());
-      }
-      if (ext.Has("iridescenceThicknessMaximum")) {
-        matInfo.pbrMaterial.iridescenceThickness = static_cast<float>(
-            ext.Get("iridescenceThicknessMaximum").GetNumberAsDouble());
-      }
-    }
-
-    if (gltfMat.extensions.find("KHR_materials_clearcoat") !=
-        gltfMat.extensions.end()) {
-      const auto &ext = gltfMat.extensions.at("KHR_materials_clearcoat");
-      if (ext.Has("clearcoatFactor")) {
-        matInfo.pbrMaterial.clearcoat =
-            static_cast<float>(ext.Get("clearcoatFactor").GetNumberAsDouble());
-      }
-      if (ext.Has("clearcoatRoughnessFactor")) {
-        matInfo.pbrMaterial.clearcoatRoughness = static_cast<float>(
-            ext.Get("clearcoatRoughnessFactor").GetNumberAsDouble());
-      }
-      if (ext.Has("clearcoatTexture")) {
-        const auto &tex = ext.Get("clearcoatTexture");
-        int index = tex.Get("index").GetNumberAsInt();
-        matInfo.clearcoatTexPath =
-            getTexturePath(model, index, baseDir, cacheDir);
-      }
-      if (ext.Has("clearcoatRoughnessTexture")) {
-        const auto &tex = ext.Get("clearcoatRoughnessTexture");
-        int index = tex.Get("index").GetNumberAsInt();
-        matInfo.clearcoatRoughnessTexPath =
-            getTexturePath(model, index, baseDir, cacheDir);
-      }
-      if (ext.Has("clearcoatNormalTexture")) {
-        const auto &tex = ext.Get("clearcoatNormalTexture");
-        int index = tex.Get("index").GetNumberAsInt();
-        matInfo.clearcoatNormalTexPath =
-            getTexturePath(model, index, baseDir, cacheDir);
-      }
-    }
-
-    if (gltfMat.extensions.find("KHR_materials_volume") !=
-        gltfMat.extensions.end()) {
-      const auto &ext = gltfMat.extensions.at("KHR_materials_volume");
-      if (ext.Has("thicknessFactor")) {
-        matInfo.pbrMaterial.thickness =
-            static_cast<float>(ext.Get("thicknessFactor").GetNumberAsDouble());
-      }
-      if (ext.Has("attenuationDistance")) {
-        matInfo.pbrMaterial.attenuationDistance = static_cast<float>(
-            ext.Get("attenuationDistance").GetNumberAsDouble());
-      }
-      if (ext.Has("attenuationColor")) {
-        const auto &f = ext.Get("attenuationColor");
-        matInfo.pbrMaterial.attenuationColor = glm::vec3(
-            f.Get(0).GetNumberAsDouble(), f.Get(1).GetNumberAsDouble(),
-            f.Get(2).GetNumberAsDouble());
-      }
-    }
-
-    // Texture transform (KHR_texture_transform)
-    const tinygltf::ExtensionMap *textureExtensions = nullptr;
-    if (gltfMat.normalTexture.index >= 0 &&
-        gltfMat.normalTexture.extensions.count("KHR_texture_transform")) {
-      textureExtensions = &gltfMat.normalTexture.extensions;
-    } else if (pbr.baseColorTexture.index >= 0 &&
-               pbr.baseColorTexture.extensions.count("KHR_texture_transform")) {
-      textureExtensions = &pbr.baseColorTexture.extensions;
-    } else if (pbr.metallicRoughnessTexture.index >= 0 &&
-               pbr.metallicRoughnessTexture.extensions.count(
-                   "KHR_texture_transform")) {
-      textureExtensions = &pbr.metallicRoughnessTexture.extensions;
-    } else if (gltfMat.occlusionTexture.index >= 0 &&
-               gltfMat.occlusionTexture.extensions.count(
-                   "KHR_texture_transform")) {
-      textureExtensions = &gltfMat.occlusionTexture.extensions;
-    }
-
-    if (textureExtensions) {
-      const auto &ext = textureExtensions->at("KHR_texture_transform");
-      if (ext.Has("scale")) {
-        const auto &scale = ext.Get("scale");
-        if (scale.IsArray() && scale.ArrayLen() >= 1) {
-          matInfo.pbrMaterial.uvScale =
-              static_cast<float>(scale.Get(0).GetNumberAsDouble());
+      // Process indices based on component type
+      for (size_t i = 0; i < indAccessor.count; i++)
+      {
+        uint32_t index = 0;
+        if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+        {
+          index = reinterpret_cast<const uint16_t*>(indData)[i];
         }
-      }
-    }
-
-    builder.materials.push_back(matInfo);
-
-    std::string alphaModeStr = "OPAQUE";
-    if (matInfo.pbrMaterial.alphaMode == AlphaMode::Mask)
-      alphaModeStr = "MASK";
-    else if (matInfo.pbrMaterial.alphaMode == AlphaMode::Blend)
-      alphaModeStr = "BLEND";
-
-    std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE
-              << matInfo.name << RESET
-              << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << ","
-              << matInfo.pbrMaterial.albedo.g << ","
-              << matInfo.pbrMaterial.albedo.b
-              << ", metallic=" << matInfo.pbrMaterial.metallic
-              << ", roughness=" << matInfo.pbrMaterial.roughness
-              << ", alphaMode=" << alphaModeStr << ")" << std::endl;
-  }
-}
-
-glm::mat4 GLTFImporter::computeNodeTransform(const tinygltf::Node &node) const {
-  glm::mat4 nodeTransform = glm::mat4(1.0f);
-
-  if (node.matrix.size() == 16) {
-    nodeTransform = glm::make_mat4(node.matrix.data());
-  } else {
-    if (node.translation.size() == 3) {
-      nodeTransform = glm::translate(
-          nodeTransform, glm::vec3(node.translation[0], node.translation[1],
-                                   node.translation[2]));
-    }
-
-    if (node.rotation.size() == 4) {
-      glm::quat q(static_cast<float>(node.rotation[3]),
-                  static_cast<float>(node.rotation[0]),
-                  static_cast<float>(node.rotation[1]),
-                  static_cast<float>(node.rotation[2]));
-      nodeTransform *= glm::mat4_cast(q);
-    }
-
-    if (node.scale.size() == 3) {
-      nodeTransform =
-          glm::scale(nodeTransform,
-                     glm::vec3(node.scale[0], node.scale[1], node.scale[2]));
-    }
-  }
-
-  return nodeTransform;
-}
-
-void GLTFImporter::processMesh(
-    Model::Builder &builder, const tinygltf::Model &model, int meshIndex,
-    const glm::mat4 &globalTransform,
-    std::unordered_map<Model::Vertex, uint32_t> &uniqueVertices,
-    std::unordered_map<int, std::vector<uint32_t>> &indicesByMaterial,
-    std::unordered_map<std::string, uint32_t> &primitiveVertexOffsets,
-    std::unordered_map<std::string, uint32_t> &primitiveVertexCounts,
-    std::unordered_map<uint32_t, uint32_t> &vertexToPositionIndex,
-    bool hasAnimations, float xMultiplier, float yMultiplier,
-    float zMultiplier) {
-  const tinygltf::Mesh &mesh = model.meshes[meshIndex];
-
-  for (size_t primIdx = 0; primIdx < mesh.primitives.size(); primIdx++) {
-    const auto &primitive = mesh.primitives[primIdx];
-
-    // Record the starting vertex offset for this primitive (for morph targets)
-    uint32_t primitiveVertexOffset =
-        static_cast<uint32_t>(builder.vertices.size());
-    std::string key = std::to_string(meshIndex) + "_" + std::to_string(primIdx);
-    primitiveVertexOffsets[key] = primitiveVertexOffset;
-    // Check if this primitive has morph targets - if so, disable deduplication
-    bool hasMorphTargets = !primitive.targets.empty();
-
-    int materialId = primitive.material; // Get accessors for vertex attributes
-    const auto &posAccessor =
-        model.accessors[primitive.attributes.at("POSITION")];
-    const auto &posBufferView = model.bufferViews[posAccessor.bufferView];
-    const auto &posBuffer = model.buffers[posBufferView.buffer];
-    const float *positions = reinterpret_cast<const float *>(
-        &posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
-
-    const float *normals = nullptr;
-    const float *texCoords = nullptr;
-
-    if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
-      const auto &normAccessor =
-          model.accessors[primitive.attributes.at("NORMAL")];
-      const auto &normBufferView = model.bufferViews[normAccessor.bufferView];
-      const auto &normBuffer = model.buffers[normBufferView.buffer];
-      normals = reinterpret_cast<const float *>(
-          &normBuffer
-               .data[normBufferView.byteOffset + normAccessor.byteOffset]);
-    }
-
-    if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
-      const auto &uvAccessor =
-          model.accessors[primitive.attributes.at("TEXCOORD_0")];
-      const auto &uvBufferView = model.bufferViews[uvAccessor.bufferView];
-      const auto &uvBuffer = model.buffers[uvBufferView.buffer];
-      texCoords = reinterpret_cast<const float *>(
-          &uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
-    }
-
-    // Check if primitive has indices
-    if (primitive.indices < 0) {
-      // No indices - use direct vertex access (not commonly used, skip for now)
-      std::cerr << YELLOW
-                << "[GLTFImporter] Warning: Primitive without indices not "
-                   "supported yet"
-                << RESET << std::endl;
-      continue;
-    }
-
-    // Get indices
-    const auto &indAccessor = model.accessors[primitive.indices];
-    const auto &indBufferView = model.bufferViews[indAccessor.bufferView];
-    const auto &indBuffer = model.buffers[indBufferView.buffer];
-    const uint8_t *indData =
-        &indBuffer.data[indBufferView.byteOffset + indAccessor.byteOffset];
-
-    // Process indices based on component type
-    for (size_t i = 0; i < indAccessor.count; i++) {
-      uint32_t index = 0;
-      if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-        index = reinterpret_cast<const uint16_t *>(indData)[i];
-      } else if (indAccessor.componentType ==
-                 TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-        index = reinterpret_cast<const uint32_t *>(indData)[i];
-      } else if (indAccessor.componentType ==
-                 TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
-        index = indData[i];
-      }
-
-      Model::Vertex vertex{};
-      vertex.materialId = materialId;
-
-      // Position - apply node transformation only if no animations
-      glm::vec3 worldPos;
-      if (hasAnimations) {
-        // Keep vertices in local space for animations
-        worldPos = glm::vec3(positions[index * 3 + 0], positions[index * 3 + 1],
-                             positions[index * 3 + 2]);
-      } else {
-        // Bake transform into vertices
-        glm::vec4 localPos =
-            glm::vec4(positions[index * 3 + 0], positions[index * 3 + 1],
-                      positions[index * 3 + 2], 1.0f);
-        glm::vec4 transformed = globalTransform * localPos;
-        worldPos = glm::vec3(transformed);
-      }
-
-      vertex.position = {xMultiplier * worldPos.x, yMultiplier * worldPos.y,
-                         zMultiplier * worldPos.z};
-
-      // Normal - apply normal transformation only if no animations
-      if (normals) {
-        glm::vec3 worldNormal;
-        if (hasAnimations) {
-          // Keep normals in local space
-          worldNormal =
-              glm::vec3(normals[index * 3 + 0], normals[index * 3 + 1],
-                        normals[index * 3 + 2]);
-        } else {
-          // Transform normals
-          glm::mat3 normalMatrix =
-              glm::transpose(glm::inverse(glm::mat3(globalTransform)));
-          glm::vec3 localNormal =
-              glm::vec3(normals[index * 3 + 0], normals[index * 3 + 1],
-                        normals[index * 3 + 2]);
-          worldNormal = glm::normalize(normalMatrix * localNormal);
+        else if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+        {
+          index = reinterpret_cast<const uint32_t*>(indData)[i];
+        }
+        else if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+        {
+          index = indData[i];
         }
 
-        vertex.normal = {xMultiplier * worldNormal.x,
-                         yMultiplier * worldNormal.y,
-                         zMultiplier * worldNormal.z};
-      } else {
-        vertex.normal = {0.0f, 1.0f, 0.0f};
-      }
+        Model::Vertex vertex{};
+        vertex.materialId = materialId;
 
-      // Texture coordinates
-      if (texCoords) {
-        vertex.uv = {texCoords[index * 2 + 0], 1.0f - texCoords[index * 2 + 1]};
-      } else {
-        vertex.uv = {0.0f, 0.0f};
-      }
+        // Position - apply node transformation only if no animations
+        glm::vec3 worldPos;
+        if (hasAnimations)
+        {
+          // Keep vertices in local space for animations
+          worldPos = glm::vec3(positions[index * 3 + 0], positions[index * 3 + 1], positions[index * 3 + 2]);
+        }
+        else
+        {
+          // Bake transform into vertices
+          glm::vec4 localPos    = glm::vec4(positions[index * 3 + 0], positions[index * 3 + 1], positions[index * 3 + 2], 1.0f);
+          glm::vec4 transformed = globalTransform * localPos;
+          worldPos              = glm::vec3(transformed);
+        }
 
-      // Color (default to white)
-      vertex.color = {1.0f, 1.0f, 1.0f};
+        vertex.position = {xMultiplier * worldPos.x, yMultiplier * worldPos.y, zMultiplier * worldPos.z};
 
-      // Add to vertex buffer (disable deduplication for morph targets)
-      if (hasMorphTargets) {
-        // No deduplication - store mapping from vertex index to original glTF
-        // position index
-        uint32_t vertexIdx = static_cast<uint32_t>(builder.vertices.size());
-        builder.indices.push_back(vertexIdx);
-        builder.vertices.push_back(vertex);
-        indicesByMaterial[materialId].push_back(vertexIdx);
+        // Normal - apply normal transformation only if no animations
+        if (normals)
+        {
+          glm::vec3 worldNormal;
+          if (hasAnimations)
+          {
+            // Keep normals in local space
+            worldNormal = glm::vec3(normals[index * 3 + 0], normals[index * 3 + 1], normals[index * 3 + 2]);
+          }
+          else
+          {
+            // Transform normals
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(globalTransform)));
+            glm::vec3 localNormal  = glm::vec3(normals[index * 3 + 0], normals[index * 3 + 1], normals[index * 3 + 2]);
+            worldNormal            = glm::normalize(normalMatrix * localNormal);
+          }
 
-        // Store mapping: builder vertex index -> original glTF position index
-        vertexToPositionIndex[vertexIdx] = index;
-      } else {
-        // Normal deduplication for non-morph meshes
-        if (uniqueVertices.count(vertex) == 0) {
-          uniqueVertices[vertex] =
-              static_cast<uint32_t>(builder.vertices.size());
+          vertex.normal = {xMultiplier * worldNormal.x, yMultiplier * worldNormal.y, zMultiplier * worldNormal.z};
+        }
+        else
+        {
+          vertex.normal = {0.0f, 1.0f, 0.0f};
+        }
+
+        // Texture coordinates
+        if (texCoords)
+        {
+          vertex.uv = {texCoords[index * 2 + 0], 1.0f - texCoords[index * 2 + 1]};
+        }
+        else
+        {
+          vertex.uv = {0.0f, 0.0f};
+        }
+
+        // Color (default to white)
+        vertex.color = {1.0f, 1.0f, 1.0f};
+
+        // Add to vertex buffer (disable deduplication for morph targets)
+        if (hasMorphTargets)
+        {
+          // No deduplication - store mapping from vertex index to original glTF
+          // position index
+          uint32_t vertexIdx = static_cast<uint32_t>(builder.vertices.size());
+          builder.indices.push_back(vertexIdx);
           builder.vertices.push_back(vertex);
-        }
+          indicesByMaterial[materialId].push_back(vertexIdx);
 
-        uint32_t vertexIndex = uniqueVertices[vertex];
-        builder.indices.push_back(vertexIndex);
-        indicesByMaterial[materialId].push_back(vertexIndex);
+          // Store mapping: builder vertex index -> original glTF position index
+          vertexToPositionIndex[vertexIdx] = index;
+        }
+        else
+        {
+          // Normal deduplication for non-morph meshes
+          if (uniqueVertices.count(vertex) == 0)
+          {
+            uniqueVertices[vertex] = static_cast<uint32_t>(builder.vertices.size());
+            builder.vertices.push_back(vertex);
+          }
+
+          uint32_t vertexIndex = uniqueVertices[vertex];
+          builder.indices.push_back(vertexIndex);
+          indicesByMaterial[materialId].push_back(vertexIndex);
+        }
       }
-    }
 
-    // Store the actual vertex count for this primitive (for morph targets)
-    uint32_t primitiveVertexCount =
-        static_cast<uint32_t>(builder.vertices.size()) - primitiveVertexOffset;
-    primitiveVertexCounts[key] = primitiveVertexCount;
-    std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx
-              << " added " << primitiveVertexCount << " vertices" << std::endl;
-  }
-}
-
-void GLTFImporter::loadMeshes(
-    Model::Builder &builder, const tinygltf::Model &model, bool flipX,
-    bool flipY, bool flipZ,
-    std::unordered_map<std::string, uint32_t> &primitiveVertexOffsets,
-    std::unordered_map<std::string, uint32_t> &primitiveVertexCounts,
-    std::unordered_map<uint32_t, uint32_t> &vertexToPositionIndex,
-    bool hasAnimations) {
-  const tinygltf::Scene &scene =
-      model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
-
-  std::unordered_map<Model::Vertex, uint32_t> uniqueVertices{};
-  std::unordered_map<int, std::vector<uint32_t>> indicesByMaterial;
-
-  float xMultiplier = flipX ? -1.0f : 1.0f;
-  float yMultiplier = flipY ? -1.0f : 1.0f;
-  float zMultiplier = flipZ ? -1.0f : 1.0f;
-
-  std::function<void(int, const glm::mat4 &)> processNode =
-      [&](int nodeIndex, const glm::mat4 &parentTransform) {
-        const tinygltf::Node &node = model.nodes[nodeIndex];
-        glm::mat4 nodeTransform = computeNodeTransform(node);
-        glm::mat4 globalTransform = parentTransform * nodeTransform;
-
-        if (node.mesh >= 0) {
-          processMesh(builder, model, node.mesh, globalTransform,
-                      uniqueVertices, indicesByMaterial, primitiveVertexOffsets,
-                      primitiveVertexCounts, vertexToPositionIndex,
-                      hasAnimations, xMultiplier, yMultiplier, zMultiplier);
-        }
-
-        for (int childIndex : node.children) {
-          processNode(childIndex, globalTransform);
-        }
-      };
-
-  for (int nodeIndex : scene.nodes)
-    processNode(nodeIndex, glm::mat4(1.0f));
-
-  // Create sub-meshes from grouped indices
-  uint32_t currentOffset = 0;
-  for (auto &[matId, matIndices] : indicesByMaterial) {
-    if (!matIndices.empty()) {
-      Model::SubMesh subMesh;
-      subMesh.materialId = matId;
-      subMesh.indexOffset = currentOffset;
-      subMesh.indexCount = static_cast<uint32_t>(matIndices.size());
-      builder.subMeshes.push_back(subMesh);
-
-      currentOffset += subMesh.indexCount;
+      // Store the actual vertex count for this primitive (for morph targets)
+      uint32_t primitiveVertexCount = static_cast<uint32_t>(builder.vertices.size()) - primitiveVertexOffset;
+      primitiveVertexCounts[key]    = primitiveVertexCount;
+      std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx << " added " << primitiveVertexCount << " vertices" << std::endl;
     }
   }
 
-  // Rebuild indices array grouped by material
-  std::vector<uint32_t> groupedIndices;
-  groupedIndices.reserve(builder.indices.size());
+  void GLTFImporter::loadMeshes(Model::Builder&                            builder,
+                                const tinygltf::Model&                     model,
+                                bool                                       flipX,
+                                bool                                       flipY,
+                                bool                                       flipZ,
+                                std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
+                                std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+                                std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
+                                bool                                       hasAnimations)
+  {
+    const tinygltf::Scene& scene = model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
 
-  for (const auto &subMesh : builder.subMeshes) {
-    const auto &matIndices = indicesByMaterial[subMesh.materialId];
-    groupedIndices.insert(groupedIndices.end(), matIndices.begin(),
-                          matIndices.end());
+    std::unordered_map<Model::Vertex, uint32_t>    uniqueVertices{};
+    std::unordered_map<int, std::vector<uint32_t>> indicesByMaterial;
+
+    float xMultiplier = flipX ? -1.0f : 1.0f;
+    float yMultiplier = flipY ? -1.0f : 1.0f;
+    float zMultiplier = flipZ ? -1.0f : 1.0f;
+
+    std::function<void(int, const glm::mat4&)> processNode = [&](int nodeIndex, const glm::mat4& parentTransform) {
+      const tinygltf::Node& node            = model.nodes[nodeIndex];
+      glm::mat4             nodeTransform   = computeNodeTransform(node);
+      glm::mat4             globalTransform = parentTransform * nodeTransform;
+
+      if (node.mesh >= 0)
+      {
+        processMesh(builder,
+                    model,
+                    node.mesh,
+                    globalTransform,
+                    uniqueVertices,
+                    indicesByMaterial,
+                    primitiveVertexOffsets,
+                    primitiveVertexCounts,
+                    vertexToPositionIndex,
+                    hasAnimations,
+                    xMultiplier,
+                    yMultiplier,
+                    zMultiplier);
+      }
+
+      for (int childIndex : node.children)
+      {
+        processNode(childIndex, globalTransform);
+      }
+    };
+
+    for (int nodeIndex : scene.nodes)
+      processNode(nodeIndex, glm::mat4(1.0f));
+
+    // Create sub-meshes from grouped indices
+    uint32_t currentOffset = 0;
+    for (auto& [matId, matIndices] : indicesByMaterial)
+    {
+      if (!matIndices.empty())
+      {
+        Model::SubMesh subMesh;
+        subMesh.materialId  = matId;
+        subMesh.indexOffset = currentOffset;
+        subMesh.indexCount  = static_cast<uint32_t>(matIndices.size());
+        builder.subMeshes.push_back(subMesh);
+
+        currentOffset += subMesh.indexCount;
+      }
+    }
+
+    // Rebuild indices array grouped by material
+    std::vector<uint32_t> groupedIndices;
+    groupedIndices.reserve(builder.indices.size());
+
+    for (const auto& subMesh : builder.subMeshes)
+    {
+      const auto& matIndices = indicesByMaterial[subMesh.materialId];
+      groupedIndices.insert(groupedIndices.end(), matIndices.begin(), matIndices.end());
+    }
+
+    builder.indices = std::move(groupedIndices);
+
+    std::cout << GREEN << "[GLTFImporter] Meshes processed" << RESET << std::endl;
   }
 
-  builder.indices = std::move(groupedIndices);
+  void GLTFImporter::loadMorphTargets(Model::Builder&                                  builder,
+                                      const tinygltf::Model&                           gltfModel,
+                                      const std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
+                                      const std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+                                      const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex)
+  {
+    for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++)
+    {
+      const auto& gltfMesh = gltfModel.meshes[meshIdx];
 
-  std::cout << GREEN << "[GLTFImporter] Meshes processed" << RESET << std::endl;
-}
+      for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++)
+      {
+        const auto& primitive = gltfMesh.primitives[primIdx];
 
-void GLTFImporter::loadMorphTargets(
-    Model::Builder &builder, const tinygltf::Model &gltfModel,
-    const std::unordered_map<std::string, uint32_t> &primitiveVertexOffsets,
-    const std::unordered_map<std::string, uint32_t> &primitiveVertexCounts,
-    const std::unordered_map<uint32_t, uint32_t> &vertexToPositionIndex) {
-  for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++) {
-    const auto &gltfMesh = gltfModel.meshes[meshIdx];
+        if (primitive.targets.empty()) continue; // No morph targets
 
-    for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++) {
-      const auto &primitive = gltfMesh.primitives[primIdx];
+        Model::MorphTargetSet morphSet;
 
-      if (primitive.targets.empty())
-        continue; // No morph targets
+        // Get the vertex offset and count for this primitive
+        std::string key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
+        if (primitiveVertexOffsets.find(key) != primitiveVertexOffsets.end())
+        {
+          morphSet.vertexOffset = primitiveVertexOffsets.at(key);
+          morphSet.vertexCount  = primitiveVertexCounts.at(key);
 
-      Model::MorphTargetSet morphSet;
-
-      // Get the vertex offset and count for this primitive
-      std::string key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
-      if (primitiveVertexOffsets.find(key) != primitiveVertexOffsets.end()) {
-        morphSet.vertexOffset = primitiveVertexOffsets.at(key);
-        morphSet.vertexCount = primitiveVertexCounts.at(key);
-
-        morphSet.positionIndices.resize(morphSet.vertexCount);
-        for (uint32_t i = 0; i < morphSet.vertexCount; i++) {
-          uint32_t vertexIdx = morphSet.vertexOffset + i;
-          morphSet.positionIndices[i] = vertexToPositionIndex.at(vertexIdx);
+          morphSet.positionIndices.resize(morphSet.vertexCount);
+          for (uint32_t i = 0; i < morphSet.vertexCount; i++)
+          {
+            uint32_t vertexIdx          = morphSet.vertexOffset + i;
+            morphSet.positionIndices[i] = vertexToPositionIndex.at(vertexIdx);
+          }
         }
-      } else {
-        morphSet.vertexOffset = 0;
-        morphSet.vertexCount =
-            gltfModel.accessors[primitive.attributes.at("POSITION")].count;
-        std::cerr
-            << RED
-            << "[GLTFImporter] Warning: Could not find vertex offset for mesh "
-            << meshIdx << " primitive " << primIdx << RESET << std::endl;
-      }
-
-      // Initialize weights from mesh or node
-      if (!gltfMesh.weights.empty()) {
-        morphSet.weights.resize(gltfMesh.weights.size());
-        for (size_t w = 0; w < gltfMesh.weights.size(); w++) {
-          morphSet.weights[w] = static_cast<float>(gltfMesh.weights[w]);
+        else
+        {
+          morphSet.vertexOffset = 0;
+          morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
+          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << std::endl;
         }
-      } else {
-        morphSet.weights.resize(primitive.targets.size(), 0.0f);
+
+        // Initialize weights from mesh or node
+        if (!gltfMesh.weights.empty())
+        {
+          morphSet.weights.resize(gltfMesh.weights.size());
+          for (size_t w = 0; w < gltfMesh.weights.size(); w++)
+          {
+            morphSet.weights[w] = static_cast<float>(gltfMesh.weights[w]);
+          }
+        }
+        else
+        {
+          morphSet.weights.resize(primitive.targets.size(), 0.0f);
+        }
+
+        // Load each morph target
+        for (const auto& target : primitive.targets)
+        {
+          Model::MorphTarget morphTarget;
+
+          // Load position deltas
+          if (target.find("POSITION") != target.end())
+          {
+            const auto&  posAccessor   = gltfModel.accessors[target.at("POSITION")];
+            const auto&  posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
+            const auto&  posBuffer     = gltfModel.buffers[posBufferView.buffer];
+            const float* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
+
+            morphTarget.positionDeltas.resize(posAccessor.count);
+            for (size_t i = 0; i < posAccessor.count; i++)
+            {
+              morphTarget.positionDeltas[i] = glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1], positions[i * 3 + 2]);
+            }
+          }
+
+          // Load normal deltas
+          if (target.find("NORMAL") != target.end())
+          {
+            const auto&  normAccessor   = gltfModel.accessors[target.at("NORMAL")];
+            const auto&  normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
+            const auto&  normBuffer     = gltfModel.buffers[normBufferView.buffer];
+            const float* normals        = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
+
+            morphTarget.normalDeltas.resize(normAccessor.count);
+            for (size_t i = 0; i < normAccessor.count; i++)
+            {
+              morphTarget.normalDeltas[i] = glm::vec3(normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
+            }
+          }
+
+          morphSet.targets.push_back(morphTarget);
+        }
+
+        if (!morphSet.targets.empty())
+        {
+          builder.morphTargetSets.push_back(morphSet);
+          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << std::endl;
+        }
       }
+    }
+  }
 
-      // Load each morph target
-      for (const auto &target : primitive.targets) {
-        Model::MorphTarget morphTarget;
+  void GLTFImporter::loadAnimations(Model::Builder& builder, const tinygltf::Model& gltfModel)
+  {
+    for (const auto& gltfAnim : gltfModel.animations)
+    {
+      Model::Animation animation;
+      animation.name = gltfAnim.name.empty() ? "animation_" + std::to_string(builder.animations.size()) : gltfAnim.name;
 
-        // Load position deltas
-        if (target.find("POSITION") != target.end()) {
-          const auto &posAccessor = gltfModel.accessors[target.at("POSITION")];
-          const auto &posBufferView =
-              gltfModel.bufferViews[posAccessor.bufferView];
-          const auto &posBuffer = gltfModel.buffers[posBufferView.buffer];
-          const float *positions = reinterpret_cast<const float *>(
-              &posBuffer
-                   .data[posBufferView.byteOffset + posAccessor.byteOffset]);
+      // Load samplers
+      for (const auto& gltfSampler : gltfAnim.samplers)
+      {
+        Model::AnimationSampler sampler;
 
-          morphTarget.positionDeltas.resize(posAccessor.count);
-          for (size_t i = 0; i < posAccessor.count; i++) {
-            morphTarget.positionDeltas[i] =
-                glm::vec3(positions[i * 3 + 0], positions[i * 3 + 1],
-                          positions[i * 3 + 2]);
+        // Get time values
+        const auto&  timeAccessor   = gltfModel.accessors[gltfSampler.input];
+        const auto&  timeBufferView = gltfModel.bufferViews[timeAccessor.bufferView];
+        const auto&  timeBuffer     = gltfModel.buffers[timeBufferView.buffer];
+        const float* times          = reinterpret_cast<const float*>(&timeBuffer.data[timeBufferView.byteOffset + timeAccessor.byteOffset]);
+
+        sampler.times.resize(timeAccessor.count);
+        for (size_t i = 0; i < timeAccessor.count; i++)
+        {
+          sampler.times[i] = times[i];
+          if (sampler.times[i] > animation.duration)
+          {
+            animation.duration = sampler.times[i];
           }
         }
 
-        // Load normal deltas
-        if (target.find("NORMAL") != target.end()) {
-          const auto &normAccessor = gltfModel.accessors[target.at("NORMAL")];
-          const auto &normBufferView =
-              gltfModel.bufferViews[normAccessor.bufferView];
-          const auto &normBuffer = gltfModel.buffers[normBufferView.buffer];
-          const float *normals = reinterpret_cast<const float *>(
-              &normBuffer
-                   .data[normBufferView.byteOffset + normAccessor.byteOffset]);
+        // Get output values
+        const auto&  outputAccessor   = gltfModel.accessors[gltfSampler.output];
+        const auto&  outputBufferView = gltfModel.bufferViews[outputAccessor.bufferView];
+        const auto&  outputBuffer     = gltfModel.buffers[outputBufferView.buffer];
+        const float* outputs          = reinterpret_cast<const float*>(&outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
 
-          morphTarget.normalDeltas.resize(normAccessor.count);
-          for (size_t i = 0; i < normAccessor.count; i++) {
-            morphTarget.normalDeltas[i] = glm::vec3(
-                normals[i * 3 + 0], normals[i * 3 + 1], normals[i * 3 + 2]);
+        // Store values (type determined by channel target path)
+        if (outputAccessor.type == TINYGLTF_TYPE_VEC3)
+        {
+          sampler.translations.resize(outputAccessor.count);
+          sampler.scales.resize(outputAccessor.count);
+          for (size_t i = 0; i < outputAccessor.count; i++)
+          {
+            sampler.translations[i] = glm::vec3(outputs[i * 3 + 0], outputs[i * 3 + 1], outputs[i * 3 + 2]);
+            sampler.scales[i]       = sampler.translations[i]; // Same storage
+          }
+        }
+        else if (outputAccessor.type == TINYGLTF_TYPE_VEC4)
+        {
+          sampler.rotations.resize(outputAccessor.count);
+          for (size_t i = 0; i < outputAccessor.count; i++)
+          {
+            sampler.rotations[i] = glm::quat(outputs[i * 4 + 3], outputs[i * 4 + 0], outputs[i * 4 + 1], outputs[i * 4 + 2]);
+          }
+        }
+        else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR)
+        {
+          // Morph target weights - multiple scalars per keyframe
+          // Count weights per keyframe by dividing total count by time count
+          size_t weightsPerFrame = outputAccessor.count / timeAccessor.count;
+          sampler.morphWeights.resize(timeAccessor.count);
+
+          for (size_t i = 0; i < timeAccessor.count; i++)
+          {
+            sampler.morphWeights[i].resize(weightsPerFrame);
+            for (size_t w = 0; w < weightsPerFrame; w++)
+            {
+              sampler.morphWeights[i][w] = outputs[i * weightsPerFrame + w];
+            }
           }
         }
 
-        morphSet.targets.push_back(morphTarget);
+        // Interpolation type
+        if (gltfSampler.interpolation == "LINEAR")
+          sampler.interpolation = Model::AnimationSampler::LINEAR;
+        else if (gltfSampler.interpolation == "STEP")
+          sampler.interpolation = Model::AnimationSampler::STEP;
+        else if (gltfSampler.interpolation == "CUBICSPLINE")
+          sampler.interpolation = Model::AnimationSampler::CUBICSPLINE;
+
+        animation.samplers.push_back(sampler);
       }
 
-      if (!morphSet.targets.empty()) {
-        builder.morphTargetSets.push_back(morphSet);
-        std::cout << GREEN << "[GLTFImporter] Loaded "
-                  << morphSet.targets.size() << " morph targets for mesh "
-                  << meshIdx << RESET << std::endl;
-      }
-    }
-  }
-}
+      // Load channels
+      for (const auto& gltfChannel : gltfAnim.channels)
+      {
+        Model::AnimationChannel channel;
+        channel.samplerIndex = gltfChannel.sampler;
+        channel.targetNode   = gltfChannel.target_node;
 
-void GLTFImporter::loadAnimations(Model::Builder &builder,
-                                  const tinygltf::Model &gltfModel) {
-  for (const auto &gltfAnim : gltfModel.animations) {
-    Model::Animation animation;
-    animation.name =
-        gltfAnim.name.empty()
-            ? "animation_" + std::to_string(builder.animations.size())
-            : gltfAnim.name;
-
-    // Load samplers
-    for (const auto &gltfSampler : gltfAnim.samplers) {
-      Model::AnimationSampler sampler;
-
-      // Get time values
-      const auto &timeAccessor = gltfModel.accessors[gltfSampler.input];
-      const auto &timeBufferView =
-          gltfModel.bufferViews[timeAccessor.bufferView];
-      const auto &timeBuffer = gltfModel.buffers[timeBufferView.buffer];
-      const float *times = reinterpret_cast<const float *>(
-          &timeBuffer
-               .data[timeBufferView.byteOffset + timeAccessor.byteOffset]);
-
-      sampler.times.resize(timeAccessor.count);
-      for (size_t i = 0; i < timeAccessor.count; i++) {
-        sampler.times[i] = times[i];
-        if (sampler.times[i] > animation.duration) {
-          animation.duration = sampler.times[i];
+        if (gltfChannel.target_path == "translation")
+          channel.path = Model::AnimationChannel::TRANSLATION;
+        else if (gltfChannel.target_path == "rotation")
+          channel.path = Model::AnimationChannel::ROTATION;
+        else if (gltfChannel.target_path == "scale")
+          channel.path = Model::AnimationChannel::SCALE;
+        else if (gltfChannel.target_path == "weights")
+        {
+          channel.path = Model::AnimationChannel::WEIGHTS;
+          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << std::endl;
         }
+        else
+        {
+          // Skip unsupported paths
+          continue;
+        }
+
+        animation.channels.push_back(channel);
       }
 
-      // Get output values
-      const auto &outputAccessor = gltfModel.accessors[gltfSampler.output];
-      const auto &outputBufferView =
-          gltfModel.bufferViews[outputAccessor.bufferView];
-      const auto &outputBuffer = gltfModel.buffers[outputBufferView.buffer];
-      const float *outputs = reinterpret_cast<const float *>(
-          &outputBuffer
-               .data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
-
-      // Store values (type determined by channel target path)
-      if (outputAccessor.type == TINYGLTF_TYPE_VEC3) {
-        sampler.translations.resize(outputAccessor.count);
-        sampler.scales.resize(outputAccessor.count);
-        for (size_t i = 0; i < outputAccessor.count; i++) {
-          sampler.translations[i] = glm::vec3(
-              outputs[i * 3 + 0], outputs[i * 3 + 1], outputs[i * 3 + 2]);
-          sampler.scales[i] = sampler.translations[i]; // Same storage
-        }
-      } else if (outputAccessor.type == TINYGLTF_TYPE_VEC4) {
-        sampler.rotations.resize(outputAccessor.count);
-        for (size_t i = 0; i < outputAccessor.count; i++) {
-          sampler.rotations[i] =
-              glm::quat(outputs[i * 4 + 3], outputs[i * 4 + 0],
-                        outputs[i * 4 + 1], outputs[i * 4 + 2]);
-        }
-      } else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR) {
-        // Morph target weights - multiple scalars per keyframe
-        // Count weights per keyframe by dividing total count by time count
-        size_t weightsPerFrame = outputAccessor.count / timeAccessor.count;
-        sampler.morphWeights.resize(timeAccessor.count);
-
-        for (size_t i = 0; i < timeAccessor.count; i++) {
-          sampler.morphWeights[i].resize(weightsPerFrame);
-          for (size_t w = 0; w < weightsPerFrame; w++) {
-            sampler.morphWeights[i][w] = outputs[i * weightsPerFrame + w];
-          }
-        }
-      }
-
-      // Interpolation type
-      if (gltfSampler.interpolation == "LINEAR")
-        sampler.interpolation = Model::AnimationSampler::LINEAR;
-      else if (gltfSampler.interpolation == "STEP")
-        sampler.interpolation = Model::AnimationSampler::STEP;
-      else if (gltfSampler.interpolation == "CUBICSPLINE")
-        sampler.interpolation = Model::AnimationSampler::CUBICSPLINE;
-
-      animation.samplers.push_back(sampler);
-    }
-
-    // Load channels
-    for (const auto &gltfChannel : gltfAnim.channels) {
-      Model::AnimationChannel channel;
-      channel.samplerIndex = gltfChannel.sampler;
-      channel.targetNode = gltfChannel.target_node;
-
-      if (gltfChannel.target_path == "translation")
-        channel.path = Model::AnimationChannel::TRANSLATION;
-      else if (gltfChannel.target_path == "rotation")
-        channel.path = Model::AnimationChannel::ROTATION;
-      else if (gltfChannel.target_path == "scale")
-        channel.path = Model::AnimationChannel::SCALE;
-      else if (gltfChannel.target_path == "weights") {
-        channel.path = Model::AnimationChannel::WEIGHTS;
-        std::cout
-            << GREEN
-            << "[GLTFImporter] Found morph target weight animation channel"
-            << RESET << std::endl;
-      } else {
-        // Skip unsupported paths
+      if (animation.channels.empty())
+      {
+        std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << std::endl;
         continue;
       }
 
-      animation.channels.push_back(channel);
+      builder.animations.push_back(animation);
+      std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << std::endl;
     }
-
-    if (animation.channels.empty()) {
-      std::cout << YELLOW << "[GLTFImporter] Warning: Animation '"
-                << animation.name << "' has no supported channels, skipping"
-                << RESET << std::endl;
-      continue;
-    }
-
-    builder.animations.push_back(animation);
-    std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE
-              << animation.name << RESET << " (" << animation.duration << "s, "
-              << animation.channels.size() << " channels)" << std::endl;
   }
-}
 
 } // namespace engine

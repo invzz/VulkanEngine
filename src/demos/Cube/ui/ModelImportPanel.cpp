@@ -145,9 +145,7 @@ namespace engine {
             entry.screenshotTexture = resourceManager_.loadTexture(fullScreenshotPath, true, false);
             if (entry.screenshotTexture)
             {
-              entry.descriptorSet = ImGui_ImplVulkan_AddTexture(entry.screenshotTexture->getSampler(),
-                                                                entry.screenshotTexture->getImageView(),
-                                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+              entry.descriptorSet = ImGui_ImplVulkan_AddTexture(entry.screenshotTexture->getSampler(), entry.screenshotTexture->getImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
           }
           catch (const std::exception& e)
@@ -217,8 +215,7 @@ namespace engine {
         }
         if (!mat.specularGlossinessTexPath.empty())
         {
-          mat.pbrMaterial.specularGlossinessMap = resourceManager_.loadTexture(mat.specularGlossinessTexPath,
-                                                                               true,
+          mat.pbrMaterial.specularGlossinessMap = resourceManager_.loadTexture(mat.specularGlossinessTexPath, true,
                                                                                true); // sRGB? Specular is color, glossiness is linear. Usually sRGB for color.
         }
         if (!mat.emissiveTexPath.empty())

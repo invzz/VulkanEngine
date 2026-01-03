@@ -114,11 +114,7 @@ namespace engine {
 
   void MorphTargetCompute::createDescriptorPool()
   {
-    descriptorPool_ = DescriptorPool::Builder(device_)
-                              .setMaxSets(25)
-                              .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100)
-                              .setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)
-                              .build();
+    descriptorPool_ = DescriptorPool::Builder(device_).setMaxSets(25).addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).build();
   }
 
   VkShaderModule MorphTargetCompute::createShaderModule(const std::vector<char>& code)

@@ -7,11 +7,8 @@
 #include "Engine/Core/Exceptions.hpp"
 
 namespace engine {
-  DescriptorSetLayout::Builder& DescriptorSetLayout::Builder::addBinding(uint32_t                 binding,
-                                                                         VkDescriptorType         descriptorType,
-                                                                         VkShaderStageFlags       stageFlags,
-                                                                         uint32_t                 count,
-                                                                         VkDescriptorBindingFlags flags)
+  DescriptorSetLayout::Builder&
+  DescriptorSetLayout::Builder::addBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, uint32_t count, VkDescriptorBindingFlags flags)
   {
     assert(bindings.count(binding) == 0 && "Binding already in use");
     VkDescriptorSetLayoutBinding layoutBinding{};
@@ -113,8 +110,7 @@ namespace engine {
     return std::make_unique<DescriptorPool>(device, maxSets, poolFlags, poolSizes);
   }
 
-  DescriptorPool::DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes)
-      : device{device}
+  DescriptorPool::DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes) : device{device}
   {
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

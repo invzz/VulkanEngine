@@ -34,13 +34,13 @@ namespace engine {
      * @brief Get supported file extensions for this importer
      * @return Vector of file extensions (e.g., {"obj", "mtl"})
      */
-    virtual std::vector<std::string> getSupportedExtensions() const = 0;
+    [[nodiscard]] virtual std::vector<std::string> getSupportedExtensions() const = 0;
 
     /**
      * @brief Get the name of this importer
      * @return Name string (e.g., "OBJ Importer", "glTF Importer")
      */
-    virtual std::string getName() const = 0;
+    [[nodiscard]] virtual std::string getName() const = 0;
   };
 
 } // namespace engine

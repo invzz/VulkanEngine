@@ -18,11 +18,11 @@ namespace engine {
 
   struct QueueFamilyIndices
   {
-    uint32_t graphicsFamily;
-    uint32_t presentFamily;
-    bool     graphicsFamilyHasValue = false;
-    bool     presentFamilyHasValue  = false;
-    bool     isComplete() const { return graphicsFamilyHasValue && presentFamilyHasValue; }
+    uint32_t           graphicsFamily;
+    uint32_t           presentFamily;
+    bool               graphicsFamilyHasValue = false;
+    bool               presentFamilyHasValue  = false;
+    [[nodiscard]] bool isComplete() const { return graphicsFamilyHasValue && presentFamilyHasValue; }
   };
 
   class Device
@@ -45,14 +45,14 @@ namespace engine {
     Device(Device&&)                 = delete;
     Device& operator=(Device&&)      = delete;
 
-    VkCommandPool getCommandPool() { return commandPool; }
-    DeviceMemory& getMemory() { return *memory_; }
-    VkDevice      device() { return device_; }
-    VkSurfaceKHR  surface() { return surface_; }
-    VkQueue       graphicsQueue() { return graphicsQueue_; }
-    VkQueue       presentQueue() { return presentQueue_; }
-    VkInstance    getInstance() { return instance; }
-    bool          supportsPresentId() const { return presentIdSupported_; }
+    VkCommandPool      getCommandPool() { return commandPool; }
+    DeviceMemory&      getMemory() { return *memory_; }
+    VkDevice           device() { return device_; }
+    VkSurfaceKHR       surface() { return surface_; }
+    VkQueue            graphicsQueue() { return graphicsQueue_; }
+    VkQueue            presentQueue() { return presentQueue_; }
+    VkInstance         getInstance() { return instance; }
+    [[nodiscard]] bool supportsPresentId() const { return presentIdSupported_; }
 
     SwapChainSupportDetails getSwapChainSupport() { return querySwapChainSupport(physicalDevice); }
 
@@ -62,9 +62,9 @@ namespace engine {
 
     DeviceMemory& memory() { return *memory_; }
 
-    const VkPhysicalDeviceProperties& getProperties() const { return properties; }
+    [[nodiscard]] const VkPhysicalDeviceProperties& getProperties() const { return properties; }
 
-    VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
+    [[nodiscard]] VkPhysicalDevice getPhysicalDevice() const { return physicalDevice; }
 
     VkCommandBuffer beginSingleTimeCommands();
     void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -72,14 +72,14 @@ namespace engine {
     PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT = nullptr;
 
   private:
-    bool                     checkValidationLayerSupport() const;
-    std::vector<const char*> getRequiredExtensions() const;
-    void                     createInstance();
-    void                     setupDebugMessenger();
-    void                     createSurface();
-    void                     pickPhysicalDevice();
-    void                     createLogicalDevice();
-    void                     createCommandPool();
+    [[nodiscard]] bool                     checkValidationLayerSupport() const;
+    [[nodiscard]] std::vector<const char*> getRequiredExtensions() const;
+    void                                   createInstance();
+    void                                   setupDebugMessenger();
+    void                                   createSurface();
+    void                                   pickPhysicalDevice();
+    void                                   createLogicalDevice();
+    void                                   createCommandPool();
 
     bool                    isDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices      findQueueFamilies(VkPhysicalDevice device);

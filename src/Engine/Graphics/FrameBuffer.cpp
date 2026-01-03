@@ -7,8 +7,7 @@
 
 namespace engine {
 
-  FrameBuffer::FrameBuffer(Device& device, VkExtent2D extent, uint32_t frameCount, bool useMipmaps)
-      : device{device}, extent{extent}, frameCount{frameCount}, useMipmaps{useMipmaps}
+  FrameBuffer::FrameBuffer(Device& device, VkExtent2D extent, uint32_t frameCount, bool useMipmaps) : device{device}, extent{extent}, frameCount{frameCount}, useMipmaps{useMipmaps}
   {
     createRenderPass();
     createImages();
@@ -148,9 +147,8 @@ namespace engine {
     colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentDescription depthAttachment{};
-    depthAttachment.format         = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-                                                        VK_IMAGE_TILING_OPTIMAL,
-                                                        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    depthAttachment.format =
+            device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
     depthAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
@@ -232,8 +230,7 @@ namespace engine {
     VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkFormat depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
                                                       VK_IMAGE_TILING_OPTIMAL,
-                                                      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
-                                                              VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
+                                                      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
     for (uint32_t i = 0; i < frameCount; i++)
     {

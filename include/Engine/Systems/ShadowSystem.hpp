@@ -18,7 +18,8 @@ namespace engine {
    * @brief System for rendering shadow maps from light perspectives
    *
    * Manages shadow map rendering for directional, spot, and point lights.
-   * Uses 2D shadow maps for directional/spot lights and cube maps for point lights.
+   * Uses 2D shadow maps for directional/spot lights and cube maps for point
+   * lights.
    */
   class ShadowSystem
   {
@@ -52,37 +53,37 @@ namespace engine {
     /**
      * @brief Get the light space matrix at specified index
      */
-    const glm::mat4& getLightSpaceMatrix(int index = 0) const { return lightSpaceMatrices_[index]; }
+    [[nodiscard]] const glm::mat4& getLightSpaceMatrix(int index = 0) const { return lightSpaceMatrices_[index]; }
 
     /**
      * @brief Get number of active shadow-casting directional/spot lights
      */
-    int getShadowLightCount() const { return shadowLightCount_; }
+    [[nodiscard]] int getShadowLightCount() const { return shadowLightCount_; }
 
     /**
      * @brief Get number of active shadow-casting point lights
      */
-    int getCubeShadowLightCount() const { return cubeShadowLightCount_; }
+    [[nodiscard]] int getCubeShadowLightCount() const { return cubeShadowLightCount_; }
 
     /**
      * @brief Get point light position for shadow calculation in shader
      */
-    const glm::vec3& getPointLightPosition(int index = 0) const { return pointLightPositions_[index]; }
+    [[nodiscard]] const glm::vec3& getPointLightPosition(int index = 0) const { return pointLightPositions_[index]; }
 
     /**
      * @brief Get point light range (far plane) for shadow calculation
      */
-    float getPointLightRange(int index = 0) const { return pointLightRanges_[index]; }
+    [[nodiscard]] float getPointLightRange(int index = 0) const { return pointLightRanges_[index]; }
 
     /**
      * @brief Get descriptor info for shadow map sampling
      */
-    VkDescriptorImageInfo getShadowMapDescriptorInfo(int index = 0) const { return shadowMaps_[index]->getDescriptorInfo(); }
+    [[nodiscard]] VkDescriptorImageInfo getShadowMapDescriptorInfo(int index = 0) const { return shadowMaps_[index]->getDescriptorInfo(); }
 
     /**
      * @brief Get descriptor info for cube shadow map sampling
      */
-    VkDescriptorImageInfo getCubeShadowMapDescriptorInfo(int index = 0) const { return cubeShadowMaps_[index]->getDescriptorInfo(); }
+    [[nodiscard]] VkDescriptorImageInfo getCubeShadowMapDescriptorInfo(int index = 0) const { return cubeShadowMaps_[index]->getDescriptorInfo(); }
 
   private:
     void createPipelineLayout();
@@ -93,17 +94,18 @@ namespace engine {
     /**
      * @brief Calculate orthographic projection matrix for directional light
      */
-    glm::mat4 calculateDirectionalLightMatrix(const glm::vec3& lightDirection, const glm::vec3& sceneCenter, float sceneRadius);
+    static glm::mat4 calculateDirectionalLightMatrix(const glm::vec3& lightDirection, const glm::vec3& sceneCenter, float sceneRadius);
 
     /**
      * @brief Calculate perspective projection matrix for spotlight
      */
-    glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
+    static glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
 
     /**
-     * @brief Calculate perspective projection matrix for one face of a point light cube map
+     * @brief Calculate perspective projection matrix for one face of a point
+     * light cube map
      */
-    glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
+    static glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
 
     /**
      * @brief Render scene to a 2D shadow map with given light space matrix
@@ -123,12 +125,7 @@ namespace engine {
     /**
      * @brief Render scene to a single face of a cube shadow map
      */
-    void renderToCubeFace(FrameInfo&       frameInfo,
-                          CubeShadowMap&   cubeShadowMap,
-                          int              face,
-                          const glm::mat4& lightSpaceMatrix,
-                          const glm::vec3& lightPos,
-                          float            farPlane);
+    void renderToCubeFace(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, int face, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, float farPlane);
 
     Device&  device_;
     uint32_t shadowMapSize_;

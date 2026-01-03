@@ -2,7 +2,7 @@
   "configurations": [
     {
       "name": "xmake",
-      "compileCommands": "compile_commands.json",
+      "compileCommands": ".vscode/compile_commands.json",
       "intelliSenseMode": "${default}",
       "cStandard": "c11",
       "cppStandard": "c++20"

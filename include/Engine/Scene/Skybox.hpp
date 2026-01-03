@@ -13,8 +13,8 @@ namespace engine {
   /**
    * @brief Cubemap texture for skybox rendering
    *
-   * Loads 6 face textures (right, left, top, bottom, front, back) into a Vulkan cubemap.
-   * Supports JPG, PNG, and other formats via stb_image.
+   * Loads 6 face textures (right, left, top, bottom, front, back) into a Vulkan
+   * cubemap. Supports JPG, PNG, and other formats via stb_image.
    */
   class Skybox
   {
@@ -49,11 +49,11 @@ namespace engine {
     Skybox(Skybox&&)                 = delete;
     Skybox& operator=(Skybox&&)      = delete;
 
-    VkImageView getImageView() const { return imageView_; }
-    VkSampler   getSampler() const { return sampler_; }
-    VkImage     getImage() const { return image_; }
+    [[nodiscard]] VkImageView getImageView() const { return imageView_; }
+    [[nodiscard]] VkSampler   getSampler() const { return sampler_; }
+    [[nodiscard]] VkImage     getImage() const { return image_; }
 
-    VkDescriptorImageInfo getDescriptorInfo() const
+    [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
     {
       return VkDescriptorImageInfo{
               .sampler     = sampler_,
@@ -62,7 +62,7 @@ namespace engine {
       };
     }
 
-    int getSize() const { return size_; }
+    [[nodiscard]] int getSize() const { return size_; }
 
   private:
     void createCubemapImage(const std::array<std::string, 6>& facePaths);

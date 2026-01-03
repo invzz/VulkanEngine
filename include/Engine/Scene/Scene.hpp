@@ -13,8 +13,8 @@ namespace engine {
     entt::entity createEntity() { return registry.create(); }
     void         destroyEntity(entt::entity entity) { registry.destroy(entity); }
 
-    entt::registry&       getRegistry() { return registry; }
-    const entt::registry& getRegistry() const { return registry; }
+    entt::registry&                     getRegistry() { return registry; }
+    [[nodiscard]] const entt::registry& getRegistry() const { return registry; }
 
   private:
     entt::registry registry;

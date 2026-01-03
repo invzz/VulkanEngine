@@ -120,10 +120,7 @@ namespace engine {
       int                mesh = -1;
       std::vector<float> morphWeights; // Current morph target weights
 
-      glm::mat4 getLocalTransform() const
-      {
-        return glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale) * matrix;
-      }
+      [[nodiscard]] glm::mat4 getLocalTransform() const { return glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale) * matrix; }
     };
 
     // Morph target (blend shape) data
@@ -161,14 +158,14 @@ namespace engine {
 
     struct Builder
     {
-      std::vector<Vertex>         vertices{};
-      std::vector<uint32_t>       indices{};
-      std::vector<MaterialInfo>   materials{};       // Materials loaded from MTL file
-      std::vector<SubMesh>        subMeshes{};       // Sub-meshes by material
-      std::vector<Animation>      animations{};      // Animations from glTF
-      std::vector<Node>           nodes{};           // Scene graph nodes
-      std::vector<MorphTargetSet> morphTargetSets{}; // Morph targets per mesh
-      std::string                 filePath{};
+      std::vector<Vertex>         vertices;
+      std::vector<uint32_t>       indices;
+      std::vector<MaterialInfo>   materials;       // Materials loaded from MTL file
+      std::vector<SubMesh>        subMeshes;       // Sub-meshes by material
+      std::vector<Animation>      animations;      // Animations from glTF
+      std::vector<Node>           nodes;           // Scene graph nodes
+      std::vector<MorphTargetSet> morphTargetSets; // Morph targets per mesh
+      std::string                 filePath;
 
       void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
       void loadModelFromGLTF(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
@@ -191,32 +188,32 @@ namespace engine {
     void drawSubMesh(VkCommandBuffer commandBuffer, size_t subMeshIndex) const;
 
     // Get materials loaded from MTL file
-    const std::vector<MaterialInfo>& getMaterials() const { return materials_; }
-    std::vector<MaterialInfo>&       getMaterials() { return materials_; }
+    [[nodiscard]] const std::vector<MaterialInfo>& getMaterials() const { return materials_; }
+    std::vector<MaterialInfo>&                     getMaterials() { return materials_; }
 
     // Get sub-meshes
-    const std::vector<SubMesh>& getSubMeshes() const { return subMeshes_; }
+    [[nodiscard]] const std::vector<SubMesh>& getSubMeshes() const { return subMeshes_; }
 
     // Check if model has multiple materials
-    bool hasMultipleMaterials() const { return subMeshes_.size() > 1; }
+    [[nodiscard]] bool hasMultipleMaterials() const { return subMeshes_.size() > 1; }
 
     // Animation support
-    bool                          hasAnimations() const { return !animations_.empty(); }
-    const std::vector<Animation>& getAnimations() const { return animations_; }
-    const std::vector<Node>&      getNodes() const { return nodes_; }
-    std::vector<Node>&            getNodes() { return nodes_; }
+    [[nodiscard]] bool                          hasAnimations() const { return !animations_.empty(); }
+    [[nodiscard]] const std::vector<Animation>& getAnimations() const { return animations_; }
+    [[nodiscard]] const std::vector<Node>&      getNodes() const { return nodes_; }
+    std::vector<Node>&                          getNodes() { return nodes_; }
 
     // Morph target support
-    bool                               hasMorphTargets() const { return !morphTargetSets_.empty(); }
-    const std::vector<MorphTargetSet>& getMorphTargetSets() const { return morphTargetSets_; }
-    std::vector<MorphTargetSet>&       getMorphTargetSets() { return morphTargetSets_; }
+    [[nodiscard]] bool                               hasMorphTargets() const { return !morphTargetSets_.empty(); }
+    [[nodiscard]] const std::vector<MorphTargetSet>& getMorphTargetSets() const { return morphTargetSets_; }
+    std::vector<MorphTargetSet>&                     getMorphTargetSets() { return morphTargetSets_; }
 
     // Buffer access for compute operations
-    VkBuffer getVertexBuffer() const { return vertexBuffer->getBuffer(); }
-    VkBuffer getIndexBuffer() const { return indexBuffer ? indexBuffer->getBuffer() : VK_NULL_HANDLE; }
+    [[nodiscard]] VkBuffer getVertexBuffer() const { return vertexBuffer->getBuffer(); }
+    [[nodiscard]] VkBuffer getIndexBuffer() const { return indexBuffer ? indexBuffer->getBuffer() : VK_NULL_HANDLE; }
 
-    uint64_t getVertexBufferAddress() const { return vertexBuffer->getDeviceAddress(); }
-    uint64_t getIndexBufferAddress() const { return indexBuffer ? indexBuffer->getDeviceAddress() : 0; }
+    [[nodiscard]] uint64_t getVertexBufferAddress() const { return vertexBuffer->getDeviceAddress(); }
+    [[nodiscard]] uint64_t getIndexBufferAddress() const { return indexBuffer ? indexBuffer->getDeviceAddress() : 0; }
 
     void bindAlternateVertexBuffer(VkCommandBuffer commandBuffer, VkBuffer vertexBuffer) const;
 
@@ -224,19 +221,19 @@ namespace engine {
      * @brief Get approximate memory size of this model
      * @return Memory size in bytes (vertex + index buffers)
      */
-    size_t getMemorySize() const;
+    [[nodiscard]] size_t getMemorySize() const;
 
-    const std::string& getFilePath() const { return filePath; }
+    [[nodiscard]] const std::string& getFilePath() const { return filePath; }
 
-    void     setMeshId(uint32_t id) { meshId = id; }
-    uint32_t getMeshId() const { return meshId; }
+    void                   setMeshId(uint32_t id) { meshId = id; }
+    [[nodiscard]] uint32_t getMeshId() const { return meshId; }
 
     // Meshlet support
-    const std::vector<Meshlet>& getMeshlets() const { return meshlets; }
-    uint64_t                    getMeshletBufferAddress() const { return meshletBuffer ? meshletBuffer->getDeviceAddress() : 0; }
-    uint64_t                    getMeshletVerticesAddress() const { return meshletVerticesBuffer ? meshletVerticesBuffer->getDeviceAddress() : 0; }
-    uint64_t                    getMeshletTrianglesAddress() const { return meshletTrianglesBuffer ? meshletTrianglesBuffer->getDeviceAddress() : 0; }
-    uint32_t                    getMeshletCount() const { return static_cast<uint32_t>(meshlets.size()); }
+    [[nodiscard]] const std::vector<Meshlet>& getMeshlets() const { return meshlets; }
+    [[nodiscard]] uint64_t                    getMeshletBufferAddress() const { return meshletBuffer ? meshletBuffer->getDeviceAddress() : 0; }
+    [[nodiscard]] uint64_t                    getMeshletVerticesAddress() const { return meshletVerticesBuffer ? meshletVerticesBuffer->getDeviceAddress() : 0; }
+    [[nodiscard]] uint64_t                    getMeshletTrianglesAddress() const { return meshletTrianglesBuffer ? meshletTrianglesBuffer->getDeviceAddress() : 0; }
+    [[nodiscard]] uint32_t                    getMeshletCount() const { return static_cast<uint32_t>(meshlets.size()); }
 
   private:
     Device&     device;

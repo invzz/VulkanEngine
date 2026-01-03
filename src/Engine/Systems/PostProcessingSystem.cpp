@@ -69,10 +69,7 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.attributeDescriptions.clear();
 
-    pipeline = std::make_unique<Pipeline>(device,
-                                          std::string(SHADER_PATH) + R"(post_process.vert.spv)",
-                                          std::string(SHADER_PATH) + R"(post_process.frag.spv)",
-                                          pipelineConfig);
+    pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(post_process.vert.spv)", std::string(SHADER_PATH) + R"(post_process.frag.spv)", pipelineConfig);
   }
 
   void PostProcessingSystem::render(FrameInfo& frameInfo, VkDescriptorSet descriptorSet, const PostProcessPushConstants& push)

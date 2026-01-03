@@ -24,11 +24,7 @@ namespace engine {
     throw engine::RuntimeException("failed to find suitable memory type!");
   }
 
-  void DeviceMemory::createBuffer(VkDeviceSize          size,
-                                  VkBufferUsageFlags    usage,
-                                  VkMemoryPropertyFlags memoryPropertyFlags,
-                                  VkBuffer&             buffer,
-                                  VkDeviceMemory&       bufferMemory)
+  void DeviceMemory::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryPropertyFlags, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
   {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -99,12 +95,7 @@ namespace engine {
     vkFreeCommandBuffers(device.device_, device.commandPool, 1, &commandBuffer);
   }
 
-  void DeviceMemory::copyBuffer(VkCommandBuffer      commandBuffer,
-                                VkBuffer             srcBuffer,
-                                VkBuffer             dstBuffer,
-                                VkDeviceSize         size,
-                                VkPipelineStageFlags dstStageMask,
-                                VkAccessFlags        dstAccessMask) const
+  void DeviceMemory::copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) const
   {
     VkBufferCopy copyRegion{};
     copyRegion.srcOffset = 0; // Optional
@@ -125,11 +116,7 @@ namespace engine {
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, dstStageMask, 0, 0, nullptr, 1, &barrier, 0, nullptr);
   }
 
-  void DeviceMemory::copyBufferImmediate(VkBuffer             srcBuffer,
-                                         VkBuffer             dstBuffer,
-                                         VkDeviceSize         size,
-                                         VkPipelineStageFlags dstStageMask,
-                                         VkAccessFlags        dstAccessMask) const
+  void DeviceMemory::copyBufferImmediate(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) const
   {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
     copyBuffer(commandBuffer, srcBuffer, dstBuffer, size, dstStageMask, dstAccessMask);
@@ -157,10 +144,7 @@ namespace engine {
     endSingleTimeCommands(commandBuffer);
   }
 
-  void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                         VkMemoryPropertyFlags    memoryPropertyFlags,
-                                         VkImage&                 image,
-                                         VkDeviceMemory&          imageMemory) const
+  void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo, VkMemoryPropertyFlags memoryPropertyFlags, VkImage& image, VkDeviceMemory& imageMemory) const
   {
     if (vkCreateImage(device.device_, &imageInfo, nullptr, &image) != VK_SUCCESS)
     {

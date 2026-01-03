@@ -116,8 +116,7 @@ namespace engine {
       scene.getRegistry().emplace<PointLightComponent>(entity, 1.0f, lightColors[i], 0.05f);
       scene.getRegistry().emplace<NameComponent>(entity, "PointLight" + std::to_string(i));
 
-      auto rotateLight =
-              glm::rotate(glm::mat4(1.0f), (glm::two_pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size()), glm::vec3(0.f, -1.f, 0.f));
+      auto rotateLight = glm::rotate(glm::mat4(1.0f), (glm::two_pi<float>() * static_cast<float>(i)) / static_cast<float>(lightColors.size()), glm::vec3(0.f, -1.f, 0.f));
       scene.getRegistry().get<TransformComponent>(entity).translation = glm::vec3(rotateLight * glm::vec4{-radius, -2.f, -radius, 1.f});
     }
 

@@ -1,11 +1,5 @@
 {
-  "C_Cpp.codeAnalysis.clangTidy.enabled": true,
-  "C_Cpp.enhancedColorization": "enabled",
-  "C_Cpp.errorSquiggles": "enabled",
-  "C_Cpp.codeAnalysis.clangTidy.codeAction.formatFixes": true,
-  "C_Cpp.codeAnalysis.runAutomatically": true,
-  "C_Cpp.clang_format_path": "clang-format.exe",
-  "C_Cpp.clang_format_style": "file:${workspaceFolder}/.clang-format",
+  "C_Cpp.clang_format_style": "file",
   "files.associations": {
     "*.task": "glsl",
     "*.vert": "glsl",
@@ -13,6 +7,5 @@
     "*.geom": "glsl",
     "*.comp": "glsl",
     "*.mesh": "glsl"
-  },
-  "makefile.configureOnOpen": false
+  }
 }

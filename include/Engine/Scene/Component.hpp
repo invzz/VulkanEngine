@@ -13,8 +13,8 @@ namespace engine {
   public:
     virtual ~Component() = default;
 
-    GameObject* getOwner() const { return owner; }
-    void        setOwner(GameObject* newOwner) { owner = newOwner; }
+    [[nodiscard]] GameObject* getOwner() const { return owner; }
+    void                      setOwner(GameObject* newOwner) { owner = newOwner; }
 
   protected:
     GameObject* owner = nullptr;

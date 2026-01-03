@@ -18,36 +18,6 @@ end
 add_defines("GLFW_INCLUDE_VULKAN")
 
 -- Use Vulkan SDK loader on Windows (do not define VK_NO_PROTOTYPES)
-
-task("tidy_changed")
-    set_menu {
-        usage = "xmake tidy_changed [options]",
-        description = "Run clang-tidy on files changed vs a base ref",
-        options = {
-            {"b", "base", "kv", "HEAD~1", "Base git ref to diff against (default: HEAD~1; use main for PRs)"},
-            {"j", "jobs", "kv", "1", "Parallel jobs (PowerShell 7+ on Windows)"}
-        }
-    }
-    on_run(function ()
-        local option = import("core.base.option")
-        local base = option.get("base") or "HEAD~1"
-        local jobs = option.get("jobs") or "1"
-
-        if is_host("windows") then
-            os.execv("powershell", {
-                "-NoProfile",
-                "-ExecutionPolicy", "Bypass",
-                "-File", path.join(os.projectdir(), "scripts", "run_clang_tidy_changed.ps1"),
-                "-Base", base,
-                "-Jobs", jobs
-            })
-        else
-            os.execv("bash", {path.join(os.projectdir(), "scripts", "run_clang_tidy_changed.sh"), base})
-        end
-    end)
-
-task_end()
-
 -- Package dependencies - use Vulkan SDK on Windows
 if is_plat("windows") then
     add_requires("glfw")

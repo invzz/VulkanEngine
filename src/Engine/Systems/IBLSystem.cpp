@@ -480,13 +480,7 @@ namespace engine {
   }
 
   // Helper to transition image layout
-  void transitionImageLayoutHelper(Device&       device,
-                                   VkImage       image,
-                                   VkFormat      format,
-                                   VkImageLayout oldLayout,
-                                   VkImageLayout newLayout,
-                                   uint32_t      mipLevels,
-                                   uint32_t      layerCount = 1)
+  void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1)
   {
     VkCommandBuffer commandBuffer = device.getMemory().beginSingleTimeCommands();
 
@@ -573,8 +567,7 @@ namespace engine {
                       6,
                       VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 
-    irradianceImageView_ =
-            createImageViewHelper(device_, irradianceImage_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1, VK_IMAGE_VIEW_TYPE_CUBE, 0, 6);
+    irradianceImageView_ = createImageViewHelper(device_, irradianceImage_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1, VK_IMAGE_VIEW_TYPE_CUBE, 0, 6);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -600,13 +593,7 @@ namespace engine {
     }
 
     // Transition to color attachment optimal
-    transitionImageLayoutHelper(device_,
-                                irradianceImage_,
-                                VK_FORMAT_R32G32B32A32_SFLOAT,
-                                VK_IMAGE_LAYOUT_UNDEFINED,
-                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                1,
-                                6);
+    transitionImageLayoutHelper(device_, irradianceImage_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, 6);
   }
 
   void IBLSystem::createPrefilteredEnvMap()
@@ -624,14 +611,7 @@ namespace engine {
                       6,
                       VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 
-    prefilteredImageView_ = createImageViewHelper(device_,
-                                                  prefilteredImage_,
-                                                  VK_FORMAT_R16G16B16A16_SFLOAT,
-                                                  VK_IMAGE_ASPECT_COLOR_BIT,
-                                                  settings_.prefilterMipLevels,
-                                                  VK_IMAGE_VIEW_TYPE_CUBE,
-                                                  0,
-                                                  6);
+    prefilteredImageView_ = createImageViewHelper(device_, prefilteredImage_, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, settings_.prefilterMipLevels, VK_IMAGE_VIEW_TYPE_CUBE, 0, 6);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -657,13 +637,7 @@ namespace engine {
     }
 
     // Transition to color attachment optimal
-    transitionImageLayoutHelper(device_,
-                                prefilteredImage_,
-                                VK_FORMAT_R16G16B16A16_SFLOAT,
-                                VK_IMAGE_LAYOUT_UNDEFINED,
-                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                settings_.prefilterMipLevels,
-                                6);
+    transitionImageLayoutHelper(device_, prefilteredImage_, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, settings_.prefilterMipLevels, 6);
   }
 
   void IBLSystem::createBRDFLUT()
@@ -1001,13 +975,7 @@ namespace engine {
     }
 
     // Transition to shader read
-    transitionImageLayoutHelper(device_,
-                                irradianceImage_,
-                                VK_FORMAT_R32G32B32A32_SFLOAT,
-                                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                1,
-                                6);
+    transitionImageLayoutHelper(device_, irradianceImage_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 6);
   }
 
   void IBLSystem::createPrefilterResources()
@@ -1287,12 +1255,7 @@ namespace engine {
         pushBlock.roughness   = roughness;
         pushBlock.sampleCount = settings_.prefilterSampleCount;
 
-        vkCmdPushConstants(commandBuffer,
-                           prefilterPipelineLayout_,
-                           VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                           0,
-                           sizeof(PushBlock),
-                           &pushBlock);
+        vkCmdPushConstants(commandBuffer, prefilterPipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushBlock), &pushBlock);
 
         vkCmdDraw(commandBuffer, 36, 1, 0, 0);
 

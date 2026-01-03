@@ -20,17 +20,11 @@ namespace engine {
               << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
   }
 
-  Pipeline::Pipeline(Device&                   device,
-                     const std::string&        taskFilePath,
-                     const std::string&        meshFilePath,
-                     const std::string&        fragFilePath,
-                     const PipelineConfigInfo& configInfo)
-      : device(device)
+  Pipeline::Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device)
   {
     createMeshPipeline(taskFilePath, meshFilePath, fragFilePath, configInfo);
     std::cout << "[" << GREEN << "Pipeline" << RESET << "] task: " << BLUE << std::filesystem::path(taskFilePath).filename().string() << " mesh: " << BLUE
-              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string()
-              << RESET << std::endl;
+              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
   }
 
   std::vector<char> Pipeline::readFile(const std::string& filePath)
@@ -151,10 +145,7 @@ namespace engine {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
   }
 
-  void Pipeline::createMeshPipeline(const std::string&        taskFilePath,
-                                    const std::string&        meshFilePath,
-                                    const std::string&        fragFilePath,
-                                    const PipelineConfigInfo& configInfo)
+  void Pipeline::createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo)
   {
     assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in "
                                                           "configInfo");

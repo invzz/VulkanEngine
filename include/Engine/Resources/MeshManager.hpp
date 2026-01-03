@@ -20,7 +20,7 @@ namespace engine {
     uint32_t registerModel(const Model* model);
 
     // Get the descriptor info for the global mesh buffer
-    VkDescriptorBufferInfo getDescriptorInfo() const;
+    [[nodiscard]] VkDescriptorBufferInfo getDescriptorInfo() const;
 
     // Get the descriptor set layout binding for the mesh buffer
     static VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding();

@@ -15,7 +15,8 @@ namespace engine {
    *
    * Generates IBL textures from an environment cubemap for PBR ambient lighting:
    * - Irradiance Map: Diffuse ambient lighting (convolved hemisphere)
-   * - Prefiltered Environment Map: Specular ambient lighting (mip-mapped by roughness)
+   * - Prefiltered Environment Map: Specular ambient lighting (mip-mapped by
+   * roughness)
    * - BRDF LUT: 2D lookup texture for split-sum approximation
    */
   class IBLSystem
@@ -54,18 +55,18 @@ namespace engine {
     void requestRegeneration(const Settings& settings, Skybox& skybox);
     void update();
 
-    void            updateSettings(const Settings& settings);
-    const Settings& getSettings() const { return settings_; }
+    void                          updateSettings(const Settings& settings);
+    [[nodiscard]] const Settings& getSettings() const { return settings_; }
 
     /**
      * @brief Check if IBL textures have been generated
      */
-    bool isGenerated() const { return generated_; }
+    [[nodiscard]] bool isGenerated() const { return generated_; }
 
     // Accessors for descriptor binding
-    VkDescriptorImageInfo getIrradianceDescriptorInfo() const;
-    VkDescriptorImageInfo getPrefilteredDescriptorInfo() const;
-    VkDescriptorImageInfo getBRDFLUTDescriptorInfo() const;
+    [[nodiscard]] VkDescriptorImageInfo getIrradianceDescriptorInfo() const;
+    [[nodiscard]] VkDescriptorImageInfo getPrefilteredDescriptorInfo() const;
+    [[nodiscard]] VkDescriptorImageInfo getBRDFLUTDescriptorInfo() const;
 
   private:
     Settings settings_;

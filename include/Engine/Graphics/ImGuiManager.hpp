@@ -1,53 +1,54 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include <vulkan/vulkan.h>
 
 namespace engine {
 
-/**
- * @brief Manager for ImGui integration with Vulkan
- *
- * Handles ImGui initialization, rendering, and cleanup.
- * Call init() once during setup, then newFrame() before UI code,
- * and render() to draw the UI.
- */
-class ImGuiManager {
-public:
-  ImGuiManager(Window &window, Device &device, VkRenderPass renderPass,
-               uint32_t imageCount);
-  ~ImGuiManager();
-
-  ImGuiManager(const ImGuiManager &) = delete;
-  ImGuiManager &operator=(const ImGuiManager &) = delete;
-
   /**
-   * @brief Start a new ImGui frame
-   * Call this before any ImGui UI code
+   * @brief Manager for ImGui integration with Vulkan
+   *
+   * Handles ImGui initialization, rendering, and cleanup.
+   * Call init() once during setup, then newFrame() before UI code,
+   * and render() to draw the UI.
    */
-  void newFrame();
+  class ImGuiManager
+  {
+  public:
+    ImGuiManager(Window& window, Device& device, VkRenderPass renderPass, uint32_t imageCount);
+    ~ImGuiManager();
 
-  /**
-   * @brief Render ImGui draw data to command buffer
-   * Call this inside render pass after your scene rendering
-   */
-  void render(VkCommandBuffer commandBuffer);
+    ImGuiManager(const ImGuiManager&)            = delete;
+    ImGuiManager& operator=(const ImGuiManager&) = delete;
 
-  /**
-   * @brief Update ImGui fonts/resources
-   * Call this after window resize
-   */
-  void updateAfterResize();
+    /**
+     * @brief Start a new ImGui frame
+     * Call this before any ImGui UI code
+     */
+    void newFrame();
 
-private:
-  void initImGui();
-  void setupVulkanBackend(uint32_t imageCount);
+    /**
+     * @brief Render ImGui draw data to command buffer
+     * Call this inside render pass after your scene rendering
+     */
+    void render(VkCommandBuffer commandBuffer);
 
-  Window &window_;
-  Device &device_;
-  VkRenderPass renderPass_;
-  VkDescriptorPool imguiDescriptorPool_{VK_NULL_HANDLE};
-};
+    /**
+     * @brief Update ImGui fonts/resources
+     * Call this after window resize
+     */
+    void updateAfterResize();
+
+  private:
+    void initImGui();
+    void setupVulkanBackend(uint32_t imageCount);
+
+    Window&          window_;
+    Device&          device_;
+    VkRenderPass     renderPass_;
+    VkDescriptorPool imguiDescriptorPool_{VK_NULL_HANDLE};
+  };
 
 } // namespace engine

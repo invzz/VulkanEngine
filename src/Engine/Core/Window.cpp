@@ -111,8 +111,8 @@ namespace window_detail {
     if (!mode) return;
     int xpos = mx + (mode->width - width) / 2;
     int ypos = my + (mode->height - height) / 2;
-    std::cout << "[" << BLUE << "Window" << RESET << "]" << YELLOW << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown") << "' at ("
-              << xpos << ", " << ypos << ")" << RESET << "\n";
+    std::cout << "[" << BLUE << "Window" << RESET << "]" << YELLOW << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown") << "' at (" << xpos << ", " << ypos << ")" << RESET
+              << "\n";
     glfwSetWindowPos(window, xpos, ypos);
   }
 
@@ -120,8 +120,7 @@ namespace window_detail {
 
 namespace engine {
 
-  Window::Window(int width, int height, const std::string& title)
-      : window(nullptr), width(width), height(height), glfwInitialized(false), framebufferResized(false), title(title)
+  Window::Window(int width, int height, const std::string& title) : window(nullptr), width(width), height(height), glfwInitialized(false), framebufferResized(false), title(title)
   {
     initWindow();
   }
@@ -207,8 +206,7 @@ namespace engine {
         int ypos = my + (mode->height - height) / 2;
 
         auto monitorName = glfwGetMonitorName(targetMonitor);
-        std::cout << "[ " << BLUE << "Window" << RESET << " ] " << YELLOW << (monitorName ? monitorName : "unknown") << BLUE << " position (" << xpos << ", "
-                  << ypos << ")" << RESET << "\n";
+        std::cout << "[ " << BLUE << "Window" << RESET << " ] " << YELLOW << (monitorName ? monitorName : "unknown") << BLUE << " position (" << xpos << ", " << ypos << ")" << RESET << "\n";
         glfwSetWindowPos(window, xpos, ypos);
       }
     }

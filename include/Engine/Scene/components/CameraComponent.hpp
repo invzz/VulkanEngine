@@ -6,7 +6,7 @@ namespace engine {
 
   struct CameraComponent
   {
-    Camera camera{};
+    Camera camera;
 
     // Perspective settings
     float fovY  = 80.0f;

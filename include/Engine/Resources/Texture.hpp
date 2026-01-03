@@ -24,10 +24,10 @@ namespace engine {
     static std::shared_ptr<Texture> createWhiteTexture(Device& device);
     static std::shared_ptr<Texture> createNormalTexture(Device& device); // Flat normal (0.5, 0.5, 1.0)
 
-    VkImageView           getImageView() const { return imageView_; }
-    VkSampler             getSampler() const { return sampler_; }
-    VkImage               getImage() const { return image_; }
-    VkDescriptorImageInfo getDescriptorInfo() const
+    [[nodiscard]] VkImageView           getImageView() const { return imageView_; }
+    [[nodiscard]] VkSampler             getSampler() const { return sampler_; }
+    [[nodiscard]] VkImage               getImage() const { return image_; }
+    [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
     {
       return VkDescriptorImageInfo{
               .sampler     = sampler_,
@@ -36,25 +36,24 @@ namespace engine {
       };
     }
 
-    int getWidth() const { return width_; }
-    int getHeight() const { return height_; }
-    int getMipLevels() const { return mipLevels_; }
+    [[nodiscard]] int getWidth() const { return width_; }
+    [[nodiscard]] int getHeight() const { return height_; }
+    [[nodiscard]] int getMipLevels() const { return mipLevels_; }
 
-    void     setGlobalIndex(uint32_t index) { globalIndex_ = index; }
-    uint32_t getGlobalIndex() const { return globalIndex_; }
+    void                   setGlobalIndex(uint32_t index) { globalIndex_ = index; }
+    [[nodiscard]] uint32_t getGlobalIndex() const { return globalIndex_; }
 
     /**
      * @brief Get approximate memory size of this texture
      * @return Memory size in bytes (includes mipmaps)
      */
-    size_t getMemorySize() const;
+    [[nodiscard]] size_t getMemorySize() const;
 
   private:
     // Private constructor for creating textures from memory
     Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);
 
-    void
-    createImage(int width, int height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
+    void createImage(int width, int height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
     void createImageView(VkFormat format);
     void createSampler();
     void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);

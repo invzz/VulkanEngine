@@ -10,7 +10,8 @@ namespace engine {
     glm::vec3 translation{};               // position offset
     glm::vec3 scale{1.0f, 1.0f, 1.0f};     // scaling factors
     glm::vec3 rotation{};                  // rotation angles in radians
-    glm::vec3 baseScale{1.0f, 1.0f, 1.0f}; // Base scale (for animated objects, multiplied with animation scale)
+    glm::vec3 baseScale{1.0f, 1.0f, 1.0f}; // Base scale (for animated objects,
+                                           // multiplied with animation scale)
 
     // Matrix corresponding to translate * rotate * scale
     // * optimized version : using precomputed sines and cosines
@@ -72,7 +73,7 @@ namespace engine {
     // Set rotation to look at a target point (in world space)
     inline void lookAt(const glm::vec3& target)
     {
-      glm::vec3 direction = glm::normalize(target - translation);
+      glm::vec3 const direction = glm::normalize(target - translation);
 
       // Calculate yaw (rotation around Y axis)
       rotation.y = std::atan2(direction.x, direction.z);

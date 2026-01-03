@@ -50,8 +50,8 @@ namespace engine {
     // --- Force metals by name
     std::string nameLower = matName;
     std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-    bool forceMetal = (nameLower.find("chrome") != std::string::npos || nameLower.find("mirror") != std::string::npos ||
-                       nameLower.find("aluminum") != std::string::npos || nameLower.find("metal") != std::string::npos);
+    bool forceMetal = (nameLower.find("chrome") != std::string::npos || nameLower.find("mirror") != std::string::npos || nameLower.find("aluminum") != std::string::npos ||
+                       nameLower.find("metal") != std::string::npos);
 
     if (forceMetal || (glm::length(Kd) < 0.05f && specularIntensity > 0.6f))
     {
@@ -81,8 +81,7 @@ namespace engine {
     pbr.ao        = 1.0f;
 
     // --- Detect clearcoat materials (car paint, lacquered surfaces)
-    bool isCarPaint =
-            (nameLower.find("bmw") != std::string::npos || nameLower.find("carshell") != std::string::npos || nameLower.find("paint") != std::string::npos);
+    bool isCarPaint = (nameLower.find("bmw") != std::string::npos || nameLower.find("carshell") != std::string::npos || nameLower.find("paint") != std::string::npos);
 
     if (isCarPaint && pbr.metallic < 0.5f) // Dielectric paint with clearcoat
     {
@@ -91,8 +90,7 @@ namespace engine {
     }
 
     // --- Detect anisotropic materials (brushed metals)
-    bool isBrushedMetal =
-            (nameLower.find("brushed") != std::string::npos || nameLower.find("aluminum") != std::string::npos || nameLower.find("steel") != std::string::npos);
+    bool isBrushedMetal = (nameLower.find("brushed") != std::string::npos || nameLower.find("aluminum") != std::string::npos || nameLower.find("steel") != std::string::npos);
 
     if (isBrushedMetal)
     {
@@ -150,9 +148,8 @@ namespace engine {
 
       builder.materials.push_back(matInfo);
 
-      std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << mat.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << ","
-                << matInfo.pbrMaterial.albedo.g << "," << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic
-                << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << std::endl;
+      std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << mat.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << "," << matInfo.pbrMaterial.albedo.g << ","
+                << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << std::endl;
     }
 
     // Group indices by material to create sub-meshes
@@ -263,8 +260,7 @@ namespace engine {
 
     builder.indices = std::move(groupedIndices);
 
-    std::cout << GREEN << "[OBJImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET
-              << std::endl;
+    std::cout << GREEN << "[OBJImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << std::endl;
 
     return true;
   }

@@ -24,8 +24,8 @@ namespace engine {
     // Returns the global index of the texture
     uint32_t addTexture(std::shared_ptr<Texture> texture);
 
-    VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout->getDescriptorSetLayout(); }
-    VkDescriptorSet       getDescriptorSet() const { return descriptorSet; }
+    [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout->getDescriptorSetLayout(); }
+    [[nodiscard]] VkDescriptorSet       getDescriptorSet() const { return descriptorSet; }
 
   private:
     void createDescriptorSetLayout();

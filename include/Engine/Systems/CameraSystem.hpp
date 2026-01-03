@@ -22,9 +22,9 @@ namespace engine {
     void render(FrameInfo& frameInfo) const;
 
   private:
-    void updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio) const;
-    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
-    void createPipeline(VkRenderPass renderPass);
+    static void updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio);
+    void        createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+    void        createPipeline(VkRenderPass renderPass);
 
     Device&                   device;
     VkPipelineLayout          pipelineLayout;
