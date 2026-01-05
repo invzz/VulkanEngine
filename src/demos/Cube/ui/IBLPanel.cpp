@@ -2,7 +2,12 @@
 
 #include <imgui.h>
 
+#include <cstdint>
 #include <string>
+
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/IBLSystem.hpp"
 
 namespace engine {
 

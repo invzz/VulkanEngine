@@ -2,6 +2,9 @@
 
 #include <imgui.h>
 
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "LightsPanel.hpp"
+
 namespace engine {
 
   InspectorPanel::InspectorPanel(Scene& scene)

@@ -1,14 +1,18 @@
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
+#include <cstdint>
+#include <exception>
 #include <iostream>
 #include <stdexcept>
+
+#include "Engine/Core/Window.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 #ifdef _WIN32
-#include <windows.h>
 #endif
 
 namespace engine {
@@ -81,7 +85,7 @@ namespace engine {
     VkResult poolRes = vkCreateDescriptorPool(device_.device(), &pool_info, nullptr, &imguiDescriptorPool_);
     if (poolRes != VK_SUCCESS)
     {
-      std::cerr << "vkCreateDescriptorPool failed with code: " << poolRes << std::endl;
+      std::cerr << "vkCreateDescriptorPool failed with code: " << poolRes << '\n';
       throw std::runtime_error("Failed to create ImGui descriptor pool!");
     }
 
@@ -105,27 +109,27 @@ namespace engine {
     init_info.CheckVkResultFn = [](VkResult err) {
       if (err != VK_SUCCESS)
       {
-        std::cerr << "ImGui Vulkan backend reported VkResult: " << err << std::endl;
+        std::cerr << "ImGui Vulkan backend reported VkResult: " << err << '\n';
       }
     };
 
     // Sanity debug output (addresses/handles)
     std::cerr << "ImGui init: Instance=" << init_info.Instance << " PhysicalDevice=" << init_info.PhysicalDevice << " Device=" << init_info.Device << " DescriptorPool=" << init_info.DescriptorPool
               << " RenderPass=" << init_info.RenderPass << " QueueFamily=" << init_info.QueueFamily << " QueueHandle=" << init_info.Queue << " GraphicsQueue=" << device_.graphicsQueue()
-              << " PresentQueue=" << device_.presentQueue() << " ImageCount=" << init_info.ImageCount << " MinImageCount=" << init_info.MinImageCount << std::endl;
+              << " PresentQueue=" << device_.presentQueue() << " ImageCount=" << init_info.ImageCount << " MinImageCount=" << init_info.MinImageCount << '\n';
 
     // Validate handles
     if (init_info.Device == VK_NULL_HANDLE || init_info.Instance == VK_NULL_HANDLE || init_info.PhysicalDevice == VK_NULL_HANDLE)
     {
       std::cerr << "Invalid Vulkan handles detected before ImGui init. Aborting "
                    "ImGui init."
-                << std::endl;
+                << '\n';
       return;
     }
 
     if (init_info.Queue == VK_NULL_HANDLE)
     {
-      std::cerr << "ImGui init: graphics queue handle is null. Aborting ImGui init." << std::endl;
+      std::cerr << "ImGui init: graphics queue handle is null. Aborting ImGui init." << '\n';
       return;
     }
 
@@ -134,12 +138,12 @@ namespace engine {
     VkResult r1 = vkDeviceWaitIdle(init_info.Device);
     if (r1 != VK_SUCCESS)
     {
-      std::cerr << "vkDeviceWaitIdle returned error: " << r1 << std::endl;
+      std::cerr << "vkDeviceWaitIdle returned error: " << r1 << '\n';
     }
     VkResult r2 = vkQueueWaitIdle(init_info.Queue);
     if (r2 != VK_SUCCESS)
     {
-      std::cerr << "vkQueueWaitIdle returned error: " << r2 << std::endl;
+      std::cerr << "vkQueueWaitIdle returned error: " << r2 << '\n';
     }
 
     // Run minimal Vulkan sanity checks (create/destroy sampler, descriptor set
@@ -160,7 +164,7 @@ namespace engine {
     samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
     VkResult sres = vkCreateSampler(device_.device(), &samplerInfo, nullptr, &testSampler);
-    std::cerr << "vkCreateSampler returned: " << sres << " sampler=" << testSampler << std::endl;
+    std::cerr << "vkCreateSampler returned: " << sres << " sampler=" << testSampler << '\n';
     if (sres == VK_SUCCESS && testSampler != VK_NULL_HANDLE)
     {
       vkDestroySampler(device_.device(), testSampler, nullptr);
@@ -180,7 +184,7 @@ namespace engine {
     layoutInfo.pBindings    = &binding;
 
     VkResult lres = vkCreateDescriptorSetLayout(device_.device(), &layoutInfo, nullptr, &testLayout);
-    std::cerr << "vkCreateDescriptorSetLayout returned: " << lres << " layout=" << testLayout << std::endl;
+    std::cerr << "vkCreateDescriptorSetLayout returned: " << lres << " layout=" << testLayout << '\n';
     if (lres == VK_SUCCESS && testLayout != VK_NULL_HANDLE)
     {
       vkDestroyDescriptorSetLayout(device_.device(), testLayout, nullptr);
@@ -195,7 +199,7 @@ namespace engine {
     pipelineLayoutInfo.pPushConstantRanges    = nullptr;
 
     VkResult pres = vkCreatePipelineLayout(device_.device(), &pipelineLayoutInfo, nullptr, &testPipelineLayout);
-    std::cerr << "vkCreatePipelineLayout returned: " << pres << " pipelineLayout=" << testPipelineLayout << std::endl;
+    std::cerr << "vkCreatePipelineLayout returned: " << pres << " pipelineLayout=" << testPipelineLayout << '\n';
     if (pres == VK_SUCCESS && testPipelineLayout != VK_NULL_HANDLE)
     {
       vkDestroyPipelineLayout(device_.device(), testPipelineLayout, nullptr);
@@ -216,27 +220,27 @@ namespace engine {
     bool loaded = ImGui_ImplVulkan_LoadFunctions(
             VK_API_VERSION_1_3,
             [](const char* name, void* user_data) -> PFN_vkVoidFunction {
-              ImGuiLoaderUser*   u = reinterpret_cast<ImGuiLoaderUser*>(user_data);
-              PFN_vkVoidFunction f = reinterpret_cast<PFN_vkVoidFunction>(vkGetInstanceProcAddr(u->instance, name));
+              auto* u = reinterpret_cast<ImGuiLoaderUser*>(user_data);
+              auto  f = vkGetInstanceProcAddr(u->instance, name);
               if (f) return f;
               if (u->device != VK_NULL_HANDLE)
               {
-                return reinterpret_cast<PFN_vkVoidFunction>(vkGetDeviceProcAddr(u->device, name));
+                return vkGetDeviceProcAddr(u->device, name);
               }
               return nullptr;
             },
             (void*)&loaderUser);
-    std::cerr << "ImGui_ImplVulkan_LoadFunctions returned: " << loaded << std::endl;
+    std::cerr << "ImGui_ImplVulkan_LoadFunctions returned: " << loaded << '\n';
 
     // Proceed with ImGui initialization
     try
     {
       ImGui_ImplVulkan_Init(&init_info);
-      std::cerr << "ImGui Vulkan backend initialized successfully." << std::endl;
+      std::cerr << "ImGui Vulkan backend initialized successfully." << '\n';
     }
     catch (const std::exception& e)
     {
-      std::cerr << "Exception during ImGui_ImplVulkan_Init: " << e.what() << std::endl;
+      std::cerr << "Exception during ImGui_ImplVulkan_Init: " << e.what() << '\n';
       return;
     }
   }

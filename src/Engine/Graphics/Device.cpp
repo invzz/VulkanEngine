@@ -1,62 +1,67 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Core/Window.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/DeviceMemory.hpp"
+#include "GLFW/glfw3.h"
+#include "vulkan/vk_platform.h"
+#include "vulkan/vulkan_core.h"
 
 // std headers
 #include <algorithm>
+#include <bit>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <set>
+#include <string>
 #include <unordered_set>
+#include <vector>
 
 // Use Vulkan SDK loader (vulkan-1) - include normal Vulkan headers
-#include <vulkan/vulkan.h>
 
-/**
- * @namespace engine
- * @brief Contains core engine classes and functions.
- */
-namespace engine {
-
-  // local callback functions
-  static VKAPI_ATTR VkBool32 VKAPI_CALL
-
-  debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* /*pUserData*/)
+namespace {
+  // File-local Vulkan debug helpers.
+  VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+                                               VkDebugUtilsMessageTypeFlagsEXT             messageType,
+                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                               void* /*pUserData*/)
   {
-    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+    if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) != 0u)
     {
       // General message
       std::cerr << "[ " << GREEN "GENERAL" RESET;
     }
-    else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
+    else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0u)
     {
       // Validation message
       std::cerr << "[ " << YELLOW "VALIDATION" RESET;
     }
-    else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
+    else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0u)
     {
       // Performance message
       std::cerr << "[ " << BLUE "PERFORMANCE" RESET;
     }
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0)
     {
-      std::cerr << RED " ERROR" RESET " ] " << pCallbackData->pMessage << std::endl;
+      std::cerr << RED " ERROR" RESET " ] " << pCallbackData->pMessage << "\n";
       return VK_FALSE;
     }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+    if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0)
     {
-      std::cerr << YELLOW " WARNING" RESET " ] " << pCallbackData->pMessage << std::endl;
+      std::cerr << YELLOW " WARNING" RESET " ] " << pCallbackData->pMessage << "\n";
       return VK_FALSE;
     }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+    if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0)
     {
-      std::cerr << BLUE " INFO" RESET " ] " << pCallbackData->pMessage << std::endl;
+      std::cerr << BLUE " INFO" RESET " ] " << pCallbackData->pMessage << "\n";
       return VK_FALSE;
     }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
+    if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) != 0)
     {
-      std::cerr << CYAN " VERBOSE" RESET " ] " << pCallbackData->pMessage << std::endl;
+      std::cerr << CYAN " VERBOSE" RESET " ] " << pCallbackData->pMessage << "\n";
       return VK_FALSE;
     }
     return VK_FALSE;
@@ -69,10 +74,7 @@ namespace engine {
     {
       return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
     }
-    else
-    {
-      return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
+    return VK_ERROR_EXTENSION_NOT_PRESENT;
   }
 
   void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
@@ -83,6 +85,13 @@ namespace engine {
       func(instance, debugMessenger, pAllocator);
     }
   }
+} // namespace
+
+/**
+ * @namespace engine
+ * @brief Contains core engine classes and functions.
+ */
+namespace engine {
 
   // class member functions
   /**
@@ -218,7 +227,7 @@ namespace engine {
 
     physicalDevice = bestDevice;
     properties     = best;
-    std::cout << "physical device: " << properties.deviceName << std::endl;
+    std::cout << "physical device: " << properties.deviceName << "\n";
   }
 
   void Device::createLogicalDevice()
@@ -258,13 +267,13 @@ namespace engine {
     PFN_vkGetPhysicalDeviceFeatures2KHR getFeatures2 = nullptr;
     if (const auto rawGetFeatures2KHR = vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2KHR"); rawGetFeatures2KHR != nullptr)
     {
-      std::memcpy(&getFeatures2, &rawGetFeatures2KHR, sizeof(getFeatures2));
+      getFeatures2 = std::bit_cast<PFN_vkGetPhysicalDeviceFeatures2KHR>(rawGetFeatures2KHR);
     }
     if (getFeatures2 == nullptr)
     {
       if (const auto rawGetFeatures2 = vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2"); rawGetFeatures2 != nullptr)
       {
-        std::memcpy(&getFeatures2, &rawGetFeatures2, sizeof(getFeatures2));
+        getFeatures2 = std::bit_cast<PFN_vkGetPhysicalDeviceFeatures2KHR>(rawGetFeatures2);
       }
     }
 
@@ -371,9 +380,9 @@ namespace engine {
     // resolved via vkGetDeviceProcAddr
 
     vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");
-    if (!vkCmdDrawMeshTasksEXT)
+    if (vkCmdDrawMeshTasksEXT == nullptr)
     {
-      std::cerr << "Failed to load vkCmdDrawMeshTasksEXT function pointer!" << std::endl;
+      std::cerr << "Failed to load vkCmdDrawMeshTasksEXT function pointer!" << "\n";
     }
   }
 
@@ -434,10 +443,11 @@ namespace engine {
 
     vkGetPhysicalDeviceFeatures2(device, &features2);
 
-    bool bindlessSupported = vulkan12Features.descriptorIndexing && vulkan12Features.shaderSampledImageArrayNonUniformIndexing && vulkan12Features.descriptorBindingPartiallyBound &&
-                             vulkan12Features.descriptorBindingVariableDescriptorCount && vulkan12Features.runtimeDescriptorArray && vulkan12Features.bufferDeviceAddress;
+    bool bindlessSupported = (vulkan12Features.descriptorIndexing != 0u) && (vulkan12Features.shaderSampledImageArrayNonUniformIndexing != 0u) &&
+                             (vulkan12Features.descriptorBindingPartiallyBound != 0u) && (vulkan12Features.descriptorBindingVariableDescriptorCount != 0u) &&
+                             (vulkan12Features.runtimeDescriptorArray != 0u) && (vulkan12Features.bufferDeviceAddress != 0u);
 
-    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy && supportedFeatures.shaderInt64 && bindlessSupported;
+    return indices.isComplete() && extensionsSupported && swapChainAdequate && (supportedFeatures.samplerAnisotropy != 0u) && (supportedFeatures.shaderInt64 != 0u) && bindlessSupported;
   }
 
   bool Device::checkValidationLayerSupport() const
@@ -450,13 +460,12 @@ namespace engine {
 
     for (const char* layerName : validationLayers)
     {
-      const bool found = std::any_of(availableLayers.begin(), availableLayers.end(), [layerName](const VkLayerProperties& layerProps) { return std::strcmp(layerName, layerProps.layerName) == 0; });
+      const bool found = std::ranges::any_of(availableLayers, [layerName](const VkLayerProperties& layerProps) { return std::strcmp(layerName, layerProps.layerName) == 0; });
       if (!found)
       {
         return false;
       }
     }
-
     return true;
   }
 
@@ -504,7 +513,7 @@ namespace engine {
     uint32_t i = 0;
     for (const auto& queueFamily : queueFamilies)
     {
-      if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
+      if (queueFamily.queueCount > 0 && ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0u))
       {
         indices.graphicsFamily         = i;
         indices.graphicsFamilyHasValue = true;
@@ -529,7 +538,7 @@ namespace engine {
     return indices;
   }
 
-  void Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const
+  void Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo)
   {
     createInfo                 = {};
     createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -539,7 +548,7 @@ namespace engine {
     createInfo.pUserData       = nullptr;
   }
 
-  void Device::hasGflwRequiredInstanceExtensions() const
+  void Device::hasGflwRequiredInstanceExtensions()
   {
     uint32_t     glfwExtensionCount = 0;
     const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);

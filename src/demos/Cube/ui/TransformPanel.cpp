@@ -2,13 +2,17 @@
 
 #include <imgui.h>
 
-#include <string>
+#include <cstdint>
 
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightSystem.hpp"
+#include "entt/entity/entity.hpp"
+#include "glm/trigonometric.hpp"
 
 namespace engine {
 

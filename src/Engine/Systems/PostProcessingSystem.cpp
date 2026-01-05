@@ -1,10 +1,19 @@
 #include "Engine/Systems/PostProcessingSystem.hpp"
 
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
+#include "vulkan/vulkan_core.h"
+
 // libs
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <array>
-#include <glm/glm.hpp>
 #include <stdexcept>
 
 namespace engine {

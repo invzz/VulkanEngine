@@ -31,11 +31,11 @@ namespace engine {
     // Two global descriptor sets per frame:
     // - "prev" is used in early passes (shadow/depth-prepass) to avoid sampling the same-frame HZB before it exists.
     // - "current" is used in late passes (main scene) after HZB is generated.
-    void                  updateHZBDescriptorPrev(int frameIndex, VkDescriptorImageInfo hzbImageInfo);
-    void                  updateHZBDescriptorCurrent(int frameIndex, VkDescriptorImageInfo hzbImageInfo);
-    VkDescriptorSet       getGlobalDescriptorSet(int frameIndex) const { return globalDescriptorSets_[frameIndex]; }
-    VkDescriptorSet       getGlobalDescriptorSetCurrentHzb(int frameIndex) const { return globalDescriptorSetsCurrentHzb_[frameIndex]; }
-    VkDescriptorSetLayout getGlobalSetLayout() const { return globalSetLayout_->getDescriptorSetLayout(); }
+    void                                updateHZBDescriptorPrev(int frameIndex, VkDescriptorImageInfo hzbImageInfo);
+    void                                updateHZBDescriptorCurrent(int frameIndex, VkDescriptorImageInfo hzbImageInfo);
+    [[nodiscard]] VkDescriptorSet       getGlobalDescriptorSet(int frameIndex) const { return globalDescriptorSets_[frameIndex]; }
+    [[nodiscard]] VkDescriptorSet       getGlobalDescriptorSetCurrentHzb(int frameIndex) const { return globalDescriptorSetsCurrentHzb_[frameIndex]; }
+    [[nodiscard]] VkDescriptorSetLayout getGlobalSetLayout() const { return globalSetLayout_->getDescriptorSetLayout(); }
 
   private:
     Device&                              device_;

@@ -1,5 +1,20 @@
 #include "Engine/Resources/importers/OBJImporter.hpp"
 
+#include <cctype>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
+#include "glm/common.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/geometric.hpp"
+
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
@@ -7,7 +22,6 @@
 #include <iostream>
 #include <unordered_map>
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Core/utils.hpp"
@@ -114,14 +128,14 @@ namespace engine {
 
     if (!tinyobj::LoadObj(&attrib, &shapes, &tinyMaterials, &warn, &err, filepath.c_str(), mtlBaseDir.c_str()))
     {
-      std::cerr << RED << "[OBJImporter] Error: " << RESET << warn + err << std::endl;
+      std::cerr << RED << "[OBJImporter] Error: " << RESET << warn + err << '\n';
       return false;
     }
 
 #if defined(DEBUG)
     if (!warn.empty())
     {
-      std::cout << YELLOW << "[OBJImporter] Warning: " << RESET << warn << std::endl;
+      std::cout << YELLOW << "[OBJImporter] Warning: " << RESET << warn << '\n';
     }
 #endif
 
@@ -149,7 +163,7 @@ namespace engine {
       builder.materials.push_back(matInfo);
 
       std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << mat.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << "," << matInfo.pbrMaterial.albedo.g << ","
-                << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << std::endl;
+                << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << '\n';
     }
 
     // Group indices by material to create sub-meshes
@@ -260,7 +274,7 @@ namespace engine {
 
     builder.indices = std::move(groupedIndices);
 
-    std::cout << GREEN << "[OBJImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << std::endl;
+    std::cout << GREEN << "[OBJImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << '\n';
 
     return true;
   }

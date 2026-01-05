@@ -1,7 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
 
-#include <memory>
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"

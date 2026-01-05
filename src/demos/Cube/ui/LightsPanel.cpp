@@ -2,13 +2,18 @@
 
 #include <imgui.h>
 
+#include <cmath>
 #include <random>
 
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightSystem.hpp"
+#include "entt/entity/entity.hpp"
+#include "glm/geometric.hpp"
 
 namespace engine {
 

@@ -8,9 +8,11 @@
 #include "Engine/Graphics/Buffer.hpp"
 
 #include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 // std
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 
 namespace engine {

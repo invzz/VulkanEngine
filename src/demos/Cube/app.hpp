@@ -87,14 +87,14 @@ namespace engine {
     void update(float frameTime);
     void render(float frameTime);
 
-    void updatePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void computePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
-    void renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void renderSkyPass(FrameInfo& frameInfo, GameLoopState& state);
-    void renderGeometryPass(FrameInfo& frameInfo, GameLoopState& state);
-    void renderDebugPass(FrameInfo& frameInfo, GameLoopState& state);
-    void uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
+    void        updatePhase(FrameInfo& frameInfo, GameLoopState& state);
+    static void computePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void        shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
+    void        renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderSkyPass(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderGeometryPass(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderDebugPass(FrameInfo& frameInfo, GameLoopState& state);
+    void        uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
 
     Window          window{width(), height(), "Engine App"};
     Device          device{window};

@@ -84,8 +84,8 @@ namespace engine {
 
     bool                    isDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices      findQueueFamilies(VkPhysicalDevice device);
-    void                    populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const;
-    void                    hasGflwRequiredInstanceExtensions() const;
+    static void             populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+    static void             hasGflwRequiredInstanceExtensions();
     bool                    checkDeviceExtensionSupport(VkPhysicalDevice device) const;
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 

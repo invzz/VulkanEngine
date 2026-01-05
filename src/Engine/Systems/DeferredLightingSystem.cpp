@@ -1,7 +1,18 @@
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 
+#include <array>
 #include <cassert>
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 

@@ -1,12 +1,13 @@
 #include "Engine/Core/Window.hpp"
 
-#include <algorithm>
 #include <chrono>
 #include <climits>
-#include <cstdlib>
 #include <iostream>
+#include <string>
 #include <thread>
-#include <vector>
+
+#include "GLFW/glfw3.h"
+#include "vulkan/vulkan_core.h"
 
 #ifdef __linux__
 #include <X11/Xlib.h>
@@ -17,7 +18,6 @@
 
 // Forward ImGui GLFW callbacks so the app can choose to install or forward
 // events instead of relying on the backend to auto-install them.
-#include <imgui_impl_glfw.h>
 
 // Small helpers to keep initWindow simple and readable.
 namespace window_detail {

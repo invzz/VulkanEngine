@@ -34,8 +34,8 @@ namespace engine {
   public:
     ModelImportPanel(Device& device, Scene& scene, AnimationSystem& animationSystem, ResourceManager& resourceManager);
 
-    void render(FrameInfo& frameInfo) override;
-    bool isSeparateWindow() const override { return true; }
+    void               render(FrameInfo& frameInfo) override;
+    [[nodiscard]] bool isSeparateWindow() const override { return true; }
 
   private:
     void loadModelIndex();

@@ -1,9 +1,14 @@
 #include "Engine/Graphics/FrameBuffer.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
-#include <iostream>
+#include <cstddef>
+#include <cstdint>
 #include <stdexcept>
+
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -750,7 +755,7 @@ namespace engine {
         {
           throw std::runtime_error("failed to create depth mip image view!");
         }
-        // std::cout << "Created Depth Mip View: Frame " << i << ", Mip " << mip << ", Handle " << depthMipImageViews[i][mip] << std::endl;
+        // std::cout << "Created Depth Mip View: Frame " << i << ", Mip " << mip << ", Handle " << depthMipImageViews[i][mip] <<'\n';
       }
 
       // Create HZB Images (R32_SFLOAT)

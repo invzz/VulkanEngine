@@ -1,14 +1,19 @@
 #include "Engine/Graphics/Pipeline.hpp"
 
+#include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/Model.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -17,14 +22,14 @@ namespace engine {
   {
     createGraphicsPipeline(vertFilePath, fragFilePath, configInfo);
     std::cout << "[" << GREEN << "Pipeline" << RESET << "] vert: " << BLUE << std::filesystem::path(vertFilePath).filename().string() << " frag: " << BLUE
-              << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
+              << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
   }
 
   Pipeline::Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device)
   {
     createMeshPipeline(taskFilePath, meshFilePath, fragFilePath, configInfo);
     std::cout << "[" << GREEN << "Pipeline" << RESET << "] task: " << BLUE << std::filesystem::path(taskFilePath).filename().string() << " mesh: " << BLUE
-              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
+              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
   }
 
   std::vector<char> Pipeline::readFile(const std::string& filePath)

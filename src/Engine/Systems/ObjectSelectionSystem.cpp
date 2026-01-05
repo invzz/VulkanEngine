@@ -1,11 +1,14 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 
 #include <algorithm>
+#include <cstdint>
+#include <iterator>
 #include <vector>
 
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "entt/entity/fwd.hpp"
 
 namespace engine {
 

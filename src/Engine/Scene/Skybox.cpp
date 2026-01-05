@@ -1,7 +1,13 @@
 #include "Engine/Scene/Skybox.hpp"
 
-#include <cstring>
+#include <array>
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
+#include <string>
+
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 #define STB_IMAGE_IMPLEMENTATION_ALREADY_DEFINED
 #include <stb_image.h>

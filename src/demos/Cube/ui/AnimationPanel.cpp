@@ -2,8 +2,11 @@
 
 #include <imgui.h>
 
+#include <cstdint>
 #include <string>
 
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 
 namespace engine {

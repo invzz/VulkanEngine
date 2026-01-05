@@ -3,12 +3,17 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
+#include <stdexcept>
+#include <vector>
 
+#include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "glm/geometric.hpp"
 
 namespace engine {
 

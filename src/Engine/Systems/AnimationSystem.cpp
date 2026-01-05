@@ -27,11 +27,11 @@ namespace engine {
     try
     {
       morphManager_ = std::make_unique<MorphTargetManager>(device);
-      std::cout << "[AnimationSystem] Initialized successfully" << std::endl;
+      std::cout << "[AnimationSystem] Initialized successfully" << '\n';
     }
     catch (const std::exception& e)
     {
-      std::cerr << "[AnimationSystem] ERROR: " << e.what() << std::endl;
+      std::cerr << "[AnimationSystem] ERROR: " << e.what() << '\n';
       throw;
     }
   }
@@ -140,7 +140,7 @@ namespace engine {
           }
           catch (const std::exception& e)
           {
-            std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t)entity << ": " << e.what() << std::endl;
+            std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t)entity << ": " << e.what() << '\n';
             continue;
           }
         }

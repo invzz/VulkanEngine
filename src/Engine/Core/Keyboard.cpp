@@ -1,6 +1,12 @@
 #include "Engine/Core/Keyboard.hpp"
 
+#include <limits>
+
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "glm/common.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/geometric.hpp"
+#include "glm/gtc/constants.hpp"
 
 namespace engine {
 

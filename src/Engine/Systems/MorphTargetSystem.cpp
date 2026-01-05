@@ -17,11 +17,11 @@ namespace engine {
     try
     {
       manager_ = std::make_unique<MorphTargetManager>(device);
-      std::cout << "[MorphTargetSystem] Initialized successfully" << std::endl;
+      std::cout << "[MorphTargetSystem] Initialized successfully" << '\n';
     }
     catch (const std::exception& e)
     {
-      std::cerr << "[MorphTargetSystem] ERROR: " << e.what() << std::endl;
+      std::cerr << "[MorphTargetSystem] ERROR: " << e.what() << '\n';
       throw;
     }
   }
@@ -51,7 +51,7 @@ namespace engine {
           }
           catch (const std::exception& e)
           {
-            std::cerr << "[MorphTargetSystem] ERROR initializing object " << (uint32_t)entity << ": " << e.what() << std::endl;
+            std::cerr << "[MorphTargetSystem] ERROR initializing object " << (uint32_t)entity << ": " << e.what() << '\n';
             continue; // Skip this object
           }
         }

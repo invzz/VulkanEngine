@@ -81,7 +81,7 @@ namespace engine {
     createImageView(format);
     createSampler();
 
-    std::cout << "[" << GREEN << "Texture" << RESET << "] Loaded: " << filepath << " (" << width_ << "x" << height_ << ", " << mipLevels_ << " mips)" << std::endl;
+    std::cout << "[" << GREEN << "Texture" << RESET << "] Loaded: " << filepath << " (" << width_ << "x" << height_ << ", " << mipLevels_ << " mips)" << '\n';
   }
 
   Texture::~Texture()

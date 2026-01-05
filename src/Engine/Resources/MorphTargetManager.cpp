@@ -49,7 +49,7 @@ namespace engine {
     createMorphBuffers(*model, data);
     modelData_[modelPtr] = std::move(data);
 
-    std::cout << "[" << GREEN << "MorphTargetManager" << RESET << "] Initialized model with " << data.morphTargetCount << " morph targets, " << data.vertexCount << " vertices" << std::endl;
+    std::cout << "[" << GREEN << "MorphTargetManager" << RESET << "] Initialized model with " << data.morphTargetCount << " morph targets, " << data.vertexCount << " vertices" << '\n';
   }
 
   void MorphTargetManager::createMorphBuffers(const Model& model, ModelMorphData& data)
@@ -103,7 +103,7 @@ namespace engine {
         {
           std::cout << i << "->" << morphSet.positionIndices[i] << " ";
         }
-        std::cout << std::endl;
+        std::cout << '\n';
       }
     }
 
@@ -193,7 +193,7 @@ namespace engine {
           {
             std::cout << node.morphWeights[i] << " ";
           }
-          std::cout << std::endl;
+          std::cout << '\n';
         }
         for (size_t i = 0; i < std::min(currentWeights.size(), node.morphWeights.size()); i++)
         {
@@ -215,7 +215,7 @@ namespace engine {
       {
         std::cout << currentWeights[i] << " ";
       }
-      std::cout << std::endl;
+      std::cout << '\n';
     }
 
     // Setup push constants
@@ -231,7 +231,7 @@ namespace engine {
     if (!printedOnce)
     {
       std::cout << "[MorphTargetManager] Compute dispatch: offset=" << pushConstants.vertexOffset << " count=" << pushConstants.vertexCount << " morphTargets=" << pushConstants.morphTargetCount
-                << std::endl;
+                << '\n';
       printedOnce = true;
     }
 

@@ -2,7 +2,11 @@
 
 // std
 #include <cassert>
-#include <limits>
+#include <cmath>
+
+#include "glm/ext/vector_float3.hpp"
+#include "glm/geometric.hpp"
+#include "glm/trigonometric.hpp"
 
 namespace engine {
 

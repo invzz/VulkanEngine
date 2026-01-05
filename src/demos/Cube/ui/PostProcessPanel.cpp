@@ -2,6 +2,9 @@
 
 #include <imgui.h>
 
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Systems/PostProcessingSystem.hpp"
+
 namespace engine {
   PostProcessPanel::PostProcessPanel(PostProcessPushConstants& pushConstants) : pushConstants{pushConstants} {}
 

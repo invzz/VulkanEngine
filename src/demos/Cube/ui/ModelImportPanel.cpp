@@ -113,7 +113,7 @@ namespace engine {
     std::ifstream f(indexPath);
     if (!f.is_open())
     {
-      std::cerr << "Failed to open model index: " << indexPath << std::endl;
+      std::cerr << "Failed to open model index: " << indexPath << '\n';
       return;
     }
 
@@ -150,7 +150,7 @@ namespace engine {
           }
           catch (const std::exception& e)
           {
-            std::cerr << "Failed to load screenshot for " << entry.name << ": " << e.what() << std::endl;
+            std::cerr << "Failed to load screenshot for " << entry.name << ": " << e.what() << '\n';
           }
         }
 
@@ -183,7 +183,7 @@ namespace engine {
     }
     catch (const std::exception& e)
     {
-      std::cerr << "Error parsing model index: " << e.what() << std::endl;
+      std::cerr << "Error parsing model index: " << e.what() << '\n';
     }
   }
 
@@ -266,11 +266,11 @@ namespace engine {
           scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
         }
       }
-      std::cout << "Loaded model: " << fullPath << std::endl;
+      std::cout << "Loaded model: " << fullPath << '\n';
     }
     catch (const std::exception& e)
     {
-      std::cerr << "Failed to load model: " << e.what() << std::endl;
+      std::cerr << "Failed to load model: " << e.what() << '\n';
     }
   }
 

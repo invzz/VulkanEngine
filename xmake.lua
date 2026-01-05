@@ -66,6 +66,7 @@ end
 target("Cube")
     set_kind("binary")
     add_files("src/demos/Cube/**.cpp")
+    set_default(true)
     add_includedirs("include", {public = true})
     add_includedirs("src/demos/Cube")
     add_includedirs("src/demos/Cube/ui")
@@ -111,21 +112,18 @@ target("Engine")
     add_defines("MODEL_PATH=\"" .. model_path .. "\"")
     add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
 
-before_build(function (target)
-    -- Format code (platform-independent)
-    -- if is_host("windows") then
-    --     os.exec("powershell -ExecutionPolicy Bypass -File " .. os.projectdir() .. "/format_code.ps1")
-    -- else
-    --     os.exec("bash " .. os.projectdir() .. "/format_code.sh")
-    -- end
-    
-    -- Compile shaders (platform-independent)
-    if is_host("windows") then
-        os.exec("powershell -ExecutionPolicy Bypass -File " .. os.projectdir() .. "/compile_shaders.ps1")
-    else
-        os.exec("bash " .. os.projectdir() .. "/compile_shaders.sh")
-    end
-
-end)
+-- Utility target to (re)compile shaders on demand.
+target("Shaders")
+    set_kind("phony")
+    set_group("utility")
+   
+    on_build(function (target)
+        -- Compile shaders (platform-independent)
+        if is_host("windows") then
+            os.exec("powershell -ExecutionPolicy Bypass -File " .. os.projectdir() .. "/compile_shaders.ps1")
+        else
+            os.exec("bash " .. os.projectdir() .. "/compile_shaders.sh")
+        end
+    end)
 
 

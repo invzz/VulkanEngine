@@ -56,3 +56,5 @@ CheckOptions:
     value: "1"
   - key: misc-unused-parameters.IgnoreUnnamedParameters
     value: "1"
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: "1"

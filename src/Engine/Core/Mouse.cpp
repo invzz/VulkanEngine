@@ -1,6 +1,12 @@
 #include "Engine/Core/Mouse.hpp"
 
+#include <tuple>
+#include <utility>
+
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "GLFW/glfw3.h"
+#include "glm/common.hpp"
+#include "glm/gtc/constants.hpp"
 
 namespace engine {
 

@@ -38,7 +38,7 @@ namespace engine {
 
     updateBuffer();
 
-    std::cout << "[" << GREEN << "MeshManager" << RESET << "] Registered model with ID " << id << " (VA: " << info.vertexBufferAddress << ", IA: " << info.indexBufferAddress << ")" << std::endl;
+    std::cout << "[" << GREEN << "MeshManager" << RESET << "] Registered model with ID " << id << " (VA: " << info.vertexBufferAddress << ", IA: " << info.indexBufferAddress << ")" << '\n';
 
     return id;
   }

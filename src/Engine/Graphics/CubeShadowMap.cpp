@@ -3,9 +3,15 @@
 #include <vulkan/vulkan_core.h>
 
 #include <array>
-#include <glm/gtc/matrix_transform.hpp>
+#include <cstdint>
 #include <stdexcept>
-#include <vulkan/vulkan.hpp>
+
+#include "Engine/Graphics/Device.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/trigonometric.hpp"
 
 namespace engine {
 

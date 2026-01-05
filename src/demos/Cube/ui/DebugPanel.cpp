@@ -2,6 +2,8 @@
 
 #include <imgui.h>
 
+#include "Engine/Graphics/FrameInfo.hpp"
+
 namespace engine {
   DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}
 

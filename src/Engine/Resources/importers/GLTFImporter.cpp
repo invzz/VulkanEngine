@@ -1,5 +1,18 @@
 #include "Engine/Resources/importers/GLTFImporter.hpp"
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
+#include "glm/ext/matrix_float3x3.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/geometric.hpp"
+#include "glm/matrix.hpp"
+
 #define TINYGLTF_IMPLEMENTATION
 // Don't define STB_IMAGE_IMPLEMENTATION - it's already defined in Texture.cpp
 // tinygltf will use the stb functions already linked
@@ -12,10 +25,8 @@
 #include <iostream>
 #include <unordered_map>
 #define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/hash.hpp>
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Core/utils.hpp"
@@ -81,7 +92,7 @@ namespace engine {
         }
         else
         {
-          std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << std::endl;
+          std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << '\n';
           return "";
         }
       }
@@ -117,7 +128,7 @@ namespace engine {
       }
       else
       {
-        std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << std::endl;
+        std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << '\n';
         return "";
       }
     }
@@ -145,22 +156,22 @@ namespace engine {
 
     if (!warn.empty())
     {
-      std::cout << YELLOW << "[GLTFImporter] Warning: " << RESET << warn << std::endl;
+      std::cout << YELLOW << "[GLTFImporter] Warning: " << RESET << warn << '\n';
     }
 
     if (!err.empty())
     {
-      std::cerr << RED << "[GLTFImporter] Error: " << RESET << err << std::endl;
+      std::cerr << RED << "[GLTFImporter] Error: " << RESET << err << '\n';
       return false;
     }
 
     if (!ret)
     {
-      std::cerr << RED << "[GLTFImporter] Failed to load glTF file: " << RESET << filepath << std::endl;
+      std::cerr << RED << "[GLTFImporter] Failed to load glTF file: " << RESET << filepath << '\n';
       return false;
     }
 
-    std::cout << "[" << GREEN << "GLTFImporter" << RESET << "]: File loaded successfully" << std::endl;
+    std::cout << "[" << GREEN << "GLTFImporter" << RESET << "]: File loaded successfully" << '\n';
 
     // Check if model has animations (we'll skip baking transforms if it does)
     bool hasAnimations = !gltfModel.animations.empty();
@@ -169,7 +180,7 @@ namespace engine {
       std::cout << YELLOW
                 << "[GLTFImporter] Model has animations - vertices will remain "
                    "in local space"
-                << RESET << std::endl;
+                << RESET << '\n';
     }
 
     // Get base directory for texture paths
@@ -209,7 +220,7 @@ namespace engine {
     // Load animations
     loadAnimations(builder, gltfModel);
 
-    std::cout << GREEN << "[GLTFImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << std::endl;
+    std::cout << GREEN << "[GLTFImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << '\n';
 
     // Load nodes (store original transforms before animation)
     builder.nodes.resize(gltfModel.nodes.size());
@@ -276,7 +287,7 @@ namespace engine {
 
         // Get the vertex offset and count for this primitive
         std::string key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
-        std::cout << "[GLTFImporter] Looking up morph target key: " << key << std::endl;
+        std::cout << "[GLTFImporter] Looking up morph target key: " << key << '\n';
         if (primitiveVertexOffsets.find(key) != primitiveVertexOffsets.end())
         {
           morphSet.vertexOffset = primitiveVertexOffsets[key];
@@ -290,13 +301,13 @@ namespace engine {
             morphSet.positionIndices[i] = vertexToPositionIndex[vertexIdx];
           }
 
-          std::cout << "[GLTFImporter] Found vertex offset: " << morphSet.vertexOffset << ", count: " << morphSet.vertexCount << std::endl;
+          std::cout << "[GLTFImporter] Found vertex offset: " << morphSet.vertexOffset << ", count: " << morphSet.vertexCount << '\n';
         }
         else
         {
           morphSet.vertexOffset = 0;
           morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
-          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << std::endl;
+          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
         }
 
         // Initialize weights from mesh or node
@@ -354,7 +365,7 @@ namespace engine {
         if (!morphSet.targets.empty())
         {
           builder.morphTargetSets.push_back(morphSet);
-          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << std::endl;
+          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << '\n';
         }
       }
     }
@@ -455,7 +466,7 @@ namespace engine {
         else if (gltfChannel.target_path == "weights")
         {
           channel.path = Model::AnimationChannel::WEIGHTS;
-          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << std::endl;
+          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << '\n';
         }
         else
         {
@@ -468,12 +479,12 @@ namespace engine {
 
       if (animation.channels.empty())
       {
-        std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << std::endl;
+        std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << '\n';
         continue;
       }
 
       builder.animations.push_back(animation);
-      std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << std::endl;
+      std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << '\n';
     }
 
     return true;
@@ -737,8 +748,7 @@ namespace engine {
         alphaModeStr = "BLEND";
 
       std::cout << "[" << GREEN << " Material " << RESET << "] " << BLUE << matInfo.name << RESET << " -> PBR(albedo=" << matInfo.pbrMaterial.albedo.r << "," << matInfo.pbrMaterial.albedo.g << ","
-                << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ", alphaMode=" << alphaModeStr << ")"
-                << std::endl;
+                << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ", alphaMode=" << alphaModeStr << ")" << '\n';
     }
   }
 
@@ -831,7 +841,7 @@ namespace engine {
         std::cerr << YELLOW
                   << "[GLTFImporter] Warning: Primitive without indices not "
                      "supported yet"
-                  << RESET << std::endl;
+                  << RESET << '\n';
         continue;
       }
 
@@ -946,7 +956,7 @@ namespace engine {
       // Store the actual vertex count for this primitive (for morph targets)
       uint32_t primitiveVertexCount = static_cast<uint32_t>(builder.vertices.size()) - primitiveVertexOffset;
       primitiveVertexCounts[key]    = primitiveVertexCount;
-      std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx << " added " << primitiveVertexCount << " vertices" << std::endl;
+      std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx << " added " << primitiveVertexCount << " vertices" << '\n';
     }
   }
 
@@ -1028,7 +1038,7 @@ namespace engine {
 
     builder.indices = std::move(groupedIndices);
 
-    std::cout << GREEN << "[GLTFImporter] Meshes processed" << RESET << std::endl;
+    std::cout << GREEN << "[GLTFImporter] Meshes processed" << RESET << '\n';
   }
 
   void GLTFImporter::loadMorphTargets(Model::Builder&                                  builder,
@@ -1067,7 +1077,7 @@ namespace engine {
         {
           morphSet.vertexOffset = 0;
           morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
-          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << std::endl;
+          std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
         }
 
         // Initialize weights from mesh or node
@@ -1125,7 +1135,7 @@ namespace engine {
         if (!morphSet.targets.empty())
         {
           builder.morphTargetSets.push_back(morphSet);
-          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << std::endl;
+          std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << '\n';
         }
       }
     }
@@ -1228,7 +1238,7 @@ namespace engine {
         else if (gltfChannel.target_path == "weights")
         {
           channel.path = Model::AnimationChannel::WEIGHTS;
-          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << std::endl;
+          std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << '\n';
         }
         else
         {
@@ -1241,12 +1251,12 @@ namespace engine {
 
       if (animation.channels.empty())
       {
-        std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << std::endl;
+        std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << '\n';
         continue;
       }
 
       builder.animations.push_back(animation);
-      std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << std::endl;
+      std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << '\n';
     }
   }
 

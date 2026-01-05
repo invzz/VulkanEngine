@@ -1,20 +1,23 @@
+#include <array>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
+#include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
-#include "glm/ext/scalar_constants.hpp"
 #include "glm/ext/vector_float2.hpp"
+#include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"
-#include "glm/trigonometric.hpp"
 #include "vulkan/vulkan_core.h"
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -139,7 +142,7 @@ namespace engine {
     scene.getRegistry().emplace<DirectionalLightComponent>(sunEntity);
 
     // Load Skybox
-    std::cout << "[App] Loading skybox..." << std::endl;
+    std::cout << "[App] Loading skybox..." << '\n';
     skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
   }
 
@@ -158,11 +161,11 @@ namespace engine {
     shadowSystem = std::make_unique<ShadowSystem>(device, 2048);
     iblSystem    = std::make_unique<IBLSystem>(device);
 
-    std::cout << "[App] Generating IBL maps..." << std::endl;
+    std::cout << "[App] Generating IBL maps..." << '\n';
     iblSystem->generateFromSkybox(*skybox);
 
     // Render Systems
-    std::cout << "[App] Creating render systems..." << std::endl;
+    std::cout << "[App] Creating render systems..." << '\n';
     skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
     dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
     meshRenderSystem =
@@ -267,11 +270,11 @@ namespace engine {
     uiManager    = std::make_unique<UIManager>(*imguiManager);
 
     uiManager->setOnSaveScene([this]() {
-      std::cout << "Saving scene to scene.json..." << std::endl;
+      std::cout << "Saving scene to scene.json..." << '\n';
       sceneSerializer.serialize("scene.json");
     });
     uiManager->setOnLoadScene([this]() {
-      std::cout << "Loading scene from scene.json..." << std::endl;
+      std::cout << "Loading scene from scene.json..." << '\n';
       sceneSerializer.deserialize("scene.json");
     });
 
@@ -858,7 +861,7 @@ namespace engine {
   {
     // Skybox currently renders inside the offscreen render pass.
     // This is intentionally isolated so we can later move it after the opaque pass.
-    if (state.skybox)
+    if (state.skybox != nullptr)
     {
       state.skyboxRenderSystem.render(frameInfo, state.skybox, state.skySettings);
     }

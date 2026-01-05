@@ -2,6 +2,14 @@
 
 #include <imgui.h>
 
+#include <memory>
+#include <utility>
+
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/ImGuiManager.hpp"
+#include "UIPanel.hpp"
+#include "vulkan/vulkan_core.h"
+
 namespace engine {
 
   UIManager::UIManager(ImGuiManager& imguiManager) : imguiManager_(imguiManager) {}

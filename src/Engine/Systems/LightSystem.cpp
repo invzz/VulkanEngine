@@ -1,26 +1,34 @@
 #include "Engine/Systems/LightSystem.hpp"
 
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "entt/entity/fwd.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float4.hpp"
+#include "glm/trigonometric.hpp"
+#include "vulkan/vulkan_core.h"
 
 // Ensure GLM uses radians for all angle measurements
 #define GLM_FORCE_RADIANS
 // Ensure depth range is [0, 1] for Vulkan
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLFW/glfw3.h>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <glm/common.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
-#include <iostream>
 #include <limits>
-#include <stdexcept>
 
 #include "Engine/Systems/LightSystem.hpp"
 
@@ -59,7 +67,7 @@ namespace engine {
         return d > 0.0f ? d * d : 0.0f;
       }
 
-      const float discriminant = B * B - 4.0f * A * C;
+      const float discriminant = (B * B) - (4.0f * A * C);
       if (discriminant <= 0.0f)
       {
         return 0.0f;
@@ -94,7 +102,7 @@ namespace engine {
 
   void LightSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
   {
-    VkPushConstantRange pushConstantRange{
+    const VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset     = 0,
             .size       = sizeof(PointLightPushConstants),
@@ -102,7 +110,7 @@ namespace engine {
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
 
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{
+    const VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount         = static_cast<uint32_t>(descriptorSetLayouts.size()),
             .pSetLayouts            = descriptorSetLayouts.data(),
@@ -167,8 +175,8 @@ namespace engine {
       auto [dirLight, transform] = dirView.get<DirectionalLightComponent, TransformComponent>(entity);
 
       // Create a model matrix that orients the arrow in the light direction
-      glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, transform.translation);
+      auto modelMatrix = glm::mat4(1.0f);
+      modelMatrix      = glm::translate(modelMatrix, transform.translation);
 
       // Apply rotation to orient arrow
       modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -199,8 +207,8 @@ namespace engine {
       auto [spotLight, transform] = spotView.get<SpotLightComponent, TransformComponent>(entity);
 
       // Create a model matrix that positions and orients the cone
-      glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, transform.translation);
+      auto modelMatrix = glm::mat4(1.0f);
+      modelMatrix      = glm::translate(modelMatrix, transform.translation);
 
       // Apply rotation to orient cone
       modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));

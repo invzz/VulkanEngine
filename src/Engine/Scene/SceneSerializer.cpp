@@ -1,11 +1,15 @@
 #include "Engine/Scene/SceneSerializer.hpp"
 
+#include <cstdint>
+#include <exception>
 #include <fstream>
-#include <glm/glm.hpp>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <string>
 
 #include "Engine/Resources/PBRMaterial.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/LODComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -13,6 +17,9 @@
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "entt/entity/fwd.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "nlohmann/json_fwd.hpp"
 
 // Helper for glm serialization
 namespace glm {
@@ -127,7 +134,7 @@ namespace engine {
     std::ifstream in(filepath);
     if (!in.is_open())
     {
-      std::cerr << "Failed to open scene file: " << filepath << std::endl;
+      std::cerr << "Failed to open scene file: " << filepath << '\n';
       return false;
     }
 
@@ -138,7 +145,7 @@ namespace engine {
     }
     catch (const std::exception& e)
     {
-      std::cerr << "Failed to parse scene file: " << e.what() << std::endl;
+      std::cerr << "Failed to parse scene file: " << e.what() << '\n';
       return false;
     }
 

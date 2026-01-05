@@ -26,8 +26,8 @@ namespace engine {
                   PostProcessPushConstants& pushConstants,
                   int&                      debugMode);
 
-    void render(FrameInfo& frameInfo) override;
-    bool isSeparateWindow() const override { return true; }
+    void               render(FrameInfo& frameInfo) override;
+    [[nodiscard]] bool isSeparateWindow() const override { return true; }
 
   private:
     std::unique_ptr<CameraPanel>      cameraPanel_;

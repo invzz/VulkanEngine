@@ -1,17 +1,24 @@
 #include "SceneLoader.hpp"
 
-#include <glm/gtc/matrix_transform.hpp>
+#include <cstddef>
+#include <string>
+#include <utility>
+#include <vector>
 
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
-#include "Engine/Resources/Texture.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
-#include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "entt/entity/fwd.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/gtc/constants.hpp"
 
 namespace engine {
 

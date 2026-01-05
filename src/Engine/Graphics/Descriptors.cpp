@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <memory>
 #include <stdexcept>
+#include <unordered_map>
 
 #include "Engine/Core/Exceptions.hpp"
 

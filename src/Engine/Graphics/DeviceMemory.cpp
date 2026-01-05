@@ -1,9 +1,10 @@
 #include "Engine/Graphics/DeviceMemory.hpp"
 
-#include <stdexcept>
+#include <cstdint>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 

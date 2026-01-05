@@ -1,13 +1,18 @@
 #include "Engine/Graphics/MorphTargetCompute.hpp"
 
+#include <cstdint>
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -17,7 +22,7 @@ namespace engine {
     createComputePipeline();
     createDescriptorPool();
 
-    std::cout << "[" << GREEN << "MorphTargetCompute" << RESET << "] Compute pipeline created" << std::endl;
+    std::cout << "[" << GREEN << "MorphTargetCompute" << RESET << "] Compute pipeline created" << '\n';
   }
 
   MorphTargetCompute::~MorphTargetCompute()
@@ -49,12 +54,12 @@ namespace engine {
   {
     // Read compiled compute shader
     std::string shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
-    std::cout << "[MorphTargetCompute] Loading shader from: " << shaderPath << std::endl;
+    std::cout << "[MorphTargetCompute] Loading shader from: " << shaderPath << '\n';
     std::ifstream file(shaderPath, std::ios::ate | std::ios::binary);
 
     if (!file.is_open())
     {
-      std::cerr << "[MorphTargetCompute] Failed to open shader file: " << shaderPath << std::endl;
+      std::cerr << "[MorphTargetCompute] Failed to open shader file: " << shaderPath << '\n';
       throw ReadFileException(std::string("Failed to open compute shader: " + shaderPath).c_str());
     }
 

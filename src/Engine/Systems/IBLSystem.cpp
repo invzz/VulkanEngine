@@ -1,14 +1,19 @@
 #include "Engine/Systems/IBLSystem.hpp"
 
-#include <array>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
+#include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
-#include "Engine/Scene/Camera.hpp"
+#include "Engine/Scene/Skybox.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/trigonometric.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 

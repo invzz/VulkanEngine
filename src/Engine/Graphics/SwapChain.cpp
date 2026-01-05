@@ -27,13 +27,20 @@
 #include "Engine/Graphics/SwapChain.hpp"
 
 // std
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <limits>
+#include <memory>
+#include <string>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -268,11 +275,11 @@ namespace engine {
               << "  supportedTransforms: " << supportedTransforms << '\n'
               << "  compositeAlpha: " << createInfo.compositeAlpha << '\n'
               << "  presentMode: " << createInfo.presentMode << '\n'
-              << "  imageUsage: " << createInfo.imageUsage << std::endl;
+              << "  imageUsage: " << createInfo.imageUsage << '\n';
 #endif
     if (VkResult createResult = vkCreateSwapchainKHR(device.device(), &createInfo, nullptr, &swapChain); createResult != VK_SUCCESS)
     {
-      std::cerr << "vkCreateSwapchainKHR failed with VkResult " << static_cast<int32_t>(createResult) << std::endl;
+      std::cerr << "vkCreateSwapchainKHR failed with VkResult " << static_cast<int32_t>(createResult) << '\n';
       throw SwapChainCreationException("failed to create swap chain!");
     }
 
@@ -284,14 +291,14 @@ namespace engine {
     uint32_t actualImageCount = 0;
     if (VkResult getImagesResult = vkGetSwapchainImagesKHR(device.device(), swapChain, &actualImageCount, nullptr); getImagesResult != VK_SUCCESS)
     {
-      std::cerr << "First vkGetSwapchainImagesKHR failed with VkResult " << static_cast<int32_t>(getImagesResult) << std::endl;
+      std::cerr << "First vkGetSwapchainImagesKHR failed with VkResult " << static_cast<int32_t>(getImagesResult) << '\n';
       throw SwapChainCreationException("failed to query swap chain images!");
     }
 
     swapChainImages.resize(actualImageCount);
     if (VkResult getImagesResult = vkGetSwapchainImagesKHR(device.device(), swapChain, &actualImageCount, swapChainImages.data()); getImagesResult != VK_SUCCESS)
     {
-      std::cerr << "Second vkGetSwapchainImagesKHR failed with VkResult " << static_cast<int32_t>(getImagesResult) << std::endl;
+      std::cerr << "Second vkGetSwapchainImagesKHR failed with VkResult " << static_cast<int32_t>(getImagesResult) << '\n';
       throw SwapChainCreationException("failed to retrieve swap chain images!");
     }
 
@@ -521,12 +528,12 @@ namespace engine {
     {
       if (std::find(availablePresentModes.begin(), availablePresentModes.end(), preferred) != availablePresentModes.end())
       {
-        std::cout << "Present mode selected: " << preferred << std::endl;
+        std::cout << "Present mode selected: " << preferred << '\n';
         return preferred;
       }
     }
 
-    std::cout << "Present mode: FIFO (V-Sync)" << std::endl;
+    std::cout << "Present mode: FIFO (V-Sync)" << '\n';
     return VK_PRESENT_MODE_FIFO_KHR;
   }
 
