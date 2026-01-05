@@ -201,7 +201,7 @@ void main() {
         float shadow = 1.0;
         // ShadowSystem renders at most 1 directional shadow, in index 0.
         if (i == 0 && ubo.shadowLightCount > 0) {
-            shadow = calculateShadow(worldPos, 0);
+            shadow = calculateShadow(worldPos, N, L, 0);
         }
         radiance *= shadow;
 
@@ -265,7 +265,7 @@ void main() {
             ubo.spotLights[i].constantAtten + ubo.spotLights[i].linearAtten * dist + ubo.spotLights[i].quadraticAtten * dist2,
             1e-4);
 
-        float shadow = calculateShadow(worldPos, shadowBase + i);
+        float shadow = calculateShadow(worldPos, N, L, shadowBase + i);
 
         vec3 radiance = ubo.spotLights[i].color.xyz * intensity * attenuation * cone * shadow;
 
