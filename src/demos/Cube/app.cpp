@@ -165,50 +165,46 @@ namespace engine {
     std::cout << "[App] Creating render systems..." << std::endl;
     skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
     dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
-    meshRenderSystem = std::make_unique<MeshRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout(), resourceManager.getTextureManager().getDescriptorSetLayout());
-    lightSystem      = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout());
+    meshRenderSystem =
+            std::make_unique<MeshRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout(), resourceManager.getTextureManager().getDescriptorSetLayout());
+    lightSystem = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout());
 
     // G-buffer + Deferred lighting
     meshRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
 
-    gbufferPool = DescriptorPool::Builder(device)
-             .setMaxSets(SwapChain::maxFramesInFlight())
-             .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 4)
-             .build();
+    gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 4).build();
 
     gbufferSetLayout = DescriptorSetLayout::Builder(device)
-                 .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                 .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                 .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                 .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                 .build();
+                               .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .build();
 
-    deferredIblPool = DescriptorPool::Builder(device)
-                  .setMaxSets(SwapChain::maxFramesInFlight())
-                  .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 3)
-                  .build();
+    deferredIblPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 3).build();
 
     deferredIblSetLayout = DescriptorSetLayout::Builder(device)
-                        .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                        .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                        .build();
+                                   .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                                   .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                                   .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                                   .build();
 
     deferredShadowPool = DescriptorPool::Builder(device)
-             .setMaxSets(SwapChain::maxFramesInFlight())
-             .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    SwapChain::maxFramesInFlight() * (ShadowSystem::MAX_SHADOW_MAPS + ShadowSystem::MAX_CUBE_SHADOW_MAPS))
-             .build();
+                                 .setMaxSets(SwapChain::maxFramesInFlight())
+                                 .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * (ShadowSystem::MAX_SHADOW_MAPS + ShadowSystem::MAX_CUBE_SHADOW_MAPS))
+                                 .build();
 
     deferredShadowSetLayout = DescriptorSetLayout::Builder(device)
-                 .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_SHADOW_MAPS)
-                 .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_CUBE_SHADOW_MAPS)
-                 .build();
+                                      .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_SHADOW_MAPS)
+                                      .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_CUBE_SHADOW_MAPS)
+                                      .build();
 
-    deferredLightingSystem = std::make_unique<DeferredLightingSystem>(
-      device,
-      renderer.getDeferredLightingRenderPass(),
-      std::vector<VkDescriptorSetLayout>{renderContext->getGlobalSetLayout(), gbufferSetLayout->getDescriptorSetLayout(), deferredIblSetLayout->getDescriptorSetLayout(), deferredShadowSetLayout->getDescriptorSetLayout()});
+    deferredLightingSystem = std::make_unique<DeferredLightingSystem>(device,
+                                                                      renderer.getDeferredLightingRenderPass(),
+                                                                      std::vector<VkDescriptorSetLayout>{renderContext->getGlobalSetLayout(),
+                                                                                                         gbufferSetLayout->getDescriptorSetLayout(),
+                                                                                                         deferredIblSetLayout->getDescriptorSetLayout(),
+                                                                                                         deferredShadowSetLayout->getDescriptorSetLayout()});
 
     gbufferDescriptorSets.resize(SwapChain::maxFramesInFlight());
     for (int i = 0; i < gbufferDescriptorSets.size(); i++)
@@ -218,12 +214,7 @@ namespace engine {
       auto mInfo = renderer.getGbufferMaterialImageInfo(i);
       auto dInfo = renderer.getDepthImageInfo(i);
 
-      DescriptorWriter(*gbufferSetLayout, *gbufferPool)
-        .writeImage(0, &nInfo)
-        .writeImage(1, &aInfo)
-        .writeImage(2, &mInfo)
-        .writeImage(3, &dInfo)
-        .build(gbufferDescriptorSets[i]);
+      DescriptorWriter(*gbufferSetLayout, *gbufferPool).writeImage(0, &nInfo).writeImage(1, &aInfo).writeImage(2, &mInfo).writeImage(3, &dInfo).build(gbufferDescriptorSets[i]);
     }
 
     deferredIblDescriptorSets.resize(SwapChain::maxFramesInFlight());
@@ -233,11 +224,7 @@ namespace engine {
       auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
       auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
 
-      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool)
-        .writeImage(0, &irradianceInfo)
-        .writeImage(1, &prefilterInfo)
-        .writeImage(2, &brdfInfo)
-        .build(deferredIblDescriptorSets[i]);
+      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSets[i]);
     }
 
     deferredShadowDescriptorSets.resize(SwapChain::maxFramesInFlight());
@@ -445,11 +432,11 @@ namespace engine {
         auto dInfo = renderer.getDepthImageInfo(frameInfo.frameIndex);
 
         DescriptorWriter(*gbufferSetLayout, *gbufferPool)
-        .writeImage(0, &nInfo)
-        .writeImage(1, &aInfo)
-        .writeImage(2, &mInfo)
-        .writeImage(3, &dInfo)
-        .overwrite(gbufferDescriptorSets[frameInfo.frameIndex]);
+                .writeImage(0, &nInfo)
+                .writeImage(1, &aInfo)
+                .writeImage(2, &mInfo)
+                .writeImage(3, &dInfo)
+                .overwrite(gbufferDescriptorSets[frameInfo.frameIndex]);
       }
 
       // Use the "current-frame HZB" global descriptor set for the main scene after the HZB pass.
@@ -601,8 +588,8 @@ namespace engine {
       // God Rays Setup
       if (fogSettings.enableGodRays)
       {
-        SunInfo const sunInfo = queryPrimaryDirectionalLightSunInfo(scene);
-        glm::vec3 const sunDir = sunInfo.directionToSun;
+        SunInfo const   sunInfo = queryPrimaryDirectionalLightSunInfo(scene);
+        glm::vec3 const sunDir  = sunInfo.directionToSun;
 
         glm::vec3 sunWorldPos = camera->getPosition() + sunDir * 1000.0f;
         glm::vec4 clipPos     = camera->getProjection() * camera->getView() * glm::vec4(sunWorldPos, 1.0f);
@@ -619,7 +606,7 @@ namespace engine {
         }
 
         // Dynamic Time-of-Day Adjustment (Golden Hour Boost)
-  float sunHeight           = sunInfo.directionToSun.y;
+        float sunHeight           = sunInfo.directionToSun.y;
         float intensityMultiplier = 1.0f;
         float decayModifier       = 0.0f;
 
@@ -755,7 +742,7 @@ namespace engine {
     GlobalUbo ubo{};
 
     // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
-    auto const lightCounts = renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
+    auto const lightCounts    = renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
     ubo.pointLightCount       = lightCounts.point;
     ubo.directionalLightCount = lightCounts.directional;
     ubo.spotLightCount        = lightCounts.spot;
@@ -777,7 +764,7 @@ namespace engine {
 
     if (fogSettings.useSkyColor)
     {
-      SunInfo const sunInfo       = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
+      SunInfo const sunInfo         = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
       float const   visualSunHeight = sunInfo.directionToSun.y;
 
       glm::vec3 dayHorizon = glm::vec3(0.7f, 0.8f, 0.9f);

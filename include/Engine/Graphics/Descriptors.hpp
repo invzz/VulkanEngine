@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP
 
 #include <memory>
 #include <unordered_map>
@@ -94,3 +95,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP

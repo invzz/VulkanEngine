@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LODSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LODSYSTEM_HPP
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
@@ -13,3 +14,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LODSYSTEM_HPP

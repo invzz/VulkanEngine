@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_CAMERA_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_CAMERA_HPP
+
 // libs
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -48,3 +50,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_CAMERA_HPP

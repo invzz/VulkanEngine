@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_POSTPROCESSINGSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_POSTPROCESSINGSYSTEM_HPP
 
 #include <memory>
 #include <vector>
@@ -57,3 +58,5 @@ namespace engine {
     VkPipelineLayout          pipelineLayout;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_POSTPROCESSINGSYSTEM_HPP

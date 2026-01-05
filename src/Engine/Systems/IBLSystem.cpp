@@ -260,7 +260,6 @@ namespace engine {
     generated_ = false;
   }
 
-
   // Helper to create image
   void createImageHelper(Device&               device,
                          uint32_t              width,

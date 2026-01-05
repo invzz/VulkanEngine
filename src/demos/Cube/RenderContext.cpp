@@ -1,15 +1,14 @@
 #include "RenderContext.hpp"
 
-#include "Engine/Graphics/SwapChain.hpp"
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
+#include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-
-#include <algorithm>
-#include <cmath>
-#include <limits>
 
 namespace engine {
 
@@ -179,10 +178,7 @@ namespace engine {
         throw std::runtime_error("failed to allocate global descriptor set (prev HZB)");
       }
 
-      DescriptorWriter(*globalSetLayout_, *globalPool_)
-              .writeBuffer(0, &bufferInfo)
-              .writeBuffer(1, &meshInfo)
-              .build(globalDescriptorSetsCurrentHzb_[i]);
+      DescriptorWriter(*globalSetLayout_, *globalPool_).writeBuffer(0, &bufferInfo).writeBuffer(1, &meshInfo).build(globalDescriptorSetsCurrentHzb_[i]);
       if (globalDescriptorSetsCurrentHzb_[i] == VK_NULL_HANDLE)
       {
         throw std::runtime_error("failed to allocate global descriptor set (current HZB)");
@@ -286,8 +282,8 @@ namespace engine {
         }
 
         glm::vec3 direction = transform.getForwardDir();
-        dl.direction               = glm::vec4(glm::normalize(direction), 0.f);
-        dl.color                   = glm::vec4(dir.color, dir.intensity);
+        dl.direction        = glm::vec4(glm::normalize(direction), 0.f);
+        dl.color            = glm::vec4(dir.color, dir.intensity);
         dirLights.push_back(dl);
       }
     }
@@ -314,7 +310,7 @@ namespace engine {
         sl.constantAtten  = spot.constantAttenuation;
         sl.linearAtten    = spot.linearAttenuation;
         sl.quadraticAtten = spot.quadraticAttenuation;
-        sl.radius2 = computeSpotLightRadius2(spot);
+        sl.radius2        = computeSpotLightRadius2(spot);
 
         spotLights.push_back(sl);
       }
@@ -322,7 +318,8 @@ namespace engine {
 
     auto nextPow2 = [](size_t v) {
       size_t p = 1;
-      while (p < v) p <<= 1;
+      while (p < v)
+        p <<= 1;
       return p;
     };
 

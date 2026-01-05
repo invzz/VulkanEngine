@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENESERIALIZER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENESERIALIZER_HPP
 
 #include <string>
 
@@ -21,3 +22,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENESERIALIZER_HPP

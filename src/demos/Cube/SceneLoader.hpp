@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_SCENELOADER_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_SCENELOADER_HPP
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
@@ -24,3 +25,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_SCENELOADER_HPP

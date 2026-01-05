@@ -282,10 +282,8 @@ namespace engine {
       if (!removedKeys.empty())
       {
         // Remove all dead entries from access tracking in one pass.
-        textureAccessOrder_.erase(
-          std::remove_if(textureAccessOrder_.begin(), textureAccessOrder_.end(),
-                         [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); }),
-          textureAccessOrder_.end());
+        textureAccessOrder_.erase(std::remove_if(textureAccessOrder_.begin(), textureAccessOrder_.end(), [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); }),
+                                  textureAccessOrder_.end());
 
         // Remove stale content-hash indirections for textures that are gone.
         for (auto it = contentHashToKey_.begin(); it != contentHashToKey_.end();)
@@ -326,10 +324,8 @@ namespace engine {
 
       if (!removedKeys.empty())
       {
-        modelAccessOrder_.erase(
-          std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(),
-                         [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); }),
-          modelAccessOrder_.end());
+        modelAccessOrder_.erase(std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(), [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); }),
+                                modelAccessOrder_.end());
       }
     }
 

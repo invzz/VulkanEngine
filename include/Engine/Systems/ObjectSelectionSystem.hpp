@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_OBJECTSELECTIONSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_OBJECTSELECTIONSYSTEM_HPP
 
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
@@ -23,3 +24,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_OBJECTSELECTIONSYSTEM_HPP

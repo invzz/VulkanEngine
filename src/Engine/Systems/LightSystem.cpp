@@ -12,8 +12,8 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLFW/glfw3.h>
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <glm/common.hpp>
 #include <glm/glm.hpp>

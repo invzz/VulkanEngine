@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEINFO_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEINFO_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -46,14 +47,14 @@ namespace engine {
 
   struct GlobalUbo
   {
-    glm::mat4        projection{1.0f};
-    glm::mat4        view{1.0f};
-    glm::vec4        lightAmbient{1.f, 1.0f, 1.0f, .02f};
-    glm::vec4        cameraPosition;
-    glm::mat4        lightSpaceMatrices[maxShadowLightCount]; // Light space transformation
-                                                        // matrices for shadows
-    glm::vec4 pointLightShadowData[4];                  // xyz = position, w = far plane (for cube
-                                                        // shadows)
+    glm::mat4 projection{1.0f};
+    glm::mat4 view{1.0f};
+    glm::vec4 lightAmbient{1.f, 1.0f, 1.0f, .02f};
+    glm::vec4 cameraPosition;
+    glm::mat4 lightSpaceMatrices[maxShadowLightCount]; // Light space transformation
+                                                       // matrices for shadows
+    glm::vec4 pointLightShadowData[4];                 // xyz = position, w = far plane (for cube
+                                                       // shadows)
     int pointLightCount       = 0;
     int directionalLightCount = 0;
     int spotLightCount        = 0;
@@ -91,3 +92,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEINFO_HPP

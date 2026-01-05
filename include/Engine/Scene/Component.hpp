@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP
 
 #include <memory>
 #include <typeindex>
@@ -21,3 +22,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP

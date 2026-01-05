@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_DEBUGPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_DEBUGPANEL_HPP
 
 #include "UIPanel.hpp"
 
@@ -13,3 +14,5 @@ namespace engine {
     int& debugMode_;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_DEBUGPANEL_HPP

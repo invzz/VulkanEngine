@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_UIPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_UIPANEL_HPP
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
@@ -39,3 +40,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_UIPANEL_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -15,7 +16,7 @@ namespace engine {
 
   struct SkyboxSettings
   {
-    bool      debugCubemapFaces{false};
+    bool debugCubemapFaces{false};
   };
 
   struct FogSettings
@@ -67,12 +68,14 @@ namespace engine {
 
     std::unique_ptr<Pipeline> pipeline_;
 
-    VkPipelineLayout      pipelineLayout_           = VK_NULL_HANDLE;
-    VkDescriptorSetLayout descriptorSetLayout_      = VK_NULL_HANDLE;
-    VkDescriptorPool      descriptorPool_           = VK_NULL_HANDLE;
+    VkPipelineLayout      pipelineLayout_      = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descriptorSetLayout_ = VK_NULL_HANDLE;
+    VkDescriptorPool      descriptorPool_      = VK_NULL_HANDLE;
 
     // Pre-allocated descriptor sets per frame
     std::vector<VkDescriptorSet> descriptorSets_;
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP

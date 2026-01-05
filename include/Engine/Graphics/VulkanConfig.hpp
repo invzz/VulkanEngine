@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_VULKANCONFIG_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_VULKANCONFIG_HPP
 
 /* Deprecated: VulkanConfig.hpp is no longer used.
    The project now includes Vulkan headers directly (e.g. <vulkan/vulkan.h>).
@@ -7,3 +8,5 @@
 */
 
 // Intentionally empty - includes should use <vulkan/vulkan.h> directly.
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_VULKANCONFIG_HPP

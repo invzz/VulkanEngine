@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP
+
 #include <cassert>
 #include <string>
 #include <vector>
@@ -88,3 +90,5 @@ namespace engine {
     VkShaderModule meshShaderModule = VK_NULL_HANDLE;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP

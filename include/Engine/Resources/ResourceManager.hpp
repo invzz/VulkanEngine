@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
 
 #include <condition_variable>
 #include <future>
@@ -280,3 +281,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP

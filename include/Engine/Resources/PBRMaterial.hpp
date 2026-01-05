@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP
 
 #include <glm/glm.hpp>
 #include <memory>
@@ -95,3 +96,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP

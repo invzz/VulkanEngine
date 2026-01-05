@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_APP_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_APP_HPP
 
 #include <glm/glm.hpp>
 #include <glm/vec2.hpp>
@@ -17,8 +18,8 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
-#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
+#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -122,12 +123,12 @@ namespace engine {
     std::unique_ptr<IBLSystem>             iblSystem;
 
     // Render Systems
-    std::unique_ptr<SkyboxRenderSystem>   skyboxRenderSystem;
-    std::unique_ptr<DustRenderSystem>     dustRenderSystem;
-    std::unique_ptr<MeshRenderSystem>     meshRenderSystem;
-    std::unique_ptr<LightSystem>          lightSystem;
+    std::unique_ptr<SkyboxRenderSystem>     skyboxRenderSystem;
+    std::unique_ptr<DustRenderSystem>       dustRenderSystem;
+    std::unique_ptr<MeshRenderSystem>       meshRenderSystem;
+    std::unique_ptr<LightSystem>            lightSystem;
     std::unique_ptr<DeferredLightingSystem> deferredLightingSystem;
-    std::unique_ptr<PostProcessingSystem> postProcessingSystem;
+    std::unique_ptr<PostProcessingSystem>   postProcessingSystem;
 
     // Scene Resources
     std::unique_ptr<Skybox> skybox;
@@ -164,3 +165,5 @@ namespace engine {
     entt::entity selectedEntity   = entt::null;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_APP_HPP

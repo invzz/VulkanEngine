@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP
 
 #include <assert.h>
 
@@ -97,3 +98,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP

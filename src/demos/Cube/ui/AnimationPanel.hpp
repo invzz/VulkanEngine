@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_ANIMATIONPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_ANIMATIONPANEL_HPP
 
 #include "Engine/Scene/Scene.hpp"
 #include "UIPanel.hpp"
@@ -20,3 +21,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_ANIMATIONPANEL_HPP

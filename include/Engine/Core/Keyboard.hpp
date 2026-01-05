@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
 
 #include <GLFW/glfw3.h>
 
@@ -48,3 +49,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP

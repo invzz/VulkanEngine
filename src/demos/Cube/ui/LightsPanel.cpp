@@ -24,7 +24,7 @@ namespace engine {
       {
         auto& registry = scene_.getRegistry();
 
-        std::mt19937                        rng{1337u};
+        std::mt19937                          rng{1337u};
         std::uniform_real_distribution<float> angleDist(0.0f, 6.28318530718f);
         std::uniform_real_distribution<float> heightDist(-2.0f, 2.0f);
         std::uniform_real_distribution<float> radiusDist(6.0f, 35.0f);
@@ -34,9 +34,9 @@ namespace engine {
         {
           auto entity = registry.create();
 
-          auto& transform = registry.emplace<TransformComponent>(entity);
-          float  a        = angleDist(rng);
-          float  r        = radiusDist(rng);
+          auto& transform       = registry.emplace<TransformComponent>(entity);
+          float a               = angleDist(rng);
+          float r               = radiusDist(rng);
           transform.translation = glm::vec3(std::cos(a) * r, heightDist(rng), std::sin(a) * r);
 
           auto& light     = registry.emplace<PointLightComponent>(entity);

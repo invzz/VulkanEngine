@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_UIMANAGER_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_UIMANAGER_HPP
 
 #include <functional>
 #include <memory>
@@ -54,3 +55,5 @@ namespace engine {
     std::function<void()>                 onLoadScene_;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_UIMANAGER_HPP

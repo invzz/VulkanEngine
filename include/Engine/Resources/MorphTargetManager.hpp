@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MORPHTARGETMANAGER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MORPHTARGETMANAGER_HPP
 
 #include <memory>
 #include <unordered_map>
@@ -77,3 +78,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MORPHTARGETMANAGER_HPP

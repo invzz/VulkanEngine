@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
 
 #include <memory>
 #include <vector>
@@ -143,3 +144,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP

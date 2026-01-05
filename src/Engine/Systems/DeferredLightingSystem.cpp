@@ -64,10 +64,7 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.attributeDescriptions.clear();
 
-    pipeline = std::make_unique<Pipeline>(device,
-                        std::string(SHADER_PATH) + R"(post_process.vert.spv)",
-                        std::string(SHADER_PATH) + R"(deferred_lighting.frag.spv)",
-                        pipelineConfig);
+    pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(post_process.vert.spv)", std::string(SHADER_PATH) + R"(deferred_lighting.frag.spv)", pipelineConfig);
   }
 
   void DeferredLightingSystem::render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet iblSet, VkDescriptorSet shadowSet)

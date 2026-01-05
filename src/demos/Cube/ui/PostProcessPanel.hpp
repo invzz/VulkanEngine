@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_POSTPROCESSPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_POSTPROCESSPANEL_HPP
 
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "UIPanel.hpp"
@@ -14,3 +15,5 @@ namespace engine {
     PostProcessPushConstants& pushConstants;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_POSTPROCESSPANEL_HPP

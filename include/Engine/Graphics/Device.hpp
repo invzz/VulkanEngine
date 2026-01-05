@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICE_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICE_HPP
 
 #include <memory>
 #include <string>
@@ -106,3 +107,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICE_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAIN_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAIN_HPP
 
 #include "Engine/Graphics/Device.hpp"
 
@@ -93,3 +94,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAIN_HPP

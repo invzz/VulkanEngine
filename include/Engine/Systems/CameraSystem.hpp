@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -32,3 +33,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP

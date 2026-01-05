@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_SETTINGSPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_SETTINGSPANEL_HPP
 
 #include <memory>
 
@@ -40,3 +41,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_SETTINGSPANEL_HPP

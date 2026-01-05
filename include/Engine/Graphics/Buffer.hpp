@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_BUFFER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_BUFFER_HPP
 
 #include "Engine/Graphics/Device.hpp"
 
@@ -49,3 +50,5 @@ namespace engine {
     VkMemoryPropertyFlags memoryPropertyFlags;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_BUFFER_HPP

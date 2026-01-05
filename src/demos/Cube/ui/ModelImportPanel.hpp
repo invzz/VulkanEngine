@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_MODELIMPORTPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_MODELIMPORTPANEL_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -49,3 +50,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_MODELIMPORTPANEL_HPP

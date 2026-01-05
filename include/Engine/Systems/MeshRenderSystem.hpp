@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MESHRENDERSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MESHRENDERSYSTEM_HPP
+
 #include <glm/glm.hpp>
 #include <memory>
 #include <vector>
@@ -63,8 +65,8 @@ namespace engine {
 
     void renderDepthPrepass(FrameInfo& frameInfo);
 
-  // Must be called once after the offscreen depth-prepass render pass exists.
-  void createDepthPrepassPipeline(VkRenderPass renderPass);
+    // Must be called once after the offscreen depth-prepass render pass exists.
+    void createDepthPrepassPipeline(VkRenderPass renderPass);
 
     void setShadowSystem(ShadowSystem* shadowSystem);
     void setIBLSystem(IBLSystem* iblSystem);
@@ -78,23 +80,14 @@ namespace engine {
     void createSceneColorDescriptorResources();
 
     // Shared helpers for the forward compositing passes.
-    VkDeviceSize materialAtomSize() const;
-    void         bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
-    void         bindShadowDescriptorSet(FrameInfo& frameInfo);
-    void         bindIBLDescriptorSet(FrameInfo& frameInfo);
-    bool         materialNeedsFullVariant(FrameInfo const& frameInfo, const PBRMaterial* mat) const;
+    VkDeviceSize        materialAtomSize() const;
+    void                bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+    void                bindShadowDescriptorSet(FrameInfo& frameInfo);
+    void                bindIBLDescriptorSet(FrameInfo& frameInfo);
+    bool                materialNeedsFullVariant(FrameInfo const& frameInfo, const PBRMaterial* mat) const;
     MaterialUniformData buildMaterialUniformData(const PBRMaterial* pMaterial, float isSelected) const;
-    void buildWriteAndBindMaterial(FrameInfo& frameInfo,
-                    char* mappedData,
-                    VkDeviceSize atomSize,
-                    uint32_t& dynamicOffsetIndex,
-                    const PBRMaterial* pMaterial,
-                    float isSelected);
-    void writeAndBindMaterial(FrameInfo& frameInfo,
-                             char* mappedData,
-                             VkDeviceSize atomSize,
-                             uint32_t& dynamicOffsetIndex,
-                             MaterialUniformData const& matData);
+    void                buildWriteAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, const PBRMaterial* pMaterial, float isSelected);
+    void                writeAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, MaterialUniformData const& matData);
 
     Device&                   device;
     std::unique_ptr<Pipeline> depthPrepassPipeline;
@@ -128,3 +121,5 @@ namespace engine {
     std::vector<uint32_t> dynamicOffsetIndexByFrame_;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MESHRENDERSYSTEM_HPP

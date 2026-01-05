@@ -326,21 +326,21 @@ namespace engine {
     hzbBarrier.subresourceRange.baseMipLevel   = 0;
     hzbBarrier.subresourceRange.levelCount     = mipLevels_;
     // HZB is sampled by shaders from the previous frame(s); transition it back to GENERAL for compute writes.
-    hzbBarrier.oldLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    hzbBarrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
-    hzbBarrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-    hzbBarrier.dstAccessMask                   = VK_ACCESS_SHADER_WRITE_BIT;
+    hzbBarrier.oldLayout     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    hzbBarrier.newLayout     = VK_IMAGE_LAYOUT_GENERAL;
+    hzbBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    hzbBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 
     vkCmdPipelineBarrier(commandBuffer,
-               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-               0,
-               0,
-               nullptr,
-               0,
-               nullptr,
-               1,
-               &hzbBarrier);
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr,
+                         1,
+                         &hzbBarrier);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, hzbPipeline_);
 

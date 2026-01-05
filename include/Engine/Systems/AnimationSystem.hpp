@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_ANIMATIONSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_ANIMATIONSYSTEM_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -74,3 +75,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_ANIMATIONSYSTEM_HPP

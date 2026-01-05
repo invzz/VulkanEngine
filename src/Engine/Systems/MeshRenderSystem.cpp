@@ -89,12 +89,7 @@ namespace engine {
 
     void pushConstantsAndDraw(Device& device, VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, const MeshPushConstantData& push, uint32_t meshletCount)
     {
-      vkCmdPushConstants(commandBuffer,
-                         pipelineLayout,
-                         VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                         0,
-                         sizeof(MeshPushConstantData),
-                         &push);
+      vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(MeshPushConstantData), &push);
 
       if (device.vkCmdDrawMeshTasksEXT)
       {
@@ -409,7 +404,12 @@ namespace engine {
             .size       = sizeof(MeshPushConstantData),
     };
 
-    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout, bindlessSetLayout, shadowDescriptorSetLayout_, iblDescriptorSetLayout_, materialDescriptorSetLayout_, sceneColorDescriptorSetLayout_};
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout,
+                                                            bindlessSetLayout,
+                                                            shadowDescriptorSetLayout_,
+                                                            iblDescriptorSetLayout_,
+                                                            materialDescriptorSetLayout_,
+                                                            sceneColorDescriptorSetLayout_};
 
     VkPipelineLayoutCreateInfo const pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -455,34 +455,34 @@ namespace engine {
     transparentConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
     transparentPipeline = std::make_unique<Pipeline>(device,
-                             std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                             std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                             std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
-                             transparentConfig);
+                                                     std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                     std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                     std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
+                                                     transparentConfig);
 
     standardTransparentPipeline = std::make_unique<Pipeline>(device,
-                                 std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                                 std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                                 std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
-                                 transparentConfig);
+                                                             std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                             std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                             std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
+                                                             transparentConfig);
 
     // Create Transmission Pipeline (no blending, no depth write; shaded refraction)
-    PipelineConfigInfo transmissionConfig = pipelineConfig;
-    transmissionConfig.colorBlendAttachment.blendEnable = VK_FALSE;
-    transmissionConfig.colorBlendInfo.pAttachments      = &transmissionConfig.colorBlendAttachment;
+    PipelineConfigInfo transmissionConfig                = pipelineConfig;
+    transmissionConfig.colorBlendAttachment.blendEnable  = VK_FALSE;
+    transmissionConfig.colorBlendInfo.pAttachments       = &transmissionConfig.colorBlendAttachment;
     transmissionConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
     transmissionPipeline = std::make_unique<Pipeline>(device,
-                             std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                             std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                             std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
-                             transmissionConfig);
+                                                      std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                      std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                      std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
+                                                      transmissionConfig);
 
     standardTransmissionPipeline = std::make_unique<Pipeline>(device,
-                                 std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                                 std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                                 std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
-                                 transmissionConfig);
+                                                              std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                              std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                              std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
+                                                              transmissionConfig);
   }
 
   VkDeviceSize MeshRenderSystem::materialAtomSize() const
@@ -799,34 +799,18 @@ namespace engine {
     return matData;
   }
 
-  void MeshRenderSystem::buildWriteAndBindMaterial(FrameInfo& frameInfo,
-                                                   char* mappedData,
-                                                   VkDeviceSize atomSize,
-                                                   uint32_t& dynamicOffsetIndex,
-                                                   const PBRMaterial* pMaterial,
-                                                   float isSelected)
+  void MeshRenderSystem::buildWriteAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, const PBRMaterial* pMaterial, float isSelected)
   {
     MaterialUniformData const matData = buildMaterialUniformData(pMaterial, isSelected);
     writeAndBindMaterial(frameInfo, mappedData, atomSize, dynamicOffsetIndex, matData);
   }
 
-  void MeshRenderSystem::writeAndBindMaterial(FrameInfo& frameInfo,
-                                              char* mappedData,
-                                              VkDeviceSize atomSize,
-                                              uint32_t& dynamicOffsetIndex,
-                                              MaterialUniformData const& matData)
+  void MeshRenderSystem::writeAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, MaterialUniformData const& matData)
   {
     std::memcpy(mappedData + (dynamicOffsetIndex * atomSize), &matData, sizeof(MaterialUniformData));
 
     uint32_t const dynamicOffset = static_cast<uint32_t>(dynamicOffsetIndex * atomSize);
-    vkCmdBindDescriptorSets(frameInfo.commandBuffer,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipelineLayout,
-                            4,
-                            1,
-                            &materialDescriptorSets_[frameInfo.frameIndex],
-                            1,
-                            &dynamicOffset);
+    vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &materialDescriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
 
     dynamicOffsetIndex++;
   }
@@ -845,7 +829,7 @@ namespace engine {
     std::array<VkPipelineColorBlendAttachmentState, 4> attachments{};
     for (auto& a : attachments)
     {
-      a = pipelineConfig.colorBlendAttachment;
+      a             = pipelineConfig.colorBlendAttachment;
       a.blendEnable = VK_FALSE;
     }
     pipelineConfig.colorBlendInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
@@ -855,10 +839,10 @@ namespace engine {
     pipelineConfig.pipelineLayout = pipelineLayout;
 
     gbufferPipeline = std::make_unique<Pipeline>(device,
-                        std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                        std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                        std::string(SHADER_PATH) + R"(gbuffer.frag.spv)",
-                        pipelineConfig);
+                                                 std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                 std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                 std::string(SHADER_PATH) + R"(gbuffer.frag.spv)",
+                                                 pipelineConfig);
   }
 
   void MeshRenderSystem::renderGbuffer(FrameInfo& frameInfo)
@@ -871,9 +855,10 @@ namespace engine {
 
     auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
 
-    Pipeline* boundPipeline = nullptr;
-    auto bindPipelineIfNeeded = [&](Pipeline* p) {
-      if (p != nullptr && boundPipeline != p) {
+    Pipeline* boundPipeline        = nullptr;
+    auto      bindPipelineIfNeeded = [&](Pipeline* p) {
+      if (p != nullptr && boundPipeline != p)
+      {
         p->bind(frameInfo.commandBuffer);
         boundPipeline = p;
       }
@@ -886,7 +871,7 @@ namespace engine {
     // Material Buffer Preparation (same layout as forward paths)
     VkDeviceSize const atomSize = materialAtomSize();
 
-    char* mappedData = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
+    char*     mappedData         = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
     uint32_t& dynamicOffsetIndex = dynamicOffsetIndexByFrame_[frameInfo.frameIndex];
 
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
@@ -895,8 +880,8 @@ namespace engine {
         return;
       }
 
-      auto& modelComp = view.get<ModelComponent>(entity);
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided);
+      auto&                      modelComp = view.get<ModelComponent>(entity);
+      MeshPushConstantData const push      = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided);
 
       float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
       buildWriteAndBindMaterial(frameInfo, mappedData, atomSize, dynamicOffsetIndex, pMaterial, isSelected);
@@ -991,10 +976,10 @@ namespace engine {
     prepassConfig.pipelineLayout = pipelineLayout;
 
     depthPrepassPipeline = std::make_unique<Pipeline>(device,
-                            std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-                            std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-                            std::string(SHADER_PATH) + R"(depth_only.frag.spv)",
-                            prepassConfig);
+                                                      std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                                                      std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                                                      std::string(SHADER_PATH) + R"(depth_only.frag.spv)",
+                                                      prepassConfig);
   }
 
   void MeshRenderSystem::setShadowSystem(ShadowSystem* shadowSystem)
@@ -1009,9 +994,10 @@ namespace engine {
 
   void MeshRenderSystem::renderTransmission(FrameInfo& frameInfo)
   {
-    Pipeline* boundPipeline = nullptr;
-    auto bindPipelineIfNeeded = [&](Pipeline* p) {
-      if (p != nullptr && boundPipeline != p) {
+    Pipeline* boundPipeline        = nullptr;
+    auto      bindPipelineIfNeeded = [&](Pipeline* p) {
+      if (p != nullptr && boundPipeline != p)
+      {
         p->bind(frameInfo.commandBuffer);
         boundPipeline = p;
       }
@@ -1024,7 +1010,7 @@ namespace engine {
 
     VkDeviceSize const atomSize = materialAtomSize();
 
-    char* mappedData = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
+    char*     mappedData         = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
     uint32_t& dynamicOffsetIndex = dynamicOffsetIndexByFrame_[frameInfo.frameIndex];
 
     auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
@@ -1084,9 +1070,10 @@ namespace engine {
 
   void MeshRenderSystem::renderAlphaBlend(FrameInfo& frameInfo)
   {
-    Pipeline* boundPipeline = nullptr;
-    auto bindPipelineIfNeeded = [&](Pipeline* p) {
-      if (p != nullptr && boundPipeline != p) {
+    Pipeline* boundPipeline        = nullptr;
+    auto      bindPipelineIfNeeded = [&](Pipeline* p) {
+      if (p != nullptr && boundPipeline != p)
+      {
         p->bind(frameInfo.commandBuffer);
         boundPipeline = p;
       }
@@ -1099,7 +1086,7 @@ namespace engine {
 
     VkDeviceSize const atomSize = materialAtomSize();
 
-    char* mappedData = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
+    char*     mappedData         = (char*)materialBuffers_[frameInfo.frameIndex]->getMappedMemory();
     uint32_t& dynamicOffsetIndex = dynamicOffsetIndexByFrame_[frameInfo.frameIndex];
 
     auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
@@ -1188,8 +1175,8 @@ namespace engine {
       return;
     }
 
-    Pipeline* boundPipeline = nullptr;
-    auto bindPipelineIfNeeded = [&](Pipeline* p) {
+    Pipeline* boundPipeline        = nullptr;
+    auto      bindPipelineIfNeeded = [&](Pipeline* p) {
       if (p != nullptr && boundPipeline != p)
       {
         p->bind(frameInfo.commandBuffer);

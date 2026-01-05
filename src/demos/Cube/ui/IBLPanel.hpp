@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_IBLPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_IBLPANEL_HPP
 
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
@@ -17,3 +18,5 @@ namespace engine {
     IBLSystem::Settings settings_;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_IBLPANEL_HPP

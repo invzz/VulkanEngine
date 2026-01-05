@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_RENDERCONTEXT_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_RENDERCONTEXT_HPP
 
 #include <memory>
 #include <vector>
@@ -17,7 +18,7 @@ namespace engine {
   public:
     explicit RenderContext(Device& device, MeshManager& meshManager, VkDescriptorImageInfo hzbImageInfo);
 
-    void                  updateUBO(int frameIndex, const GlobalUbo& ubo);
+    void updateUBO(int frameIndex, const GlobalUbo& ubo);
     // Upload dynamic light arrays (SSBO) for this frame and return counts.
     // Note: counts must be copied into GlobalUbo by the caller.
     struct LightCounts
@@ -26,7 +27,7 @@ namespace engine {
       int directional = 0;
       int spot        = 0;
     };
-    LightCounts           updateLightBuffers(int frameIndex, Scene& scene);
+    LightCounts updateLightBuffers(int frameIndex, Scene& scene);
     // Two global descriptor sets per frame:
     // - "prev" is used in early passes (shadow/depth-prepass) to avoid sampling the same-frame HZB before it exists.
     // - "current" is used in late passes (main scene) after HZB is generated.
@@ -51,8 +52,8 @@ namespace engine {
     size_t                               directionalLightCapacity_ = 0;
     size_t                               spotLightCapacity_        = 0;
 
-    std::vector<VkDescriptorSet>         globalDescriptorSets_;
-    std::vector<VkDescriptorSet>         globalDescriptorSetsCurrentHzb_;
+    std::vector<VkDescriptorSet> globalDescriptorSets_;
+    std::vector<VkDescriptorSet> globalDescriptorSetsCurrentHzb_;
 
     void createDescriptorPool();
     void createGlobalSetLayout();
@@ -63,3 +64,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_RENDERCONTEXT_HPP

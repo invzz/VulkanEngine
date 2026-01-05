@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -36,7 +37,7 @@ namespace engine {
     static std::unique_ptr<Skybox> loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension = "jpg");
 
     /**
-      * @brief Create an empty skybox cubemap for rendering (e.g. runtime capture)
+     * @brief Create an empty skybox cubemap for rendering (e.g. runtime capture)
      * @param device Vulkan device
      * @param size Resolution of each face (e.g. 1024)
      */
@@ -85,3 +86,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP

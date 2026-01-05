@@ -208,7 +208,8 @@ namespace engine {
 
   void FrameBuffer::createRenderPass()
   {
-    VkFormat const depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    VkFormat const depthFormat =
+            device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
     // 1) Default offscreen render pass (clears color + depth)
     VkAttachmentDescription colorAttachment{};
@@ -234,7 +235,7 @@ namespace engine {
     colorAttachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentDescription depthAttachment{};
-        depthAttachment.format         = depthFormat;
+    depthAttachment.format         = depthFormat;
     depthAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
     depthAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
     depthAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
@@ -289,10 +290,10 @@ namespace engine {
 
     // 2) Depth prepass render pass (depth clear, no color attachments used)
     VkAttachmentDescription prepassColorAttachment = colorAttachment;
-    prepassColorAttachment.loadOp                 = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    prepassColorAttachment.storeOp                = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    prepassColorAttachment.initialLayout          = VK_IMAGE_LAYOUT_UNDEFINED;
-    prepassColorAttachment.finalLayout            = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    prepassColorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    prepassColorAttachment.storeOp                 = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    prepassColorAttachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+    prepassColorAttachment.finalLayout             = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentDescription prepassDepthAttachment{};
     prepassDepthAttachment.format         = depthFormat;
@@ -348,7 +349,7 @@ namespace engine {
 
     // 3) Main pass variant that LOADs depth (used after depth prepass)
     VkAttachmentDescription loadColorAttachment = colorAttachment;
-    loadColorAttachment.initialLayout          = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    loadColorAttachment.initialLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentDescription loadDepthAttachment{};
     loadDepthAttachment.format         = depthFormat;
@@ -408,8 +409,8 @@ namespace engine {
 
     // 4) Main pass variant that LOADs BOTH color + depth
     VkAttachmentDescription loadColorDepthColorAttachment = colorAttachment;
-    loadColorDepthColorAttachment.loadOp                 = VK_ATTACHMENT_LOAD_OP_LOAD;
-    loadColorDepthColorAttachment.initialLayout          = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    loadColorDepthColorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_LOAD;
+    loadColorDepthColorAttachment.initialLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     if (useMipmaps)
     {
       loadColorDepthColorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -488,14 +489,14 @@ namespace engine {
     // Emissive is written directly into the HDR color buffer during the opaque/G-buffer pass.
     // This ensures emissive contributes to post/bloom and is visible in the scene color copy.
     VkAttachmentDescription gHdr = colorAttachment;
-    gHdr.loadOp                 = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    gHdr.storeOp                = VK_ATTACHMENT_STORE_OP_STORE;
-    gHdr.initialLayout          = VK_IMAGE_LAYOUT_UNDEFINED;
-    gHdr.finalLayout            = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    gHdr.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    gHdr.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+    gHdr.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+    gHdr.finalLayout             = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentDescription gDepth{};
-    gDepth.format         = depthFormat;
-    gDepth.samples        = VK_SAMPLE_COUNT_1_BIT;
+    gDepth.format  = depthFormat;
+    gDepth.samples = VK_SAMPLE_COUNT_1_BIT;
     // Load depth produced by the depth prepass (HZB restores depth to ATTACHMENT_OPTIMAL).
     gDepth.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
     gDepth.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
@@ -519,8 +520,8 @@ namespace engine {
     gbufferSubpass.pDepthStencilAttachment = &gbufferDepthRef;
 
     std::array<VkSubpassDependency, 2> gbufferDeps{};
-    gbufferDeps[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
-    gbufferDeps[0].dstSubpass      = 0;
+    gbufferDeps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    gbufferDeps[0].dstSubpass = 0;
     // Depth is produced by the depth prepass (and optionally touched by HZB compute barriers).
     // Ensure depth writes are visible before the G-buffer subpass loads/tests depth.
     gbufferDeps[0].srcStageMask    = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -557,11 +558,11 @@ namespace engine {
     // NOTE: Emissive was already written into the HDR color during the G-buffer pass, so we LOAD here.
     // NOTE: We sample depth as a texture in the shader, so we must NOT also bind the depth image as an attachment here.
     VkAttachmentDescription litColor = colorAttachment;
-    litColor.loadOp                 = VK_ATTACHMENT_LOAD_OP_LOAD;
+    litColor.loadOp                  = VK_ATTACHMENT_LOAD_OP_LOAD;
     // Depth prepass leaves the (unused) HDR color attachment in COLOR_ATTACHMENT_OPTIMAL.
     // We clear it here anyway, so starting from COLOR_ATTACHMENT_OPTIMAL avoids layout mismatches.
-    litColor.initialLayout          = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    litColor.finalLayout            = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    litColor.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    litColor.finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     VkAttachmentReference litColorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
     VkSubpassDescription litSubpass{};
@@ -959,21 +960,21 @@ namespace engine {
       }
 
       VkFramebufferCreateInfo prepassFramebufferInfo = framebufferInfo;
-      prepassFramebufferInfo.renderPass             = depthPrepassRenderPass;
+      prepassFramebufferInfo.renderPass              = depthPrepassRenderPass;
       if (vkCreateFramebuffer(device.device(), &prepassFramebufferInfo, nullptr, &depthPrepassFramebuffers[i]) != VK_SUCCESS)
       {
         throw std::runtime_error("failed to create depth prepass framebuffer!");
       }
 
       VkFramebufferCreateInfo loadDepthFramebufferInfo = framebufferInfo;
-      loadDepthFramebufferInfo.renderPass             = renderPassLoadDepth;
+      loadDepthFramebufferInfo.renderPass              = renderPassLoadDepth;
       if (vkCreateFramebuffer(device.device(), &loadDepthFramebufferInfo, nullptr, &loadDepthFramebuffers[i]) != VK_SUCCESS)
       {
         throw std::runtime_error("failed to create load-depth framebuffer!");
       }
 
       VkFramebufferCreateInfo loadColorDepthFramebufferInfo = framebufferInfo;
-      loadColorDepthFramebufferInfo.renderPass             = renderPassLoadColorDepth;
+      loadColorDepthFramebufferInfo.renderPass              = renderPassLoadColorDepth;
       if (vkCreateFramebuffer(device.device(), &loadColorDepthFramebufferInfo, nullptr, &loadColorDepthFramebuffers[i]) != VK_SUCCESS)
       {
         throw std::runtime_error("failed to create load-color-depth framebuffer!");
@@ -981,7 +982,7 @@ namespace engine {
 
       // G-buffer framebuffer: N, Albedo, Material, HDR (emissive), Depth
       std::array<VkImageView, 5> gbufferAttachments = {gbufferNormalImageViews[i], gbufferAlbedoImageViews[i], gbufferMaterialImageViews[i], colorAttachmentImageViews[i], depthImageViews[i]};
-      VkFramebufferCreateInfo gbufferFbInfo{};
+      VkFramebufferCreateInfo    gbufferFbInfo{};
       gbufferFbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
       gbufferFbInfo.renderPass      = gbufferRenderPass;
       gbufferFbInfo.attachmentCount = static_cast<uint32_t>(gbufferAttachments.size());
@@ -997,7 +998,7 @@ namespace engine {
 
       // Deferred lighting framebuffer (HDR color + depth)
       std::array<VkImageView, 1> litAttachments = {colorAttachmentImageViews[i]};
-      VkFramebufferCreateInfo litFbInfo{};
+      VkFramebufferCreateInfo    litFbInfo{};
       litFbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
       litFbInfo.renderPass      = deferredLightingRenderPass;
       litFbInfo.attachmentCount = static_cast<uint32_t>(litAttachments.size());

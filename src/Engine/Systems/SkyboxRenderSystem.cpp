@@ -156,8 +156,8 @@ namespace engine {
     view[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f); // Remove translation
 
     SkyboxPushConstants push{};
-    push.viewProjection  = frameInfo.camera.getProjection() * view;
-    push.debugParams     = glm::vec4(settings.debugCubemapFaces ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
+    push.viewProjection = frameInfo.camera.getProjection() * view;
+    push.debugParams    = glm::vec4(settings.debugCubemapFaces ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
 
     // Update descriptor set with skybox texture
     VkDescriptorImageInfo const imageInfo = skybox->getDescriptorInfo();

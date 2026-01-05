@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_SRC_DEMOS_CUBE_UI_SCENEPANEL_HPP
+#define VULKANENGINE_SRC_DEMOS_CUBE_UI_SCENEPANEL_HPP
 
 #include <vector>
 
@@ -29,3 +30,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_SRC_DEMOS_CUBE_UI_SCENEPANEL_HPP

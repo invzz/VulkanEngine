@@ -29,7 +29,7 @@ namespace engine {
     imageInfo.extent.height = size;
     imageInfo.extent.depth  = 1;
     imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 6;                        // 6 faces
+    imageInfo.arrayLayers   = 6; // 6 faces
     imageInfo.format        = imageFormat_;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

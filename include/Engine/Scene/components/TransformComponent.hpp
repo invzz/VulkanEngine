@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_TRANSFORMCOMPONENT_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_TRANSFORMCOMPONENT_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -87,3 +88,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_TRANSFORMCOMPONENT_HPP

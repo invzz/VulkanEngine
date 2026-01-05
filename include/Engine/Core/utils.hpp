@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_UTILS_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_UTILS_HPP
 
 #include <cstddef>
 #include <functional>
@@ -42,3 +43,5 @@ namespace engine {
     (detail::hashCombineOne(seed, args), ...);
   }
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_UTILS_HPP

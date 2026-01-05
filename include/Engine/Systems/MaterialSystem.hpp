@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALSYSTEM_HPP
 
 #include <memory>
 #include <unordered_map>
@@ -56,3 +57,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALSYSTEM_HPP

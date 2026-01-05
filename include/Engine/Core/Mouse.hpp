@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
+
 #include <GLFW/glfw3.h>
 
 #include <utility>
@@ -33,3 +35,5 @@ namespace engine {
     bool    cursorLocked_     = false;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
