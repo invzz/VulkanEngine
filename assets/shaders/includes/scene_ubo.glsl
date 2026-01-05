@@ -34,9 +34,6 @@ layout(set = 0, binding = 0) uniform UBO {
     mat4             view;
     vec4             ambientLightColor;
     vec4             cameraPosition;
-    PointLight       pointLights[16];
-    DirectionalLight directionalLights[16];
-    SpotLight        spotLights[16];
     mat4             lightSpaceMatrices[16];
     vec4             pointLightShadowData[4];
     int              pointLightCount;
@@ -55,3 +52,15 @@ layout(set = 0, binding = 0) uniform UBO {
     float            _pad4;
     float            _pad5;
 } ubo;
+
+layout(set = 0, binding = 3, std430) readonly buffer PointLightBuffer {
+    PointLight pointLights[];
+};
+
+layout(set = 0, binding = 4, std430) readonly buffer DirectionalLightBuffer {
+    DirectionalLight directionalLights[];
+};
+
+layout(set = 0, binding = 5, std430) readonly buffer SpotLightBuffer {
+    SpotLight spotLights[];
+};

@@ -192,11 +192,11 @@ void main() {
 
     // Directional lights (diffuse + specular)
     for (int i = 0; i < ubo.directionalLightCount; i++) {
-        float intensity = ubo.directionalLights[i].color.w;
+        float intensity = directionalLights[i].color.w;
         if (intensity <= 1e-6) continue;
 
-        vec3 L = normalize(-ubo.directionalLights[i].direction.xyz);
-        vec3 radiance = ubo.directionalLights[i].color.xyz * intensity;
+        vec3 L = normalize(-directionalLights[i].direction.xyz);
+        vec3 radiance = directionalLights[i].color.xyz * intensity;
 
         float shadow = 1.0;
         // ShadowSystem renders at most 1 directional shadow, in index 0.
@@ -212,13 +212,13 @@ void main() {
 
     // Point lights (diffuse + specular)
     for (int i = 0; i < ubo.pointLightCount; i++) {
-        float intensity = ubo.pointLights[i].color.w;
+        float intensity = pointLights[i].color.w;
         if (intensity <= 1e-6) continue;
 
-        vec3 lightPos = ubo.pointLights[i].position.xyz;
+        vec3 lightPos = pointLights[i].position.xyz;
         vec3 Lvec = lightPos - worldPos;
         float dist2 = dot(Lvec, Lvec);
-        float radius2 = max(ubo.pointLights[i].radius2, 0.0);
+        float radius2 = max(pointLights[i].radius2, 0.0);
         if (radius2 > 0.0 && dist2 > radius2) continue;
 
         float dist = sqrt(max(dist2, 1e-6));
@@ -230,7 +230,7 @@ void main() {
 
         float shadow = calculatePointLightShadow(worldPos, i);
 
-        vec3 radiance = ubo.pointLights[i].color.xyz * intensity * attenuation * shadow;
+        vec3 radiance = pointLights[i].color.xyz * intensity * attenuation * shadow;
 
         vec3 diff, spec;
         calculateDirectLight(N, V, albedo, metallic, roughness, F0, L, radiance, diff, spec);
@@ -240,15 +240,15 @@ void main() {
     // Spot lights (diffuse + specular)
     int shadowBase = (ubo.directionalLightCount > 0) ? 1 : 0;
     for (int i = 0; i < ubo.spotLightCount; i++) {
-        float intensity = ubo.spotLights[i].color.w;
+        float intensity = spotLights[i].color.w;
         if (intensity <= 1e-6) continue;
 
-        vec3 lightPos = ubo.spotLights[i].position.xyz;
-        vec3 lightDir = normalize(ubo.spotLights[i].direction.xyz);
+        vec3 lightPos = spotLights[i].position.xyz;
+        vec3 lightDir = normalize(spotLights[i].direction.xyz);
 
         vec3 toLight = lightPos - worldPos;
         float dist2 = dot(toLight, toLight);
-        float radius2 = max(ubo.spotLights[i].radius2, 0.0);
+        float radius2 = max(spotLights[i].radius2, 0.0);
         if (radius2 > 0.0 && dist2 > radius2) continue;
 
         float dist = sqrt(max(dist2, 1e-6));
@@ -257,17 +257,17 @@ void main() {
         // Cone attenuation (cosine space).
         vec3 lightToFragDir = normalize(worldPos - lightPos);
         float theta = dot(lightToFragDir, lightDir);
-        float outerCutoff = ubo.spotLights[i].outerCutoff;
-        float innerCutoff = ubo.spotLights[i].direction.w;
+        float outerCutoff = spotLights[i].outerCutoff;
+        float innerCutoff = spotLights[i].direction.w;
         float cone = clamp((theta - outerCutoff) / max(innerCutoff - outerCutoff, 1e-4), 0.0, 1.0);
 
         float attenuation = 1.0 / max(
-            ubo.spotLights[i].constantAtten + ubo.spotLights[i].linearAtten * dist + ubo.spotLights[i].quadraticAtten * dist2,
+            spotLights[i].constantAtten + spotLights[i].linearAtten * dist + spotLights[i].quadraticAtten * dist2,
             1e-4);
 
         float shadow = calculateShadow(worldPos, N, L, shadowBase + i);
 
-        vec3 radiance = ubo.spotLights[i].color.xyz * intensity * attenuation * cone * shadow;
+        vec3 radiance = spotLights[i].color.xyz * intensity * attenuation * cone * shadow;
 
         vec3 diff, spec;
         calculateDirectLight(N, V, albedo, metallic, roughness, F0, L, radiance, diff, spec);

@@ -9,7 +9,9 @@ namespace engine {
 
   class MorphTargetManager;
 
-  constexpr size_t maxLightCount = 16;
+  // Maximum number of 2D shadow-casting lights stored in the UBO.
+  // (Dynamic lighting itself is unbounded via SSBOs.)
+  constexpr size_t maxShadowLightCount = 16;
 
   struct PointLight
   {
@@ -48,10 +50,7 @@ namespace engine {
     glm::mat4        view{1.0f};
     glm::vec4        lightAmbient{1.f, 1.0f, 1.0f, .02f};
     glm::vec4        cameraPosition;
-    PointLight       pointLights[maxLightCount];
-    DirectionalLight directionalLights[maxLightCount];
-    SpotLight        spotLights[maxLightCount];
-    glm::mat4        lightSpaceMatrices[maxLightCount]; // Light space transformation
+    glm::mat4        lightSpaceMatrices[maxShadowLightCount]; // Light space transformation
                                                         // matrices for shadows
     glm::vec4 pointLightShadowData[4];                  // xyz = position, w = far plane (for cube
                                                         // shadows)

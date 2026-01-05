@@ -2,6 +2,8 @@
 
 #include <imgui.h>
 
+#include <random>
+
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
@@ -18,6 +20,32 @@ namespace engine {
 
     if (ImGui::CollapsingHeader("Lights", ImGuiTreeNodeFlags_DefaultOpen))
     {
+      if (ImGui::Button("Spawn 200 Point Lights"))
+      {
+        auto& registry = scene_.getRegistry();
+
+        std::mt19937                        rng{1337u};
+        std::uniform_real_distribution<float> angleDist(0.0f, 6.28318530718f);
+        std::uniform_real_distribution<float> heightDist(-2.0f, 2.0f);
+        std::uniform_real_distribution<float> radiusDist(6.0f, 35.0f);
+        std::uniform_real_distribution<float> colorDist(0.2f, 1.0f);
+
+        for (int i = 0; i < 200; i++)
+        {
+          auto entity = registry.create();
+
+          auto& transform = registry.emplace<TransformComponent>(entity);
+          float  a        = angleDist(rng);
+          float  r        = radiusDist(rng);
+          transform.translation = glm::vec3(std::cos(a) * r, heightDist(rng), std::sin(a) * r);
+
+          auto& light     = registry.emplace<PointLightComponent>(entity);
+          light.intensity = 20.0f;
+          light.radius    = 20.0f;
+          light.color     = glm::vec3(colorDist(rng), colorDist(rng), colorDist(rng));
+        }
+      }
+
       if (frameInfo.selectedEntity != entt::null)
       {
         auto  entity   = frameInfo.selectedEntity;

@@ -754,8 +754,11 @@ namespace engine {
     // lights)
     GlobalUbo ubo{};
 
-    state.lightSystem.update(frameInfo,
-                             ubo); // Update light positions in UBO (rotates them)
+    // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
+    auto const lightCounts = renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
+    ubo.pointLightCount       = lightCounts.point;
+    ubo.directionalLightCount = lightCounts.directional;
+    ubo.spotLightCount        = lightCounts.spot;
 
     // Render shadow maps for all shadow-casting lights (after positions are
     // updated)

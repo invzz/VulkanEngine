@@ -140,6 +140,8 @@ namespace engine {
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
+    constexpr float kPointLightDebugRadiusScale = 0.15f;
+
     auto view = frameInfo.scene->getRegistry().view<PointLightComponent, TransformComponent>();
     for (auto entity : view)
     {
@@ -148,7 +150,7 @@ namespace engine {
       PointLightPushConstants push{};
       push.position = glm::vec4(transform.translation, 1.f);
       push.color    = glm::vec4(pointLight.color, pointLight.intensity);
-      push.radius   = transform.scale.x;
+      push.radius   = transform.scale.x * kPointLightDebugRadiusScale;
 
       vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PointLightPushConstants), &push);
       // inefficient to draw a quad for each light, but okay for demo purposes
@@ -262,12 +264,6 @@ namespace engine {
     auto pointView = registry.view<TransformComponent, PointLightComponent>();
     for (auto entity : pointView)
     {
-      auto [transform, pointLight] = pointView.get<TransformComponent, PointLightComponent>(entity);
-
-      assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
-      ubo.pointLights[ubo.pointLightCount].position = glm::vec4(transform.translation, 1.f);
-      ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(pointLight.color, pointLight.intensity);
-      ubo.pointLights[ubo.pointLightCount].radius2  = pointLight.radius * pointLight.radius;
       ubo.pointLightCount++;
     }
 
@@ -277,17 +273,11 @@ namespace engine {
     {
       auto [transform, dirLight] = dirView.get<TransformComponent, DirectionalLightComponent>(entity);
 
-      assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
-
       // Update rotation to look at target if enabled
       if (dirLight.useTargetPoint)
       {
         transform.lookAt(dirLight.targetPoint);
       }
-
-      glm::vec3 direction                                        = transform.getForwardDir();
-      ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
-      ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(dirLight.color, dirLight.intensity);
       ubo.directionalLightCount++;
     }
 
@@ -297,24 +287,11 @@ namespace engine {
     {
       auto [transform, spotLight] = spotView.get<TransformComponent, SpotLightComponent>(entity);
 
-      assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
-
       // Update rotation to look at target if enabled
       if (spotLight.useTargetPoint)
       {
         transform.lookAt(spotLight.targetPoint);
       }
-
-      glm::vec3 direction = transform.getForwardDir();
-
-      ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(transform.translation, 1.f);
-      ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(spotLight.innerCutoffAngle)));
-      ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(spotLight.color, spotLight.intensity);
-      ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(spotLight.outerCutoffAngle));
-      ubo.spotLights[ubo.spotLightCount].constantAtten  = spotLight.constantAttenuation;
-      ubo.spotLights[ubo.spotLightCount].linearAtten    = spotLight.linearAttenuation;
-      ubo.spotLights[ubo.spotLightCount].quadraticAtten = spotLight.quadraticAttenuation;
-      ubo.spotLights[ubo.spotLightCount].radius2        = computeSpotLightRadius2(spotLight);
       ubo.spotLightCount++;
     }
   }
