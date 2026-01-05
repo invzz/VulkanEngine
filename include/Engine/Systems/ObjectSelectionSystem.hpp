@@ -20,7 +20,7 @@ namespace engine {
     bool prevKeyWasPressed_   = false;
     bool cameraKeyWasPressed_ = false;
 
-    bool isKeyPressed(int key) const { return keyboard_.isKeyPressed(key); }
+    [[nodiscard]] bool isKeyPressed(int key) const { return keyboard_.isKeyPressed(key); }
   };
 
 } // namespace engine

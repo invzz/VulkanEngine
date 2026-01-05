@@ -19,7 +19,7 @@ namespace engine {
     // Note: rotation order is Y (yaw), X (pitch), Z (roll)
     // Reference:
     // https://en.wikipedia.org/wiki/Rotation_matrix#In_three_dimensions
-    inline glm::mat4 modelTransform() const
+    [[nodiscard]] inline glm::mat4 modelTransform() const
     {
       const float c3 = glm::cos(rotation.z);
       const float s3 = glm::sin(rotation.z);
@@ -36,7 +36,7 @@ namespace engine {
       // clang-format on
     }
 
-    inline glm::vec3 getForwardDir() const
+    [[nodiscard]] inline glm::vec3 getForwardDir() const
     {
       return glm::vec3{
               glm::sin(rotation.y) * glm::cos(rotation.x),
@@ -45,7 +45,7 @@ namespace engine {
       };
     }
 
-    inline glm::vec3 getRightDir() const
+    [[nodiscard]] inline glm::vec3 getRightDir() const
     {
       return glm::vec3{
               glm::cos(rotation.y),
@@ -54,7 +54,7 @@ namespace engine {
       };
     }
 
-    inline glm::mat3 normalMatrix() const
+    [[nodiscard]] inline glm::mat3 normalMatrix() const
     {
       const float c3 = glm::cos(rotation.z);
       const float s3 = glm::sin(rotation.z);

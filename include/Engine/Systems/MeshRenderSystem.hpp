@@ -80,14 +80,14 @@ namespace engine {
     void createSceneColorDescriptorResources();
 
     // Shared helpers for the forward compositing passes.
-    VkDeviceSize        materialAtomSize() const;
-    void                bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
-    void                bindShadowDescriptorSet(FrameInfo& frameInfo);
-    void                bindIBLDescriptorSet(FrameInfo& frameInfo);
-    bool                materialNeedsFullVariant(FrameInfo const& frameInfo, const PBRMaterial* mat) const;
-    MaterialUniformData buildMaterialUniformData(const PBRMaterial* pMaterial, float isSelected) const;
-    void                buildWriteAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, const PBRMaterial* pMaterial, float isSelected);
-    void                writeAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, MaterialUniformData const& matData);
+    [[nodiscard]] VkDeviceSize materialAtomSize() const;
+    void                       bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+    void                       bindShadowDescriptorSet(FrameInfo& frameInfo);
+    void                       bindIBLDescriptorSet(FrameInfo& frameInfo);
+    bool                       materialNeedsFullVariant(FrameInfo const& frameInfo, const PBRMaterial* mat) const;
+    MaterialUniformData        buildMaterialUniformData(const PBRMaterial* pMaterial, float isSelected) const;
+    void                       buildWriteAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, const PBRMaterial* pMaterial, float isSelected);
+    void                       writeAndBindMaterial(FrameInfo& frameInfo, char* mappedData, VkDeviceSize atomSize, uint32_t& dynamicOffsetIndex, MaterialUniformData const& matData);
 
     Device&                   device;
     std::unique_ptr<Pipeline> depthPrepassPipeline;

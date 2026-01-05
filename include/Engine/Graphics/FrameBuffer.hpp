@@ -26,18 +26,18 @@ namespace engine {
 
     void resize(VkExtent2D newExtent);
 
-    VkRenderPass          getRenderPass() const { return renderPass; }
-    VkRenderPass          getDepthPrepassRenderPass() const { return depthPrepassRenderPass; }
-    VkRenderPass          getRenderPassLoadDepth() const { return renderPassLoadDepth; }
-    VkRenderPass          getRenderPassLoadColorDepth() const { return renderPassLoadColorDepth; }
-    VkRenderPass          getGbufferRenderPass() const { return gbufferRenderPass; }
-    VkRenderPass          getDeferredLightingRenderPass() const { return deferredLightingRenderPass; }
-    uint32_t              getMipLevels() const { return mipLevels; }
-    VkDescriptorImageInfo getDescriptorImageInfo(int index) const;
-    VkDescriptorImageInfo getSceneColorDescriptorImageInfo(int index) const;
-    VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
-    VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
-    VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
+    [[nodiscard]] VkRenderPass          getRenderPass() const { return renderPass; }
+    [[nodiscard]] VkRenderPass          getDepthPrepassRenderPass() const { return depthPrepassRenderPass; }
+    [[nodiscard]] VkRenderPass          getRenderPassLoadDepth() const { return renderPassLoadDepth; }
+    [[nodiscard]] VkRenderPass          getRenderPassLoadColorDepth() const { return renderPassLoadColorDepth; }
+    [[nodiscard]] VkRenderPass          getGbufferRenderPass() const { return gbufferRenderPass; }
+    [[nodiscard]] VkRenderPass          getDeferredLightingRenderPass() const { return deferredLightingRenderPass; }
+    [[nodiscard]] uint32_t              getMipLevels() const { return mipLevels; }
+    [[nodiscard]] VkDescriptorImageInfo getDescriptorImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getSceneColorDescriptorImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
 
     void beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
     void beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
@@ -49,31 +49,31 @@ namespace engine {
     void generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
     void generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
 
-    float getAspectRatio() const { return static_cast<float>(extent.width) / static_cast<float>(extent.height); }
+    [[nodiscard]] float getAspectRatio() const { return static_cast<float>(extent.width) / static_cast<float>(extent.height); }
 
     // Accessors for HZB
-    VkImageView getDepthMipImageView(int frameIndex, int mipLevel) const { return depthMipImageViews[frameIndex][mipLevel]; }
-    VkImageView getDepthImageView(int frameIndex) const { return depthImageViews[frameIndex]; }
-    VkSampler   getDepthSampler() const { return depthSampler; }
-    VkImage     getDepthImage(int frameIndex) const { return depthImages[frameIndex]; }
+    [[nodiscard]] VkImageView getDepthMipImageView(int frameIndex, int mipLevel) const { return depthMipImageViews[frameIndex][mipLevel]; }
+    [[nodiscard]] VkImageView getDepthImageView(int frameIndex) const { return depthImageViews[frameIndex]; }
+    [[nodiscard]] VkSampler   getDepthSampler() const { return depthSampler; }
+    [[nodiscard]] VkImage     getDepthImage(int frameIndex) const { return depthImages[frameIndex]; }
 
     // Offscreen color image (render target)
-    VkImage getColorImage(int frameIndex) const { return colorImages[frameIndex]; }
+    [[nodiscard]] VkImage getColorImage(int frameIndex) const { return colorImages[frameIndex]; }
 
     // G-buffer attachments
-    VkImageView getGbufferNormalImageView(int frameIndex) const { return gbufferNormalImageViews[frameIndex]; }
-    VkImageView getGbufferAlbedoImageView(int frameIndex) const { return gbufferAlbedoImageViews[frameIndex]; }
-    VkImageView getGbufferMaterialImageView(int frameIndex) const { return gbufferMaterialImageViews[frameIndex]; }
+    [[nodiscard]] VkImageView getGbufferNormalImageView(int frameIndex) const { return gbufferNormalImageViews[frameIndex]; }
+    [[nodiscard]] VkImageView getGbufferAlbedoImageView(int frameIndex) const { return gbufferAlbedoImageViews[frameIndex]; }
+    [[nodiscard]] VkImageView getGbufferMaterialImageView(int frameIndex) const { return gbufferMaterialImageViews[frameIndex]; }
 
     // Scene color copy (for transmission refraction sampling)
-    VkImageView getSceneColorImageView(int frameIndex) const { return sceneColorImageViews[frameIndex]; }
-    VkImage     getSceneColorImage(int frameIndex) const { return sceneColorImages[frameIndex]; }
+    [[nodiscard]] VkImageView getSceneColorImageView(int frameIndex) const { return sceneColorImageViews[frameIndex]; }
+    [[nodiscard]] VkImage     getSceneColorImage(int frameIndex) const { return sceneColorImages[frameIndex]; }
 
     // Accessors for HZB Texture (R32_SFLOAT)
-    VkImageView getHzbMipImageView(int frameIndex, int mipLevel) const { return hzbMipImageViews[frameIndex][mipLevel]; }
-    VkImageView getHzbImageView(int frameIndex) const { return hzbImageViews[frameIndex]; }
-    VkImage     getHzbImage(int frameIndex) const { return hzbImages[frameIndex]; }
-    VkSampler   getHzbSampler() const { return hzbSampler; }
+    [[nodiscard]] VkImageView getHzbMipImageView(int frameIndex, int mipLevel) const { return hzbMipImageViews[frameIndex][mipLevel]; }
+    [[nodiscard]] VkImageView getHzbImageView(int frameIndex) const { return hzbImageViews[frameIndex]; }
+    [[nodiscard]] VkImage     getHzbImage(int frameIndex) const { return hzbImages[frameIndex]; }
+    [[nodiscard]] VkSampler   getHzbSampler() const { return hzbSampler; }
 
   private:
     void createRenderPass();

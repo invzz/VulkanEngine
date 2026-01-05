@@ -37,8 +37,8 @@ namespace engine {
       int toggleCursor = GLFW_KEY_ESCAPE;
     };
 
-    void moveInPlaneXZ(float deltaTime, struct TransformComponent& transform) const;
-    bool isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
+    void               moveInPlaneXZ(float deltaTime, struct TransformComponent& transform) const;
+    [[nodiscard]] bool isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
 
     KeyMappings mappings{};
 

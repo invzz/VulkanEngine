@@ -23,12 +23,12 @@ namespace engine {
      * @brief Check if the panel should be rendered in a separate window
      * @return true if the panel should be rendered in a separate window, false otherwise
      */
-    virtual bool isSeparateWindow() const { return false; }
+    [[nodiscard]] virtual bool isSeparateWindow() const { return false; }
 
     /**
      * @brief Check if panel is visible
      */
-    bool isVisible() const { return visible_; }
+    [[nodiscard]] bool isVisible() const { return visible_; }
 
     /**
      * @brief Set panel visibility

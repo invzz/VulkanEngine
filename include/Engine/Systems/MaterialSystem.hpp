@@ -35,7 +35,7 @@ namespace engine {
     void clearDescriptorCache() { materialDescriptorCache_.clear(); }
 
     // Access to descriptor set layout
-    VkDescriptorSetLayout getDescriptorSetLayout() const { return materialSetLayout_->getDescriptorSetLayout(); }
+    [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const { return materialSetLayout_->getDescriptorSetLayout(); }
 
   private:
     void createMaterialDescriptorSetLayout();

@@ -18,7 +18,7 @@ namespace engine {
 
     virtual void execute(FrameInfo& frameInfo) = 0;
 
-    const std::string& getName() const { return name; }
+    [[nodiscard]] const std::string& getName() const { return name; }
 
   protected:
     std::string name;
