@@ -890,10 +890,7 @@ namespace engine {
 
   void App::uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state)
   {
-    if (window.isCursorVisible())
-    {
-      state.uiManager.render(frameInfo, commandBuffer);
-    }
+    state.uiManager.render(frameInfo, commandBuffer, window.isCursorVisible());
   }
 
 } // namespace engine

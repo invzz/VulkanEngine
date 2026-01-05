@@ -13,7 +13,20 @@ namespace engine {
 
   void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer)
   {
+    render(frameInfo, commandBuffer, true);
+  }
+
+  void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI)
+  {
     imguiManager_.newFrame();
+
+    if (!drawUI)
+    {
+      // Keep ImGui/Vulkan backend hot so toggling UI (ESC) doesn't hitch.
+      // We intentionally build no windows here.
+      imguiManager_.render(commandBuffer);
+      return;
+    }
 
     if (ImGui::BeginMainMenuBar())
     {

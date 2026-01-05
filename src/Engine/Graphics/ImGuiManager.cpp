@@ -239,6 +239,7 @@ namespace engine {
       std::cerr << "Exception during ImGui_ImplVulkan_Init: " << e.what() << std::endl;
       return;
     }
+
   }
 
   void ImGuiManager::newFrame()

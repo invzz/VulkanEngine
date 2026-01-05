@@ -27,6 +27,7 @@ namespace engine {
      * @brief Render all panels
      */
     void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer);
+    void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI);
 
     /**
      * @brief Get a specific panel by type (returns nullptr if not found)
