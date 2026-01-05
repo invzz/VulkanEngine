@@ -107,7 +107,7 @@ namespace engine {
   void App::init()
   {
     // 1. Setup Render Context
-    VkDescriptorImageInfo hzbInfo = renderer.getHzbImageInfo(0);
+    VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(0);
     renderContext                 = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
 
     // 2. Setup Scene & Camera
@@ -221,19 +221,19 @@ namespace engine {
     }
 
     deferredIblDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (int i = 0; i < deferredIblDescriptorSets.size(); i++)
+    for (auto& deferredIblDescriptorSet : deferredIblDescriptorSets)
     {
       auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
       auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
       auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
 
-      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSets[i]);
+      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSet);
     }
 
     deferredShadowDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (int i = 0; i < deferredShadowDescriptorSets.size(); i++)
+    for (auto& deferredShadowDescriptorSet : deferredShadowDescriptorSets)
     {
-      if (!deferredShadowPool->allocateDescriptor(deferredShadowSetLayout->getDescriptorSetLayout(), deferredShadowDescriptorSets[i]))
+      if (!deferredShadowPool->allocateDescriptor(deferredShadowSetLayout->getDescriptorSetLayout(), deferredShadowDescriptorSet))
       {
         throw std::runtime_error("Failed to allocate deferred shadow descriptor set");
       }
@@ -381,7 +381,7 @@ namespace engine {
 
     // 5. HZB Build (same frame, after Depth Prepass)
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("HZB", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
+      GameLoopState const state{
               .objectSelectionSystem = *objectSelectionSystem,
               .inputSystem           = *inputSystem,
               .cameraSystem          = *cameraSystem,
@@ -526,8 +526,8 @@ namespace engine {
         state.meshRenderSystem.renderAlphaBlend(frameInfo);
 
         // Dust pass (uses scene lighting conditions)
-        glm::vec3 sunColor     = glm::vec3(1.0f);
-        glm::vec3 ambientColor = glm::vec3(0.1f);
+        auto sunColor     = glm::vec3(1.0f);
+        auto ambientColor = glm::vec3(0.1f);
 
         SunInfo const sunInfo = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
         float const   height  = sunInfo.directionToSun.y;
@@ -594,13 +594,13 @@ namespace engine {
         SunInfo const   sunInfo = queryPrimaryDirectionalLightSunInfo(scene);
         glm::vec3 const sunDir  = sunInfo.directionToSun;
 
-        glm::vec3 sunWorldPos = camera->getPosition() + sunDir * 1000.0f;
-        glm::vec4 clipPos     = camera->getProjection() * camera->getView() * glm::vec4(sunWorldPos, 1.0f);
+        glm::vec3 const sunWorldPos = camera->getPosition() + sunDir * 1000.0f;
+        glm::vec4 const clipPos     = camera->getProjection() * camera->getView() * glm::vec4(sunWorldPos, 1.0f);
 
         if (clipPos.w > 0.0f)
         {
-          glm::vec3 ndc                = glm::vec3(clipPos) / clipPos.w;
-          glm::vec2 screenPos          = glm::vec2(ndc.x, ndc.y) * 0.5f + 0.5f;
+          glm::vec3 const ndc          = glm::vec3(clipPos) / clipPos.w;
+          glm::vec2 const screenPos    = glm::vec2(ndc.x, ndc.y) * 0.5f + 0.5f;
           postProcessPush.sunScreenPos = glm::vec4(screenPos, 1.0f, 0.0f);
         }
         else
@@ -609,7 +609,7 @@ namespace engine {
         }
 
         // Dynamic Time-of-Day Adjustment (Golden Hour Boost)
-        float sunHeight           = sunInfo.directionToSun.y;
+        float const sunHeight           = sunInfo.directionToSun.y;
         float intensityMultiplier = 1.0f;
         float decayModifier       = 0.0f;
 
@@ -617,8 +617,8 @@ namespace engine {
         if (sunHeight > -0.1f && sunHeight < 0.5f)
         {
           // Peak effect at height 0.1 (just above horizon)
-          float dist  = glm::abs(sunHeight - 0.1f);
-          float boost = glm::max(0.0f, 1.0f - (dist / 0.4f)); // 0.0 to 1.0
+          float const dist  = glm::abs(sunHeight - 0.1f);
+          float const boost = glm::max(0.0f, 1.0f - (dist / 0.4f)); // 0.0 to 1.0
 
           intensityMultiplier = 1.0f + (boost * 2.0f); // Up to 3x intensity
           decayModifier       = boost * 0.015f;        // Slightly increase decay for longer rays
@@ -661,7 +661,7 @@ namespace engine {
     device.WaitIdle();
   }
 
-  void App::update(float frameTime)
+  void App::update(float /*frameTime*/)
   {
     if (auto* scenePanel = uiManager->getPanel<ScenePanel>())
     {
@@ -680,16 +680,16 @@ namespace engine {
         postProcessingSystem = std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{postProcessSetLayout->getDescriptorSetLayout()});
       }
 
-      int frameIndex = renderer.getFrameIndex();
+      int const frameIndex = renderer.getFrameIndex();
 
-      int                   prevFrameIndex = (frameIndex - 1 + SwapChain::maxFramesInFlight()) % SwapChain::maxFramesInFlight();
-      VkDescriptorImageInfo hzbInfo        = renderer.getHzbImageInfo(prevFrameIndex);
+      int const                   prevFrameIndex = (frameIndex - 1 + SwapChain::maxFramesInFlight()) % SwapChain::maxFramesInFlight();
+      VkDescriptorImageInfo const hzbInfo        = renderer.getHzbImageInfo(prevFrameIndex);
       renderContext->updateHZBDescriptorPrev(frameIndex, hzbInfo);
 
       // Also pre-bind the descriptor that points to the current frame's HZB image view.
       // It is safe to reference the view before the image is written, as long as the pass ordering/barriers ensure
       // it is only sampled after generation.
-      VkDescriptorImageInfo hzbInfoCurrent = renderer.getHzbImageInfo(frameIndex);
+      VkDescriptorImageInfo const hzbInfoCurrent = renderer.getHzbImageInfo(frameIndex);
       renderContext->updateHZBDescriptorCurrent(frameIndex, hzbInfoCurrent);
 
       FrameInfo frameInfo{
@@ -770,15 +770,15 @@ namespace engine {
       SunInfo const sunInfo         = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
       float const   visualSunHeight = sunInfo.directionToSun.y;
 
-      glm::vec3 dayHorizon = glm::vec3(0.7f, 0.8f, 0.9f);
-      glm::vec3 dayZenith  = glm::vec3(0.2f, 0.4f, 0.8f);
+      glm::vec3 const dayHorizon = glm::vec3(0.7f, 0.8f, 0.9f);
+      glm::vec3 const dayZenith  = glm::vec3(0.2f, 0.4f, 0.8f);
 
-      glm::vec3 sunsetHorizon = glm::vec3(0.8f, 0.4f, 0.1f);
-      glm::vec3 sunsetZenith  = glm::vec3(0.2f, 0.2f, 0.4f);
+      glm::vec3 const sunsetHorizon = glm::vec3(0.8f, 0.4f, 0.1f);
+      glm::vec3 const sunsetZenith  = glm::vec3(0.2f, 0.2f, 0.4f);
 
       // Darker night colors to match the starry sky and prevent "glowing fog"
-      glm::vec3 nightHorizon = glm::vec3(0.01f, 0.01f, 0.02f);
-      glm::vec3 nightZenith  = glm::vec3(0.0f, 0.0f, 0.005f);
+      glm::vec3 const nightHorizon = glm::vec3(0.01f, 0.01f, 0.02f);
+      glm::vec3 const nightZenith  = glm::vec3(0.0f, 0.0f, 0.005f);
 
       if (visualSunHeight > 0.2f)
       {
@@ -787,13 +787,13 @@ namespace engine {
       }
       else if (visualSunHeight > -0.1f)
       {
-        float t      = (visualSunHeight + 0.1f) / 0.3f;
+        float const t = (visualSunHeight + 0.1f) / 0.3f;
         horizonColor = glm::mix(sunsetHorizon, dayHorizon, t);
         zenithColor  = glm::mix(sunsetZenith, dayZenith, t);
       }
       else if (visualSunHeight > -0.3f)
       {
-        float t      = (visualSunHeight + 0.3f) / 0.2f;
+        float const t = (visualSunHeight + 0.3f) / 0.2f;
         horizonColor = glm::mix(nightHorizon, sunsetHorizon, t);
         zenithColor  = glm::mix(nightZenith, sunsetZenith, t);
 
@@ -814,12 +814,12 @@ namespace engine {
     ubo.fogHeightDensity = fogSettings.heightDensity;
 
     // Calculate Frustum Planes for Culling (Normalized)
-    glm::mat4 vp   = ubo.projection * ubo.view;
+    glm::mat4 const vp   = ubo.projection * ubo.view;
     glm::mat4 vpT  = glm::transpose(vp);
-    glm::vec4 row0 = vpT[0];
-    glm::vec4 row1 = vpT[1];
-    glm::vec4 row2 = vpT[2];
-    glm::vec4 row3 = vpT[3];
+    glm::vec4 const row0 = vpT[0];
+    glm::vec4 const row1 = vpT[1];
+    glm::vec4 const row2 = vpT[2];
+    glm::vec4 const row3 = vpT[3];
 
     ubo.frustumPlanes[0] = row3 + row0; // Left
     ubo.frustumPlanes[1] = row3 - row0; // Right
@@ -828,10 +828,10 @@ namespace engine {
     ubo.frustumPlanes[4] = row2;        // Near
     ubo.frustumPlanes[5] = row3 - row2; // Far
 
-    for (int i = 0; i < 6; i++)
+    for (auto& frustumPlane : ubo.frustumPlanes)
     {
-      float len = glm::length(glm::vec3(ubo.frustumPlanes[i]));
-      ubo.frustumPlanes[i] /= len;
+      float const len = glm::length(glm::vec3(frustumPlane));
+      frustumPlane /= len;
     }
 
     // Copy all light space matrices
@@ -872,7 +872,6 @@ namespace engine {
     // Legacy helper; the Offscreen render-graph pass now drives the multi-pass mesh pipeline directly.
     (void)frameInfo;
     (void)state;
-    return;
   }
 
   void App::renderDebugPass(FrameInfo& frameInfo, GameLoopState& state)

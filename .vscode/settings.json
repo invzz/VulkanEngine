@@ -1,7 +1,14 @@
 {
   "C_Cpp.intelliSenseEngine": "disabled",
   "C_Cpp.formatting": "disabled",
+
   "editor.defaultFormatter": "xaver.clang-format",
+
   "editor.formatOnSave": true,
-  "editor.semanticHighlighting.enabled": true
+  "editor.semanticHighlighting.enabled": true,
+
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always",
+    "source.fixAll.clangd": "always"
+  }
 }

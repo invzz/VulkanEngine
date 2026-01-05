@@ -2,18 +2,28 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <vector>
 
+#include "Engine/Graphics/Buffer.hpp"
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
+#include "Engine/Resources/MeshManager.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
+#include "glm/trigonometric.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -44,7 +54,7 @@ namespace engine {
         return d > 0.0f ? d * d : 0.0f;
       }
 
-      const float discriminant = B * B - 4.0f * A * C;
+      const float discriminant = (B * B) - (4.0f * A * C);
       if (discriminant <= 0.0f)
       {
         return 0.0f;
@@ -193,9 +203,9 @@ namespace engine {
 
   void RenderContext::updateLightDescriptorSets(int frameIndex)
   {
-    VkDescriptorBufferInfo pointInfo = pointLightBuffers_[frameIndex]->descriptorInfo();
-    VkDescriptorBufferInfo dirInfo   = directionalLightBuffers_[frameIndex]->descriptorInfo();
-    VkDescriptorBufferInfo spotInfo  = spotLightBuffers_[frameIndex]->descriptorInfo();
+    VkDescriptorBufferInfo const pointInfo = pointLightBuffers_[frameIndex]->descriptorInfo();
+    VkDescriptorBufferInfo const dirInfo   = directionalLightBuffers_[frameIndex]->descriptorInfo();
+    VkDescriptorBufferInfo const spotInfo  = spotLightBuffers_[frameIndex]->descriptorInfo();
 
     auto writeSet = [&](VkDescriptorSet dstSet, uint32_t binding, VkDescriptorBufferInfo const& info) {
       VkWriteDescriptorSet write{};
@@ -286,7 +296,7 @@ namespace engine {
           transform.lookAt(dir.targetPoint);
         }
 
-        glm::vec3 direction = transform.getForwardDir();
+        glm::vec3 const direction = transform.getForwardDir();
         dl.direction        = glm::vec4(glm::normalize(direction), 0.f);
         dl.color            = glm::vec4(dir.color, dir.intensity);
         dirLights.push_back(dl);
@@ -306,7 +316,7 @@ namespace engine {
           transform.lookAt(spot.targetPoint);
         }
 
-        glm::vec3 direction = transform.getForwardDir();
+        glm::vec3 const direction = transform.getForwardDir();
 
         sl.position       = glm::vec4(transform.translation, 1.f);
         sl.direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(spot.innerCutoffAngle)));
@@ -324,7 +334,9 @@ namespace engine {
     auto nextPow2 = [](size_t v) {
       size_t p = 1;
       while (p < v)
+      {
         p <<= 1;
+      }
       return p;
     };
 

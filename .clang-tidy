@@ -1,3 +1,4 @@
+---
 Checks: >
   -*,
 
@@ -17,6 +18,7 @@ Checks: >
   -llvm-*,
   -cert-*,
   -concurrency-*,
+  -bugprone-easily-swappable-parameters
 
   # Style-nits that tend to overwhelm real findings in this codebase
   -readability-identifier-naming,
@@ -26,7 +28,7 @@ Checks: >
   -readability-qualified-auto,
   -readability-function-cognitive-complexity,
 
-  # Tooling/format churn
+  # Tooling / format churn
   -misc-include-cleaner,
   -modernize-use-designated-initializers,
   -modernize-use-trailing-return-type,
@@ -35,12 +37,12 @@ Checks: >
 WarningsAsErrors: ""
 
 # Only report diagnostics for headers inside this repo.
-# (clang-tidy sees full paths; match either '/' or '\\' separators.)
 HeaderFilterRegex: '.*[/\\\\](include|src)[/\\\\].*'
 
-# Avoid diagnostics from system headers (SDKs, toolchain headers, etc.).
+# Avoid diagnostics from system headers (SDKs, toolchain headers, etc.)
 SystemHeaders: false
 
+# Respect your clang-format file
 FormatStyle: file
 
 CheckOptions:

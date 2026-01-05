@@ -7,7 +7,7 @@
 namespace engine {
   DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}
 
-  void DebugPanel::render(FrameInfo& frameInfo)
+  void DebugPanel::render(FrameInfo& /*frameInfo*/)
   {
     // ImGui::Begin("Debug Settings");
 

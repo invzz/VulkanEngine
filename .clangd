@@ -1,0 +1,16 @@
+ClangTidy:
+  Add: true
+  Fix: true
+
+CompileOptions:
+  Add:
+    # Only needed if extra flags are required
+Index:
+  Background: true
+  StandardLibrary: true
+  # Optional for large template-heavy projects:
+  # FunctionBodies: false
+
+Diagnostics:
+  IgnoreSystemHeaders: true
+  HeaderFilterRegex: '.*[/\\\\](include|src)[/\\\\].*'

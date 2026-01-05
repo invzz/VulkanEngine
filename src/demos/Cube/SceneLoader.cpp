@@ -24,16 +24,16 @@ namespace engine {
 
   void SceneLoader::loadScene(Device& device, Scene& scene, ResourceManager& resourceManager)
   {
-    if (scene.getRegistry().storage<entt::entity>().size() > 0)
+    if (!scene.getRegistry().storage<entt::entity>().empty())
     {
       return;
     }
     createDemoObject(device, scene, resourceManager);
   }
 
-  void SceneLoader::createFromFile(Device& device, Scene& scene, ResourceManager& resourceManager, const std::string& modelPath)
+  void SceneLoader::createFromFile(Device& /*device*/, Scene& scene, ResourceManager& resourceManager, const std::string& modelPath)
   {
-    if (scene.getRegistry().storage<entt::entity>().size() > 0)
+    if (!scene.getRegistry().storage<entt::entity>().empty())
     {
       return;
     }
@@ -51,7 +51,7 @@ namespace engine {
     transform.translation = {0.0f, 0.0f, 0.0f};
   }
 
-  void SceneLoader::createApple(Device& device, Scene& scene, ResourceManager& resourceManager)
+  void SceneLoader::createApple(Device& /*device*/, Scene& scene, ResourceManager& resourceManager)
   {
     auto modelPtr = resourceManager.loadModel(MODEL_PATH "/3DApple002_SQ-4K-JPG.obj", false, true, true);
 
@@ -70,7 +70,7 @@ namespace engine {
     if (!materials.empty())
     {
       const auto& mat      = materials[0];
-      std::string basePath = std::string(TEXTURE_PATH) + "/3DApple002_SQ-4K-JPG/";
+      std::string const basePath = std::string(TEXTURE_PATH) + "/3DApple002_SQ-4K-JPG/";
 
       auto& pbrMat = scene.getRegistry().get<PBRMaterial>(entity);
 
@@ -97,7 +97,7 @@ namespace engine {
     }
   }
 
-  void SceneLoader::createSpaceShip(Device& device, Scene& scene, ResourceManager& resourceManager)
+  void SceneLoader::createSpaceShip(Device& /*device*/, Scene& scene, ResourceManager& resourceManager)
   {
     auto spaceShipModel = resourceManager.loadModel(MODEL_PATH "/SpaceShipModeling2.obj", false, true, false);
 
@@ -137,7 +137,7 @@ namespace engine {
     transform.rotation    = {0.5f, 0.0f, 0.0f}; // Pointing down-ish
   }
 
-  void SceneLoader::createFloor(Device& device, Scene& scene, ResourceManager& resourceManager)
+  void SceneLoader::createFloor(Device& /*device*/, Scene& scene, ResourceManager& resourceManager)
   {
     auto floorModel = resourceManager.loadModel(MODEL_PATH "/quad.obj", false, true, true);
 

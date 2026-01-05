@@ -90,7 +90,7 @@ namespace engine {
     void        updatePhase(FrameInfo& frameInfo, GameLoopState& state);
     static void computePhase(FrameInfo& frameInfo, GameLoopState& state);
     void        shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
-    void        renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
     static void renderSkyPass(FrameInfo& frameInfo, GameLoopState& state);
     static void renderGeometryPass(FrameInfo& frameInfo, GameLoopState& state);
     static void renderDebugPass(FrameInfo& frameInfo, GameLoopState& state);

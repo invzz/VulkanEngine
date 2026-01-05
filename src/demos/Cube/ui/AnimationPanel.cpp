@@ -13,7 +13,7 @@ namespace engine {
 
   AnimationPanel::AnimationPanel(Scene& scene) : scene_(scene) {}
 
-  void AnimationPanel::render(FrameInfo& frameInfo)
+  void AnimationPanel::render(FrameInfo& /*frameInfo*/)
   {
     if (!visible_) return;
 
@@ -24,16 +24,20 @@ namespace engine {
       {
         auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
 
-        std::string label = "Object " + std::to_string((uint32_t)entity);
+        std::string const label = "Object " + std::to_string((uint32_t)entity);
         if (ImGui::TreeNode(label.c_str()))
         {
           bool isPlaying = anim.isPlaying;
           if (ImGui::Checkbox("Playing", &isPlaying))
           {
             if (isPlaying)
+            {
               anim.play(0, true);
+            }
             else
+            {
               anim.stop();
+            }
           }
 
           float speed = anim.playbackSpeed;
