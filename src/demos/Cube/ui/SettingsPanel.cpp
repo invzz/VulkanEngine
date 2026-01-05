@@ -11,10 +11,9 @@ namespace engine {
                                SkyboxSettings&           skySettings,
                                DustSettings&             dustSettings,
                                FogSettings&              fogSettings,
-                               float&                    timeOfDay,
                                PostProcessPushConstants& pushConstants,
                                int&                      debugMode)
-      : skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings), timeOfDay_(timeOfDay)
+      : skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
@@ -30,14 +29,7 @@ namespace engine {
     {
       if (ImGui::CollapsingHeader("Sky"))
       {
-        ImGui::Checkbox("Use Procedural Sky", &skySettings_.useProcedural);
-        if (skySettings_.useProcedural)
-        {
-          ImGui::SliderFloat("Time of Day", &timeOfDay_, 0.0f, 6.28318f);
-          ImGui::SliderFloat("Rayleigh", &skySettings_.rayleigh, 0.0f, 10.0f);
-          ImGui::SliderFloat("Mie", &skySettings_.mie, 0.0f, 1.0f);
-          ImGui::SliderFloat("Mie Eccentricity", &skySettings_.mieEccentricity, -1.0f, 1.0f);
-        }
+        ImGui::Checkbox("Debug Cubemap Faces", &skySettings_.debugCubemapFaces);
       }
       if (ImGui::CollapsingHeader("Fog"))
       {

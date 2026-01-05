@@ -29,16 +29,32 @@ namespace engine {
     void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
     void endSwapChainRenderPass(VkCommandBuffer commandBuffer) const;
     void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
+    void beginOffscreenDepthPrepassRenderPass(VkCommandBuffer commandBuffer);
+    void beginOffscreenRenderPassLoadDepth(VkCommandBuffer commandBuffer);
+    void beginOffscreenRenderPassLoadColorDepth(VkCommandBuffer commandBuffer);
+    void beginGbufferRenderPass(VkCommandBuffer commandBuffer);
+    void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer);
     void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
     void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
     void generateDepthPyramid(VkCommandBuffer commandBuffer);
+    void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
 
     // Accessors
     VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
     VkRenderPass getOffscreenRenderPass() const { return offscreenFrameBuffer->getRenderPass(); }
+    VkRenderPass getOffscreenDepthPrepassRenderPass() const { return offscreenFrameBuffer->getDepthPrepassRenderPass(); }
+    VkRenderPass getOffscreenRenderPassLoadDepth() const { return offscreenFrameBuffer->getRenderPassLoadDepth(); }
+    VkRenderPass getOffscreenRenderPassLoadColorDepth() const { return offscreenFrameBuffer->getRenderPassLoadColorDepth(); }
+    VkRenderPass getGbufferRenderPass() const { return offscreenFrameBuffer->getGbufferRenderPass(); }
+    VkRenderPass getDeferredLightingRenderPass() const { return offscreenFrameBuffer->getDeferredLightingRenderPass(); }
 
     VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
     VkDescriptorImageInfo getDepthImageInfo(int index) const;
+    VkDescriptorImageInfo getHzbImageInfo(int index) const;
+    VkDescriptorImageInfo getSceneColorImageInfo(int index) const;
+    VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
+    VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
+    VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
 
     bool isFrameInProgress() const { return isFrameStarted; }
     bool wasSwapChainRecreated() const { return swapChainRecreated; }

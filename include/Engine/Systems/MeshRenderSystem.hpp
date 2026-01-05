@@ -11,6 +11,7 @@
 namespace engine {
   class ShadowSystem;
   class IBLSystem;
+  struct PBRMaterial;
 
   struct MaterialUniformData
   {
@@ -46,7 +47,24 @@ namespace engine {
     MeshRenderSystem(const MeshRenderSystem&)            = delete;
     MeshRenderSystem& operator=(const MeshRenderSystem&) = delete;
 
-    void render(FrameInfo& frameInfo);
+    // Reset per-frame transient state (material dynamic offsets, etc.).
+    void beginFrame(int frameIndex);
+
+    // Multi-pass rendering entry points.
+    void renderGbuffer(FrameInfo& frameInfo);
+    void renderTransmission(FrameInfo& frameInfo);
+    void renderAlphaBlend(FrameInfo& frameInfo);
+
+    // Must be called once after the G-buffer render pass exists.
+    void createGbufferPipeline(VkRenderPass renderPass);
+
+    // Update the scene-color copy descriptor for screen-space refraction.
+    void updateSceneColorDescriptor(int frameIndex, VkDescriptorImageInfo const& sceneColorInfo);
+
+    void renderDepthPrepass(FrameInfo& frameInfo);
+
+  // Must be called once after the offscreen depth-prepass render pass exists.
+  void createDepthPrepassPipeline(VkRenderPass renderPass);
 
     void setShadowSystem(ShadowSystem* shadowSystem);
     void setIBLSystem(IBLSystem* iblSystem);
@@ -57,12 +75,34 @@ namespace engine {
     void createShadowDescriptorResources();
     void createIBLDescriptorResources();
     void createMaterialDescriptorResources();
+    void createSceneColorDescriptorResources();
+
+    // Shared helpers for the forward compositing passes.
+    VkDeviceSize materialAtomSize() const;
+    void         bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+    void         bindShadowDescriptorSet(FrameInfo& frameInfo);
+    void         bindIBLDescriptorSet(FrameInfo& frameInfo);
+    bool         materialNeedsFullVariant(FrameInfo const& frameInfo, const PBRMaterial* mat) const;
+    MaterialUniformData buildMaterialUniformData(const PBRMaterial* pMaterial, float isSelected) const;
+    void buildWriteAndBindMaterial(FrameInfo& frameInfo,
+                    char* mappedData,
+                    VkDeviceSize atomSize,
+                    uint32_t& dynamicOffsetIndex,
+                    const PBRMaterial* pMaterial,
+                    float isSelected);
+    void writeAndBindMaterial(FrameInfo& frameInfo,
+                             char* mappedData,
+                             VkDeviceSize atomSize,
+                             uint32_t& dynamicOffsetIndex,
+                             MaterialUniformData const& matData);
 
     Device&                   device;
-    std::unique_ptr<Pipeline> pipeline;
+    std::unique_ptr<Pipeline> depthPrepassPipeline;
     std::unique_ptr<Pipeline> transparentPipeline;
-    std::unique_ptr<Pipeline> standardPipeline;
+    std::unique_ptr<Pipeline> transmissionPipeline;
     std::unique_ptr<Pipeline> standardTransparentPipeline;
+    std::unique_ptr<Pipeline> standardTransmissionPipeline;
+    std::unique_ptr<Pipeline> gbufferPipeline;
     VkPipelineLayout          pipelineLayout;
 
     ShadowSystem* currentShadowSystem_{nullptr};
@@ -80,5 +120,11 @@ namespace engine {
     VkDescriptorPool                     materialDescriptorPool_{VK_NULL_HANDLE};
     std::vector<VkDescriptorSet>         materialDescriptorSets_;
     std::vector<std::unique_ptr<Buffer>> materialBuffers_;
+
+    VkDescriptorSetLayout        sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
+    VkDescriptorPool             sceneColorDescriptorPool_{VK_NULL_HANDLE};
+    std::vector<VkDescriptorSet> sceneColorDescriptorSets_;
+
+    std::vector<uint32_t> dynamicOffsetIndexByFrame_;
   };
 } // namespace engine

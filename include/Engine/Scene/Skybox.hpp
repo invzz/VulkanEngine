@@ -36,7 +36,7 @@ namespace engine {
     static std::unique_ptr<Skybox> loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension = "jpg");
 
     /**
-     * @brief Create an empty skybox for rendering (e.g. procedural sky)
+      * @brief Create an empty skybox cubemap for rendering (e.g. runtime capture)
      * @param device Vulkan device
      * @param size Resolution of each face (e.g. 1024)
      */
@@ -52,6 +52,7 @@ namespace engine {
     [[nodiscard]] VkImageView getImageView() const { return imageView_; }
     [[nodiscard]] VkSampler   getSampler() const { return sampler_; }
     [[nodiscard]] VkImage     getImage() const { return image_; }
+    [[nodiscard]] VkFormat    getFormat() const { return imageFormat_; }
 
     [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
     {
@@ -77,6 +78,8 @@ namespace engine {
     VkDeviceMemory imageMemory_ = VK_NULL_HANDLE;
     VkImageView    imageView_   = VK_NULL_HANDLE;
     VkSampler      sampler_     = VK_NULL_HANDLE;
+
+    VkFormat imageFormat_ = VK_FORMAT_UNDEFINED;
 
     int size_ = 0; // Width/height of each face (assumed square)
   };

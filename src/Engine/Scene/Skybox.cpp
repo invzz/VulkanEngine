@@ -12,6 +12,7 @@ namespace engine {
 
   Skybox::Skybox(Device& device, const std::array<std::string, 6>& facePaths) : device_(device)
   {
+    imageFormat_ = VK_FORMAT_R8G8B8A8_SRGB;
     createCubemapImage(facePaths);
     createImageView();
     createSampler();
@@ -20,6 +21,7 @@ namespace engine {
   Skybox::Skybox(Device& device, uint32_t size) : device_(device), size_(static_cast<int>(size))
   {
     // Create cubemap image for rendering
+    imageFormat_ = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkImageCreateInfo imageInfo{};
     imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -28,7 +30,7 @@ namespace engine {
     imageInfo.extent.depth  = 1;
     imageInfo.mipLevels     = 1;
     imageInfo.arrayLayers   = 6;                        // 6 faces
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM; // UNORM to store gamma-corrected values from shader
+    imageInfo.format        = imageFormat_;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -38,7 +40,7 @@ namespace engine {
 
     if (vkCreateImage(device_.device(), &imageInfo, nullptr, &image_) != VK_SUCCESS)
     {
-      throw std::runtime_error("Failed to create procedural skybox image");
+      throw std::runtime_error("Failed to create skybox image");
     }
 
     // Allocate memory
@@ -52,7 +54,7 @@ namespace engine {
 
     if (vkAllocateMemory(device_.device(), &allocInfo, nullptr, &imageMemory_) != VK_SUCCESS)
     {
-      throw std::runtime_error("Failed to allocate procedural skybox image memory");
+      throw std::runtime_error("Failed to allocate skybox image memory");
     }
 
     vkBindImageMemory(device_.device(), image_, imageMemory_, 0);
@@ -163,7 +165,7 @@ namespace engine {
     imageInfo.extent.depth  = 1;
     imageInfo.mipLevels     = 1;
     imageInfo.arrayLayers   = 6; // 6 faces
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.format        = imageFormat_;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -226,7 +228,7 @@ namespace engine {
     viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image                           = image_;
     viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_CUBE;
-    viewInfo.format                          = VK_FORMAT_R8G8B8A8_SRGB;
+    viewInfo.format                          = imageFormat_;
     viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel   = 0;
     viewInfo.subresourceRange.levelCount     = 1;

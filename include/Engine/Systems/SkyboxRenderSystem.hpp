@@ -15,12 +15,7 @@ namespace engine {
 
   struct SkyboxSettings
   {
-    bool      useProcedural{false};
-    glm::vec4 sunDirection{0.0f, 1.0f, 0.0f, 1.0f}; // w = intensity
-    glm::vec4 sunColor{1.0f, 1.0f, 1.0f, 1.0f};
-    float     rayleigh{1.0f};
-    float     mie{0.02f};
-    float     mieEccentricity{0.76f};
+    bool      debugCubemapFaces{false};
   };
 
   struct FogSettings
@@ -67,15 +62,12 @@ namespace engine {
     void createDescriptorSetLayout();
     void createPipelineLayout();
     void createPipeline(VkRenderPass renderPass);
-    void createProceduralPipeline(VkRenderPass renderPass);
 
     Device& device_;
 
     std::unique_ptr<Pipeline> pipeline_;
-    std::unique_ptr<Pipeline> proceduralPipeline_;
 
     VkPipelineLayout      pipelineLayout_           = VK_NULL_HANDLE;
-    VkPipelineLayout      proceduralPipelineLayout_ = VK_NULL_HANDLE;
     VkDescriptorSetLayout descriptorSetLayout_      = VK_NULL_HANDLE;
     VkDescriptorPool      descriptorPool_           = VK_NULL_HANDLE;
 

@@ -26,11 +26,27 @@ namespace engine {
     void resize(VkExtent2D newExtent);
 
     VkRenderPass          getRenderPass() const { return renderPass; }
+    VkRenderPass          getDepthPrepassRenderPass() const { return depthPrepassRenderPass; }
+    VkRenderPass          getRenderPassLoadDepth() const { return renderPassLoadDepth; }
+    VkRenderPass          getRenderPassLoadColorDepth() const { return renderPassLoadColorDepth; }
+    VkRenderPass          getGbufferRenderPass() const { return gbufferRenderPass; }
+    VkRenderPass          getDeferredLightingRenderPass() const { return deferredLightingRenderPass; }
+    uint32_t              getMipLevels() const { return mipLevels; }
     VkDescriptorImageInfo getDescriptorImageInfo(int index) const;
+    VkDescriptorImageInfo getSceneColorDescriptorImageInfo(int index) const;
+    VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
+    VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
+    VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
 
     void beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void beginRenderPassLoadDepth(VkCommandBuffer commandBuffer, int frameIndex);
+    void beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
+    void beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
     void endRenderPass(VkCommandBuffer commandBuffer) const;
     void generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
+    void generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
 
     float getAspectRatio() const { return static_cast<float>(extent.width) / static_cast<float>(extent.height); }
 
@@ -39,6 +55,18 @@ namespace engine {
     VkImageView getDepthImageView(int frameIndex) const { return depthImageViews[frameIndex]; }
     VkSampler   getDepthSampler() const { return depthSampler; }
     VkImage     getDepthImage(int frameIndex) const { return depthImages[frameIndex]; }
+
+    // Offscreen color image (render target)
+    VkImage getColorImage(int frameIndex) const { return colorImages[frameIndex]; }
+
+    // G-buffer attachments
+    VkImageView getGbufferNormalImageView(int frameIndex) const { return gbufferNormalImageViews[frameIndex]; }
+    VkImageView getGbufferAlbedoImageView(int frameIndex) const { return gbufferAlbedoImageViews[frameIndex]; }
+    VkImageView getGbufferMaterialImageView(int frameIndex) const { return gbufferMaterialImageViews[frameIndex]; }
+
+    // Scene color copy (for transmission refraction sampling)
+    VkImageView getSceneColorImageView(int frameIndex) const { return sceneColorImageViews[frameIndex]; }
+    VkImage     getSceneColorImage(int frameIndex) const { return sceneColorImages[frameIndex]; }
 
     // Accessors for HZB Texture (R32_SFLOAT)
     VkImageView getHzbMipImageView(int frameIndex, int mipLevel) const { return hzbMipImageViews[frameIndex][mipLevel]; }
@@ -59,12 +87,35 @@ namespace engine {
     uint32_t   mipLevels{1};
 
     VkRenderPass renderPass{VK_NULL_HANDLE};
+    VkRenderPass depthPrepassRenderPass{VK_NULL_HANDLE};
+    VkRenderPass renderPassLoadDepth{VK_NULL_HANDLE};
+    VkRenderPass renderPassLoadColorDepth{VK_NULL_HANDLE};
+    VkRenderPass gbufferRenderPass{VK_NULL_HANDLE};
+    VkRenderPass deferredLightingRenderPass{VK_NULL_HANDLE};
 
     // Color attachment
     std::vector<VkImage>        colorImages;
     std::vector<VkDeviceMemory> colorImageMemorys;
     std::vector<VkImageView>    colorImageViews;
     std::vector<VkImageView>    colorAttachmentImageViews;
+
+    // Scene color copy (sampled in transmission pass)
+    std::vector<VkImage>        sceneColorImages;
+    std::vector<VkDeviceMemory> sceneColorImageMemorys;
+    std::vector<VkImageView>    sceneColorImageViews;
+
+    // G-buffer attachments (opaque)
+    std::vector<VkImage>        gbufferNormalImages;
+    std::vector<VkDeviceMemory> gbufferNormalMemorys;
+    std::vector<VkImageView>    gbufferNormalImageViews;
+
+    std::vector<VkImage>        gbufferAlbedoImages;
+    std::vector<VkDeviceMemory> gbufferAlbedoMemorys;
+    std::vector<VkImageView>    gbufferAlbedoImageViews;
+
+    std::vector<VkImage>        gbufferMaterialImages;
+    std::vector<VkDeviceMemory> gbufferMaterialMemorys;
+    std::vector<VkImageView>    gbufferMaterialImageViews;
 
     // Depth attachment
     std::vector<VkImage>        depthImages;
@@ -81,6 +132,11 @@ namespace engine {
     std::vector<std::vector<VkImageView>> hzbMipImageViews;
 
     std::vector<VkFramebuffer> framebuffers;
+    std::vector<VkFramebuffer> depthPrepassFramebuffers;
+    std::vector<VkFramebuffer> loadDepthFramebuffers;
+    std::vector<VkFramebuffer> loadColorDepthFramebuffers;
+    std::vector<VkFramebuffer> gbufferFramebuffers;
+    std::vector<VkFramebuffer> deferredLightingFramebuffers;
     VkSampler                  sampler{VK_NULL_HANDLE};
     VkSampler                  depthSampler{VK_NULL_HANDLE};
     VkSampler                  hzbSampler{VK_NULL_HANDLE};

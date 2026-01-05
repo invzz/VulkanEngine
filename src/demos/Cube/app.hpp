@@ -18,6 +18,7 @@
 #include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
+#include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -89,6 +90,9 @@ namespace engine {
     void computePhase(FrameInfo& frameInfo, GameLoopState& state);
     void shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
     void renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void renderSkyPass(FrameInfo& frameInfo, GameLoopState& state);
+    void renderGeometryPass(FrameInfo& frameInfo, GameLoopState& state);
+    void renderDebugPass(FrameInfo& frameInfo, GameLoopState& state);
     void uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
 
     Window          window{width(), height(), "Engine App"};
@@ -122,6 +126,7 @@ namespace engine {
     std::unique_ptr<DustRenderSystem>     dustRenderSystem;
     std::unique_ptr<MeshRenderSystem>     meshRenderSystem;
     std::unique_ptr<LightSystem>          lightSystem;
+    std::unique_ptr<DeferredLightingSystem> deferredLightingSystem;
     std::unique_ptr<PostProcessingSystem> postProcessingSystem;
 
     // Scene Resources
@@ -129,10 +134,6 @@ namespace engine {
     SkyboxSettings          skySettings;
     DustSettings            dustSettings;
     FogSettings             fogSettings;
-
-    float     timeOfDay{0.0f};
-    float     daySpeed{0.1f};
-    glm::vec4 lastSunDirection{0.0f};
 
     // UI
     std::unique_ptr<ImGuiManager> imguiManager;
@@ -142,6 +143,18 @@ namespace engine {
     std::unique_ptr<RenderGraph> renderGraph;
 
     // State
+    std::unique_ptr<DescriptorPool>      gbufferPool;
+    std::unique_ptr<DescriptorSetLayout> gbufferSetLayout;
+    std::vector<VkDescriptorSet>         gbufferDescriptorSets;
+
+    std::unique_ptr<DescriptorPool>      deferredIblPool;
+    std::unique_ptr<DescriptorSetLayout> deferredIblSetLayout;
+    std::vector<VkDescriptorSet>         deferredIblDescriptorSets;
+
+    std::unique_ptr<DescriptorPool>      deferredShadowPool;
+    std::unique_ptr<DescriptorSetLayout> deferredShadowSetLayout;
+    std::vector<VkDescriptorSet>         deferredShadowDescriptorSets;
+
     std::unique_ptr<DescriptorPool>      postProcessPool;
     std::unique_ptr<DescriptorSetLayout> postProcessSetLayout;
     std::vector<VkDescriptorSet>         postProcessDescriptorSets;

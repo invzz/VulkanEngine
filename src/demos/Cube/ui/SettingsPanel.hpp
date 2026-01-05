@@ -22,7 +22,6 @@ namespace engine {
                   SkyboxSettings&           skySettings,
                   DustSettings&             dustSettings,
                   FogSettings&              fogSettings,
-                  float&                    timeOfDay,
                   PostProcessPushConstants& pushConstants,
                   int&                      debugMode);
 
@@ -38,7 +37,6 @@ namespace engine {
     SkyboxSettings& skySettings_;
     DustSettings&   dustSettings_;
     FogSettings&    fogSettings_;
-    float&          timeOfDay_;
   };
 
 } // namespace engine

@@ -15,17 +15,19 @@ namespace engine {
     // Initialize with dummy or provided HZB info
     for (int i = 0; i < SwapChain::maxFramesInFlight(); i++)
     {
-      updateHZBDescriptor(i, hzbImageInfo);
+      updateHZBDescriptorPrev(i, hzbImageInfo);
+      updateHZBDescriptorCurrent(i, hzbImageInfo);
     }
   }
 
   void RenderContext::createDescriptorPool()
   {
     globalPool_ = DescriptorPool::Builder(device_)
-                          .setMaxSets(SwapChain::maxFramesInFlight())
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, SwapChain::maxFramesInFlight())
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, SwapChain::maxFramesInFlight())
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight())
+                          // We allocate two global descriptor sets per frame: prev-HZB + current-HZB.
+                          .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
                           .build();
   }
 
@@ -54,6 +56,8 @@ namespace engine {
 
   void RenderContext::createGlobalDescriptorSets()
   {
+    globalDescriptorSetsCurrentHzb_.resize(globalDescriptorSets_.size());
+
     for (size_t i = 0; i < globalDescriptorSets_.size(); i++)
     {
       auto bufferInfo = uboBuffers_[i]->descriptorInfo();
@@ -69,21 +73,44 @@ namespace engine {
               .writeBuffer(1, &meshInfo)
               //.writeImage(2, ...) // We don't have image info here yet
               .build(globalDescriptorSets_[i]);
+      if (globalDescriptorSets_[i] == VK_NULL_HANDLE)
+      {
+        throw std::runtime_error("failed to allocate global descriptor set (prev HZB)");
+      }
+
+      DescriptorWriter(*globalSetLayout_, *globalPool_)
+              .writeBuffer(0, &bufferInfo)
+              .writeBuffer(1, &meshInfo)
+              .build(globalDescriptorSetsCurrentHzb_[i]);
+      if (globalDescriptorSetsCurrentHzb_[i] == VK_NULL_HANDLE)
+      {
+        throw std::runtime_error("failed to allocate global descriptor set (current HZB)");
+      }
     }
   }
 
-  void RenderContext::updateHZBDescriptor(int frameIndex, VkDescriptorImageInfo hzbImageInfo)
+  static void updateHzbDescriptorSet(Device& device, VkDescriptorSet dstSet, VkDescriptorImageInfo const& hzbImageInfo)
   {
     VkWriteDescriptorSet write{};
     write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.dstSet          = globalDescriptorSets_[frameIndex];
+    write.dstSet          = dstSet;
     write.dstBinding      = 2;
     write.dstArrayElement = 0;
     write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write.descriptorCount = 1;
     write.pImageInfo      = &hzbImageInfo;
 
-    vkUpdateDescriptorSets(device_.device(), 1, &write, 0, nullptr);
+    vkUpdateDescriptorSets(device.device(), 1, &write, 0, nullptr);
+  }
+
+  void RenderContext::updateHZBDescriptorPrev(int frameIndex, VkDescriptorImageInfo hzbImageInfo)
+  {
+    updateHzbDescriptorSet(device_, globalDescriptorSets_[frameIndex], hzbImageInfo);
+  }
+
+  void RenderContext::updateHZBDescriptorCurrent(int frameIndex, VkDescriptorImageInfo hzbImageInfo)
+  {
+    updateHzbDescriptorSet(device_, globalDescriptorSetsCurrentHzb_[frameIndex], hzbImageInfo);
   }
 
   void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo)

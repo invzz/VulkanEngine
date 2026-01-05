@@ -515,7 +515,7 @@ namespace engine {
 
   VkPresentModeKHR SwapChain::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const
   {
-    const std::vector<VkPresentModeKHR> preferredModes = {VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR};
+    const std::vector<VkPresentModeKHR> preferredModes = {VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_FIFO_RELAXED_KHR};
 
     for (auto preferred : preferredModes)
     {

@@ -287,6 +287,34 @@ namespace engine {
       return;
     }
 
+    // Transition the input depth image to shader-read for mip 0 generation.
+    // Depth prepass leaves it in DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
+    VkImageMemoryBarrier depthToRead{};
+    depthToRead.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    depthToRead.image                           = frameBuffer.getDepthImage(frameIndex);
+    depthToRead.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    depthToRead.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    depthToRead.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+    depthToRead.subresourceRange.baseArrayLayer = 0;
+    depthToRead.subresourceRange.layerCount     = 1;
+    depthToRead.subresourceRange.baseMipLevel   = 0;
+    depthToRead.subresourceRange.levelCount     = 1;
+    depthToRead.oldLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthToRead.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    depthToRead.srcAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    depthToRead.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         0,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr,
+                         1,
+                         &depthToRead);
+
     VkImageMemoryBarrier hzbBarrier{};
     hzbBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     hzbBarrier.image                           = frameBuffer.getHzbImage(frameIndex);
@@ -297,12 +325,22 @@ namespace engine {
     hzbBarrier.subresourceRange.layerCount     = 1;
     hzbBarrier.subresourceRange.baseMipLevel   = 0;
     hzbBarrier.subresourceRange.levelCount     = mipLevels_;
-    hzbBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+    // HZB is sampled by shaders from the previous frame(s); transition it back to GENERAL for compute writes.
+    hzbBarrier.oldLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     hzbBarrier.newLayout                       = VK_IMAGE_LAYOUT_GENERAL;
-    hzbBarrier.srcAccessMask                   = 0;
+    hzbBarrier.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
     hzbBarrier.dstAccessMask                   = VK_ACCESS_SHADER_WRITE_BIT;
 
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &hzbBarrier);
+    vkCmdPipelineBarrier(commandBuffer,
+               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+               VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+               0,
+               0,
+               nullptr,
+               0,
+               nullptr,
+               1,
+               &hzbBarrier);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, hzbPipeline_);
 
@@ -338,6 +376,33 @@ namespace engine {
 
       vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &mipBarrier);
     }
+
+    // Restore depth image layout for the main load-depth render pass.
+    VkImageMemoryBarrier depthToAttach{};
+    depthToAttach.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    depthToAttach.image                           = frameBuffer.getDepthImage(frameIndex);
+    depthToAttach.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    depthToAttach.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+    depthToAttach.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+    depthToAttach.subresourceRange.baseArrayLayer = 0;
+    depthToAttach.subresourceRange.layerCount     = 1;
+    depthToAttach.subresourceRange.baseMipLevel   = 0;
+    depthToAttach.subresourceRange.levelCount     = 1;
+    depthToAttach.oldLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    depthToAttach.newLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthToAttach.srcAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+    depthToAttach.dstAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                         0,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr,
+                         1,
+                         &depthToAttach);
   }
 
 } // namespace engine
