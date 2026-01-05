@@ -14,6 +14,21 @@ layout(set = 1, binding = 1) uniform sampler2D gbufferAlbedo;
 layout(set = 1, binding = 2) uniform sampler2D gbufferMaterial;
 layout(set = 1, binding = 3) uniform sampler2D depthMap;
 
+vec3 octDecode(vec2 e) {
+    // Input e expected in [-1,1]
+    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    if (v.z < 0.0) {
+        v.xy = (1.0 - abs(v.yx)) * sign(v.xy);
+    }
+    return normalize(v);
+}
+
+float iorToF0(float ior) {
+    ior = max(ior, 1e-3);
+    float a = (ior - 1.0) / (ior + 1.0);
+    return a * a;
+}
+
 // IBL textures (irradiance, prefilter, BRDF LUT)
 layout(set = 2, binding = 0) uniform samplerCube irradianceMap;
 layout(set = 2, binding = 1) uniform samplerCube prefilterMap;
@@ -63,37 +78,42 @@ void calculateDirectLight(vec3 N, vec3 V, vec3 albedo, float metallic, float rou
 }
 
 vec3 applyIridescenceToF0(vec3 F0, float metallic, float NdotV, float iridescenceFactor, float iridescenceIOR, float iridescenceThicknessNm) {
-    float strength = clamp(iridescenceFactor, 0.0, 1.0) * (1.0 - metallic);
+    float strength = clamp(iridescenceFactor, 0.0, 1.0);
     if (strength <= 1e-4) {
         return F0;
     }
 
     float ior = max(iridescenceIOR, 1.0);
     float thickness = max(iridescenceThicknessNm, 0.0);
-    float cosTheta = clamp(NdotV, 0.0, 1.0);
+    float cosThetaI = clamp(NdotV, 0.0, 1.0);
 
-    // Very lightweight thin-film interference tint approximation (nm wavelengths).
+    // Approximate transmitted angle through the thin film (air -> film).
+    // This makes IOR affect phase more strongly than using NdotV directly.
+    float sinThetaI2 = max(1.0 - cosThetaI * cosThetaI, 0.0);
+    float sinThetaT2 = sinThetaI2 / max(ior * ior, 1e-6);
+    float cosThetaT  = sqrt(max(1.0 - sinThetaT2, 0.0));
+
+    // Lightweight thin-film interference approximation (nm wavelengths).
+    // NOTE: This is not a full Fresnel+multi-bounce film model, but it produces
+    // a clear iridescent shift on dielectrics while remaining stable.
     vec3 lambda = vec3(650.0, 510.0, 475.0);
-    vec3 phase = 4.0 * PI * ior * thickness * cosTheta / lambda;
-    vec3 interference = 0.5 + 0.5 * cos(phase);
+    vec3 phase = 4.0 * PI * ior * thickness * cosThetaT / lambda;
+    vec3 interference = clamp(0.5 + 0.5 * cos(phase), 0.0, 1.0);
 
-    vec3 hue = normalize(interference + vec3(1e-3));
-    vec3 tinted = clamp(F0 * hue * 3.0, 0.0, 1.0);
-    return mix(F0, tinted, strength);
+    // Keep overall energy stable: apply chroma around a base.
+    float avg = dot(interference, vec3(1.0 / 3.0));
+    vec3 chroma = interference - vec3(avg);
+
+    // Dielectrics: use plausible film interface reflectance as base.
+    // Metals: tint the existing F0 so we don't erase metallic albedo-driven reflectance.
+    float f0Film = pow((ior - 1.0) / (ior + 1.0), 2.0);
+    vec3 baseF0 = mix(vec3(f0Film), F0, step(0.5, metallic));
+    vec3 targetF0 = clamp(baseF0 + chroma * 0.35, 0.0, 1.0);
+
+    return mix(F0, targetF0, strength);
 }
 
 void main() {
-    vec4 nPacked = texture(gbufferNormal, inUV);
-    vec3 N = nPacked.xyz;
-    float nLen = length(N);
-    if (nLen > 1e-6) {
-        N /= nLen;
-    } else {
-        // No geometry written to G-buffer here; contribute nothing (additive pass).
-        outColor = vec4(0.0);
-        return;
-    }
-
     float depth = texture(depthMap, inUV).r;
     if (depth >= 1.0 - 1e-6) {
         // Sky / background (depth at far plane): contribute nothing.
@@ -103,6 +123,17 @@ void main() {
 
     vec3 worldPos = reconstructWorldPos(inUV, depth);
     vec3 V = normalize(ubo.cameraPosition.xyz - worldPos);
+
+    vec4 nPacked = texture(gbufferNormal, inUV);
+    // G-buffer normal packing:
+    // nrm.rg: oct-encoded world normal (in [0,1])
+    // nrm.b : material IOR
+    // nrm.a : iridescence (thin film) IOR
+    vec2 nOct = nPacked.rg * 2.0 - 1.0;
+    vec3 N = octDecode(nOct);
+    float materialIOR = nPacked.b;
+    float iridescenceIOR = nPacked.a;
+
     float NdotV = max(dot(N, V), 0.0);
 
     vec4 albedoA = texture(gbufferAlbedo, inUV);
@@ -114,7 +145,6 @@ void main() {
     float roughness = matRMao.g;
     float ao        = matRMao.b;
     float iridescenceFactor = matRMao.a;
-    float iridescenceIOR    = nPacked.a;
 
     // Debug views (match GlobalUbo::debugMode conventions used elsewhere)
     // 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting
@@ -135,7 +165,8 @@ void main() {
         return;
     }
 
-    vec3 F0 = mix(vec3(0.04), albedo, metallic);
+    float dielectricF0 = iorToF0(materialIOR);
+    vec3 F0 = mix(vec3(dielectricF0), albedo, metallic);
     F0 = applyIridescenceToF0(F0, metallic, NdotV, iridescenceFactor, iridescenceIOR, iridescenceThickness);
     vec3 R  = reflect(-V, N);
 
