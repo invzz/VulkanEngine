@@ -579,6 +579,15 @@ namespace engine {
       }
     }
 
+    // If the user turns off the skybox, also drop IBL back to fallback.
+    // Otherwise the last bound IBL descriptor set will keep being sampled.
+    if (!showSkybox && (skybox != nullptr))
+    {
+      std::cout << "[App] Skybox disabled. Resetting IBL to fallback." << '\n';
+      skybox.reset();
+      iblSystem->resetToFallback();
+    }
+
     iblSystem->update();
 
     // If IBL images/samplers changed (fallback -> generated, or regeneration), refresh descriptor sets.

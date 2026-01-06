@@ -224,7 +224,7 @@ namespace engine {
 
   void LightingRenderBindings::bindIBL(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout)
   {
-    if ((iblSystem_ == nullptr) || !iblSystem_->isGenerated())
+    if (iblSystem_ == nullptr)
     {
       return;
     }

@@ -53,6 +53,10 @@ namespace engine {
     [[nodiscard]] bool loadFromDisk(const std::string& directory);
     [[nodiscard]] bool saveToDisk(const std::string& directory) const;
 
+    // Drop current environment IBL and restore black fallback textures.
+    // Useful when the user disables the skybox/environment.
+    void resetToFallback();
+
     void requestRegeneration(const Settings& settings, Skybox& skybox);
     void update();
 

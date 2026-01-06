@@ -500,6 +500,78 @@ namespace engine {
     return ok;
   }
 
+  void IBLSystem::resetToFallback()
+  {
+    VkDevice dev = device_.device();
+
+    // Destroy current IBL resources (environment + BRDF LUT), then recreate the tiny black fallbacks.
+    // We intentionally reset everything so descriptor infos always point at valid views/samplers.
+    if (irradianceSampler_ != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(dev, irradianceSampler_, nullptr);
+      irradianceSampler_ = VK_NULL_HANDLE;
+    }
+    if (irradianceImageView_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(dev, irradianceImageView_, nullptr);
+      irradianceImageView_ = VK_NULL_HANDLE;
+    }
+    if (irradianceImage_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(dev, irradianceImage_, nullptr);
+      irradianceImage_ = VK_NULL_HANDLE;
+    }
+    if (irradianceMemory_ != VK_NULL_HANDLE)
+    {
+      vkFreeMemory(dev, irradianceMemory_, nullptr);
+      irradianceMemory_ = VK_NULL_HANDLE;
+    }
+
+    if (prefilteredSampler_ != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(dev, prefilteredSampler_, nullptr);
+      prefilteredSampler_ = VK_NULL_HANDLE;
+    }
+    if (prefilteredImageView_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(dev, prefilteredImageView_, nullptr);
+      prefilteredImageView_ = VK_NULL_HANDLE;
+    }
+    if (prefilteredImage_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(dev, prefilteredImage_, nullptr);
+      prefilteredImage_ = VK_NULL_HANDLE;
+    }
+    if (prefilteredMemory_ != VK_NULL_HANDLE)
+    {
+      vkFreeMemory(dev, prefilteredMemory_, nullptr);
+      prefilteredMemory_ = VK_NULL_HANDLE;
+    }
+
+    if (brdfLUTSampler_ != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(dev, brdfLUTSampler_, nullptr);
+      brdfLUTSampler_ = VK_NULL_HANDLE;
+    }
+    if (brdfLUTImageView_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(dev, brdfLUTImageView_, nullptr);
+      brdfLUTImageView_ = VK_NULL_HANDLE;
+    }
+    if (brdfLUTImage_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(dev, brdfLUTImage_, nullptr);
+      brdfLUTImage_ = VK_NULL_HANDLE;
+    }
+    if (brdfLUTMemory_ != VK_NULL_HANDLE)
+    {
+      vkFreeMemory(dev, brdfLUTMemory_, nullptr);
+      brdfLUTMemory_ = VK_NULL_HANDLE;
+    }
+
+    createFallbackResources();
+  }
+
   void IBLSystem::createFallbackResources()
   {
     // Tiny black textures: fast to create and good defaults when no environment is loaded.
