@@ -44,8 +44,6 @@ namespace engine {
             translationChanged |= ImGui::DragFloat("Y", &transform.translation.y, 0.1f);
             translationChanged |= ImGui::DragFloat("Z", &transform.translation.z, 0.1f);
 
-
-
             ImGui::Separator();
             if (ImGui::Button("Reset Position"))
             {

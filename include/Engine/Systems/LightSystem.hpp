@@ -11,7 +11,6 @@
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/Scene.hpp"
 
-
 namespace engine {
 
   class LightSystem

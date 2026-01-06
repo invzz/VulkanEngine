@@ -39,9 +39,9 @@ namespace engine {
         {
           auto entity = registry.create();
 
-          auto& transform       = registry.emplace<TransformComponent>(entity);
-          float const a               = angleDist(rng);
-          float const r               = radiusDist(rng);
+          auto&       transform = registry.emplace<TransformComponent>(entity);
+          float const a         = angleDist(rng);
+          float const r         = radiusDist(rng);
           transform.translation = glm::vec3(std::cos(a) * r, heightDist(rng), std::sin(a) * r);
 
           auto& light     = registry.emplace<PointLightComponent>(entity);
@@ -98,8 +98,7 @@ namespace engine {
           if (dirLight.useTargetPoint)
           {
             if (ImGui::DragFloat3("Target Point", &dirLight.targetPoint.x, 0.1f))
-            {
-            }
+            {}
           }
 
           // Show current direction
@@ -137,8 +136,7 @@ namespace engine {
           if (spotLight.useTargetPoint)
           {
             if (ImGui::DragFloat3("Target Point##spot", &spotLight.targetPoint.x, 0.1f))
-            {
-            }
+            {}
           }
 
           // Show current direction

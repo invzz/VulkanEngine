@@ -15,12 +15,12 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Resources/MeshManager.hpp"
+#include "Engine/Scene/LightMath.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Scene/LightMath.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
@@ -251,8 +251,8 @@ namespace engine {
         DirectionalLight dl{};
 
         glm::vec3 const direction = transform.getForwardDir();
-        dl.direction        = glm::vec4(glm::normalize(direction), 0.f);
-        dl.color            = glm::vec4(dir.color, dir.intensity);
+        dl.direction              = glm::vec4(glm::normalize(direction), 0.f);
+        dl.color                  = glm::vec4(dir.color, dir.intensity);
         dirLights.push_back(dl);
       }
     }
