@@ -224,7 +224,7 @@ namespace engine {
   {
     // If we already have a non-fallback LUT at the requested size, keep it.
     // We infer this by checking the current image handle and (cheaply) trusting settings.
-    if (brdfLUTImage_ != VK_NULL_HANDLE && brdfLUTSampler_ != VK_NULL_HANDLE && brdfLUTImageView_ != VK_NULL_HANDLE && settings_.brdfLUTSize > 1)
+    if (brdfLUTImage_ != VK_NULL_HANDLE && brdfLUTSampler_ != VK_NULL_HANDLE && brdfLUTImageView_ != VK_NULL_HANDLE && brdfLUTCurrentSize_ == settings_.brdfLUTSize && settings_.brdfLUTSize > 1)
     {
       return;
     }
@@ -250,6 +250,7 @@ namespace engine {
       vkFreeMemory(device_.device(), brdfLUTMemory_, nullptr);
       brdfLUTMemory_ = VK_NULL_HANDLE;
     }
+    brdfLUTCurrentSize_ = 0;
 
     createBRDFLUT();
     createBRDFResources();
@@ -345,7 +346,7 @@ namespace engine {
                           static_cast<uint32_t>(settings_.prefilterSize),
                           static_cast<uint32_t>(settings_.prefilterMipLevels),
                           6);
-    ok = ok && writeImage("brdf_lut.vtex", brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, static_cast<uint32_t>(settings_.brdfLUTSize), static_cast<uint32_t>(settings_.brdfLUTSize), 1, 1);
+    ok = ok && writeImage("brdf_lut.vtex", brdfLUTImage_, VK_FORMAT_R16G16B16A16_SFLOAT, static_cast<uint32_t>(settings_.brdfLUTSize), static_cast<uint32_t>(settings_.brdfLUTSize), 1, 1);
     return ok;
   }
 
@@ -487,6 +488,12 @@ namespace engine {
 
     if (ok)
     {
+      // Keep size bookkeeping in sync for ensureBRDFLUT().
+      brdfLUTCurrentSize_ = static_cast<int>(brdfH.width);
+    }
+
+    if (ok)
+    {
       generated_ = true;
       generationCounter_++;
     }
@@ -587,6 +594,8 @@ namespace engine {
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                       brdfLUTImage_,
                       brdfLUTMemory_);
+
+    brdfLUTCurrentSize_ = 1;
 
     brdfLUTImageView_ = createImageViewHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1, VK_IMAGE_VIEW_TYPE_2D);
 
@@ -895,9 +904,14 @@ namespace engine {
       }
       else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
       {
-        barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        // Readback path for VTEX export:
+        // Although the image is currently in SHADER_READ_ONLY_OPTIMAL, its most recent writer may have been
+        // a compute shader (BRDF LUT) or a color attachment pass (irradiance/prefilter) and there may not
+        // have been an actual shader-read between generation and readback.
+        // Include common write access masks/stages so transfer reads observe the generated contents.
+        barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        sourceStage           = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
       }
       else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -1041,14 +1055,14 @@ namespace engine {
                       settings_.brdfLUTSize,
                       settings_.brdfLUTSize,
                       1,
-                      VK_FORMAT_R16G16_SFLOAT,
+                      VK_FORMAT_R16G16B16A16_SFLOAT,
                       VK_IMAGE_TILING_OPTIMAL,
-                      VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                      VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                       brdfLUTImage_,
                       brdfLUTMemory_);
 
-    brdfLUTImageView_ = createImageViewHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+    brdfLUTImageView_ = createImageViewHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1);
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1073,8 +1087,10 @@ namespace engine {
       throw std::runtime_error("failed to create BRDF LUT sampler!");
     }
 
+    brdfLUTCurrentSize_ = settings_.brdfLUTSize;
+
     // Transition to general layout for compute shader storage
-    transitionImageLayoutHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1);
+    transitionImageLayoutHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 1);
   }
 
   void IBLSystem::createIrradianceResources()
@@ -1798,7 +1814,7 @@ namespace engine {
 
     device_.getMemory().endSingleTimeCommands(commandBuffer);
 
-    transitionImageLayoutHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1);
+    transitionImageLayoutHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1);
   }
 
 } // namespace engine

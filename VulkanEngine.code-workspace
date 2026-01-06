@@ -172,6 +172,7 @@
       "*.geom": "glsl",
       "*.comp": "glsl",
       "*.mesh": "glsl"
-    }
+    },
+    "makefile.configureOnOpen": false
   }
 }

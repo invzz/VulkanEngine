@@ -115,6 +115,9 @@ namespace engine {
     VkImageView    brdfLUTImageView_ = VK_NULL_HANDLE;
     VkSampler      brdfLUTSampler_   = VK_NULL_HANDLE;
 
+    // Tracks the actual allocated size for brdfLUTImage_ (fallback is 1).
+    int brdfLUTCurrentSize_ = 0;
+
     // Pipeline resources for irradiance convolution
     VkRenderPass          irradianceRenderPass_     = VK_NULL_HANDLE;
     VkPipelineLayout      irradiancePipelineLayout_ = VK_NULL_HANDLE;
