@@ -25,8 +25,10 @@ namespace engine {
   class ShadowSystem
   {
   public:
-    static constexpr int MAX_SHADOW_MAPS      = 4; // For directional + spotlights
-    static constexpr int MAX_CUBE_SHADOW_MAPS = 4; // For point lights (cube maps)
+    static constexpr int DIRECTIONAL_CASCADE_COUNT = 4;
+    static constexpr int MAX_SPOT_SHADOW_MAPS      = 4;
+    static constexpr int MAX_SHADOW_MAPS           = DIRECTIONAL_CASCADE_COUNT + MAX_SPOT_SHADOW_MAPS; // Directional cascades + spotlights
+    static constexpr int MAX_CUBE_SHADOW_MAPS      = 4;                                                // For point lights (cube maps)
 
     ShadowSystem(Device& device, uint32_t shadowMapSize = 2048);
     ~ShadowSystem();
@@ -37,9 +39,17 @@ namespace engine {
     /**
      * @brief Render all shadow maps for the frame
      * @param frameInfo Current frame information
-     * @param sceneRadius Approximate scene bounds for light frustum calculation
+     * @param shadowDistance World-space distance from the camera to cover with the
+     *        directional light shadow. Larger values reduce quality.
      */
-    void renderShadowMaps(FrameInfo& frameInfo, float sceneRadius = 20.0f);
+    void renderShadowMaps(FrameInfo& frameInfo, float shadowDistance = 20.0f);
+
+    [[nodiscard]] int       getDirectionalCascadeCount() const { return directionalCascadeCount_; }
+    [[nodiscard]] int       getDirectionalCascadeBaseIndex() const { return directionalCascadeBaseIndex_; }
+    [[nodiscard]] glm::vec4 getDirectionalCascadeSplits() const
+    {
+      return glm::vec4(directionalCascadeSplits_[0], directionalCascadeSplits_[1], directionalCascadeSplits_[2], directionalCascadeSplits_[3]);
+    }
 
     /**
      * @brief Get the shadow map at specified index for sampling
@@ -95,7 +105,7 @@ namespace engine {
     /**
      * @brief Calculate orthographic projection matrix for directional light
      */
-    static glm::mat4 calculateDirectionalLightMatrix(const glm::vec3& lightDirection, const glm::vec3& sceneCenter, float sceneRadius);
+    glm::mat4 calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection, const Camera& camera, float cascadeNear, float cascadeFar) const;
 
     /**
      * @brief Calculate perspective projection matrix for spotlight
@@ -143,6 +153,10 @@ namespace engine {
 
     glm::mat4 lightSpaceMatrices_[MAX_SHADOW_MAPS];
     int       shadowLightCount_ = 0;
+
+    int   directionalCascadeCount_     = 0;
+    int   directionalCascadeBaseIndex_ = 0; // Cascades are stored starting at 0
+    float directionalCascadeSplits_[DIRECTIONAL_CASCADE_COUNT]{0.0f, 0.0f, 0.0f, 0.0f};
 
     glm::vec3 pointLightPositions_[MAX_CUBE_SHADOW_MAPS];
     float     pointLightRanges_[MAX_CUBE_SHADOW_MAPS];

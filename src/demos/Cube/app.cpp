@@ -693,11 +693,14 @@ namespace engine {
     // updated)
     state.shadowSystem.renderShadowMaps(frameInfo, 50.0f);
 
-    ubo.projection       = frameInfo.camera.getProjection();
-    ubo.view             = frameInfo.camera.getView();
-    ubo.cameraPosition   = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
-    ubo.shadowLightCount = state.shadowSystem.getShadowLightCount();
-    ubo.debugMode        = debugMode;
+    ubo.projection                  = frameInfo.camera.getProjection();
+    ubo.view                        = frameInfo.camera.getView();
+    ubo.cameraPosition              = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
+    ubo.shadowLightCount            = state.shadowSystem.getShadowLightCount();
+    ubo.directionalCascadeCount     = state.shadowSystem.getDirectionalCascadeCount();
+    ubo.directionalCascadeBaseIndex = state.shadowSystem.getDirectionalCascadeBaseIndex();
+    ubo.directionalCascadeSplits    = state.shadowSystem.getDirectionalCascadeSplits();
+    ubo.debugMode                   = debugMode;
 
     // Fog Logic
     glm::vec3 horizonColor   = fogSettings.color;
