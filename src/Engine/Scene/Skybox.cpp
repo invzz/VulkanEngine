@@ -71,21 +71,37 @@ namespace engine {
 
   Skybox::~Skybox()
   {
-    if (sampler_ != VK_NULL_HANDLE)
+    // Important: Skybox can be disabled while command buffers from previous
+    // frames are still in flight. Destroying its image/view/sampler immediately
+    // can cause a GPU use-after-free and crash.
+    //
+    // Use the engine's deferred destruction queue (flushed after per-frame
+    // fence waits) to make teardown safe.
+    VkSampler      sampler = sampler_;
+    VkImageView    view    = imageView_;
+    VkImage        image   = image_;
+    VkDeviceMemory memory  = imageMemory_;
+
+    sampler_     = VK_NULL_HANDLE;
+    imageView_   = VK_NULL_HANDLE;
+    image_       = VK_NULL_HANDLE;
+    imageMemory_ = VK_NULL_HANDLE;
+
+    if (sampler != VK_NULL_HANDLE)
     {
-      vkDestroySampler(device_.device(), sampler_, nullptr);
+      device_.deferDestroy([sampler](VkDevice dev) { vkDestroySampler(dev, sampler, nullptr); });
     }
-    if (imageView_ != VK_NULL_HANDLE)
+    if (view != VK_NULL_HANDLE)
     {
-      vkDestroyImageView(device_.device(), imageView_, nullptr);
+      device_.deferDestroy([view](VkDevice dev) { vkDestroyImageView(dev, view, nullptr); });
     }
-    if (image_ != VK_NULL_HANDLE)
+    if (image != VK_NULL_HANDLE)
     {
-      vkDestroyImage(device_.device(), image_, nullptr);
+      device_.deferDestroy([image](VkDevice dev) { vkDestroyImage(dev, image, nullptr); });
     }
-    if (imageMemory_ != VK_NULL_HANDLE)
+    if (memory != VK_NULL_HANDLE)
     {
-      vkFreeMemory(device_.device(), imageMemory_, nullptr);
+      device_.deferDestroy([memory](VkDevice dev) { vkFreeMemory(dev, memory, nullptr); });
     }
   }
 
