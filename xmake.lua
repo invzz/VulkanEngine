@@ -5,6 +5,16 @@ set_languages("cxx20")
 add_rules("mode.debug", "mode.release")
 local project_dir = os.projectdir()
 
+-- Enable extra diagnostics for unused/dead code.
+-- Notes:
+-- - Compilers can warn about unused locals/params and unreferenced static functions.
+-- - The linker can eliminate unreferenced functions/data and (optionally) print what was removed.
+option("deadcode")
+    set_showmenu(true)
+    set_default(false)
+    set_description("Enable unused/dead code warnings and link-time dead stripping reporting")
+option_end()
+
 -- Convert backslashes to forward slashes for C++ string compatibility
 local shader_path = path.join(project_dir, "assets/shaders/compiled//"):gsub("\\", "/") .."/"
 local texture_path = path.join(project_dir, "assets/textures//"):gsub("\\", "/") .."/"
@@ -85,6 +95,17 @@ target("Cube")
         add_packages("glfw", "glm", "vulkan", "imgui", "entt", "nlohmann_json", "tinygltf")
     end
     add_deps("Engine")
+
+    if has_config("deadcode") then
+        if is_plat("windows") then
+            -- MSVC/clang-cl flags (via link.exe)
+            add_cxflags("/W4", "/w44061", "/w44100", "/w44189", "/w44505", "/Gy", "/Gw", {force = true})
+            add_ldflags("/OPT:REF", "/OPT:ICF", "/VERBOSE:REF", {force = true})
+        else
+            add_cxflags("-Wall", "-Wextra", "-Wunused-parameter", "-Wunused-variable", "-Wunused-function", "-Wunreachable-code", "-ffunction-sections", "-fdata-sections", {force = true})
+            add_ldflags("-Wl,--gc-sections", "-Wl,--print-gc-sections", {force = true})
+        end
+    end
     
 target("Engine")
     set_kind("static")
@@ -111,6 +132,14 @@ target("Engine")
     add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
     add_defines("MODEL_PATH=\"" .. model_path .. "\"")
     add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
+
+    if has_config("deadcode") then
+        if is_plat("windows") then
+            add_cxflags("/W4", "/w44061", "/w44100", "/w44189", "/w44505", "/Gy", "/Gw", {force = true})
+        else
+            add_cxflags("-Wall", "-Wextra", "-Wunused-parameter", "-Wunused-variable", "-Wunused-function", "-Wunreachable-code", "-ffunction-sections", "-fdata-sections", {force = true})
+        end
+    end
 
 -- Utility target to (re)compile shaders on demand.
 target("Shaders")
