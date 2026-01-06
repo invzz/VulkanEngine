@@ -21,6 +21,11 @@ local texture_path = path.join(project_dir, "assets/textures//"):gsub("\\", "/")
 local model_path = path.join(project_dir, "assets/models//"):gsub("\\", "/") .."/"
 local profile_path = path.join(project_dir, "profile/"):gsub("\\", "/") .."/"
 
+-- Asset paths (make available to all targets)
+add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
+add_defines("MODEL_PATH=\"" .. model_path .. "\"")
+add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
+
 -- Platform-specific defines
 if is_plat("linux") then
     add_defines("GLFW_USE_WAYLAND=1")
@@ -85,9 +90,6 @@ target("Cube")
     add_includedirs("include", {public = true})
     add_includedirs("src/demos/Cube")
     -- Cube includes UI headers via "CubeUI/ui/..." from include/.
-    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
-    add_defines("MODEL_PATH=\"" .. model_path .. "\"")
-    add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
     if is_mode("debug") then
         add_defines("ENABLE_PROFILING")
         add_defines("PROFILE_OUTPUT_DIR=\"" .. profile_path .. "\"")
@@ -149,9 +151,6 @@ target("Engine")
     add_packages("meshoptimizer")
     add_packages("imgui")
     add_packages("entt")
-    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
-    add_defines("MODEL_PATH=\"" .. model_path .. "\"")
-    add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
 
     if has_config("deadcode") then
         if is_plat("windows") then
@@ -166,9 +165,6 @@ target("EngineImporters")
     set_kind("static")
     add_files("src/EngineImporters/Resources/importers/**.cpp")
     add_includedirs("include", {public = true})
-    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
-    add_defines("MODEL_PATH=\"" .. model_path .. "\"")
-    add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
     -- Importers include core engine headers (e.g. Window.hpp) that require these packages.
     if is_plat("windows") then
         add_packages("glfw", "glm", "vulkan-headers")
@@ -187,9 +183,6 @@ target("EngineSceneIO")
     set_kind("static")
     add_files("src/EngineSceneIO/Scene/SceneSerializer.cpp")
     add_includedirs("include", {public = true})
-    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
-    add_defines("MODEL_PATH=\"" .. model_path .. "\"")
-    add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
     -- Scene IO includes some core Engine headers that pull in Window.hpp.
     add_packages("glfw", "glm", "vulkan-headers")
     add_packages("nlohmann_json")
