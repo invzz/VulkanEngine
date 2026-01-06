@@ -1,16 +1,33 @@
+#include "app.hpp"
+
+#include <GLFW/glfw3.h>
+
 #include <array>
+#include <chrono>
 #include <cstdint>
+#include <glm/common.hpp>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "Engine/Core/Keyboard.hpp"
+#include "Engine/Core/Mouse.hpp"
+#include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
+#include "Engine/Resources/TextureManager.hpp"
+#include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
 #include "glm/ext/vector_float2.hpp"
@@ -19,25 +36,6 @@
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"
 #include "vulkan/vulkan_core.h"
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLFW/glfw3.h>
-
-#include <chrono>
-#include <glm/common.hpp>
-#include <iostream>
-
-#include "Engine/Core/Keyboard.hpp"
-#include "Engine/Core/Mouse.hpp"
-#include "Engine/Core/Window.hpp"
-#include "Engine/Graphics/Device.hpp"
-#include "Engine/Graphics/ImGuiManager.hpp"
-#include "Engine/Resources/TextureManager.hpp"
-#include "Engine/Scene/Camera.hpp"
-#include "Engine/Scene/components/DirectionalLightComponent.hpp"
-#include "Engine/Scene/components/NameComponent.hpp"
-#include "Engine/Scene/components/TransformComponent.hpp"
-#include "app.hpp"
 
 // Systems
 #include "Engine/Graphics/RenderGraph.hpp"
@@ -57,11 +55,11 @@
 #include "RenderContext.hpp"
 
 // UI Panels
-#include "ui/InspectorPanel.hpp"
-#include "ui/ModelImportPanel.hpp"
-#include "ui/ScenePanel.hpp"
-#include "ui/SettingsPanel.hpp"
-#include "ui/UIManager.hpp"
+#include "CubeUI/ui/InspectorPanel.hpp"
+#include "CubeUI/ui/ModelImportPanel.hpp"
+#include "CubeUI/ui/ScenePanel.hpp"
+#include "CubeUI/ui/SettingsPanel.hpp"
+#include "CubeUI/ui/UIManager.hpp"
 
 namespace {
   struct SunInfo

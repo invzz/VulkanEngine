@@ -27,6 +27,11 @@ if is_plat("linux") then
 end
 add_defines("GLFW_INCLUDE_VULKAN")
 
+-- GLM configuration (keep consistent across all translation units)
+add_defines("GLM_FORCE_RADIANS")
+add_defines("GLM_FORCE_DEPTH_ZERO_TO_ONE")
+add_defines("GLM_ENABLE_EXPERIMENTAL")
+
 -- Use Vulkan SDK loader on Windows (do not define VK_NO_PROTOTYPES)
 -- Package dependencies - use Vulkan SDK on Windows
 if is_plat("windows") then
@@ -79,7 +84,7 @@ target("Cube")
     set_default(true)
     add_includedirs("include", {public = true})
     add_includedirs("src/demos/Cube")
-    add_includedirs("src/demos/Cube/ui")
+    -- Cube includes UI headers via "CubeUI/ui/..." from include/.
     add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
     add_defines("MODEL_PATH=\"" .. model_path .. "\"")
     add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
@@ -95,6 +100,9 @@ target("Cube")
         add_packages("glfw", "glm", "vulkan", "imgui", "entt", "nlohmann_json", "tinygltf")
     end
     add_deps("Engine")
+    add_deps("EngineImporters")
+    add_deps("EngineSceneIO")
+    add_deps("CubeUI")
 
     if has_config("deadcode") then
         if is_plat("windows") then
@@ -107,9 +115,21 @@ target("Cube")
         end
     end
     
+target("CubeUI")
+    set_kind("static")
+    add_files("src/demos/CubeUI/ui/**.cpp")
+    add_includedirs("include", {public = true})
+    if is_plat("windows") then
+        add_packages("glfw", "glm", "vulkan-headers", "imgui", "entt", "nlohmann_json")
+    else
+        add_packages("glfw", "glm", "vulkan", "imgui", "entt", "nlohmann_json")
+    end
+    add_deps("Engine")
+
 target("Engine")
     set_kind("static")
     add_files("src/Engine/**.cpp")
+    -- Keep runtime/core in Engine. Optional modules are split into separate targets.
     add_includedirs("include", {public = true})
     if is_mode("debug") then
         add_defines("ENABLE_PROFILING")
@@ -140,6 +160,41 @@ target("Engine")
             add_cxflags("-Wall", "-Wextra", "-Wunused-parameter", "-Wunused-variable", "-Wunused-function", "-Wunreachable-code", "-ffunction-sections", "-fdata-sections", {force = true})
         end
     end
+
+-- Asset importers (glTF/OBJ). Split from Engine for cleaner boundaries.
+target("EngineImporters")
+    set_kind("static")
+    add_files("src/EngineImporters/Resources/importers/**.cpp")
+    add_includedirs("include", {public = true})
+    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
+    add_defines("MODEL_PATH=\"" .. model_path .. "\"")
+    add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
+    -- Importers include core engine headers (e.g. Window.hpp) that require these packages.
+    if is_plat("windows") then
+        add_packages("glfw", "glm", "vulkan-headers")
+    else
+        add_packages("glfw", "glm", "vulkan-headers")
+    end
+    add_packages("tinyobjloader")
+    add_packages("tinygltf")
+    add_packages("stb")
+    add_packages("nlohmann_json")
+    add_packages("meshoptimizer")
+    add_deps("Engine")
+
+-- Scene serialization/deserialization (json). Split from Engine for cleaner boundaries.
+target("EngineSceneIO")
+    set_kind("static")
+    add_files("src/EngineSceneIO/Scene/SceneSerializer.cpp")
+    add_includedirs("include", {public = true})
+    add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
+    add_defines("MODEL_PATH=\"" .. model_path .. "\"")
+    add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
+    -- Scene IO includes some core Engine headers that pull in Window.hpp.
+    add_packages("glfw", "glm", "vulkan-headers")
+    add_packages("nlohmann_json")
+    add_packages("entt")
+    add_deps("Engine")
 
 -- Utility target to (re)compile shaders on demand.
 target("Shaders")

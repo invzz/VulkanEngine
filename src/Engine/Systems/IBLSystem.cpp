@@ -1,7 +1,6 @@
 #include "Engine/Systems/IBLSystem.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <string>

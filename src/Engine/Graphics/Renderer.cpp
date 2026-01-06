@@ -10,16 +10,10 @@
 #include <utility>
 
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Graphics/SwapChain.hpp"
-#include "vulkan/vulkan_core.h"
-
-// Ensure GLM uses radians for all angle measurements
-#define GLM_FORCE_RADIANS
-// Ensure depth range is [0, 1] for Vulkan
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/SwapChain.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -74,7 +68,7 @@ namespace engine {
     else
     {
       std::shared_ptr<SwapChain> const oldSwapChain = std::move(swapChain);
-      swapChain                               = std::make_unique<SwapChain>(device, extent, oldSwapChain);
+      swapChain                                     = std::make_unique<SwapChain>(device, extent, oldSwapChain);
 
       if (!oldSwapChain->compareSwapFormats(*swapChain))
       {

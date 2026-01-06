@@ -4,10 +4,6 @@
 #define MODEL_PATH "assets/models/"
 #endif
 
-// Ensure GLM uses radians for all angle measurements
-#define GLM_FORCE_RADIANS
-// Ensure depth range is [0, 1] for Vulkan
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>

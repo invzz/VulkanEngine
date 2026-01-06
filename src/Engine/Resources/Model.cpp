@@ -1,26 +1,22 @@
 #include "Engine/Resources/Model.hpp"
 
+#include <meshoptimizer.h>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 #include <vector>
 
-#include "Engine/Graphics/Device.hpp"
-#include "vulkan/vulkan_core.h"
-#define GLM_ENABLE_EXPERIMENTAL
-#include <meshoptimizer.h>
-
-#include <iostream>
-
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Core/utils.hpp"
-#include "Engine/Resources/importers/GLTFImporter.hpp"
-#include "Engine/Resources/importers/OBJImporter.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace std {
   template <> struct hash<engine::Model::Vertex>
@@ -43,16 +39,6 @@ namespace engine {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
     generateMeshlets(builder.vertices, builder.indices);
-  }
-
-  std::unique_ptr<Model> Model::createModelFromFile(Device& device, const std::string& filepath, bool flipX, bool flipY, bool flipZ)
-  {
-    std::cout << "[" << GREEN << "Model" << RESET << "]: Loading model from file: " << filepath << '\n';
-    Builder builder;
-    builder.loadModelFromFile(filepath, flipX, flipY, flipZ);
-    std::cout << "[" << GREEN << "Model" << RESET << "]: " << filepath << " with " << builder.vertices.size() << " vertices " << '\n';
-    return std::make_unique<Model>(device, builder);
-    return nullptr;
   }
 
   Model::~Model() = default;
@@ -205,35 +191,6 @@ namespace engine {
             .offset   = offsetof(Vertex, uv),
     });
     return attributeDescriptions;
-  }
-
-  void engine::Model::Builder::loadModelFromFile(const std::string& filepath, bool flipX, bool flipY, bool flipZ)
-  {
-    this->filePath = filepath;
-    OBJImporter importer;
-    if (!importer.load(*this, filepath, flipX, flipY, flipZ))
-    {
-      throw std::runtime_error("Failed to load OBJ file: " + filepath);
-    }
-  }
-
-  std::unique_ptr<Model> Model::createModelFromGLTF(Device& device, const std::string& filepath, bool flipX, bool flipY, bool flipZ)
-  {
-    std::cout << "[" << GREEN << "Model" << RESET << "]: Loading glTF model from file: " << filepath << '\n';
-    Builder builder;
-    builder.loadModelFromGLTF(filepath, flipX, flipY, flipZ);
-    std::cout << "[" << GREEN << "Model" << RESET << "]: " << filepath << " with " << builder.vertices.size() << " vertices " << '\n';
-    return std::make_unique<Model>(device, builder);
-  }
-
-  void Model::Builder::loadModelFromGLTF(const std::string& filepath, bool flipX, bool flipY, bool flipZ)
-  {
-    this->filePath = filepath;
-    GLTFImporter importer;
-    if (!importer.load(*this, filepath, flipX, flipY, flipZ))
-    {
-      throw std::runtime_error("Failed to load glTF file: " + filepath);
-    }
   }
 
   size_t Model::getMemorySize() const

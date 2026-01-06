@@ -1,5 +1,5 @@
-#ifndef VULKANENGINE_SRC_DEMOS_CUBE_APP_HPP
-#define VULKANENGINE_SRC_DEMOS_CUBE_APP_HPP
+#ifndef CUBE_APP_HPP
+#define CUBE_APP_HPP
 
 #include <glm/glm.hpp>
 #include <glm/vec2.hpp>
@@ -14,12 +14,12 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
+#include "EngineSceneIO/Scene/SceneSerializer.hpp"
 
 namespace engine {
 
@@ -166,4 +166,4 @@ namespace engine {
   };
 } // namespace engine
 
-#endif // VULKANENGINE_SRC_DEMOS_CUBE_APP_HPP
+#endif // CUBE_APP_HPP

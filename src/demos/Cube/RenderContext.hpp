@@ -1,5 +1,5 @@
-#ifndef VULKANENGINE_SRC_DEMOS_CUBE_RENDERCONTEXT_HPP
-#define VULKANENGINE_SRC_DEMOS_CUBE_RENDERCONTEXT_HPP
+#ifndef CUBE_RENDERCONTEXT_HPP
+#define CUBE_RENDERCONTEXT_HPP
 
 #include <memory>
 #include <vector>
@@ -65,4 +65,4 @@ namespace engine {
 
 } // namespace engine
 
-#endif // VULKANENGINE_SRC_DEMOS_CUBE_RENDERCONTEXT_HPP
+#endif // CUBE_RENDERCONTEXT_HPP

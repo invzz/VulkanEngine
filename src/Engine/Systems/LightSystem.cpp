@@ -1,14 +1,7 @@
-// Ensure GLM uses radians for all angle measurements
-#define GLM_FORCE_RADIANS
-// Ensure depth range is [0, 1] for Vulkan
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include "Engine/Systems/LightSystem.hpp"
 
-#include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <string>
 #include <vector>

@@ -1,0 +1,19 @@
+#include "CubeUI/ui/DebugPanel.hpp"
+
+#include <imgui.h>
+
+#include "Engine/Graphics/FrameInfo.hpp"
+
+namespace engine {
+  DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}
+
+  void DebugPanel::render(FrameInfo& /*frameInfo*/)
+  {
+    // ImGui::Begin("Debug Settings");
+
+    const char* debugItems[] = {"None", "Albedo", "Normal", "Roughness", "Metallic", "Lighting Only", "AO", "Meshlets", "Meshlet Cones"};
+    ImGui::Combo("Debug View", &debugMode_, debugItems, IM_ARRAYSIZE(debugItems));
+
+    // ImGui::End();
+  }
+} // namespace engine
