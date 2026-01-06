@@ -93,6 +93,34 @@ namespace {
  */
 namespace engine {
 
+  void Device::setCurrentFrameIndex(uint32_t frameIndex)
+  {
+    currentFrameIndex_ = frameIndex % kMaxFramesInFlight;
+  }
+
+  void Device::deferDestroy(std::function<void(VkDevice)> fn)
+  {
+    deferredDestroy_[currentFrameIndex_].push_back(std::move(fn));
+  }
+
+  void Device::flushDeferred(uint32_t frameIndex)
+  {
+    auto& bucket = deferredDestroy_[frameIndex % kMaxFramesInFlight];
+    for (auto& fn : bucket)
+    {
+      fn(device_);
+    }
+    bucket.clear();
+  }
+
+  void Device::flushAllDeferred()
+  {
+    for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)
+    {
+      flushDeferred(i);
+    }
+  }
+
   // class member functions
   /**
    * @class Device
@@ -117,6 +145,12 @@ namespace engine {
    */
   Device::~Device()
   {
+    // Ensure GPU is idle so deferred destructions are safe.
+    vkDeviceWaitIdle(device_);
+
+    // Run any deferred destroys queued by subsystems.
+    flushAllDeferred();
+
     // ensure helper is destroyed before device/command pool teardown
     memory_.reset();
     vkDestroyCommandPool(device_, commandPool, nullptr);

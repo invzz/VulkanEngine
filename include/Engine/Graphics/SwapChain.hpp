@@ -16,7 +16,7 @@ namespace engine {
   class SwapChain
   {
   public:
-    static int maxFramesInFlight() { return 2; }
+    static int maxFramesInFlight() { return static_cast<int>(Device::kMaxFramesInFlight); }
 
     SwapChain(Device& deviceRef, VkExtent2D windowExtent);
     SwapChain(Device& deviceRef, VkExtent2D windowExtent, std::shared_ptr<SwapChain> previous);

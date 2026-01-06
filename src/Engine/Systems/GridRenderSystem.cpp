@@ -59,7 +59,7 @@ namespace engine {
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
     constexpr int gridExtent   = 20;
-    constexpr int linesPerAxis = gridExtent * 2 + 1;
+    constexpr int linesPerAxis = (gridExtent * 2) + 1;
     constexpr int totalLines   = linesPerAxis * 2;
     constexpr int totalVerts   = totalLines * 2;
 

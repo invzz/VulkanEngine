@@ -426,7 +426,7 @@ namespace engine {
   {
     assert(isFrameStarted && "Can't end render pass when frame not in progress");
     assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different frame");
-    offscreenFrameBuffer->endRenderPass(commandBuffer);
+    engine::FrameBuffer::endRenderPass(commandBuffer);
   }
 
   VkDescriptorImageInfo Renderer::getOffscreenImageInfo(int index) const

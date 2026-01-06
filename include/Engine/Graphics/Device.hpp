@@ -1,6 +1,8 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICE_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICE_HPP
 
+#include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,6 +31,7 @@ namespace engine {
   class Device
   {
   public:
+    static constexpr uint32_t kMaxFramesInFlight = 2;
 #ifdef NDEBUG
     const bool enableValidationLayers = false;
 #else
@@ -70,6 +73,14 @@ namespace engine {
     VkCommandBuffer beginSingleTimeCommands();
     void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
+    // Deferred destruction: enqueue Vulkan destroys to run after the in-flight fence for a frame.
+    // SwapChain drives the current frame index and flushes the queue once its fence is waited.
+    void     setCurrentFrameIndex(uint32_t frameIndex);
+    uint32_t getCurrentFrameIndex() const { return currentFrameIndex_; }
+    void     deferDestroy(std::function<void(VkDevice)> fn);
+    void     flushDeferred(uint32_t frameIndex);
+    void     flushAllDeferred();
+
     PFN_vkCmdDrawMeshTasksEXT vkCmdDrawMeshTasksEXT = nullptr;
 
   private:
@@ -103,6 +114,8 @@ namespace engine {
     const std::vector<const char*> deviceExtensions    = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     bool                           presentIdSupported_ = false;
     std::unique_ptr<DeviceMemory>  memory_;
+    uint32_t                       currentFrameIndex_ = 0;
+    std::array<std::vector<std::function<void(VkDevice)>>, kMaxFramesInFlight> deferredDestroy_;
     friend class DeviceMemory;
   };
 
