@@ -118,7 +118,7 @@ namespace engine {
     }
   }
 
-  void CameraSystem::update(FrameInfo& frameInfo, float aspectRatio) const
+  void CameraSystem::update(FrameInfo& frameInfo, float aspectRatio)
   {
     auto& registry = frameInfo.scene->getRegistry();
     if (registry.valid(frameInfo.cameraEntity))

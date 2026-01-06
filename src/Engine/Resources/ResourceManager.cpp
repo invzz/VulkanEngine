@@ -79,7 +79,7 @@ namespace engine {
     std::string key = makeTextureKey(path, srgb) + (flipY ? "|flipY" : "");
 
     // Lock for thread-safe access
-    std::lock_guard<std::mutex> const lock(textureMutex_);
+    std::scoped_lock const lock(textureMutex_);
 
     // Check if texture is already cached
     auto it = textureCache_.find(key);
@@ -92,13 +92,11 @@ namespace engine {
         updateTextureAccess(key, cachedTexture->getMemorySize(), priority);
         return cachedTexture;
       }
-      else
-      {
-        // Texture was deleted, remove stale entry
-        textureCache_.erase(it);
-        // Remove from access tracking
-        textureAccessOrder_.erase(std::remove_if(textureAccessOrder_.begin(), textureAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), textureAccessOrder_.end());
-      }
+
+      // Texture was deleted, remove stale entry
+      textureCache_.erase(it);
+      // Remove from access tracking
+      textureAccessOrder_.erase(std::remove_if(textureAccessOrder_.begin(), textureAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), textureAccessOrder_.end());
     }
 
     // Load new texture
@@ -131,7 +129,7 @@ namespace engine {
     std::string key = makeModelKey(path, enableTextures, loadMaterials, enableMorphTargets);
 
     // Lock for thread-safe access
-    std::lock_guard<std::mutex> const lock(modelMutex_);
+    std::scoped_lock const lock(modelMutex_);
 
     // Check if model is already cached
     auto it = modelCache_.find(key);
@@ -144,13 +142,11 @@ namespace engine {
         updateModelAccess(key, cachedModel->getMemorySize(), priority);
         return cachedModel;
       }
-      else
-      {
-        // Model was deleted, remove stale entry
-        modelCache_.erase(it);
-        // Remove from access tracking
-        modelAccessOrder_.erase(std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), modelAccessOrder_.end());
-      }
+
+      // Model was deleted, remove stale entry
+      modelCache_.erase(it);
+      // Remove from access tracking
+      modelAccessOrder_.erase(std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), modelAccessOrder_.end());
     }
 
     // Load new model
@@ -185,7 +181,7 @@ namespace engine {
     std::string       cacheKey;
 
     // Lock for thread-safe access
-    std::lock_guard<std::mutex> const lock(textureMutex_);
+    std::scoped_lock const lock(textureMutex_);
 
     // Check if we've already loaded this exact content
     auto hashIt = contentHashToKey_.find(contentHash);
@@ -259,7 +255,7 @@ namespace engine {
 
     // Clean up textures
     {
-      std::lock_guard<std::mutex> const lock(textureMutex_);
+      std::scoped_lock const lock(textureMutex_);
       cachedTextureMemory_ = 0;
       std::unordered_set<std::string> removedKeys;
 
@@ -282,8 +278,8 @@ namespace engine {
       if (!removedKeys.empty())
       {
         // Remove all dead entries from access tracking in one pass.
-        textureAccessOrder_.erase(std::remove_if(textureAccessOrder_.begin(), textureAccessOrder_.end(), [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); }),
-                                  textureAccessOrder_.end());
+        auto const removed = std::ranges::remove_if(textureAccessOrder_, [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); });
+        textureAccessOrder_.erase(removed.begin(), removed.end());
 
         // Remove stale content-hash indirections for textures that are gone.
         for (auto it = contentHashToKey_.begin(); it != contentHashToKey_.end();)
@@ -302,7 +298,7 @@ namespace engine {
 
     // Clean up models
     {
-      std::lock_guard<std::mutex> const lock(modelMutex_);
+      std::scoped_lock const lock(modelMutex_);
       cachedModelMemory_ = 0;
       std::unordered_set<std::string> removedKeys;
 
@@ -324,8 +320,8 @@ namespace engine {
 
       if (!removedKeys.empty())
       {
-        modelAccessOrder_.erase(std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(), [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); }),
-                                modelAccessOrder_.end());
+        auto const removed = std::ranges::remove_if(modelAccessOrder_, [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); });
+        modelAccessOrder_.erase(removed.begin(), removed.end());
       }
     }
 
@@ -338,7 +334,7 @@ namespace engine {
 
     // Texture memory (accurate calculation)
     {
-      std::lock_guard<std::mutex> const lock(textureMutex_);
+      std::scoped_lock const lock(textureMutex_);
       for (const auto& [key, weakTexture] : textureCache_)
       {
         if (auto texture = weakTexture.lock())
@@ -350,7 +346,7 @@ namespace engine {
 
     // Model memory (accurate calculation)
     {
-      std::lock_guard<std::mutex> const lock(modelMutex_);
+      std::scoped_lock const lock(modelMutex_);
       for (const auto& [key, weakModel] : modelCache_)
       {
         if (auto model = weakModel.lock())
@@ -365,7 +361,7 @@ namespace engine {
 
   size_t ResourceManager::getCachedTextureCount() const
   {
-    std::lock_guard<std::mutex> const lock(textureMutex_);
+    std::scoped_lock const lock(textureMutex_);
 
     // Count only alive textures
     size_t count = 0;
@@ -381,7 +377,7 @@ namespace engine {
 
   size_t ResourceManager::getCachedModelCount() const
   {
-    std::lock_guard<std::mutex> const lock(modelMutex_);
+    std::scoped_lock const lock(modelMutex_);
 
     // Count only alive models
     size_t count = 0;
@@ -398,14 +394,14 @@ namespace engine {
   void ResourceManager::clearAll()
   {
     {
-      std::lock_guard<std::mutex> const lock(textureMutex_);
+      std::scoped_lock const lock(textureMutex_);
       textureCache_.clear();
       textureAccessOrder_.clear();
       cachedTextureMemory_ = 0;
     }
 
     {
-      std::lock_guard<std::mutex> const lock(modelMutex_);
+      std::scoped_lock const lock(modelMutex_);
       modelCache_.clear();
       modelAccessOrder_.clear();
       cachedModelMemory_ = 0;
@@ -414,7 +410,7 @@ namespace engine {
 
   bool ResourceManager::isTextureCached(const std::string& path) const
   {
-    std::lock_guard<std::mutex> const lock(textureMutex_);
+    std::scoped_lock const lock(textureMutex_);
 
     // Check both srgb and linear variants
     std::string const srgbKey   = makeTextureKey(path, true);
@@ -431,7 +427,7 @@ namespace engine {
 
   bool ResourceManager::isModelCached(const std::string& path) const
   {
-    std::lock_guard<std::mutex> const lock(modelMutex_);
+    std::scoped_lock const lock(modelMutex_);
 
     // Check if any variant of this model path is cached
     for (const auto& [key, weakModel] : modelCache_)
@@ -452,7 +448,7 @@ namespace engine {
     if (budgetBytes > 0)
     {
       {
-        std::lock_guard<std::mutex> const lock(textureMutex_);
+        std::scoped_lock const lock(textureMutex_);
         while (cachedTextureMemory_ > memoryBudget_ && !textureCache_.empty())
         {
           evictLRUTextures();
@@ -460,7 +456,7 @@ namespace engine {
       }
 
       {
-        std::lock_guard<std::mutex> const lock(modelMutex_);
+        std::scoped_lock const lock(modelMutex_);
         while (cachedModelMemory_ > memoryBudget_ && !modelCache_.empty())
         {
           evictLRUModels();
@@ -603,7 +599,7 @@ namespace engine {
   void ResourceManager::shutdownThreadPool()
   {
     {
-      std::lock_guard<std::mutex> const lock(taskQueueMutex_);
+      std::scoped_lock const lock(taskQueueMutex_);
       shutdownThreadPool_ = true;
     }
     taskQueueCV_.notify_all();
@@ -654,7 +650,7 @@ namespace engine {
     // Check if already cached (fast path)
     std::string const key = makeTextureKey(path, srgb);
     {
-      std::lock_guard<std::mutex> const lock(textureMutex_);
+      std::scoped_lock const            lock(textureMutex_);
       auto                              it = textureCache_.find(key);
       if (it != textureCache_.end())
       {
@@ -677,7 +673,7 @@ namespace engine {
 
     // Enqueue async task
     {
-      std::lock_guard<std::mutex> const lock(taskQueueMutex_);
+      std::scoped_lock const lock(taskQueueMutex_);
       taskQueue_.emplace([this, path, srgb, priority, promise]() {
         try
         {
@@ -701,7 +697,7 @@ namespace engine {
     // Check if already cached (fast path)
     std::string const key = makeModelKey(path, enableTextures, loadMaterials, enableMorphTargets);
     {
-      std::lock_guard<std::mutex> const lock(modelMutex_);
+      std::scoped_lock const            lock(modelMutex_);
       auto                              it = modelCache_.find(key);
       if (it != modelCache_.end())
       {
@@ -724,7 +720,7 @@ namespace engine {
 
     // Enqueue async task
     {
-      std::lock_guard<std::mutex> const lock(taskQueueMutex_);
+      std::scoped_lock const lock(taskQueueMutex_);
       taskQueue_.emplace([this, path, enableTextures, loadMaterials, enableMorphTargets, priority, promise]() {
         try
         {
@@ -745,7 +741,7 @@ namespace engine {
 
   size_t ResourceManager::getPendingAsyncLoads() const
   {
-    std::lock_guard<std::mutex> const lock(taskQueueMutex_);
+    std::scoped_lock const lock(taskQueueMutex_);
     return taskQueue_.size() + activeTasks_;
   }
 

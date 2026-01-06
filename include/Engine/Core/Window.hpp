@@ -11,7 +11,7 @@ namespace engine {
   class Window
   {
   public:
-    Window(int width, int height, const std::string& title);
+    Window(int width, int height, std::string title);
     ~Window();
 
     // avoid dangling pointers

@@ -2,8 +2,14 @@
 
 #include <imgui.h>
 
+#include <memory>
+
+#include "AnimationPanel.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "LightsPanel.hpp"
+#include "TransformPanel.hpp"
+#include "entt/entity/entity.hpp"
 
 namespace engine {
 

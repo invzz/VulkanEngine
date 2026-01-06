@@ -54,7 +54,7 @@ namespace engine {
     }
 
     // Create fullscreen dockspace
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGuiViewport const* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->WorkPos);
     ImGui::SetNextWindowSize(viewport->WorkSize);
     ImGui::SetNextWindowViewport(viewport->ID);
@@ -72,7 +72,7 @@ namespace engine {
     ImGui::PopStyleVar(3);
 
     // Create dockspace
-    ImGuiID dockspace_id = ImGui::GetID("MainDockSpace");
+    ImGuiID const dockspace_id = ImGui::GetID("MainDockSpace");
     ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
     ImGui::End();
 

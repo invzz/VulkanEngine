@@ -30,7 +30,7 @@ namespace engine {
     compute_ = std::make_unique<MorphTargetCompute>(device_);
   }
 
-  void MorphTargetManager::initializeModel(std::shared_ptr<Model> model)
+  void MorphTargetManager::initializeModel(const std::shared_ptr<Model>& model)
   {
     if (!model || !model->hasMorphTargets())
     {
@@ -40,7 +40,7 @@ namespace engine {
     const Model* modelPtr = model.get();
 
     // Skip if already initialized
-    if (modelData_.find(modelPtr) != modelData_.end())
+    if (modelData_.contains(modelPtr))
     {
       return;
     }
@@ -70,8 +70,8 @@ namespace engine {
     data.vertexOffset     = morphSet.vertexOffset;
 
     // Calculate buffer sizes
-    size_t morphDeltaCount = data.morphTargetCount * data.vertexCount;
-    size_t weightsCount    = data.morphTargetCount;
+    size_t const morphDeltaCount = data.morphTargetCount * data.vertexCount;
+    size_t const weightsCount    = data.morphTargetCount;
 
     // Create morph delta buffer (position and normal deltas)
     std::vector<MorphDelta> deltas;
@@ -96,7 +96,7 @@ namespace engine {
       }
 
       // Debug: verify mapping is working
-      if (&target == &morphSet.targets[0])
+      if (&target == morphSet.targets.data())
       {
         std::cout << "[MorphTargetManager] Position index mapping sample: ";
         for (size_t i = 0; i < std::min(static_cast<size_t>(6), morphSet.positionIndices.size()); i++)
@@ -158,7 +158,7 @@ namespace engine {
                                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
-  void MorphTargetManager::updateAndBlend(VkCommandBuffer commandBuffer, std::shared_ptr<Model> model)
+  void MorphTargetManager::updateAndBlend(VkCommandBuffer commandBuffer, const std::shared_ptr<Model>& model)
   {
     if (!model || !model->hasMorphTargets())
     {
@@ -189,9 +189,9 @@ namespace engine {
         if (debugFrameCount++ < 5)
         { // Only print first 5 frames
           std::cout << "[MorphTargetManager] Frame weights: ";
-          for (size_t i = 0; i < node.morphWeights.size(); i++)
+          for (float morphWeight : node.morphWeights)
           {
-            std::cout << node.morphWeights[i] << " ";
+            std::cout << morphWeight << " ";
           }
           std::cout << '\n';
         }
@@ -211,15 +211,15 @@ namespace engine {
     if (frameCount++ < 3)
     {
       std::cout << "[MorphTargetManager] Weights: ";
-      for (size_t i = 0; i < currentWeights.size(); i++)
+      for (float currentWeight : currentWeights)
       {
-        std::cout << currentWeights[i] << " ";
+        std::cout << currentWeight << " ";
       }
       std::cout << '\n';
     }
 
     // Setup push constants
-    MorphTargetCompute::PushConstants pushConstants{
+    MorphTargetCompute::PushConstants const pushConstants{
             .vertexOffset     = data.vertexOffset,
             .vertexCount      = static_cast<uint32_t>(data.vertexCount),
             .morphTargetCount = static_cast<uint32_t>(data.morphTargetCount),
@@ -245,7 +245,7 @@ namespace engine {
                                          pushConstants);
 
     // Add memory barrier between compute and graphics
-    VkBufferMemoryBarrier barrier{
+    VkBufferMemoryBarrier const barrier{
             .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
             .srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT,
             .dstAccessMask       = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
@@ -261,7 +261,7 @@ namespace engine {
 
   bool MorphTargetManager::isModelInitialized(const Model* model) const
   {
-    return modelData_.find(model) != modelData_.end();
+    return modelData_.contains(model);
   }
 
   VkBuffer MorphTargetManager::getBlendedBuffer(const Model* model) const

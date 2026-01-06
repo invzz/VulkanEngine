@@ -26,7 +26,7 @@ namespace engine {
 
   private:
     // Refactored helper methods to keep `load()` small and testable
-    void loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
+    static void loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
 
     void loadMeshes(Model::Builder&                            builder,
                     const tinygltf::Model&                     model,
@@ -38,29 +38,29 @@ namespace engine {
                     std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
                     bool                                       hasAnimations);
 
-    void loadMorphTargets(Model::Builder&                                  builder,
-                          const tinygltf::Model&                           model,
-                          const std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-                          const std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
-                          const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex);
+    static void loadMorphTargets(Model::Builder&                                  builder,
+                                 const tinygltf::Model&                           model,
+                                 const std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
+                                 const std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+                                 const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex);
 
-    void loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
+    static void loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
 
-    [[nodiscard]] glm::mat4 computeNodeTransform(const tinygltf::Node& node) const;
+    static [[nodiscard]] glm::mat4 computeNodeTransform(const tinygltf::Node& node);
 
-    void processMesh(Model::Builder&                                 builder,
-                     const tinygltf::Model&                          model,
-                     int                                             meshIndex,
-                     const glm::mat4&                                globalTransform,
-                     std::unordered_map<Model::Vertex, uint32_t>&    uniqueVertices,
-                     std::unordered_map<int, std::vector<uint32_t>>& indicesByMaterial,
-                     std::unordered_map<std::string, uint32_t>&      primitiveVertexOffsets,
-                     std::unordered_map<std::string, uint32_t>&      primitiveVertexCounts,
-                     std::unordered_map<uint32_t, uint32_t>&         vertexToPositionIndex,
-                     bool                                            hasAnimations,
-                     float                                           xMultiplier,
-                     float                                           yMultiplier,
-                     float                                           zMultiplier);
+    static void processMesh(Model::Builder&                                 builder,
+                            const tinygltf::Model&                          model,
+                            int                                             meshIndex,
+                            const glm::mat4&                                globalTransform,
+                            std::unordered_map<Model::Vertex, uint32_t>&    uniqueVertices,
+                            std::unordered_map<int, std::vector<uint32_t>>& indicesByMaterial,
+                            std::unordered_map<std::string, uint32_t>&      primitiveVertexOffsets,
+                            std::unordered_map<std::string, uint32_t>&      primitiveVertexCounts,
+                            std::unordered_map<uint32_t, uint32_t>&         vertexToPositionIndex,
+                            bool                                            hasAnimations,
+                            float                                           xMultiplier,
+                            float                                           yMultiplier,
+                            float                                           zMultiplier);
   };
 
 } // namespace engine

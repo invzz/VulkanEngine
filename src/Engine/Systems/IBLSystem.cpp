@@ -65,7 +65,7 @@ namespace engine {
 
   void IBLSystem::update()
   {
-    if (regenerationRequested_ && nextSkybox_)
+    if (regenerationRequested_ && (nextSkybox_ != nullptr))
     {
       // Wait for device idle to ensure no resources are in use
       vkDeviceWaitIdle(device_.device());
@@ -124,47 +124,47 @@ namespace engine {
     VkDevice dev = device_.device();
 
     // Irradiance resources
-    if (irradianceSampler_)
+    if (irradianceSampler_ != nullptr)
     {
       vkDestroySampler(dev, irradianceSampler_, nullptr);
       irradianceSampler_ = VK_NULL_HANDLE;
     }
-    if (irradianceImageView_)
+    if (irradianceImageView_ != nullptr)
     {
       vkDestroyImageView(dev, irradianceImageView_, nullptr);
       irradianceImageView_ = VK_NULL_HANDLE;
     }
-    if (irradianceImage_)
+    if (irradianceImage_ != nullptr)
     {
       vkDestroyImage(dev, irradianceImage_, nullptr);
       irradianceImage_ = VK_NULL_HANDLE;
     }
-    if (irradianceMemory_)
+    if (irradianceMemory_ != nullptr)
     {
       vkFreeMemory(dev, irradianceMemory_, nullptr);
       irradianceMemory_ = VK_NULL_HANDLE;
     }
-    if (irradiancePipeline_)
+    if (irradiancePipeline_ != nullptr)
     {
       vkDestroyPipeline(dev, irradiancePipeline_, nullptr);
       irradiancePipeline_ = VK_NULL_HANDLE;
     }
-    if (irradiancePipelineLayout_)
+    if (irradiancePipelineLayout_ != nullptr)
     {
       vkDestroyPipelineLayout(dev, irradiancePipelineLayout_, nullptr);
       irradiancePipelineLayout_ = VK_NULL_HANDLE;
     }
-    if (irradianceRenderPass_)
+    if (irradianceRenderPass_ != nullptr)
     {
       vkDestroyRenderPass(dev, irradianceRenderPass_, nullptr);
       irradianceRenderPass_ = VK_NULL_HANDLE;
     }
-    if (irradianceDescPool_)
+    if (irradianceDescPool_ != nullptr)
     {
       vkDestroyDescriptorPool(dev, irradianceDescPool_, nullptr);
       irradianceDescPool_ = VK_NULL_HANDLE;
     }
-    if (irradianceDescSetLayout_)
+    if (irradianceDescSetLayout_ != nullptr)
     {
       vkDestroyDescriptorSetLayout(dev, irradianceDescSetLayout_, nullptr);
       irradianceDescSetLayout_ = VK_NULL_HANDLE;
@@ -172,47 +172,47 @@ namespace engine {
     irradianceDescSet_ = VK_NULL_HANDLE;
 
     // Prefilter resources
-    if (prefilteredSampler_)
+    if (prefilteredSampler_ != nullptr)
     {
       vkDestroySampler(dev, prefilteredSampler_, nullptr);
       prefilteredSampler_ = VK_NULL_HANDLE;
     }
-    if (prefilteredImageView_)
+    if (prefilteredImageView_ != nullptr)
     {
       vkDestroyImageView(dev, prefilteredImageView_, nullptr);
       prefilteredImageView_ = VK_NULL_HANDLE;
     }
-    if (prefilteredImage_)
+    if (prefilteredImage_ != nullptr)
     {
       vkDestroyImage(dev, prefilteredImage_, nullptr);
       prefilteredImage_ = VK_NULL_HANDLE;
     }
-    if (prefilteredMemory_)
+    if (prefilteredMemory_ != nullptr)
     {
       vkFreeMemory(dev, prefilteredMemory_, nullptr);
       prefilteredMemory_ = VK_NULL_HANDLE;
     }
-    if (prefilterPipeline_)
+    if (prefilterPipeline_ != nullptr)
     {
       vkDestroyPipeline(dev, prefilterPipeline_, nullptr);
       prefilterPipeline_ = VK_NULL_HANDLE;
     }
-    if (prefilterPipelineLayout_)
+    if (prefilterPipelineLayout_ != nullptr)
     {
       vkDestroyPipelineLayout(dev, prefilterPipelineLayout_, nullptr);
       prefilterPipelineLayout_ = VK_NULL_HANDLE;
     }
-    if (prefilterRenderPass_)
+    if (prefilterRenderPass_ != nullptr)
     {
       vkDestroyRenderPass(dev, prefilterRenderPass_, nullptr);
       prefilterRenderPass_ = VK_NULL_HANDLE;
     }
-    if (prefilterDescPool_)
+    if (prefilterDescPool_ != nullptr)
     {
       vkDestroyDescriptorPool(dev, prefilterDescPool_, nullptr);
       prefilterDescPool_ = VK_NULL_HANDLE;
     }
-    if (prefilterDescSetLayout_)
+    if (prefilterDescSetLayout_ != nullptr)
     {
       vkDestroyDescriptorSetLayout(dev, prefilterDescSetLayout_, nullptr);
       prefilterDescSetLayout_ = VK_NULL_HANDLE;
@@ -220,42 +220,42 @@ namespace engine {
     prefilterDescSet_ = VK_NULL_HANDLE;
 
     // BRDF LUT resources
-    if (brdfLUTSampler_)
+    if (brdfLUTSampler_ != nullptr)
     {
       vkDestroySampler(dev, brdfLUTSampler_, nullptr);
       brdfLUTSampler_ = VK_NULL_HANDLE;
     }
-    if (brdfLUTImageView_)
+    if (brdfLUTImageView_ != nullptr)
     {
       vkDestroyImageView(dev, brdfLUTImageView_, nullptr);
       brdfLUTImageView_ = VK_NULL_HANDLE;
     }
-    if (brdfLUTImage_)
+    if (brdfLUTImage_ != nullptr)
     {
       vkDestroyImage(dev, brdfLUTImage_, nullptr);
       brdfLUTImage_ = VK_NULL_HANDLE;
     }
-    if (brdfLUTMemory_)
+    if (brdfLUTMemory_ != nullptr)
     {
       vkFreeMemory(dev, brdfLUTMemory_, nullptr);
       brdfLUTMemory_ = VK_NULL_HANDLE;
     }
-    if (brdfPipeline_)
+    if (brdfPipeline_ != nullptr)
     {
       vkDestroyPipeline(dev, brdfPipeline_, nullptr);
       brdfPipeline_ = VK_NULL_HANDLE;
     }
-    if (brdfPipelineLayout_)
+    if (brdfPipelineLayout_ != nullptr)
     {
       vkDestroyPipelineLayout(dev, brdfPipelineLayout_, nullptr);
       brdfPipelineLayout_ = VK_NULL_HANDLE;
     }
-    if (brdfDescPool_)
+    if (brdfDescPool_ != nullptr)
     {
       vkDestroyDescriptorPool(dev, brdfDescPool_, nullptr);
       brdfDescPool_ = VK_NULL_HANDLE;
     }
-    if (brdfDescSetLayout_)
+    if (brdfDescSetLayout_ != nullptr)
     {
       vkDestroyDescriptorSetLayout(dev, brdfDescSetLayout_, nullptr);
       brdfDescSetLayout_ = VK_NULL_HANDLE;
@@ -266,18 +266,18 @@ namespace engine {
   }
 
   // Helper to create image
-  void createImageHelper(Device&               device,
-                         uint32_t              width,
-                         uint32_t              height,
-                         uint32_t              mipLevels,
-                         VkFormat              format,
-                         VkImageTiling         tiling,
-                         VkImageUsageFlags     usage,
-                         VkMemoryPropertyFlags properties,
-                         VkImage&              image,
-                         VkDeviceMemory&       imageMemory,
-                         uint32_t              arrayLayers = 1,
-                         VkImageCreateFlags    flags       = 0)
+  static void createImageHelper(Device&               device,
+                                uint32_t              width,
+                                uint32_t              height,
+                                uint32_t              mipLevels,
+                                VkFormat              format,
+                                VkImageTiling         tiling,
+                                VkImageUsageFlags     usage,
+                                VkMemoryPropertyFlags properties,
+                                VkImage&              image,
+                                VkDeviceMemory&       imageMemory,
+                                uint32_t              arrayLayers = 1,
+                                VkImageCreateFlags    flags       = 0)
   {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -299,15 +299,15 @@ namespace engine {
   }
 
   // Helper to create image view
-  VkImageView createImageViewHelper(Device&            device,
-                                    VkImage            image,
-                                    VkFormat           format,
-                                    VkImageAspectFlags aspectFlags,
-                                    uint32_t           mipLevels,
-                                    VkImageViewType    viewType       = VK_IMAGE_VIEW_TYPE_2D,
-                                    uint32_t           baseMipLevel   = 0,
-                                    uint32_t           layerCount     = 1,
-                                    uint32_t           baseArrayLayer = 0)
+  static VkImageView createImageViewHelper(Device&            device,
+                                           VkImage            image,
+                                           VkFormat           format,
+                                           VkImageAspectFlags aspectFlags,
+                                           uint32_t           mipLevels,
+                                           VkImageViewType    viewType       = VK_IMAGE_VIEW_TYPE_2D,
+                                           uint32_t           baseMipLevel   = 0,
+                                           uint32_t           layerCount     = 1,
+                                           uint32_t           baseArrayLayer = 0)
   {
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -329,7 +329,7 @@ namespace engine {
   }
 
   // Helper to transition image layout
-  void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1)
+  static void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1)
   {
     VkCommandBuffer commandBuffer = device.getMemory().beginSingleTimeCommands();
 
@@ -617,7 +617,8 @@ namespace engine {
     auto vertCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(irradiance_convolution.vert.spv)");
     auto fragCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(irradiance_convolution.frag.spv)");
 
-    VkShaderModule vertModule, fragModule;
+    VkShaderModule vertModule;
+    VkShaderModule fragModule;
 
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -706,7 +707,7 @@ namespace engine {
   void IBLSystem::generateIrradianceMap(Skybox& skybox)
   {
     // Update descriptor set
-    VkDescriptorImageInfo imageInfo = skybox.getDescriptorInfo();
+    VkDescriptorImageInfo const imageInfo = skybox.getDescriptorInfo();
     VkWriteDescriptorSet  descriptorWrite{};
     descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet          = irradianceDescSet_;
@@ -718,13 +719,13 @@ namespace engine {
 
     vkUpdateDescriptorSets(device_.device(), 1, &descriptorWrite, 0, nullptr);
 
-    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-    glm::mat4 captureViews[]    = {glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),   // Top
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)), // Bottom
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
+    glm::mat4 const captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    glm::mat4 const captureViews[]    = {glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),   // Top
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)), // Bottom
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
 
     VkCommandBuffer commandBuffer = device_.getMemory().beginSingleTimeCommands();
 
@@ -771,7 +772,7 @@ namespace engine {
       renderPassInfo.renderArea.offset = {0, 0};
       renderPassInfo.renderArea.extent = {static_cast<uint32_t>(settings_.irradianceSize), static_cast<uint32_t>(settings_.irradianceSize)};
 
-      VkClearValue clearValue        = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+      VkClearValue const clearValue  = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
       renderPassInfo.clearValueCount = 1;
       renderPassInfo.pClearValues    = &clearValue;
 
@@ -911,7 +912,8 @@ namespace engine {
     auto vertCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(prefilter_envmap.vert.spv)");
     auto fragCode = Pipeline::readFile(std::string(SHADER_PATH) + R"(prefilter_envmap.frag.spv)");
 
-    VkShaderModule vertModule, fragModule;
+    VkShaderModule vertModule;
+    VkShaderModule fragModule;
 
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1000,7 +1002,7 @@ namespace engine {
   void IBLSystem::generatePrefilteredEnvMap(Skybox& skybox)
   {
     // Update descriptor set
-    VkDescriptorImageInfo imageInfo = skybox.getDescriptorInfo();
+    VkDescriptorImageInfo const imageInfo = skybox.getDescriptorInfo();
     VkWriteDescriptorSet  descriptorWrite{};
     descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet          = prefilterDescSet_;
@@ -1012,13 +1014,13 @@ namespace engine {
 
     vkUpdateDescriptorSets(device_.device(), 1, &descriptorWrite, 0, nullptr);
 
-    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-    glm::mat4 captureViews[]    = {glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
-                                   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
+    glm::mat4 const captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    glm::mat4 const captureViews[]    = {glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+                                         glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
 
     VkCommandBuffer commandBuffer = device_.getMemory().beginSingleTimeCommands();
 
@@ -1027,9 +1029,9 @@ namespace engine {
 
     for (int mip = 0; mip < settings_.prefilterMipLevels; ++mip)
     {
-      uint32_t mipWidth  = settings_.prefilterSize * std::pow(0.5, mip);
-      uint32_t mipHeight = settings_.prefilterSize * std::pow(0.5, mip);
-      float    roughness = (float)mip / (float)(settings_.prefilterMipLevels - 1);
+      uint32_t const mipWidth  = settings_.prefilterSize * std::pow(0.5, mip);
+      uint32_t const mipHeight = settings_.prefilterSize * std::pow(0.5, mip);
+      float const    roughness = (float)mip / (float)(settings_.prefilterMipLevels - 1);
 
       for (int i = 0; i < 6; ++i)
       {
@@ -1068,7 +1070,7 @@ namespace engine {
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = {mipWidth, mipHeight};
 
-        VkClearValue clearValue        = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        VkClearValue const clearValue  = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues    = &clearValue;
 

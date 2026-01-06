@@ -296,7 +296,7 @@ namespace engine {
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-    VkRect2D scissor{{0, 0}, {size_, size_}};
+    VkRect2D const scissor{{0, 0}, {size_, size_}};
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
 

@@ -4,17 +4,27 @@
 #include <imgui_impl_vulkan.h>
 
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <string>
+#include <utility>
 
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/PBRMaterial.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Resources/Texture.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Systems/AnimationSystem.hpp"
+#include "nlohmann/json_fwd.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -24,7 +34,7 @@ namespace engine {
     loadModelIndex();
   }
 
-  void ModelImportPanel::render(FrameInfo& frameInfo)
+  void ModelImportPanel::render(FrameInfo& /*frameInfo*/)
   {
     if (!visible_) return;
 
@@ -37,7 +47,7 @@ namespace engine {
         if (ImGui::Button("Browse"))
         {
           // Set default path to models directory
-          std::string defaultPath = std::string(MODEL_PATH) + "/glTF/";
+          std::string const defaultPath = std::string(MODEL_PATH) + "/glTF/";
           strncpy(modelPath_, defaultPath.c_str(), sizeof(modelPath_) - 1);
         }
 
@@ -55,12 +65,12 @@ namespace engine {
 
       if (ImGui::CollapsingHeader("Available Models", ImGuiTreeNodeFlags_DefaultOpen))
       {
-        ImGui::BeginChild("AvailableModelsScroll", ImVec2(0, 0), true); // Use 0 height to fill remaining space
+        ImGui::BeginChild("AvailableModelsScroll", ImVec2(0, 0), 1); // Use 0 height to fill remaining space
 
-        float       windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-        ImGuiStyle& style           = ImGui::GetStyle();
-        float       buttonSize      = 128.0f;
-        float       spacing         = style.ItemSpacing.x;
+        float const       windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+        ImGuiStyle const& style           = ImGui::GetStyle();
+        float const       buttonSize      = 128.0f;
+        float const       spacing         = style.ItemSpacing.x;
 
         for (size_t i = 0; i < availableModels_.size(); i++)
         {
@@ -73,7 +83,7 @@ namespace engine {
           {
             if (ImGui::ImageButton("##image", (ImTextureID)entry.descriptorSet, ImVec2(buttonSize, buttonSize)))
             {
-              std::string fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
+              std::string const fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
               loadModel(fullPath, entry.name);
             }
           }
@@ -81,7 +91,7 @@ namespace engine {
           {
             if (ImGui::Button(entry.name.c_str(), ImVec2(buttonSize, buttonSize)))
             {
-              std::string fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
+              std::string const fullPath = std::string(MODEL_PATH) + "/" + entry.relativePath;
               loadModel(fullPath, entry.name);
             }
           }
@@ -95,8 +105,8 @@ namespace engine {
           }
 
           // Layout logic for grid
-          float lastButtonX2 = ImGui::GetItemRectMax().x;
-          float nextButtonX2 = lastButtonX2 + spacing + buttonSize;
+          float const lastButtonX2 = ImGui::GetItemRectMax().x;
+          float const nextButtonX2 = lastButtonX2 + spacing + buttonSize;
           if (i + 1 < availableModels_.size() && nextButtonX2 < windowVisibleX2) ImGui::SameLine();
 
           ImGui::PopID();
@@ -109,7 +119,7 @@ namespace engine {
 
   void ModelImportPanel::loadModelIndex()
   {
-    std::string   indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
+    std::string const indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
     std::ifstream f(indexPath);
     if (!f.is_open())
     {
@@ -131,11 +141,11 @@ namespace engine {
         // Get screenshot path
         if (item.contains("screenshot"))
         {
-          std::string screenshotRel = item["screenshot"];
+          std::string const screenshotRel = item["screenshot"];
           // Construct full path: MODEL_PATH + /glTF/ + name + / + screenshotRel
           // Note: screenshotRel is usually "screenshot/screenshot.png"
           // And the folder is assets/models/glTF/<name>/
-          std::string fullScreenshotPath = std::string(MODEL_PATH) + "/glTF/" + entry.name + "/" + screenshotRel;
+          std::string const fullScreenshotPath = std::string(MODEL_PATH) + "/glTF/" + entry.name + "/" + screenshotRel;
           entry.screenshotPath           = fullScreenshotPath;
 
           // Load texture
@@ -157,7 +167,7 @@ namespace engine {
         // Get glTF path
         if (item.contains("variants") && item["variants"].contains("glTF"))
         {
-          std::string variantFile = item["variants"]["glTF"];
+          std::string const variantFile = item["variants"]["glTF"];
           // Path relative to MODEL_PATH
           // assets/models/glTF/<name>/glTF/<variantFile>
           // But wait, is it always in a glTF subfolder?

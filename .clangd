@@ -1,16 +1,27 @@
-ClangTidy:
-  Add: true
-  Fix: true
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/refs/heads/master/src/schemas/json/clangd.json
 
-CompileOptions:
-  Add:
-    # Only needed if extra flags are required
+# Clangd project configuration
+# - Uses the compilation database generated into ./.vscode
+# - Keeps diagnostics focused on project code (src/ + include/)
+# - clang-tidy checks are configured in ./.clang-tidy
+
+CompileFlags:
+  CompilationDatabase: .vscode
+
 Index:
-  Background: true
-  StandardLibrary: true
-  # Optional for large template-heavy projects:
-  # FunctionBodies: false
+  Background: Build
 
 Diagnostics:
-  IgnoreSystemHeaders: true
-  HeaderFilterRegex: '.*[/\\\\](include|src)[/\\\\].*'
+  # Don't override checks here; .clang-tidy already defines them
+  # (including HeaderFilterRegex to keep diagnostics focused on src/include).
+  # Whether clang-tidy runs inside clangd depends on how clangd is launched
+  # (e.g., VS Code clangd extension often passes --clang-tidy).
+  ClangTidy:
+    Add: []
+    Remove: []
+
+InlayHints:
+  Enabled: true
+
+Hover:
+  ShowAKA: true

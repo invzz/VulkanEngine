@@ -32,14 +32,14 @@ namespace engine {
      * @param model The model containing morph target data
      * @return Model ID for future updates
      */
-    void initializeModel(std::shared_ptr<Model> model);
+    void initializeModel(const std::shared_ptr<Model>& model);
 
     /**
      * @brief Update morph target weights for a model and dispatch compute shader
      * @param commandBuffer Vulkan command buffer
      * @param model The model to update
      */
-    void updateAndBlend(VkCommandBuffer commandBuffer, std::shared_ptr<Model> model);
+    void updateAndBlend(VkCommandBuffer commandBuffer, const std::shared_ptr<Model>& model);
 
     /**
      * @brief Check if a model has been initialized for morph target blending

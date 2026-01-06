@@ -10,7 +10,7 @@ namespace engine {
   public:
     LODSystem() = default;
 
-    void update(FrameInfo& frameInfo);
+    static void update(FrameInfo& frameInfo);
   };
 
 } // namespace engine

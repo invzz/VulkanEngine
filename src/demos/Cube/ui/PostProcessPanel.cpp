@@ -8,7 +8,7 @@
 namespace engine {
   PostProcessPanel::PostProcessPanel(PostProcessPushConstants& pushConstants) : pushConstants{pushConstants} {}
 
-  void PostProcessPanel::render(FrameInfo& frameInfo)
+  void PostProcessPanel::render(FrameInfo& /*frameInfo*/)
   {
     // ImGui::Begin("Post Processing");
 
@@ -17,7 +17,7 @@ namespace engine {
     ImGui::DragFloat("Saturation", &pushConstants.saturation, 0.01f, 0.0f, 2.0f);
     ImGui::DragFloat("Vignette", &pushConstants.vignette, 0.01f, 0.0f, 5.0f);
 
-    const char* toneMappingItems[] = {"None", "ACES Filmic"};
+    const char const* toneMappingItems[] = {"None", "ACES Filmic"};
     ImGui::Combo("Tone Mapping", &pushConstants.toneMappingMode, toneMappingItems, IM_ARRAYSIZE(toneMappingItems));
 
     ImGui::Separator();

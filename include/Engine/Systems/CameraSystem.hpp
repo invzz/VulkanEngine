@@ -19,7 +19,7 @@ namespace engine {
     CameraSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     ~CameraSystem();
 
-    void update(FrameInfo& frameInfo, float aspectRatio) const;
+    static void update(FrameInfo& frameInfo, float aspectRatio);
     void render(FrameInfo& frameInfo) const;
 
   private:

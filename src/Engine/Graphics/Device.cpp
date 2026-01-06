@@ -143,7 +143,7 @@ namespace engine {
       throw engine::RuntimeException("validation layers requested, but not available!");
     }
 
-    VkApplicationInfo appInfo = {
+    VkApplicationInfo const appInfo = {
             .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pApplicationName   = "LittleVulkanEngine App",
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
@@ -232,21 +232,21 @@ namespace engine {
 
   void Device::createLogicalDevice()
   {
-    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+    QueueFamilyIndices const indices = findQueueFamilies(physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t>                   uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
+    std::set<uint32_t> const             uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
 
-    float queuePriority = 1.0f;
+    float const queuePriority = 1.0f;
 
-    for (uint32_t queueFamily : uniqueQueueFamilies)
+    for (uint32_t const queueFamily : uniqueQueueFamilies)
     {
-      VkDeviceQueueCreateInfo queueCreateInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .queueFamilyIndex = queueFamily, .queueCount = 1, .pQueuePriorities = &queuePriority};
+      VkDeviceQueueCreateInfo const queueCreateInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .queueFamilyIndex = queueFamily, .queueCount = 1, .pQueuePriorities = &queuePriority};
 
       queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures = {
+    VkPhysicalDeviceFeatures const deviceFeatures = {
             .samplerAnisotropy = VK_TRUE,
             .shaderInt64       = VK_TRUE,
     };
@@ -259,9 +259,8 @@ namespace engine {
     std::vector<VkExtensionProperties> availableExtensions(extensionCount);
     vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
 
-    const bool presentIdExtensionAvailable = std::any_of(availableExtensions.begin(), availableExtensions.end(), [](const VkExtensionProperties& extension) {
-      return std::strcmp(extension.extensionName, VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0;
-    });
+    const bool presentIdExtensionAvailable =
+            std::ranges::any_of(availableExtensions, [](const VkExtensionProperties& extension) { return std::strcmp(extension.extensionName, VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0; });
 
     static_assert(sizeof(PFN_vkGetPhysicalDeviceFeatures2KHR) == sizeof(PFN_vkVoidFunction), "Vulkan function pointer sizes must match");
     PFN_vkGetPhysicalDeviceFeatures2KHR getFeatures2 = nullptr;
@@ -339,7 +338,7 @@ namespace engine {
 
     // Set up pNext chain: presentId (if supported) -> meshShaderFeatures ->
     // vulkan12Features
-    void* pNextChain = &meshShaderFeatures;
+    void const* pNextChain = &meshShaderFeatures;
     if (presentIdSupported_)
     {
       pNextChain = &presentIdFeaturesEnable;
@@ -392,7 +391,7 @@ namespace engine {
    */
   void Device::createCommandPool()
   {
-    QueueFamilyIndices queueFamilyIndices = findPhysicalQueueFamilies();
+    QueueFamilyIndices const queueFamilyIndices = findPhysicalQueueFamilies();
 
     VkCommandPoolCreateInfo poolInfo = {};
     poolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -420,14 +419,14 @@ namespace engine {
    */
   bool Device::isDeviceSuitable(VkPhysicalDevice device)
   {
-    QueueFamilyIndices indices = findQueueFamilies(device);
+    QueueFamilyIndices const indices = findQueueFamilies(device);
 
-    bool extensionsSupported = checkDeviceExtensionSupport(device);
+    bool const extensionsSupported = checkDeviceExtensionSupport(device);
 
     bool swapChainAdequate = false;
     if (extensionsSupported)
     {
-      SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+      SwapChainSupportDetails const swapChainSupport = querySwapChainSupport(device);
       swapChainAdequate                        = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
@@ -443,9 +442,9 @@ namespace engine {
 
     vkGetPhysicalDeviceFeatures2(device, &features2);
 
-    bool bindlessSupported = (vulkan12Features.descriptorIndexing != 0u) && (vulkan12Features.shaderSampledImageArrayNonUniformIndexing != 0u) &&
-                             (vulkan12Features.descriptorBindingPartiallyBound != 0u) && (vulkan12Features.descriptorBindingVariableDescriptorCount != 0u) &&
-                             (vulkan12Features.runtimeDescriptorArray != 0u) && (vulkan12Features.bufferDeviceAddress != 0u);
+    bool const bindlessSupported = (vulkan12Features.descriptorIndexing != 0u) && (vulkan12Features.shaderSampledImageArrayNonUniformIndexing != 0u) &&
+                                   (vulkan12Features.descriptorBindingPartiallyBound != 0u) && (vulkan12Features.descriptorBindingVariableDescriptorCount != 0u) &&
+                                   (vulkan12Features.runtimeDescriptorArray != 0u) && (vulkan12Features.bufferDeviceAddress != 0u);
 
     return indices.isComplete() && extensionsSupported && swapChainAdequate && (supportedFeatures.samplerAnisotropy != 0u) && (supportedFeatures.shaderInt64 != 0u) && bindlessSupported;
   }
@@ -616,7 +615,7 @@ namespace engine {
 
   VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
   {
-    for (VkFormat format : candidates)
+    for (VkFormat const format : candidates)
     {
       VkFormatProperties formatProperties;
       vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);

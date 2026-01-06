@@ -11,7 +11,7 @@ namespace engine {
   {
     // ImGui::Begin("Debug Settings");
 
-    const char* debugItems[] = {"None", "Albedo", "Normal", "Roughness", "Metallic", "Lighting Only", "AO", "Meshlets", "Meshlet Cones"};
+    const char const* debugItems[] = {"None", "Albedo", "Normal", "Roughness", "Metallic", "Lighting Only", "AO", "Meshlets", "Meshlet Cones"};
     ImGui::Combo("Debug View", &debugMode_, debugItems, IM_ARRAYSIZE(debugItems));
 
     // ImGui::End();

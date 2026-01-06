@@ -136,7 +136,7 @@ namespace engine {
             ImGui::Spacing();
 
             // For animated objects, modify baseScale; for static objects, modify scale
-            bool       isAnimated  = registry.all_of<AnimationComponent>(entity);
+            bool const isAnimated  = registry.all_of<AnimationComponent>(entity);
             glm::vec3& targetScale = isAnimated ? transform.baseScale : transform.scale;
 
             if (isAnimated)

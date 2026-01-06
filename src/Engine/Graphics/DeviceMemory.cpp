@@ -16,7 +16,7 @@ namespace engine {
     vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, &memProperties);
     for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
     {
-      if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
+      if (((typeFilter & (1 << i)) != 0u) && (memProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
       {
         return i;
       }
@@ -47,7 +47,7 @@ namespace engine {
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
     VkMemoryAllocateFlagsInfo allocFlagsInfo{};
-    if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    if ((usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) != 0u)
     {
       allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
       allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
@@ -96,7 +96,7 @@ namespace engine {
     vkFreeCommandBuffers(device.device_, device.commandPool, 1, &commandBuffer);
   }
 
-  void DeviceMemory::copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) const
+  void DeviceMemory::copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask)
   {
     VkBufferCopy copyRegion{};
     copyRegion.srcOffset = 0; // Optional

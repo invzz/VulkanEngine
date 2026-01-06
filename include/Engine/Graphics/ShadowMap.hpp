@@ -4,7 +4,6 @@
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
-#include <memory>
 
 #include "Engine/Graphics/Device.hpp"
 
@@ -50,7 +49,7 @@ namespace engine {
     /**
      * @brief End shadow map render pass
      */
-    void endRenderPass(VkCommandBuffer commandBuffer);
+    static void endRenderPass(VkCommandBuffer commandBuffer);
 
   private:
     void createDepthResources();

@@ -191,11 +191,11 @@ namespace engine {
             },
     };
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{
+    VkPipelineVertexInputStateCreateInfo const vertexInputInfo{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     };
 
-    VkGraphicsPipelineCreateInfo pipelineInfo{
+    VkGraphicsPipelineCreateInfo const pipelineInfo{
             .sType             = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .stageCount        = 3,
             .pStages           = shaderStages,
@@ -258,7 +258,7 @@ namespace engine {
     auto& bindingDescriptions   = configInfo.bindingDescriptions;
     auto& attributeDescriptions = configInfo.attributeDescriptions;
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{
+    VkPipelineVertexInputStateCreateInfo const vertexInputInfo{
             .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .vertexBindingDescriptionCount   = static_cast<uint32_t>(bindingDescriptions.size()),
             .pVertexBindingDescriptions      = bindingDescriptions.data(),
@@ -266,7 +266,7 @@ namespace engine {
             .pVertexAttributeDescriptions    = attributeDescriptions.data(),
     };
 
-    if (VkGraphicsPipelineCreateInfo pipelineInfo{
+    if (VkGraphicsPipelineCreateInfo const pipelineInfo{
                 .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
                 .stageCount          = 2,
                 .pStages             = shaderStages,

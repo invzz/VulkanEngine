@@ -15,7 +15,7 @@ namespace engine {
 
   void LODSystem::update(FrameInfo& frameInfo)
   {
-    glm::vec3 cameraPos = frameInfo.camera.getPosition();
+    glm::vec3 const cameraPos = frameInfo.camera.getPosition();
 
     auto view = frameInfo.scene->getRegistry().view<LODComponent, TransformComponent, ModelComponent>();
     for (auto entity : view)
@@ -23,7 +23,7 @@ namespace engine {
       auto [lod, transform, modelComp] = view.get<LODComponent, TransformComponent, ModelComponent>(entity);
       if (lod.levels.empty()) continue;
 
-      float distance = glm::length(transform.translation - cameraPos);
+      float const distance = glm::length(transform.translation - cameraPos);
 
       // Find the appropriate LOD level
       // Levels should be sorted by distance (ascending or descending?)

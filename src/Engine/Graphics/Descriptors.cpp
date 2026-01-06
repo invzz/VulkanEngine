@@ -2,11 +2,14 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <memory>
-#include <stdexcept>
 #include <unordered_map>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
   DescriptorSetLayout::Builder&
@@ -38,16 +41,17 @@ namespace engine {
 
     // Sort bindings by binding index to ensure consistent order
     std::vector<uint32_t> keys;
+    keys.reserve(bindings.size());
     for (const auto& [binding, _] : bindings)
     {
       keys.push_back(binding);
     }
-    std::sort(keys.begin(), keys.end());
+    std::ranges::sort(keys);
 
-    for (uint32_t binding : keys)
+    for (uint32_t const binding : keys)
     {
       setLayoutBindings.push_back(bindings.at(binding));
-      if (bindingFlags.count(binding))
+      if (bindingFlags.contains(binding) != 0u)
       {
         setLayoutBindingFlags.push_back(bindingFlags.at(binding));
       }
@@ -71,7 +75,7 @@ namespace engine {
     // Check if we need UPDATE_AFTER_BIND_POOL_BIT
     for (auto flag : setLayoutBindingFlags)
     {
-      if (flag & VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT)
+      if ((flag & VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT) != 0u)
       {
         descriptorSetLayoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
         break;
@@ -138,11 +142,7 @@ namespace engine {
     allocInfo.descriptorPool     = descriptorPool;
     allocInfo.pSetLayouts        = &descriptorSetLayout;
     allocInfo.descriptorSetCount = 1;
-    if (vkAllocateDescriptorSets(device.device(), &allocInfo, &descriptor) != VK_SUCCESS)
-    {
-      return false;
-    }
-    return true;
+    return vkAllocateDescriptorSets(device.device(), &allocInfo, &descriptor) == VK_SUCCESS;
   }
 
   void DescriptorPool::freeDescriptors(std::vector<VkDescriptorSet>& descriptors) const
@@ -189,7 +189,7 @@ namespace engine {
 
   bool DescriptorWriter::build(VkDescriptorSet& set)
   {
-    if (bool success = pool.allocateDescriptor(setLayout.getDescriptorSetLayout(), set); !success)
+    if (bool const success = pool.allocateDescriptor(setLayout.getDescriptorSetLayout(), set); !success)
     {
       return false;
     }

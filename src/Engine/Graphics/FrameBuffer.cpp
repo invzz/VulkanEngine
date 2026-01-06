@@ -488,8 +488,8 @@ namespace engine {
     gN.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     gN.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    VkAttachmentDescription gA = gN;
-    VkAttachmentDescription gM = gN;
+    VkAttachmentDescription const gA = gN;
+    VkAttachmentDescription const gM = gN;
 
     // Emissive is written directly into the HDR color buffer during the opaque/G-buffer pass.
     // This ensures emissive contributes to post/bloom and is visible in the scene color copy.
@@ -516,7 +516,7 @@ namespace engine {
     gbufferColorRefs[2] = VkAttachmentReference{2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     gbufferColorRefs[3] = VkAttachmentReference{3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-    VkAttachmentReference gbufferDepthRef{4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference const gbufferDepthRef{4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
     VkSubpassDescription gbufferSubpass{};
     gbufferSubpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -568,7 +568,7 @@ namespace engine {
     // We clear it here anyway, so starting from COLOR_ATTACHMENT_OPTIMAL avoids layout mismatches.
     litColor.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     litColor.finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    VkAttachmentReference litColorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    VkAttachmentReference const litColorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
     VkSubpassDescription litSubpass{};
     litSubpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -647,10 +647,10 @@ namespace engine {
     hzbImageViews.resize(frameCount);
     hzbMipImageViews.resize(frameCount);
 
-    VkFormat colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-    VkFormat depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-                                                      VK_IMAGE_TILING_OPTIMAL,
-                                                      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
+    VkFormat const colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+    VkFormat const depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+                                                            VK_IMAGE_TILING_OPTIMAL,
+                                                            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
     for (uint32_t i = 0; i < frameCount; i++)
     {
@@ -809,7 +809,7 @@ namespace engine {
     }
 
     // Create Scene Color Copy images (mip chain, used for rough transmission blur)
-    VkFormat sceneColorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+    VkFormat const sceneColorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
     for (uint32_t i = 0; i < frameCount; i++)
     {
       VkImageCreateInfo sceneInfo{};
@@ -1177,7 +1177,7 @@ namespace engine {
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
   }
 
-  void FrameBuffer::endRenderPass(VkCommandBuffer commandBuffer) const
+  void FrameBuffer::endRenderPass(VkCommandBuffer commandBuffer)
   {
     vkCmdEndRenderPass(commandBuffer);
   }

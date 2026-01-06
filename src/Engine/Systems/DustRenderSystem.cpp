@@ -111,8 +111,8 @@ namespace engine {
     pipelineConfig.attributeDescriptions.push_back(attributeDescription);
 
 #ifdef SHADER_PATH
-    std::string vertPath = std::string(SHADER_PATH) + "/dust.vert.spv";
-    std::string fragPath = std::string(SHADER_PATH) + "/dust.frag.spv";
+    std::string const vertPath = std::string(SHADER_PATH) + "/dust.vert.spv";
+    std::string const fragPath = std::string(SHADER_PATH) + "/dust.frag.spv";
 #else
     std::string vertPath = "assets/shaders/compiled/dust.vert.spv";
     std::string fragPath = "assets/shaders/compiled/dust.frag.spv";
@@ -141,7 +141,7 @@ namespace engine {
       v.z = distribution(generator) * 20.0f;
     }
 
-    VkDeviceSize bufferSize = sizeof(glm::vec3) * vertexCount;
+    VkDeviceSize const bufferSize = sizeof(glm::vec3) * vertexCount;
 
     Buffer stagingBuffer{device, bufferSize, 1, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
@@ -185,7 +185,7 @@ namespace engine {
 
     vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DustPushConstants), &push);
 
-    VkBuffer     buffers[] = {vertexBuffer->getBuffer()};
+    VkBuffer const buffers[] = {vertexBuffer->getBuffer()};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(frameInfo.commandBuffer, 0, 1, buffers, offsets);
 

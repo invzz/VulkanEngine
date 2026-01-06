@@ -28,22 +28,22 @@ namespace engine {
 
     if (flipY)
     {
-      stbi_set_flip_vertically_on_load(true);
+      stbi_set_flip_vertically_on_load(1);
     }
 
     stbi_uc* pixels = stbi_load(filepath.c_str(), &width_, &height_, &texChannels, STBI_rgb_alpha);
 
     if (flipY)
     {
-      stbi_set_flip_vertically_on_load(false);
+      stbi_set_flip_vertically_on_load(0);
     }
 
-    if (!pixels)
+    if (pixels == nullptr)
     {
       throw std::runtime_error("Failed to load texture image: " + filepath);
     }
 
-    VkDeviceSize imageSize = width_ * height_ * 4; // RGBA
+    VkDeviceSize const imageSize = width_ * height_ * 4; // RGBA
 
     // Calculate mip levels
     mipLevels_ = static_cast<uint32_t>(std::floor(std::log2(std::max(width_, height_)))) + 1;
@@ -59,7 +59,7 @@ namespace engine {
 
     // Choose format based on whether this is an sRGB texture (color) or linear
     // (data)
-    VkFormat format = srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
+    VkFormat const format = srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
 
     // Create Vulkan image
     createImage(width_,
@@ -107,7 +107,7 @@ namespace engine {
   // Private constructor for creating textures from memory
   Texture::Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format) : device_{device}, width_{width}, height_{height}
   {
-    VkDeviceSize imageSize = width_ * height_ * 4; // RGBA
+    VkDeviceSize const imageSize = width_ * height_ * 4; // RGBA
     mipLevels_             = 1;                    // No mipmaps for default textures
 
     // Create staging buffer
@@ -229,7 +229,7 @@ namespace engine {
     }
   }
 
-  void Texture::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels)
+  void Texture::transitionImageLayout(VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels)
   {
     VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
 
@@ -301,7 +301,7 @@ namespace engine {
     VkFormatProperties formatProperties;
     vkGetPhysicalDeviceFormatProperties(device_.getPhysicalDevice(), format, &formatProperties);
 
-    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+    if ((formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT) == 0u)
     {
       throw std::runtime_error("Texture image format does not support linear blitting!");
     }

@@ -22,12 +22,12 @@ namespace engine {
 
   uint32_t MeshManager::registerModel(const Model* model)
   {
-    if (modelToId.find(model) != modelToId.end())
+    if (modelToId.contains(model))
     {
       return modelToId[model];
     }
 
-    uint32_t id = static_cast<uint32_t>(meshInfos.size());
+    auto const id = static_cast<uint32_t>(meshInfos.size());
 
     MeshBuffers info{};
     info.vertexBufferAddress = model->getVertexBufferAddress();
@@ -45,7 +45,7 @@ namespace engine {
 
   void MeshManager::updateBuffer()
   {
-    VkDeviceSize bufferSize = sizeof(MeshBuffers) * meshInfos.size();
+    VkDeviceSize const bufferSize = sizeof(MeshBuffers) * meshInfos.size();
 
     // Create a staging buffer
     Buffer stagingBuffer{device,

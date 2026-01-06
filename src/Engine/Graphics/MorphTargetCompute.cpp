@@ -53,7 +53,7 @@ namespace engine {
   void MorphTargetCompute::createComputePipeline()
   {
     // Read compiled compute shader
-    std::string shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
+    std::string const shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
     std::cout << "[MorphTargetCompute] Loading shader from: " << shaderPath << '\n';
     std::ifstream file(shaderPath, std::ios::ate | std::ios::binary);
 
@@ -73,7 +73,7 @@ namespace engine {
     // Create shader module
     VkShaderModule computeShaderModule = createShaderModule(shaderCode);
 
-    VkPipelineShaderStageCreateInfo shaderStageInfo{
+    VkPipelineShaderStageCreateInfo const shaderStageInfo{
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .module = computeShaderModule,
@@ -81,7 +81,7 @@ namespace engine {
     };
 
     // Push constants for configuration
-    VkPushConstantRange pushConstantRange{
+    VkPushConstantRange const pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
             .offset     = 0,
             .size       = sizeof(PushConstants),
@@ -89,7 +89,7 @@ namespace engine {
 
     // Pipeline layout
     VkDescriptorSetLayout      layout = descriptorSetLayout_->getDescriptorSetLayout();
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{
+    VkPipelineLayoutCreateInfo const pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount         = 1,
             .pSetLayouts            = &layout,
@@ -103,7 +103,7 @@ namespace engine {
     }
 
     // Create compute pipeline
-    VkComputePipelineCreateInfo pipelineInfo{
+    VkComputePipelineCreateInfo const pipelineInfo{
             .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
             .stage  = shaderStageInfo,
             .layout = pipelineLayout_,
@@ -189,7 +189,7 @@ namespace engine {
 
     // Dispatch compute shader
     // Work group size is 256, so divide vertex count by 256 and round up
-    uint32_t workGroupCount = (pushConstants.vertexCount + 255) / 256;
+    uint32_t const workGroupCount = (pushConstants.vertexCount + 255) / 256;
     vkCmdDispatch(commandBuffer, workGroupCount, 1, 1);
 
     return descriptorSet;

@@ -38,7 +38,7 @@ namespace engine {
   {
     commandBuffers.resize(SwapChain::maxFramesInFlight());
 
-    if (VkCommandBufferAllocateInfo allocInfo{
+    if (VkCommandBufferAllocateInfo const allocInfo{
                 .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                 .commandPool        = device.getCommandPool(),
                 .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
@@ -73,7 +73,7 @@ namespace engine {
     }
     else
     {
-      std::shared_ptr<SwapChain> oldSwapChain = std::move(swapChain);
+      std::shared_ptr<SwapChain> const oldSwapChain = std::move(swapChain);
       swapChain                               = std::make_unique<SwapChain>(device, extent, oldSwapChain);
 
       if (!oldSwapChain->compareSwapFormats(*swapChain))
@@ -204,7 +204,7 @@ namespace engine {
       throw CommandBufferRecordingException("failed to reset command buffer!");
     }
     isFrameStarted = true;
-    VkCommandBufferBeginInfo beginInfo{
+    VkCommandBufferBeginInfo const beginInfo{
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
     };
     if (auto beginCommandBufferResult = vkBeginCommandBuffer(commandBuffer, &beginInfo); beginCommandBufferResult != VK_SUCCESS)
@@ -251,7 +251,7 @@ namespace engine {
             {.depthStencil = {1.0f, 0}},
     };
 
-    VkRenderPassBeginInfo renderPassInfo{
+    VkRenderPassBeginInfo const renderPassInfo{
             .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass  = swapChain->getRenderPass(),
             .framebuffer = swapChain->getFrameBuffer(currentImageIndex),
@@ -266,7 +266,7 @@ namespace engine {
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    VkViewport viewport{
+    VkViewport const viewport{
             .x        = 0.0f,
             .y        = 0.0f,
             .width    = static_cast<float>(swapChain->getSwapChainExtent().width),
@@ -276,14 +276,14 @@ namespace engine {
     };
 
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-    VkRect2D scissor{
+    VkRect2D const scissor{
             .offset = {0, 0},
             .extent = swapChain->getSwapChainExtent(),
     };
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
 
-  void Renderer::endSwapChainRenderPass(VkCommandBuffer commandBuffer) const
+  void Renderer::endSwapChainRenderPass(VkCommandBuffer commandBuffer)
   {
     assert(isFrameStarted && "Can't end render pass when frame not in progress");
     assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different "

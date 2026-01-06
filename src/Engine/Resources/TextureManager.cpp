@@ -24,7 +24,7 @@ namespace engine {
     addTexture(placeholderTexture);
   }
 
-  TextureManager::~TextureManager() {}
+  TextureManager::~TextureManager() = default;
 
   void TextureManager::createDescriptorSetLayout()
   {
@@ -51,9 +51,9 @@ namespace engine {
     }
   }
 
-  uint32_t TextureManager::addTexture(std::shared_ptr<Texture> texture)
+  uint32_t TextureManager::addTexture(const std::shared_ptr<Texture>& texture)
   {
-    if (textureIndexMap.count(texture.get()))
+    if (textureIndexMap.contains(texture.get()) != 0u)
     {
       return textureIndexMap[texture.get()];
     }

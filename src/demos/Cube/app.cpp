@@ -108,7 +108,7 @@ namespace engine {
   {
     // 1. Setup Render Context
     VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(0);
-    renderContext                 = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
+    renderContext                       = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
 
     // 2. Setup Scene & Camera
     setupScene();
@@ -610,8 +610,8 @@ namespace engine {
 
         // Dynamic Time-of-Day Adjustment (Golden Hour Boost)
         float const sunHeight           = sunInfo.directionToSun.y;
-        float intensityMultiplier = 1.0f;
-        float decayModifier       = 0.0f;
+        float       intensityMultiplier = 1.0f;
+        float       decayModifier       = 0.0f;
 
         // Boost when sun is low (Height -0.1 to 0.5)
         if (sunHeight > -0.1f && sunHeight < 0.5f)
@@ -722,10 +722,10 @@ namespace engine {
   {
     // Update systems (CPU-side processing)
 
-    state.objectSelectionSystem.update(frameInfo);                   // Handle object selection with mouse
-    state.inputSystem.update(frameInfo);                             // Process keyboard/mouse input
-    state.lodSystem.update(frameInfo);                               // Update Level of Detail
-    state.cameraSystem.update(frameInfo, renderer.getAspectRatio()); // Update camera matrices
+    state.objectSelectionSystem.update(frameInfo);                      // Handle object selection with mouse
+    state.inputSystem.update(frameInfo);                                // Process keyboard/mouse input
+    engine::LODSystem::update(frameInfo);                               // Update Level of Detail
+    engine::CameraSystem::update(frameInfo, renderer.getAspectRatio()); // Update camera matrices
   }
 
   void App::computePhase(FrameInfo& frameInfo, GameLoopState& state)
@@ -788,14 +788,14 @@ namespace engine {
       else if (visualSunHeight > -0.1f)
       {
         float const t = (visualSunHeight + 0.1f) / 0.3f;
-        horizonColor = glm::mix(sunsetHorizon, dayHorizon, t);
-        zenithColor  = glm::mix(sunsetZenith, dayZenith, t);
+        horizonColor  = glm::mix(sunsetHorizon, dayHorizon, t);
+        zenithColor   = glm::mix(sunsetZenith, dayZenith, t);
       }
       else if (visualSunHeight > -0.3f)
       {
         float const t = (visualSunHeight + 0.3f) / 0.2f;
-        horizonColor = glm::mix(nightHorizon, sunsetHorizon, t);
-        zenithColor  = glm::mix(nightZenith, sunsetZenith, t);
+        horizonColor  = glm::mix(nightHorizon, sunsetHorizon, t);
+        zenithColor   = glm::mix(nightZenith, sunsetZenith, t);
 
         // Reduce density at night (fade from 100% to 20%)
         currentDensity = fogSettings.density * glm::mix(0.2f, 1.0f, t);
@@ -815,7 +815,7 @@ namespace engine {
 
     // Calculate Frustum Planes for Culling (Normalized)
     glm::mat4 const vp   = ubo.projection * ubo.view;
-    glm::mat4 vpT  = glm::transpose(vp);
+    glm::mat4       vpT  = glm::transpose(vp);
     glm::vec4 const row0 = vpT[0];
     glm::vec4 const row1 = vpT[1];
     glm::vec4 const row2 = vpT[2];

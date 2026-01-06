@@ -49,7 +49,7 @@ namespace engine {
 
   void Buffer::unmap()
   {
-    if (mapped)
+    if (mapped != nullptr)
     {
       vkUnmapMemory(device.device(), memory);
       mapped = nullptr;

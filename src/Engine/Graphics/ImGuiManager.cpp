@@ -82,7 +82,7 @@ namespace engine {
     pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
     pool_info.pPoolSizes    = pool_sizes;
 
-    VkResult poolRes = vkCreateDescriptorPool(device_.device(), &pool_info, nullptr, &imguiDescriptorPool_);
+    VkResult const poolRes = vkCreateDescriptorPool(device_.device(), &pool_info, nullptr, &imguiDescriptorPool_);
     if (poolRes != VK_SUCCESS)
     {
       std::cerr << "vkCreateDescriptorPool failed with code: " << poolRes << '\n';
@@ -135,12 +135,12 @@ namespace engine {
 
     // Ensure device and queue are idle before doing backend setup to avoid races
     // on Windows
-    VkResult r1 = vkDeviceWaitIdle(init_info.Device);
+    VkResult const r1 = vkDeviceWaitIdle(init_info.Device);
     if (r1 != VK_SUCCESS)
     {
       std::cerr << "vkDeviceWaitIdle returned error: " << r1 << '\n';
     }
-    VkResult r2 = vkQueueWaitIdle(init_info.Queue);
+    VkResult const r2 = vkQueueWaitIdle(init_info.Queue);
     if (r2 != VK_SUCCESS)
     {
       std::cerr << "vkQueueWaitIdle returned error: " << r2 << '\n';
@@ -163,7 +163,7 @@ namespace engine {
     samplerInfo.compareEnable           = VK_FALSE;
     samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-    VkResult sres = vkCreateSampler(device_.device(), &samplerInfo, nullptr, &testSampler);
+    VkResult const sres = vkCreateSampler(device_.device(), &samplerInfo, nullptr, &testSampler);
     std::cerr << "vkCreateSampler returned: " << sres << " sampler=" << testSampler << '\n';
     if (sres == VK_SUCCESS && testSampler != VK_NULL_HANDLE)
     {
@@ -183,7 +183,7 @@ namespace engine {
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings    = &binding;
 
-    VkResult lres = vkCreateDescriptorSetLayout(device_.device(), &layoutInfo, nullptr, &testLayout);
+    VkResult const lres = vkCreateDescriptorSetLayout(device_.device(), &layoutInfo, nullptr, &testLayout);
     std::cerr << "vkCreateDescriptorSetLayout returned: " << lres << " layout=" << testLayout << '\n';
     if (lres == VK_SUCCESS && testLayout != VK_NULL_HANDLE)
     {
@@ -198,7 +198,7 @@ namespace engine {
     pipelineLayoutInfo.pushConstantRangeCount = 0;
     pipelineLayoutInfo.pPushConstantRanges    = nullptr;
 
-    VkResult pres = vkCreatePipelineLayout(device_.device(), &pipelineLayoutInfo, nullptr, &testPipelineLayout);
+    VkResult const pres = vkCreatePipelineLayout(device_.device(), &pipelineLayoutInfo, nullptr, &testPipelineLayout);
     std::cerr << "vkCreatePipelineLayout returned: " << pres << " pipelineLayout=" << testPipelineLayout << '\n';
     if (pres == VK_SUCCESS && testPipelineLayout != VK_NULL_HANDLE)
     {
@@ -217,7 +217,7 @@ namespace engine {
       VkDevice   device;
     } loaderUser{device_.getInstance(), device_.device()};
 
-    bool loaded = ImGui_ImplVulkan_LoadFunctions(
+    bool const loaded = ImGui_ImplVulkan_LoadFunctions(
             VK_API_VERSION_1_3,
             [](const char* name, void* user_data) -> PFN_vkVoidFunction {
               auto* u = reinterpret_cast<ImGuiLoaderUser*>(user_data);

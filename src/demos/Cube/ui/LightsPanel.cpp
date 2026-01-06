@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <cmath>
 #include <random>
 
@@ -40,8 +41,8 @@ namespace engine {
           auto entity = registry.create();
 
           auto& transform       = registry.emplace<TransformComponent>(entity);
-          float a               = angleDist(rng);
-          float r               = radiusDist(rng);
+          float const a               = angleDist(rng);
+          float const r               = radiusDist(rng);
           transform.translation = glm::vec3(std::cos(a) * r, heightDist(rng), std::sin(a) * r);
 
           auto& light     = registry.emplace<PointLightComponent>(entity);
@@ -105,7 +106,7 @@ namespace engine {
           }
 
           // Show current direction
-          glm::vec3 dir = registry.get<TransformComponent>(entity).getForwardDir();
+          glm::vec3 const dir = registry.get<TransformComponent>(entity).getForwardDir();
           ImGui::Text("Current Dir: (%.2f, %.2f, %.2f)", dir.x, dir.y, dir.z);
 
           ImGui::Spacing();
@@ -146,7 +147,7 @@ namespace engine {
           }
 
           // Show current direction
-          glm::vec3 dir = registry.get<TransformComponent>(entity).getForwardDir();
+          glm::vec3 const dir = registry.get<TransformComponent>(entity).getForwardDir();
           ImGui::Text("Current Dir: (%.2f, %.2f, %.2f)", dir.x, dir.y, dir.z);
 
           ImGui::Spacing();
@@ -155,10 +156,7 @@ namespace engine {
           ImGui::DragFloat("Outer Cutoff (deg)", &spotLight.outerCutoffAngle, 0.5f, 0.0f, 90.0f);
 
           // Ensure outer is always >= inner
-          if (spotLight.outerCutoffAngle < spotLight.innerCutoffAngle)
-          {
-            spotLight.outerCutoffAngle = spotLight.innerCutoffAngle;
-          }
+          spotLight.outerCutoffAngle = std::max(spotLight.outerCutoffAngle, spotLight.innerCutoffAngle);
 
           ImGui::Spacing();
           ImGui::Text("Attenuation:");
@@ -168,9 +166,9 @@ namespace engine {
         }
 
         // Show message if no light component
-        bool hasPointLight = registry.all_of<PointLightComponent>(entity);
-        bool hasDirLight   = registry.all_of<DirectionalLightComponent>(entity);
-        bool hasSpotLight  = registry.all_of<SpotLightComponent>(entity);
+        bool const hasPointLight = registry.all_of<PointLightComponent>(entity);
+        bool const hasDirLight   = registry.all_of<DirectionalLightComponent>(entity);
+        bool const hasSpotLight  = registry.all_of<SpotLightComponent>(entity);
 
         if (!hasPointLight && !hasDirLight && !hasSpotLight)
         {

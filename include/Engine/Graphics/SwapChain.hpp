@@ -9,7 +9,6 @@
 // std lib headers
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 namespace engine {
@@ -43,7 +42,7 @@ namespace engine {
     [[nodiscard]] bool compareSwapFormats(const SwapChain& other) const { return other.swapChainDepthFormat == swapChainDepthFormat && other.swapChainImageFormat == swapChainImageFormat; }
 
     VkResult acquireNextImage(uint32_t* imageIndex);
-    VkResult submitCommandBuffers(const VkCommandBuffer* buffers, uint32_t* imageIndex);
+    VkResult submitCommandBuffers(const VkCommandBuffer* buffers, const uint32_t* imageIndex);
 
   private:
     void Init();
@@ -55,9 +54,9 @@ namespace engine {
     void createSyncObjects();
 
     // Helper functions
-    [[nodiscard]] VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
-    [[nodiscard]] VkPresentModeKHR   chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
-    [[nodiscard]] VkExtent2D         chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
+    [[nodiscard]] static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    [[nodiscard]] static VkPresentModeKHR   chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    [[nodiscard]] VkExtent2D                chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
 
     VkFormat   swapChainImageFormat;
     VkFormat   swapChainDepthFormat;

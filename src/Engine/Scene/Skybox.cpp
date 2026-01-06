@@ -91,7 +91,7 @@ namespace engine {
 
   std::unique_ptr<Skybox> Skybox::loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension)
   {
-    std::array<std::string, 6> facePaths = {
+    std::array<std::string, 6> const facePaths = {
             folderPath + "/posx." + extension, // +X (right)
             folderPath + "/negx." + extension, // -X (left)
             folderPath + "/posy." + extension, // +Y (top)
@@ -107,12 +107,14 @@ namespace engine {
   {
     // Load all 6 faces and determine size
     std::array<unsigned char*, 6> faceData{};
-    int                           width = 0, height = 0, channels = 0;
+    int                           width    = 0;
+    int                           height   = 0;
+    int                           channels = 0;
 
     for (int i = 0; i < 6; i++)
     {
       faceData[i] = stbi_load(facePaths[i].c_str(), &width, &height, &channels, STBI_rgb_alpha);
-      if (!faceData[i])
+      if (faceData[i] == nullptr)
       {
         // Clean up already loaded faces
         for (int j = 0; j < i; j++)
@@ -142,8 +144,8 @@ namespace engine {
       }
     }
 
-    VkDeviceSize faceSize  = static_cast<VkDeviceSize>(size_) * size_ * 4; // RGBA
-    VkDeviceSize totalSize = faceSize * 6;
+    VkDeviceSize const faceSize  = static_cast<VkDeviceSize>(size_) * size_ * 4; // RGBA
+    VkDeviceSize const totalSize = faceSize * 6;
 
     // Create staging buffer with all face data
     Buffer stagingBuffer{

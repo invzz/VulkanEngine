@@ -13,7 +13,7 @@ namespace engine {
   void Camera::setPerspectiveProjection(float fovY, float aspect, float nearZ, float farZ)
   {
     assert(glm::abs(aspect - std::numeric_limits<float>::epsilon()) > 0.0f);
-    auto tanHalfFovy       = static_cast<float>(tan(fovY / 2.f));
+    auto tanHalfFovy       = tan(fovY / 2.f);
     projectionMatrix       = glm::mat4{0.0f};
     projectionMatrix[0][0] = 1.f / (aspect * tanHalfFovy);
     projectionMatrix[1][1] = 1.f / tanHalfFovy;
@@ -81,8 +81,8 @@ namespace engine {
     const float     s2 = glm::sin(rotation.x);
     const float     c1 = glm::cos(rotation.y);
     const float     s1 = glm::sin(rotation.y);
-    const glm::vec3 u{(c1 * c3 + s1 * s2 * s3), (c2 * s3), (c1 * s2 * s3 - c3 * s1)};
-    const glm::vec3 v{(c3 * s1 * s2 - c1 * s3), (c2 * c3), (c1 * c3 * s2 + s1 * s3)};
+    const glm::vec3 u{((c1 * c3) + (s1 * s2 * s3)), (c2 * s3), ((c1 * s2 * s3) - (c3 * s1))};
+    const glm::vec3 v{((c3 * s1 * s2) - (c1 * s3)), (c2 * c3), ((c1 * c3 * s2) + (s1 * s3))};
     const glm::vec3 w{(c2 * s1), (-s2), (c1 * c2)};
     viewMatrix       = glm::mat4{1.f};
     viewMatrix[0][0] = u.x;
@@ -132,19 +132,19 @@ namespace engine {
     frustum.planes[5] = glm::vec4(vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2]);
 
     // Normalize planes
-    for (int i = 0; i < 6; i++)
+    for (auto& plane : frustum.planes)
     {
-      float length = glm::length(glm::vec3(frustum.planes[i]));
-      frustum.planes[i] /= length;
+      float const length = glm::length(glm::vec3(plane));
+      plane /= length;
     }
   }
 
   bool Camera::isInFrustum(const glm::vec3& center, float radius) const
   {
     // Test sphere against all 6 frustum planes
-    for (int i = 0; i < 6; i++)
+    for (auto plane : frustum.planes)
     {
-      float distance = glm::dot(glm::vec3(frustum.planes[i]), center) + frustum.planes[i].w;
+      float const distance = glm::dot(glm::vec3(plane), center) + plane.w;
       if (distance < -radius)
       {
         return false; // Sphere is completely outside this plane

@@ -23,12 +23,12 @@
 
 // Helper for glm serialization
 namespace glm {
-  void to_json(nlohmann::json& j, const vec3& v)
+  static void to_json(nlohmann::json& j, const vec3& v)
   {
     j = nlohmann::json{v.x, v.y, v.z};
   }
 
-  void from_json(const nlohmann::json& j, vec3& v)
+  static void from_json(const nlohmann::json& j, vec3& v)
   {
     v.x = j[0];
     v.y = j[1];
@@ -155,7 +155,7 @@ namespace engine {
     {
       for (const auto& objJson : sceneJson["objects"])
       {
-        std::string name = objJson.value("name", "GameObject");
+        std::string const name = objJson.value("name", "GameObject");
 
         auto entity = scene.createEntity();
         scene.getRegistry().emplace<TransformComponent>(entity);
@@ -174,7 +174,7 @@ namespace engine {
         // Model & Material
         if (objJson.contains("modelPath"))
         {
-          std::string modelPath = objJson["modelPath"];
+          std::string const modelPath = objJson["modelPath"];
           auto        model     = resourceManager.loadModel(modelPath, true, true, true);
           scene.getRegistry().emplace<ModelComponent>(entity, model);
 
@@ -223,8 +223,8 @@ namespace engine {
           auto& lodComponent = scene.getRegistry().emplace<LODComponent>(entity);
           for (const auto& levelJson : objJson["lodComponent"])
           {
-            float       distance  = levelJson.value("distance", 0.0f);
-            std::string modelPath = levelJson.value("modelPath", "");
+            float const       distance  = levelJson.value("distance", 0.0f);
+            std::string const modelPath = levelJson.value("modelPath", "");
             if (!modelPath.empty())
             {
               auto model = resourceManager.loadModel(modelPath, true, true, true);

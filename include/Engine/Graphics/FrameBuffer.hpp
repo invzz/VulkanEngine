@@ -44,7 +44,7 @@ namespace engine {
     void beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
     void beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
     void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-    void endRenderPass(VkCommandBuffer commandBuffer) const;
+    static void endRenderPass(VkCommandBuffer commandBuffer);
     void generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
     void generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
 

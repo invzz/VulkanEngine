@@ -46,7 +46,7 @@ namespace engine {
   VkDescriptorSet MaterialSystem::getMaterialDescriptorSet(const PBRMaterial& material)
   {
     // Use material pointer as hash key
-    size_t materialHash = reinterpret_cast<size_t>(&material);
+    auto const materialHash = reinterpret_cast<size_t>(&material);
 
     // Check cache first
     auto it = materialDescriptorCache_.find(materialHash);

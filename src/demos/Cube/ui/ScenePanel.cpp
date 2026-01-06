@@ -2,9 +2,12 @@
 
 #include <imgui.h>
 
-#include <iostream>
+#include <cstdint>
 #include <string>
 
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -12,6 +15,10 @@
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Systems/AnimationSystem.hpp"
+#include "entt/entity/entity.hpp"
+#include "entt/entity/fwd.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -62,7 +69,7 @@ namespace engine {
 
       for (auto entity : view)
       {
-        uint32_t id = (uint32_t)entity;
+        auto const id = (uint32_t)entity;
 
         ImGui::PushID(id);
 

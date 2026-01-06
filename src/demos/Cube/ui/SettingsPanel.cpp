@@ -2,6 +2,21 @@
 
 #include <imgui.h>
 
+#include <memory>
+
+#include "CameraPanel.hpp"
+#include "DebugPanel.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/DustRenderSystem.hpp"
+#include "Engine/Systems/IBLSystem.hpp"
+#include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
+#include "IBLPanel.hpp"
+#include "PostProcessPanel.hpp"
+#include "entt/entity/fwd.hpp"
+
 namespace engine {
 
   SettingsPanel::SettingsPanel(entt::entity              cameraEntity,

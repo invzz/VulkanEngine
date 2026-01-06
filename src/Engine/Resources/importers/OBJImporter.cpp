@@ -1,5 +1,6 @@
 #include "Engine/Resources/importers/OBJImporter.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -58,14 +59,14 @@ namespace engine {
     roughness       = powf(roughness, 0.5f);
     roughness       = glm::clamp(roughness, 0.0f, 1.0f);
 
-    float specularIntensity = glm::clamp((Ks.r + Ks.g + Ks.b) / 3.0f, 0.0f, 1.0f);
-    float kdLuminance       = glm::dot(Kd, glm::vec3(0.299f, 0.587f, 0.114f));
+    float const specularIntensity = glm::clamp((Ks.r + Ks.g + Ks.b) / 3.0f, 0.0f, 1.0f);
+    float const kdLuminance       = glm::dot(Kd, glm::vec3(0.299f, 0.587f, 0.114f));
 
     // --- Force metals by name
     std::string nameLower = matName;
-    std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
-    bool forceMetal = (nameLower.find("chrome") != std::string::npos || nameLower.find("mirror") != std::string::npos || nameLower.find("aluminum") != std::string::npos ||
-                       nameLower.find("metal") != std::string::npos);
+    std::ranges::transform(nameLower, nameLower.begin(), ::tolower);
+    bool const forceMetal = (nameLower.find("chrome") != std::string::npos || nameLower.find("mirror") != std::string::npos || nameLower.find("aluminum") != std::string::npos ||
+                             nameLower.find("metal") != std::string::npos);
 
     if (forceMetal || (glm::length(Kd) < 0.05f && specularIntensity > 0.6f))
     {
@@ -79,9 +80,9 @@ namespace engine {
     else
     {
       // Non-obvious metals
-      float maxKs      = glm::max(glm::max(Ks.r, Ks.g), Ks.b);
-      float minKs      = glm::min(glm::min(Ks.r, Ks.g), Ks.b);
-      float tintAmount = glm::clamp((maxKs - minKs) / glm::max(maxKs, 1e-6f), 0.0f, 1.0f);
+      float const maxKs      = glm::max(glm::max(Ks.r, Ks.g), Ks.b);
+      float const minKs      = glm::min(glm::min(Ks.r, Ks.g), Ks.b);
+      float const tintAmount = glm::clamp((maxKs - minKs) / glm::max(maxKs, 1e-6f), 0.0f, 1.0f);
 
       float metallic = glm::smoothstep(0.05f, 0.25f, tintAmount);
       metallic *= glm::smoothstep(0.05f, 0.0f, kdLuminance);
@@ -95,7 +96,7 @@ namespace engine {
     pbr.ao        = 1.0f;
 
     // --- Detect clearcoat materials (car paint, lacquered surfaces)
-    bool isCarPaint = (nameLower.find("bmw") != std::string::npos || nameLower.find("carshell") != std::string::npos || nameLower.find("paint") != std::string::npos);
+    bool const isCarPaint = (nameLower.find("bmw") != std::string::npos || nameLower.find("carshell") != std::string::npos || nameLower.find("paint") != std::string::npos);
 
     if (isCarPaint && pbr.metallic < 0.5f) // Dielectric paint with clearcoat
     {
@@ -104,7 +105,7 @@ namespace engine {
     }
 
     // --- Detect anisotropic materials (brushed metals)
-    bool isBrushedMetal = (nameLower.find("brushed") != std::string::npos || nameLower.find("aluminum") != std::string::npos || nameLower.find("steel") != std::string::npos);
+    bool const isBrushedMetal = (nameLower.find("brushed") != std::string::npos || nameLower.find("aluminum") != std::string::npos || nameLower.find("steel") != std::string::npos);
 
     if (isBrushedMetal)
     {
@@ -124,7 +125,7 @@ namespace engine {
     std::string                      err;
 
     // Get the directory path for MTL file
-    std::string mtlBaseDir = filepath.substr(0, filepath.find_last_of("/\\") + 1);
+    std::string const mtlBaseDir = filepath.substr(0, filepath.find_last_of("/\\") + 1);
 
     if (!tinyobj::LoadObj(&attrib, &shapes, &tinyMaterials, &warn, &err, filepath.c_str(), mtlBaseDir.c_str()))
     {
@@ -132,7 +133,7 @@ namespace engine {
       return false;
     }
 
-#if defined(DEBUG)
+#ifdef DEBUG
     if (!warn.empty())
     {
       std::cout << YELLOW << "[OBJImporter] Warning: " << RESET << warn << '\n';
@@ -149,7 +150,7 @@ namespace engine {
       // Convert TinyObj material to PBR using helper function
       auto  Kd = glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
       auto  Ks = glm::vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
-      float Ns = mat.shininess;
+      float const Ns = mat.shininess;
 
       matInfo.pbrMaterial = mtlToPBR(Kd, Ks, Ns, matInfo.name);
       matInfo.materialId  = static_cast<int>(builder.materials.size());
@@ -173,37 +174,37 @@ namespace engine {
     builder.vertices.clear();
     builder.indices.clear();
 
-    float xMultiplier = flipX ? -1.0f : 1.0f;
-    float yMultiplier = flipY ? -1.0f : 1.0f;
-    float zMultiplier = flipZ ? -1.0f : 1.0f;
+    float const xMultiplier = flipX ? -1.0f : 1.0f;
+    float const yMultiplier = flipY ? -1.0f : 1.0f;
+    float const zMultiplier = flipZ ? -1.0f : 1.0f;
 
     for (const auto& shape : shapes)
     {
       for (size_t f = 0; f < shape.mesh.indices.size() / 3; f++)
       {
         // Get material ID for this face
-        int materialId = shape.mesh.material_ids[f];
+        int const materialId = shape.mesh.material_ids[f];
 
         for (size_t v = 0; v < 3; v++)
         {
-          const auto&   index = shape.mesh.indices[3 * f + v];
+          const auto&   index = shape.mesh.indices[(3 * f) + v];
           Model::Vertex vertex{};
           vertex.materialId = materialId;
 
           if (index.vertex_index >= 0)
           {
             vertex.position = {
-                    xMultiplier * attrib.vertices[3 * index.vertex_index + 0],
-                    yMultiplier * attrib.vertices[3 * index.vertex_index + 1],
-                    zMultiplier * attrib.vertices[3 * index.vertex_index + 2],
+                    xMultiplier * attrib.vertices[(3 * index.vertex_index) + 0],
+                    yMultiplier * attrib.vertices[(3 * index.vertex_index) + 1],
+                    zMultiplier * attrib.vertices[(3 * index.vertex_index) + 2],
             };
 
             if (!attrib.colors.empty())
             {
               vertex.color = {
-                      attrib.colors[3 * index.vertex_index + 0],
-                      attrib.colors[3 * index.vertex_index + 1],
-                      attrib.colors[3 * index.vertex_index + 2],
+                      attrib.colors[(3 * index.vertex_index) + 0],
+                      attrib.colors[(3 * index.vertex_index) + 1],
+                      attrib.colors[(3 * index.vertex_index) + 2],
               };
             }
             else
@@ -215,27 +216,27 @@ namespace engine {
           if (index.normal_index >= 0)
           {
             vertex.normal = {
-                    xMultiplier * attrib.normals[3 * index.normal_index + 0],
-                    yMultiplier * attrib.normals[3 * index.normal_index + 1],
-                    zMultiplier * attrib.normals[3 * index.normal_index + 2],
+                    xMultiplier * attrib.normals[(3 * index.normal_index) + 0],
+                    yMultiplier * attrib.normals[(3 * index.normal_index) + 1],
+                    zMultiplier * attrib.normals[(3 * index.normal_index) + 2],
             };
           }
 
           if (index.texcoord_index >= 0)
           {
             vertex.uv = {
-                    attrib.texcoords[2 * index.texcoord_index + 0],
-                    attrib.texcoords[2 * index.texcoord_index + 1],
+                    attrib.texcoords[(2 * index.texcoord_index) + 0],
+                    attrib.texcoords[(2 * index.texcoord_index) + 1],
             };
           }
 
-          if (uniqueVertices.count(vertex) == 0)
+          if (!uniqueVertices.contains(vertex))
           {
             uniqueVertices[vertex] = static_cast<uint32_t>(builder.vertices.size());
             builder.vertices.push_back(vertex);
           }
 
-          uint32_t vertexIndex = uniqueVertices[vertex];
+          uint32_t const vertexIndex = uniqueVertices[vertex];
           builder.indices.push_back(vertexIndex);
 
           // Group indices by material

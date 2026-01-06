@@ -23,7 +23,7 @@ namespace engine {
     TextureManager& operator=(const TextureManager&) = delete;
 
     // Returns the global index of the texture
-    uint32_t addTexture(std::shared_ptr<Texture> texture);
+    uint32_t addTexture(const std::shared_ptr<Texture>& texture);
 
     [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout->getDescriptorSetLayout(); }
     [[nodiscard]] VkDescriptorSet       getDescriptorSet() const { return descriptorSet; }

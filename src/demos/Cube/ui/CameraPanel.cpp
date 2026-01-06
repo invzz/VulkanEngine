@@ -12,7 +12,7 @@ namespace engine {
 
   CameraPanel::CameraPanel(entt::entity cameraEntity, Scene* scene) : cameraEntity_(cameraEntity), scene_(scene) {}
 
-  void CameraPanel::render(FrameInfo& frameInfo)
+  void CameraPanel::render(FrameInfo& /*frameInfo*/)
   {
     if (scene_->getRegistry().valid(cameraEntity_))
     {

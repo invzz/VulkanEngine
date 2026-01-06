@@ -80,7 +80,7 @@ namespace engine {
     /**
      * @brief End render pass
      */
-    void endRenderPass(VkCommandBuffer commandBuffer);
+    static void endRenderPass(VkCommandBuffer commandBuffer);
 
   private:
     void createDepthResources();

@@ -16,7 +16,7 @@ namespace engine {
     settings_ = iblSystem_.getSettings();
   }
 
-  void IBLPanel::render(FrameInfo& frameInfo)
+  void IBLPanel::render(FrameInfo& /*frameInfo*/)
   {
     // ImGui::Begin("IBL Settings");
 
@@ -29,7 +29,7 @@ namespace engine {
     if (settings_.irradianceSize == 128) currentIrradianceSizeIdx = 2;
     if (settings_.irradianceSize == 256) currentIrradianceSizeIdx = 3;
 
-    const char* sizeItems[] = {"32", "64", "128", "256"};
+    const char const* sizeItems[] = {"32", "64", "128", "256"};
     if (ImGui::Combo("Irradiance Size", &currentIrradianceSizeIdx, sizeItems, IM_ARRAYSIZE(sizeItems)))
     {
       settings_.irradianceSize = std::stoi(sizeItems[currentIrradianceSizeIdx]);
@@ -43,7 +43,7 @@ namespace engine {
     if (settings_.prefilterSize == 512) currentPrefilterSizeIdx = 2;
     if (settings_.prefilterSize == 1024) currentPrefilterSizeIdx = 3;
 
-    const char* prefilterSizeItems[] = {"128", "256", "512", "1024"};
+    const char const* prefilterSizeItems[] = {"128", "256", "512", "1024"};
     if (ImGui::Combo("Prefilter Size", &currentPrefilterSizeIdx, prefilterSizeItems, IM_ARRAYSIZE(prefilterSizeItems)))
     {
       settings_.prefilterSize = std::stoi(prefilterSizeItems[currentPrefilterSizeIdx]);
@@ -54,7 +54,7 @@ namespace engine {
     if (ImGui::SliderInt("Prefilter Mip Levels", &settings_.prefilterMipLevels, 1, 10)) changed = true;
 
     // Sample Count
-    int sampleCount = static_cast<int>(settings_.prefilterSampleCount);
+    int sampleCount = settings_.prefilterSampleCount;
     if (ImGui::InputInt("Prefilter Samples", &sampleCount))
     {
       settings_.prefilterSampleCount = static_cast<uint32_t>(sampleCount);
