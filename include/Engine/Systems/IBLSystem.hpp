@@ -3,12 +3,23 @@
 
 #include <vulkan/vulkan.h>
 
+#include <memory>
+#include <string>
+
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/IBL/IBLSettings.hpp"
+
 
 namespace engine {
 
   class Pipeline;
+
+  namespace ibl {
+    class IrradianceIBL;
+    class PrefilteredEnvIBL;
+    class BRDFLUT;
+  } // namespace ibl
 
   /**
    * @brief Image-Based Lighting (IBL) System
@@ -22,15 +33,7 @@ namespace engine {
   class IBLSystem
   {
   public:
-    struct Settings
-    {
-      int   irradianceSize        = 64;
-      int   prefilterSize         = 256;
-      int   prefilterMipLevels    = 8;
-      int   brdfLUTSize           = 256;
-      int   prefilterSampleCount  = 1024;
-      float irradianceSampleDelta = 0.025f;
-    };
+    using Settings = ibl::Settings;
 
     IBLSystem(Device& device);
     ~IBLSystem();
@@ -78,72 +81,19 @@ namespace engine {
     [[nodiscard]] VkDescriptorImageInfo getBRDFLUTDescriptorInfo() const;
 
   private:
-    Settings settings_;
-    void     createIrradianceMap();
-    void     createPrefilteredEnvMap();
-    void     createBRDFLUT();
-
-    void generateIrradianceMap(Skybox& skybox);
-    void generatePrefilteredEnvMap(Skybox& skybox);
-    void generateBRDFLUT();
-
-    void createIrradianceResources();
-    void createPrefilterResources();
-    void createBRDFResources();
-
     void cleanup();
-    void createFallbackResources();
 
-    // Ensure BRDF LUT exists (it is environment-independent and should be created once).
-    void ensureBRDFLUT();
+    void createFallbackResources();
 
     Device&  device_;
     bool     generated_         = false;
     uint64_t generationCounter_ = 0;
 
-    // Irradiance cubemap
-    VkImage        irradianceImage_     = VK_NULL_HANDLE;
-    VkDeviceMemory irradianceMemory_    = VK_NULL_HANDLE;
-    VkImageView    irradianceImageView_ = VK_NULL_HANDLE;
-    VkSampler      irradianceSampler_   = VK_NULL_HANDLE;
+    Settings settings_;
 
-    // Prefiltered environment cubemap
-    VkImage        prefilteredImage_     = VK_NULL_HANDLE;
-    VkDeviceMemory prefilteredMemory_    = VK_NULL_HANDLE;
-    VkImageView    prefilteredImageView_ = VK_NULL_HANDLE;
-    VkSampler      prefilteredSampler_   = VK_NULL_HANDLE;
-
-    // BRDF integration LUT
-    VkImage        brdfLUTImage_     = VK_NULL_HANDLE;
-    VkDeviceMemory brdfLUTMemory_    = VK_NULL_HANDLE;
-    VkImageView    brdfLUTImageView_ = VK_NULL_HANDLE;
-    VkSampler      brdfLUTSampler_   = VK_NULL_HANDLE;
-
-    // Tracks the actual allocated size for brdfLUTImage_ (fallback is 1).
-    int brdfLUTCurrentSize_ = 0;
-
-    // Pipeline resources for irradiance convolution
-    VkRenderPass          irradianceRenderPass_     = VK_NULL_HANDLE;
-    VkPipelineLayout      irradiancePipelineLayout_ = VK_NULL_HANDLE;
-    VkPipeline            irradiancePipeline_       = VK_NULL_HANDLE;
-    VkDescriptorSetLayout irradianceDescSetLayout_  = VK_NULL_HANDLE;
-    VkDescriptorPool      irradianceDescPool_       = VK_NULL_HANDLE;
-    VkDescriptorSet       irradianceDescSet_        = VK_NULL_HANDLE;
-
-    // Pipeline resources for prefilter convolution
-    VkRenderPass          prefilterRenderPass_     = VK_NULL_HANDLE;
-    VkPipelineLayout      prefilterPipelineLayout_ = VK_NULL_HANDLE;
-    VkPipeline            prefilterPipeline_       = VK_NULL_HANDLE;
-    VkDescriptorSetLayout prefilterDescSetLayout_  = VK_NULL_HANDLE;
-    VkDescriptorPool      prefilterDescPool_       = VK_NULL_HANDLE;
-    VkDescriptorSet       prefilterDescSet_        = VK_NULL_HANDLE;
-
-    // Pipeline resources for BRDF LUT computation
-    VkPipelineLayout      brdfPipelineLayout_ = VK_NULL_HANDLE;
-    VkPipeline            brdfPipeline_       = VK_NULL_HANDLE;
-    VkDescriptorSetLayout brdfDescSetLayout_  = VK_NULL_HANDLE;
-    VkDescriptorPool      brdfDescPool_       = VK_NULL_HANDLE;
-    VkDescriptorSet       brdfDescSet_        = VK_NULL_HANDLE;
+    std::unique_ptr<ibl::IrradianceIBL>     irradiance_;
+    std::unique_ptr<ibl::PrefilteredEnvIBL> prefiltered_;
+    std::unique_ptr<ibl::BRDFLUT>           brdfLUT_;
 
     // Deferred regeneration state
     bool     regenerationRequested_ = false;
