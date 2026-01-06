@@ -28,15 +28,15 @@ namespace engine {
     // Refactored helper methods to keep `load()` small and testable
     static void loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
 
-    void loadMeshes(Model::Builder&                            builder,
-                    const tinygltf::Model&                     model,
-                    bool                                       flipX,
-                    bool                                       flipY,
-                    bool                                       flipZ,
-                    std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-                    std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
-                    std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
-                    bool                                       hasAnimations);
+    static void loadMeshes(Model::Builder&                            builder,
+                           const tinygltf::Model&                     model,
+                           bool                                       flipX,
+                           bool                                       flipY,
+                           bool                                       flipZ,
+                           std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
+                           std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+                           std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
+                           bool                                       hasAnimations);
 
     static void loadMorphTargets(Model::Builder&                                  builder,
                                  const tinygltf::Model&                           model,
@@ -46,7 +46,7 @@ namespace engine {
 
     static void loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
 
-    static [[nodiscard]] glm::mat4 computeNodeTransform(const tinygltf::Node& node);
+    [[nodiscard]] static glm::mat4 computeNodeTransform(const tinygltf::Node& node);
 
     static void processMesh(Model::Builder&                                 builder,
                             const tinygltf::Model&                          model,

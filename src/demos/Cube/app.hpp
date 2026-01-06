@@ -12,8 +12,6 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneSerializer.hpp"
@@ -30,7 +28,7 @@ namespace engine {
   class CameraSystem;
   class InputSystem;
   class ObjectSelectionSystem;
-  class MeshRenderSystem;
+  class ModelRenderSystem;
   class LightSystem;
   class RenderContext;
   class ShadowSystem;
@@ -50,7 +48,7 @@ namespace engine {
     CameraSystem&          cameraSystem;
     AnimationSystem&       animationSystem;
     LODSystem&             lodSystem;
-    MeshRenderSystem&      meshRenderSystem;
+    ModelRenderSystem&     modelRenderSystem;
     LightSystem&           lightSystem;
     ShadowSystem&          shadowSystem;
     SkyboxRenderSystem&    skyboxRenderSystem;
@@ -83,6 +81,8 @@ namespace engine {
     void setupScene();
     void setupUI();
     void setupRenderGraph();
+
+    GameLoopState makeGameLoopState();
 
     void update(float frameTime);
     void render(float frameTime);
@@ -125,7 +125,7 @@ namespace engine {
     // Render Systems
     std::unique_ptr<SkyboxRenderSystem>     skyboxRenderSystem;
     std::unique_ptr<DustRenderSystem>       dustRenderSystem;
-    std::unique_ptr<MeshRenderSystem>       meshRenderSystem;
+    std::unique_ptr<ModelRenderSystem>      modelRenderSystem;
     std::unique_ptr<LightSystem>            lightSystem;
     std::unique_ptr<DeferredLightingSystem> deferredLightingSystem;
     std::unique_ptr<PostProcessingSystem>   postProcessingSystem;

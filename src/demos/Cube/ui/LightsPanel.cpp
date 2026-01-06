@@ -12,7 +12,6 @@
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Systems/LightSystem.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/geometric.hpp"
 
@@ -93,7 +92,6 @@ namespace engine {
               {
                 dirLight.targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
               }
-              LightSystem::updateTargetLockedLight(entity, &scene_);
             }
           }
 
@@ -101,7 +99,6 @@ namespace engine {
           {
             if (ImGui::DragFloat3("Target Point", &dirLight.targetPoint.x, 0.1f))
             {
-              LightSystem::updateTargetLockedLight(entity, &scene_);
             }
           }
 
@@ -134,7 +131,6 @@ namespace engine {
               {
                 spotLight.targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
               }
-              LightSystem::updateTargetLockedLight(entity, &scene_);
             }
           }
 
@@ -142,7 +138,6 @@ namespace engine {
           {
             if (ImGui::DragFloat3("Target Point##spot", &spotLight.targetPoint.x, 0.1f))
             {
-              LightSystem::updateTargetLockedLight(entity, &scene_);
             }
           }
 

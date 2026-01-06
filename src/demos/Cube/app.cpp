@@ -47,7 +47,7 @@
 #include "Engine/Systems/InputSystem.hpp"
 #include "Engine/Systems/LODSystem.hpp"
 #include "Engine/Systems/LightSystem.hpp"
-#include "Engine/Systems/MeshRenderSystem.hpp"
+#include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
@@ -96,6 +96,27 @@ namespace {
 } // namespace
 
 namespace engine {
+
+  GameLoopState App::makeGameLoopState()
+  {
+    return GameLoopState{
+            .objectSelectionSystem = *objectSelectionSystem,
+            .inputSystem           = *inputSystem,
+            .cameraSystem          = *cameraSystem,
+            .animationSystem       = *animationSystem,
+            .lodSystem             = *lodSystem,
+            .modelRenderSystem     = *modelRenderSystem,
+            .lightSystem           = *lightSystem,
+            .shadowSystem          = *shadowSystem,
+            .skyboxRenderSystem    = *skyboxRenderSystem,
+            .dustRenderSystem      = *dustRenderSystem,
+            .renderContext         = *renderContext,
+            .uiManager             = *uiManager,
+            .skybox                = skybox.get(),
+            .skySettings           = skySettings,
+            .dustSettings          = dustSettings,
+    };
+  }
 
   App::App()
   {
@@ -168,12 +189,12 @@ namespace engine {
     std::cout << "[App] Creating render systems..." << '\n';
     skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
     dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
-    meshRenderSystem =
-            std::make_unique<MeshRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout(), resourceManager.getTextureManager().getDescriptorSetLayout());
+    modelRenderSystem =
+            std::make_unique<ModelRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout(), resourceManager.getTextureManager().getDescriptorSetLayout());
     lightSystem = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout());
 
     // G-buffer + Deferred lighting
-    meshRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
+    modelRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
 
     gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 4).build();
 
@@ -240,10 +261,10 @@ namespace engine {
     }
 
     // Depth prepass pipeline is created but not scheduled yet (RenderGraph wiring is a follow-up task).
-    meshRenderSystem->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
+    modelRenderSystem->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
 
-    meshRenderSystem->setShadowSystem(shadowSystem.get());
-    meshRenderSystem->setIBLSystem(iblSystem.get());
+    modelRenderSystem->setShadowSystem(shadowSystem.get());
+    modelRenderSystem->setIBLSystem(iblSystem.get());
 
     // Post Processing
     postProcessPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 2).build();
@@ -290,141 +311,41 @@ namespace engine {
 
     // 1. Update Pass
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("Update", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
+      auto state = makeGameLoopState();
       updatePhase(frameInfo, state);
     }));
 
     // 2. Compute Pass
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("Compute", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
+      auto state = makeGameLoopState();
       computePhase(frameInfo, state);
     }));
 
     // 3. Shadow Pass
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("Shadow", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
+      auto state = makeGameLoopState();
       shadowPhase(frameInfo, state);
     }));
 
     // 4. Depth Prepass (Offscreen Depth Only)
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("DepthPrepass", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
+      auto state = makeGameLoopState();
 
       renderer.beginOffscreenDepthPrepassRenderPass(frameInfo.commandBuffer);
-      state.meshRenderSystem.renderDepthPrepass(frameInfo);
+      state.modelRenderSystem.renderDepthPrepass(frameInfo);
       renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
     }));
 
     // 5. HZB Build (same frame, after Depth Prepass)
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("HZB", [&](FrameInfo& frameInfo) {
-      GameLoopState const state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
-
-      renderer.generateDepthPyramid(frameInfo.commandBuffer);
-    }));
+    renderGraph->addPass(std::make_unique<LambdaRenderPass>("HZB", [&](FrameInfo& frameInfo) { renderer.generateDepthPyramid(frameInfo.commandBuffer); }));
 
     // 6. Offscreen Pass (Main Scene - Load depth from prepass)
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("Offscreen", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
+      auto state = makeGameLoopState();
 
       // Reset per-frame dynamic offsets before any mesh passes.
-      state.meshRenderSystem.beginFrame(frameInfo.frameIndex);
-      state.meshRenderSystem.updateSceneColorDescriptor(frameInfo.frameIndex, renderer.getSceneColorImageInfo(frameInfo.frameIndex));
+      state.modelRenderSystem.beginFrame(frameInfo.frameIndex);
+      state.modelRenderSystem.updateSceneColorDescriptor(frameInfo.frameIndex, renderer.getSceneColorImageInfo(frameInfo.frameIndex));
 
       // G-buffer descriptors are created once, but the underlying image views/samplers are recreated on window resize.
       // Refresh them every frame to avoid stale handles after swapchain/offscreen resize.
@@ -444,12 +365,12 @@ namespace engine {
 
       // Use the "current-frame HZB" global descriptor set for the main scene after the HZB pass.
       // This avoids updating a descriptor set while it is already bound to the command buffer.
-      VkDescriptorSet const prevGlobalSet = frameInfo.globalDescriptorSet;
-      frameInfo.globalDescriptorSet       = renderContext->getGlobalDescriptorSetCurrentHzb(frameInfo.frameIndex);
+      auto const prevGlobalSet      = frameInfo.globalDescriptorSet;
+      frameInfo.globalDescriptorSet = renderContext->getGlobalDescriptorSetCurrentHzb(frameInfo.frameIndex);
 
       // Pass 1: Opaque scene (writes color+depth)
       renderer.beginGbufferRenderPass(frameInfo.commandBuffer);
-      state.meshRenderSystem.renderGbuffer(frameInfo);
+      state.modelRenderSystem.renderGbuffer(frameInfo);
       renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
 
       // Pass 2: Deferred lighting (writes HDR color, loads depth)
@@ -522,8 +443,8 @@ namespace engine {
 
         // 3b) Forward overlays
         renderer.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
-        state.meshRenderSystem.renderTransmission(frameInfo);
-        state.meshRenderSystem.renderAlphaBlend(frameInfo);
+        state.modelRenderSystem.renderTransmission(frameInfo);
+        state.modelRenderSystem.renderAlphaBlend(frameInfo);
 
         // Dust pass (uses scene lighting conditions)
         auto sunColor     = glm::vec3(1.0f);
@@ -561,23 +482,7 @@ namespace engine {
 
     // 7. Composition Pass (PostProcess + UI)
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("Composition", [&](FrameInfo& frameInfo) {
-      GameLoopState state{
-              .objectSelectionSystem = *objectSelectionSystem,
-              .inputSystem           = *inputSystem,
-              .cameraSystem          = *cameraSystem,
-              .animationSystem       = *animationSystem,
-              .lodSystem             = *lodSystem,
-              .meshRenderSystem      = *meshRenderSystem,
-              .lightSystem           = *lightSystem,
-              .shadowSystem          = *shadowSystem,
-              .skyboxRenderSystem    = *skyboxRenderSystem,
-              .dustRenderSystem      = *dustRenderSystem,
-              .renderContext         = *renderContext,
-              .uiManager             = *uiManager,
-              .skybox                = skybox.get(),
-              .skySettings           = skySettings,
-              .dustSettings          = dustSettings,
-      };
+      auto state = makeGameLoopState();
 
       renderer.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
@@ -743,6 +648,9 @@ namespace engine {
     // Update uniform buffer with per-frame data FIRST (this also rotates point
     // lights)
     GlobalUbo ubo{};
+
+    // Keep target-locked directional/spot lights oriented correctly for this frame.
+    LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
 
     // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
     auto const lightCounts    = renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);

@@ -47,31 +47,68 @@ namespace std {
 
 namespace engine {
 
-  // Helper function to get texture path from glTF, handling both URI and embedded
-  // images
-  static std::string getTexturePath(const tinygltf::Model& model, int textureIndex, const std::string& baseDir, const std::string& cacheDir)
-  {
-    if (textureIndex < 0 || std::cmp_greater_equal(textureIndex, model.textures.size()))
+  namespace {
+    // Helper function to get texture path from glTF, handling both URI and embedded
+    // images
+    std::string getTexturePath(const tinygltf::Model& model, int textureIndex, const std::string& baseDir, const std::string& cacheDir)
     {
-      return "";
-    }
-
-    const tinygltf::Texture& texture = model.textures[textureIndex];
-    if (texture.source < 0 || std::cmp_greater_equal(texture.source, model.images.size()))
-    {
-      return "";
-    }
-
-    const tinygltf::Image& image = model.images[texture.source];
-
-    // If image has a URI, it's an external file
-    if (!image.uri.empty())
-    {
-      // Check if it's a data URI (base64 embedded)
-      if (image.uri.starts_with("data:"))
+      if (textureIndex < 0 || std::cmp_greater_equal(textureIndex, model.textures.size()))
       {
-        // It's a data URI - tinygltf has already decoded it into image.image
-        // We need to write it to a cache file
+        return "";
+      }
+
+      const tinygltf::Texture& texture = model.textures[textureIndex];
+      if (texture.source < 0 || std::cmp_greater_equal(texture.source, model.images.size()))
+      {
+        return "";
+      }
+
+      const tinygltf::Image& image = model.images[texture.source];
+
+      // If image has a URI, it's an external file
+      if (!image.uri.empty())
+      {
+        // Check if it's a data URI (base64 embedded)
+        if (image.uri.starts_with("data:"))
+        {
+          // It's a data URI - tinygltf has already decoded it into image.image
+          // We need to write it to a cache file
+          std::string extension = ".png"; // Default to PNG
+          if (image.mimeType == "image/jpeg")
+          {
+            extension = ".jpg";
+          }
+          else if (image.mimeType == "image/png")
+          {
+            extension = ".png";
+          }
+
+          std::string cachePath = cacheDir + "/texture_" + std::to_string(texture.source) + extension;
+
+          // Create cache directory if it doesn't exist
+          std::filesystem::create_directories(cacheDir);
+
+          // Write the image data to file
+          std::ofstream outFile(cachePath, std::ios::binary);
+          if (outFile.is_open())
+          {
+            outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
+            outFile.close();
+            return cachePath;
+          }
+
+          std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << '\n';
+          return "";
+        }
+
+        // Regular file URI - return path relative to base directory
+        return baseDir + image.uri;
+      }
+      // Image is embedded in a bufferView
+      if (image.bufferView >= 0)
+      {
+        // Image data is embedded in the glTF file
+        // tinygltf has already loaded it into image.image
         std::string extension = ".png"; // Default to PNG
         if (image.mimeType == "image/jpeg")
         {
@@ -82,7 +119,7 @@ namespace engine {
           extension = ".png";
         }
 
-        std::string cachePath = cacheDir + "/texture_" + std::to_string(texture.source) + extension;
+        std::string cachePath = cacheDir + "/embedded_texture_" + std::to_string(texture.source) + extension;
 
         // Create cache directory if it doesn't exist
         std::filesystem::create_directories(cacheDir);
@@ -96,50 +133,13 @@ namespace engine {
           return cachePath;
         }
 
-        std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << '\n';
+        std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << '\n';
         return "";
       }
-      else
-      {
-        // Regular file URI - return path relative to base directory
-        return baseDir + image.uri;
-      }
-    }
-    // Image is embedded in a bufferView
-    else if (image.bufferView >= 0)
-    {
-      // Image data is embedded in the glTF file
-      // tinygltf has already loaded it into image.image
-      std::string extension = ".png"; // Default to PNG
-      if (image.mimeType == "image/jpeg")
-      {
-        extension = ".jpg";
-      }
-      else if (image.mimeType == "image/png")
-      {
-        extension = ".png";
-      }
 
-      std::string cachePath = cacheDir + "/embedded_texture_" + std::to_string(texture.source) + extension;
-
-      // Create cache directory if it doesn't exist
-      std::filesystem::create_directories(cacheDir);
-
-      // Write the image data to file
-      std::ofstream outFile(cachePath, std::ios::binary);
-      if (outFile.is_open())
-      {
-        outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
-        outFile.close();
-        return cachePath;
-      }
-
-      std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << '\n';
       return "";
     }
-
-    return "";
-  }
+  } // namespace
 
   bool GLTFImporter::load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ)
   {
@@ -723,19 +723,19 @@ namespace engine {
 
       // Texture transform (KHR_texture_transform)
       const tinygltf::ExtensionMap* textureExtensions = nullptr;
-      if (gltfMat.normalTexture.index >= 0 && (gltfMat.normalTexture.extensions.contains("KHR_texture_transform") != 0u))
+      if (gltfMat.normalTexture.index >= 0 && (static_cast<unsigned int>(gltfMat.normalTexture.extensions.contains("KHR_texture_transform")) != 0u))
       {
         textureExtensions = &gltfMat.normalTexture.extensions;
       }
-      else if (pbr.baseColorTexture.index >= 0 && (pbr.baseColorTexture.extensions.contains("KHR_texture_transform") != 0u))
+      else if (pbr.baseColorTexture.index >= 0 && (static_cast<unsigned int>(pbr.baseColorTexture.extensions.contains("KHR_texture_transform")) != 0u))
       {
         textureExtensions = &pbr.baseColorTexture.extensions;
       }
-      else if (pbr.metallicRoughnessTexture.index >= 0 && (pbr.metallicRoughnessTexture.extensions.contains("KHR_texture_transform") != 0u))
+      else if (pbr.metallicRoughnessTexture.index >= 0 && (static_cast<unsigned int>(pbr.metallicRoughnessTexture.extensions.contains("KHR_texture_transform")) != 0u))
       {
         textureExtensions = &pbr.metallicRoughnessTexture.extensions;
       }
-      else if (gltfMat.occlusionTexture.index >= 0 && (gltfMat.occlusionTexture.extensions.contains("KHR_texture_transform") != 0u))
+      else if (gltfMat.occlusionTexture.index >= 0 && (static_cast<unsigned int>(gltfMat.occlusionTexture.extensions.contains("KHR_texture_transform")) != 0u))
       {
         textureExtensions = &gltfMat.occlusionTexture.extensions;
       }

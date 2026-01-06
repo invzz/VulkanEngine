@@ -8,6 +8,7 @@
 #define GLM_FORCE_RADIANS
 // Ensure depth range is [0, 1] for Vulkan
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <memory>
@@ -71,7 +72,7 @@ namespace engine {
     // Animation structures
     struct AnimationSampler
     {
-      enum Interpolation
+      enum Interpolation : std::uint8_t
       {
         LINEAR,
         STEP,
@@ -88,7 +89,7 @@ namespace engine {
 
     struct AnimationChannel
     {
-      enum TargetPath
+      enum TargetPath : std::uint8_t
       {
         TRANSLATION,
         ROTATION,

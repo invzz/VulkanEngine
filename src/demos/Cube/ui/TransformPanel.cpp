@@ -10,7 +10,6 @@
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Systems/LightSystem.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/trigonometric.hpp"
 
@@ -45,48 +44,12 @@ namespace engine {
             translationChanged |= ImGui::DragFloat("Y", &transform.translation.y, 0.1f);
             translationChanged |= ImGui::DragFloat("Z", &transform.translation.z, 0.1f);
 
-            // If translation changed and light is target-locked, update rotation
-            if (translationChanged)
-            {
-              bool isDirLocked = false;
-              if (registry.all_of<DirectionalLightComponent>(entity))
-              {
-                isDirLocked = registry.get<DirectionalLightComponent>(entity).useTargetPoint;
-              }
 
-              bool isSpotLocked = false;
-              if (registry.all_of<SpotLightComponent>(entity))
-              {
-                isSpotLocked = registry.get<SpotLightComponent>(entity).useTargetPoint;
-              }
-
-              if (isDirLocked || isSpotLocked)
-              {
-                LightSystem::updateTargetLockedLight(entity, &scene_);
-              }
-            }
 
             ImGui::Separator();
             if (ImGui::Button("Reset Position"))
             {
               transform.translation = glm::vec3(0.0f);
-              // Update rotation if target-locked
-              bool isDirLocked = false;
-              if (registry.all_of<DirectionalLightComponent>(entity))
-              {
-                isDirLocked = registry.get<DirectionalLightComponent>(entity).useTargetPoint;
-              }
-
-              bool isSpotLocked = false;
-              if (registry.all_of<SpotLightComponent>(entity))
-              {
-                isSpotLocked = registry.get<SpotLightComponent>(entity).useTargetPoint;
-              }
-
-              if (isDirLocked || isSpotLocked)
-              {
-                LightSystem::updateTargetLockedLight(entity, &scene_);
-              }
             }
             ImGui::EndTabItem();
           }
