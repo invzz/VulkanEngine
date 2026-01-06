@@ -144,8 +144,7 @@ namespace engine {
       }
     }
 
-    VkDeviceSize const faceSize  = static_cast<VkDeviceSize>(size_) * size_ * 4; // RGBA
-    VkDeviceSize const totalSize = faceSize * 6;
+    VkDeviceSize const faceSize = static_cast<VkDeviceSize>(size_) * size_ * 4; // RGBA
 
     // Create staging buffer with all face data
     Buffer stagingBuffer{

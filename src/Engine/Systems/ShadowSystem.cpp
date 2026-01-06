@@ -214,7 +214,7 @@ namespace engine {
     }
 
     // End shadow render pass
-    shadowMap.endRenderPass(frameInfo.commandBuffer);
+    engine::ShadowMap::endRenderPass(frameInfo.commandBuffer);
   }
 
   void ShadowSystem::renderShadowMaps(FrameInfo& frameInfo, float sceneRadius)
@@ -395,7 +395,7 @@ namespace engine {
       modelComp.model->draw(frameInfo.commandBuffer);
     }
 
-    cubeShadowMap.endRenderPass(frameInfo.commandBuffer);
+    engine::CubeShadowMap::endRenderPass(frameInfo.commandBuffer);
   }
 
 } // namespace engine

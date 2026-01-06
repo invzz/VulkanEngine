@@ -3,8 +3,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <memory>
-
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/Skybox.hpp"
 

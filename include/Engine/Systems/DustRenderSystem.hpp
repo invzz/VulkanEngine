@@ -5,7 +5,6 @@
 
 #include <glm/glm.hpp>
 #include <memory>
-#include <vector>
 
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/Device.hpp"

@@ -1,10 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP
 
-#include <memory>
-#include <typeindex>
-#include <typeinfo>
-
 namespace engine {
 
   class GameObject;

@@ -1,4 +1,8 @@
+#define TINYOBJLOADER_IMPLEMENTATION
+#define GLM_ENABLE_EXPERIMENTAL
 #include "Engine/Resources/importers/OBJImporter.hpp"
+
+#include <tiny_obj_loader.h>
 
 #include <algorithm>
 #include <cctype>
@@ -6,26 +10,19 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Core/utils.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/PBRMaterial.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
-#include <algorithm>
-#include <iostream>
-#include <unordered_map>
-#define GLM_ENABLE_EXPERIMENTAL
-
-#include "Engine/Core/ansi_colors.hpp"
-#include "Engine/Core/utils.hpp"
 
 // Hash function for Model::Vertex
 namespace std {
@@ -148,8 +145,8 @@ namespace engine {
       matInfo.name = mat.name;
 
       // Convert TinyObj material to PBR using helper function
-      auto  Kd = glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
-      auto  Ks = glm::vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
+      auto        Kd = glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
+      auto        Ks = glm::vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
       float const Ns = mat.shininess;
 
       matInfo.pbrMaterial = mtlToPBR(Kd, Ks, Ns, matInfo.name);

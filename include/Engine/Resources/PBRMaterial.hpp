@@ -4,13 +4,11 @@
 #include <glm/glm.hpp>
 #include <memory>
 
-#include "Engine/Scene/Component.hpp"
-
 namespace engine {
 
   class Texture; // Forward declaration
 
-  enum class AlphaMode
+  enum class AlphaMode : std::uint8_t
   {
     Opaque,
     Mask,

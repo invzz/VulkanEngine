@@ -1,5 +1,6 @@
 #include "Engine/Systems/IBLSystem.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
@@ -87,17 +88,6 @@ namespace engine {
     if (generated_)
     {
       cleanup();
-      // Reset handles to null just in case cleanup doesn't do it (it should if
-      // implemented correctly) cleanup() calls vkDestroy... but doesn't
-      // necessarily set handles to null unless we do it. Let's check cleanup().
-      // It just calls vkDestroy. It doesn't set to null.
-      // So we should set them to null or ensure create... handles it.
-      // create... calls createImageHelper which calls create...
-      // It's safer to set generated_ = false and rely on create... overwriting
-      // the handles. But if we don't set handles to null, cleanup() might try to
-      // destroy them again if called twice? cleanup() checks `if (handle)`. If we
-      // don't null them, it will crash on second cleanup. So cleanup() MUST set
-      // handles to null.
     }
 
     createIrradianceMap();
@@ -708,7 +698,7 @@ namespace engine {
   {
     // Update descriptor set
     VkDescriptorImageInfo const imageInfo = skybox.getDescriptorInfo();
-    VkWriteDescriptorSet  descriptorWrite{};
+    VkWriteDescriptorSet        descriptorWrite{};
     descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet          = irradianceDescSet_;
     descriptorWrite.dstBinding      = 0;
@@ -1003,7 +993,7 @@ namespace engine {
   {
     // Update descriptor set
     VkDescriptorImageInfo const imageInfo = skybox.getDescriptorInfo();
-    VkWriteDescriptorSet  descriptorWrite{};
+    VkWriteDescriptorSet        descriptorWrite{};
     descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.dstSet          = prefilterDescSet_;
     descriptorWrite.dstBinding      = 0;
@@ -1029,8 +1019,10 @@ namespace engine {
 
     for (int mip = 0; mip < settings_.prefilterMipLevels; ++mip)
     {
-      uint32_t const mipWidth  = settings_.prefilterSize * std::pow(0.5, mip);
-      uint32_t const mipHeight = settings_.prefilterSize * std::pow(0.5, mip);
+      uint32_t const baseSize  = static_cast<uint32_t>(settings_.prefilterSize);
+      uint32_t const divisor   = 1u << static_cast<uint32_t>(mip);
+      uint32_t const mipWidth  = std::max(1u, baseSize / divisor);
+      uint32_t const mipHeight = std::max(1u, baseSize / divisor);
       float const    roughness = (float)mip / (float)(settings_.prefilterMipLevels - 1);
 
       for (int i = 0; i < 6; ++i)

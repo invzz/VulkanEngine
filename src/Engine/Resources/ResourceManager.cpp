@@ -650,8 +650,8 @@ namespace engine {
     // Check if already cached (fast path)
     std::string const key = makeTextureKey(path, srgb);
     {
-      std::scoped_lock const            lock(textureMutex_);
-      auto                              it = textureCache_.find(key);
+      std::scoped_lock const lock(textureMutex_);
+      auto                   it = textureCache_.find(key);
       if (it != textureCache_.end())
       {
         if (auto existingTexture = it->second.lock())
@@ -681,7 +681,7 @@ namespace engine {
           auto texture = loadTexture(path, srgb, false, priority);
           promise->set_value(texture);
         }
-        catch (const std::exception& e)
+        catch (const std::exception& /*e*/)
         {
           promise->set_exception(std::current_exception());
         }
@@ -697,8 +697,8 @@ namespace engine {
     // Check if already cached (fast path)
     std::string const key = makeModelKey(path, enableTextures, loadMaterials, enableMorphTargets);
     {
-      std::scoped_lock const            lock(modelMutex_);
-      auto                              it = modelCache_.find(key);
+      std::scoped_lock const lock(modelMutex_);
+      auto                   it = modelCache_.find(key);
       if (it != modelCache_.end())
       {
         if (auto existingModel = it->second.lock())
@@ -728,7 +728,7 @@ namespace engine {
           auto model = loadModel(path, enableTextures, loadMaterials, enableMorphTargets, priority);
           promise->set_value(model);
         }
-        catch (const std::exception& e)
+        catch (const std::exception& /*e*/)
         {
           promise->set_exception(std::current_exception());
         }

@@ -17,7 +17,7 @@ namespace engine {
     ImGui::DragFloat("Saturation", &pushConstants.saturation, 0.01f, 0.0f, 2.0f);
     ImGui::DragFloat("Vignette", &pushConstants.vignette, 0.01f, 0.0f, 5.0f);
 
-    const char const* toneMappingItems[] = {"None", "ACES Filmic"};
+    const char* toneMappingItems[] = {"None", "ACES Filmic"};
     ImGui::Combo("Tone Mapping", &pushConstants.toneMappingMode, toneMappingItems, IM_ARRAYSIZE(toneMappingItems));
 
     ImGui::Separator();

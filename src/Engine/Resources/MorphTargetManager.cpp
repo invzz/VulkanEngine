@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -65,7 +66,7 @@ namespace engine {
     // In a full implementation, you'd handle multiple sets
     const auto& morphSet = morphTargetSets[0];
 
-    data.morphTargetCount = morphSet.targets.size();
+    data.morphTargetCount = static_cast<uint32_t>(morphSet.targets.size());
     data.vertexCount      = morphSet.vertexCount;
     data.vertexOffset     = morphSet.vertexOffset;
 
@@ -79,15 +80,16 @@ namespace engine {
 
     for (const auto& target : morphSet.targets)
     {
-      for (size_t i = 0; i < data.vertexCount; i++)
+      for (uint32_t vertexIndex = 0; vertexIndex < data.vertexCount; vertexIndex++)
       {
         MorphDelta delta{};
 
         // Use position index mapping if available, otherwise direct indexing
-        uint32_t posIdx = i;
-        if (!morphSet.positionIndices.empty() && i < morphSet.positionIndices.size())
+        uint32_t     posIdx       = vertexIndex;
+        size_t const vertexIndexS = static_cast<size_t>(vertexIndex);
+        if (!morphSet.positionIndices.empty() && vertexIndexS < morphSet.positionIndices.size())
         {
-          posIdx = morphSet.positionIndices[i];
+          posIdx = morphSet.positionIndices[vertexIndexS];
         }
 
         delta.positionDelta = glm::vec4(target.positionDeltas[posIdx], 0.0f);

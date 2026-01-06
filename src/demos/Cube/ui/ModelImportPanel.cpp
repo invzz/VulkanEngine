@@ -48,7 +48,7 @@ namespace engine {
         {
           // Set default path to models directory
           std::string const defaultPath = std::string(MODEL_PATH) + "/glTF/";
-          strncpy(modelPath_, defaultPath.c_str(), sizeof(modelPath_) - 1);
+          strncpy_s(modelPath_, defaultPath.c_str(), sizeof(modelPath_) - 1);
         }
 
         if (ImGui::Button("Load Model"))
@@ -120,7 +120,7 @@ namespace engine {
   void ModelImportPanel::loadModelIndex()
   {
     std::string const indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
-    std::ifstream f(indexPath);
+    std::ifstream     f(indexPath);
     if (!f.is_open())
     {
       std::cerr << "Failed to open model index: " << indexPath << '\n';
@@ -146,7 +146,7 @@ namespace engine {
           // Note: screenshotRel is usually "screenshot/screenshot.png"
           // And the folder is assets/models/glTF/<name>/
           std::string const fullScreenshotPath = std::string(MODEL_PATH) + "/glTF/" + entry.name + "/" + screenshotRel;
-          entry.screenshotPath           = fullScreenshotPath;
+          entry.screenshotPath                 = fullScreenshotPath;
 
           // Load texture
           // Use flipY=false for UI images

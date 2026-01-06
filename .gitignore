@@ -6,6 +6,11 @@ assets/shaders/compiled/*.spv.json
 assets/shaders/compiled/*.spv.map
 .cache/
 .idea/
+.vscode/
+tools/
+profile/
+planiing/
+
 
 # MacOS Cache
 .DS_Store

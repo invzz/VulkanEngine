@@ -193,9 +193,9 @@ namespace engine {
     std::string const cacheDir = baseDir + ".gltf_texture_cache";
 
     // Flip multipliers
-    float const xMultiplier = flipX ? -1.0f : 1.0f;
-    float const yMultiplier = flipY ? -1.0f : 1.0f;
-    float const zMultiplier = flipZ ? -1.0f : 1.0f;
+    // float const xMultiplier = flipX ? -1.0f : 1.0f;
+    // float const yMultiplier = flipY ? -1.0f : 1.0f;
+    // float const zMultiplier = flipZ ? -1.0f : 1.0f;
 
     builder.vertices.clear();
     builder.indices.clear();
@@ -296,7 +296,7 @@ namespace engine {
         if (primitiveVertexOffsets.contains(key))
         {
           morphSet.vertexOffset = primitiveVertexOffsets[key];
-          morphSet.vertexCount  = primitiveVertexCounts[key]; // Use actual vertex count
+          morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts[key]); // Use actual vertex count
 
           // Store position index mapping for morph targets
           morphSet.positionIndices.resize(morphSet.vertexCount);
@@ -311,7 +311,7 @@ namespace engine {
         else
         {
           morphSet.vertexOffset = 0;
-          morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
+          morphSet.vertexCount  = static_cast<uint32_t>(gltfModel.accessors[primitive.attributes.at("POSITION")].count);
           std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
         }
 
@@ -1084,7 +1084,7 @@ namespace engine {
         if (primitiveVertexOffsets.contains(key))
         {
           morphSet.vertexOffset = primitiveVertexOffsets.at(key);
-          morphSet.vertexCount  = primitiveVertexCounts.at(key);
+          morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts.at(key));
 
           morphSet.positionIndices.resize(morphSet.vertexCount);
           for (uint32_t i = 0; i < morphSet.vertexCount; i++)
@@ -1096,7 +1096,7 @@ namespace engine {
         else
         {
           morphSet.vertexOffset = 0;
-          morphSet.vertexCount  = gltfModel.accessors[primitive.attributes.at("POSITION")].count;
+          morphSet.vertexCount  = static_cast<uint32_t>(gltfModel.accessors[primitive.attributes.at("POSITION")].count);
           std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
         }
 

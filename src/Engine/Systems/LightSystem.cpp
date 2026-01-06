@@ -256,7 +256,7 @@ namespace engine {
 
     // Process point lights
     auto pointView = registry.view<TransformComponent, PointLightComponent>();
-    for (auto entity : pointView)
+    for ([[maybe_unused]] auto entity : pointView)
     {
       ubo.pointLightCount++;
     }
