@@ -1,11 +1,16 @@
 #include "Engine/Systems/IBLSystem.hpp"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/Skybox.hpp"
@@ -17,7 +22,42 @@
 
 namespace engine {
 
-  IBLSystem::IBLSystem(Device& device) : device_{device} {}
+  namespace {
+    void createImageHelper(Device&               device,
+                           uint32_t              width,
+                           uint32_t              height,
+                           uint32_t              mipLevels,
+                           VkFormat              format,
+                           VkImageTiling         tiling,
+                           VkImageUsageFlags     usage,
+                           VkMemoryPropertyFlags properties,
+                           VkImage&              image,
+                           VkDeviceMemory&       imageMemory,
+                           uint32_t              arrayLayers = 1,
+                           VkImageCreateFlags    flags       = 0);
+
+    VkImageView createImageViewHelper(Device&            device,
+                                      VkImage            image,
+                                      VkFormat           format,
+                                      VkImageAspectFlags aspectFlags,
+                                      uint32_t           mipLevels,
+                                      VkImageViewType    viewType       = VK_IMAGE_VIEW_TYPE_2D,
+                                      uint32_t           baseMipLevel   = 0,
+                                      uint32_t           layerCount     = 1,
+                                      uint32_t           baseArrayLayer = 0);
+
+    void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1);
+  } // namespace
+
+  IBLSystem::IBLSystem(Device& device) : device_{device}
+  {
+    // Ensure descriptor bindings are always valid even before any environment skybox is loaded.
+    // This creates tiny black fallback textures (irradiance/prefilter cubemaps + BRDF LUT).
+    createFallbackResources();
+
+    // BRDF LUT is environment-independent; keep it available even when we haven't loaded an environment yet.
+    // (Fallback creates a tiny placeholder; this upgrades it to the configured size lazily when needed.)
+  }
 
   IBLSystem::~IBLSystem()
   {
@@ -67,9 +107,6 @@ namespace engine {
   {
     if (regenerationRequested_ && (nextSkybox_ != nullptr))
     {
-      // Wait for device idle to ensure no resources are in use
-      vkDeviceWaitIdle(device_.device());
-
       // Update settings
       settings_ = nextSettings_;
 
@@ -84,14 +121,57 @@ namespace engine {
 
   void IBLSystem::generateFromSkybox(Skybox& skybox)
   {
-    if (generated_)
+    // Industry-standard runtime behavior:
+    // - BRDF LUT is global/static (generate once per device/settings)
+    // - Irradiance/prefilter depend on the environment
+
+    ensureBRDFLUT();
+
+    // Drop only the environment-dependent resources.
+    if (irradianceSampler_ != VK_NULL_HANDLE)
     {
-      cleanup();
+      vkDestroySampler(device_.device(), irradianceSampler_, nullptr);
+      irradianceSampler_ = VK_NULL_HANDLE;
+    }
+    if (irradianceImageView_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(device_.device(), irradianceImageView_, nullptr);
+      irradianceImageView_ = VK_NULL_HANDLE;
+    }
+    if (irradianceImage_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(device_.device(), irradianceImage_, nullptr);
+      irradianceImage_ = VK_NULL_HANDLE;
+    }
+    if (irradianceMemory_ != VK_NULL_HANDLE)
+    {
+      vkFreeMemory(device_.device(), irradianceMemory_, nullptr);
+      irradianceMemory_ = VK_NULL_HANDLE;
+    }
+
+    if (prefilteredSampler_ != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(device_.device(), prefilteredSampler_, nullptr);
+      prefilteredSampler_ = VK_NULL_HANDLE;
+    }
+    if (prefilteredImageView_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(device_.device(), prefilteredImageView_, nullptr);
+      prefilteredImageView_ = VK_NULL_HANDLE;
+    }
+    if (prefilteredImage_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(device_.device(), prefilteredImage_, nullptr);
+      prefilteredImage_ = VK_NULL_HANDLE;
+    }
+    if (prefilteredMemory_ != VK_NULL_HANDLE)
+    {
+      vkFreeMemory(device_.device(), prefilteredMemory_, nullptr);
+      prefilteredMemory_ = VK_NULL_HANDLE;
     }
 
     createIrradianceMap();
     createPrefilteredEnvMap();
-    createBRDFLUT();
 
     createIrradianceResources();
     generateIrradianceMap(skybox);
@@ -99,18 +179,477 @@ namespace engine {
     createPrefilterResources();
     generatePrefilteredEnvMap(skybox);
 
-    createBRDFResources();
-    generateBRDFLUT();
-
     generated_ = true;
 
-    // Wait for everything to finish
-    vkDeviceWaitIdle(device_.device());
+    generationCounter_++;
+  }
+
+  namespace {
+    struct VTexHeader
+    {
+      uint32_t magic      = 0x58455456; // 'VTEX'
+      uint32_t version    = 1;
+      uint32_t vkFormat   = 0;
+      uint32_t width      = 0;
+      uint32_t height     = 0;
+      uint32_t mipLevels  = 0;
+      uint32_t layers     = 0;
+      uint32_t bytesPerPx = 0;
+    };
+
+    uint32_t bytesPerPixelFor(VkFormat format)
+    {
+      switch (format)
+      {
+      case VK_FORMAT_R16G16B16A16_SFLOAT:
+        return 8;
+      case VK_FORMAT_R16G16_SFLOAT:
+        return 4;
+      case VK_FORMAT_R32G32B32A32_SFLOAT:
+        return 16;
+      default:
+        break;
+      }
+      throw std::runtime_error("Unsupported VTEX format for IBL assets");
+    }
+
+    std::string joinPath(const std::string& a, const std::string& b)
+    {
+      std::filesystem::path p = std::filesystem::path(a) / b;
+      return p.generic_string();
+    }
+  } // namespace
+
+  void IBLSystem::ensureBRDFLUT()
+  {
+    // If we already have a non-fallback LUT at the requested size, keep it.
+    // We infer this by checking the current image handle and (cheaply) trusting settings.
+    if (brdfLUTImage_ != VK_NULL_HANDLE && brdfLUTSampler_ != VK_NULL_HANDLE && brdfLUTImageView_ != VK_NULL_HANDLE && settings_.brdfLUTSize > 1)
+    {
+      return;
+    }
+
+    // If fallback exists, release it and create a proper LUT.
+    if (brdfLUTSampler_ != VK_NULL_HANDLE)
+    {
+      vkDestroySampler(device_.device(), brdfLUTSampler_, nullptr);
+      brdfLUTSampler_ = VK_NULL_HANDLE;
+    }
+    if (brdfLUTImageView_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImageView(device_.device(), brdfLUTImageView_, nullptr);
+      brdfLUTImageView_ = VK_NULL_HANDLE;
+    }
+    if (brdfLUTImage_ != VK_NULL_HANDLE)
+    {
+      vkDestroyImage(device_.device(), brdfLUTImage_, nullptr);
+      brdfLUTImage_ = VK_NULL_HANDLE;
+    }
+    if (brdfLUTMemory_ != VK_NULL_HANDLE)
+    {
+      vkFreeMemory(device_.device(), brdfLUTMemory_, nullptr);
+      brdfLUTMemory_ = VK_NULL_HANDLE;
+    }
+
+    createBRDFLUT();
+    createBRDFResources();
+    generateBRDFLUT();
+  }
+
+  bool IBLSystem::saveToDisk(const std::string& directory) const
+  {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    fs::create_directories(fs::path(directory), ec);
+    if (ec)
+    {
+      return false;
+    }
+
+    auto writeImage = [&](const std::string& filename, VkImage image, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers) -> bool {
+      if (image == VK_NULL_HANDLE) return false;
+
+      uint32_t const bpp = bytesPerPixelFor(format);
+
+      std::vector<VkBufferImageCopy> regions;
+      regions.reserve(static_cast<size_t>(mipLevels) * static_cast<size_t>(layers));
+
+      VkDeviceSize totalBytes = 0;
+      for (uint32_t mip = 0; mip < mipLevels; ++mip)
+      {
+        uint32_t const     w        = (std::max)(1u, width >> mip);
+        uint32_t const     h        = (std::max)(1u, height >> mip);
+        VkDeviceSize const mipBytes = static_cast<VkDeviceSize>(w) * static_cast<VkDeviceSize>(h) * bpp;
+        totalBytes += mipBytes * layers;
+      }
+
+      Buffer staging{device_, 1, static_cast<uint32_t>(totalBytes), VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+
+      VkDeviceSize offset = 0;
+      for (uint32_t mip = 0; mip < mipLevels; ++mip)
+      {
+        uint32_t const     w        = (std::max)(1u, width >> mip);
+        uint32_t const     h        = (std::max)(1u, height >> mip);
+        VkDeviceSize const mipBytes = static_cast<VkDeviceSize>(w) * static_cast<VkDeviceSize>(h) * bpp;
+        for (uint32_t layer = 0; layer < layers; ++layer)
+        {
+          VkBufferImageCopy region{};
+          region.bufferOffset                    = offset;
+          region.bufferRowLength                 = 0;
+          region.bufferImageHeight               = 0;
+          region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+          region.imageSubresource.mipLevel       = mip;
+          region.imageSubresource.baseArrayLayer = layer;
+          region.imageSubresource.layerCount     = 1;
+          region.imageOffset                     = {0, 0, 0};
+          region.imageExtent                     = {w, h, 1};
+          regions.push_back(region);
+          offset += mipBytes;
+        }
+      }
+
+      // Transition, copy, transition back.
+      transitionImageLayoutHelper(device_, image, format, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, mipLevels, layers);
+      device_.memory().copyImageToBuffer(image, staging.getBuffer(), regions);
+      transitionImageLayoutHelper(device_, image, format, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels, layers);
+
+      staging.map();
+      void* data = staging.getMappedMemory();
+
+      VTexHeader header;
+      header.vkFormat   = static_cast<uint32_t>(format);
+      header.width      = width;
+      header.height     = height;
+      header.mipLevels  = mipLevels;
+      header.layers     = layers;
+      header.bytesPerPx = bpp;
+
+      std::ofstream out(joinPath(directory, filename), std::ios::binary);
+      if (!out) return false;
+      out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+      out.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(totalBytes));
+      out.close();
+
+      staging.unmap();
+      return static_cast<bool>(out);
+    };
+
+    // Note: sizes are implicit from settings for generated images.
+    // Irradiance/prefilter are cubemaps with 6 layers.
+    bool ok = true;
+    ok = ok && writeImage("irradiance.vtex", irradianceImage_, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(settings_.irradianceSize), static_cast<uint32_t>(settings_.irradianceSize), 1, 6);
+    ok = ok && writeImage("prefilter.vtex",
+                          prefilteredImage_,
+                          VK_FORMAT_R16G16B16A16_SFLOAT,
+                          static_cast<uint32_t>(settings_.prefilterSize),
+                          static_cast<uint32_t>(settings_.prefilterSize),
+                          static_cast<uint32_t>(settings_.prefilterMipLevels),
+                          6);
+    ok = ok && writeImage("brdf_lut.vtex", brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, static_cast<uint32_t>(settings_.brdfLUTSize), static_cast<uint32_t>(settings_.brdfLUTSize), 1, 1);
+    return ok;
+  }
+
+  bool IBLSystem::loadFromDisk(const std::string& directory)
+  {
+    auto readFile = [&](const std::string& filename, VTexHeader& outHeader, std::vector<std::byte>& outData) -> bool {
+      std::ifstream in(joinPath(directory, filename), std::ios::binary);
+      if (!in) return false;
+      in.read(reinterpret_cast<char*>(&outHeader), sizeof(outHeader));
+      if (!in) return false;
+      if (outHeader.magic != 0x58455456 || outHeader.version != 1) return false;
+
+      std::vector<char> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+      outData.resize(bytes.size());
+      std::memcpy(outData.data(), bytes.data(), bytes.size());
+      return true;
+    };
+
+    VTexHeader             irrH{};
+    VTexHeader             preH{};
+    VTexHeader             brdfH{};
+    std::vector<std::byte> irrData;
+    std::vector<std::byte> preData;
+    std::vector<std::byte> brdfData;
+    if (!readFile("irradiance.vtex", irrH, irrData)) return false;
+    if (!readFile("prefilter.vtex", preH, preData)) return false;
+    if (!readFile("brdf_lut.vtex", brdfH, brdfData)) return false;
+
+    auto upload = [&](VkImage&                      image,
+                      VkDeviceMemory&               mem,
+                      VkImageView&                  view,
+                      VkSampler&                    sampler,
+                      const VTexHeader&             h,
+                      const std::vector<std::byte>& data,
+                      VkImageViewType               viewType,
+                      VkImageCreateFlags            flags,
+                      bool /*cube*/) -> bool {
+      VkFormat const format = static_cast<VkFormat>(h.vkFormat);
+      if (h.bytesPerPx != bytesPerPixelFor(format)) return false;
+
+      // Destroy previous resources
+      if (sampler != VK_NULL_HANDLE)
+      {
+        vkDestroySampler(device_.device(), sampler, nullptr);
+        sampler = VK_NULL_HANDLE;
+      }
+      if (view != VK_NULL_HANDLE)
+      {
+        vkDestroyImageView(device_.device(), view, nullptr);
+        view = VK_NULL_HANDLE;
+      }
+      if (image != VK_NULL_HANDLE)
+      {
+        vkDestroyImage(device_.device(), image, nullptr);
+        image = VK_NULL_HANDLE;
+      }
+      if (mem != VK_NULL_HANDLE)
+      {
+        vkFreeMemory(device_.device(), mem, nullptr);
+        mem = VK_NULL_HANDLE;
+      }
+
+      createImageHelper(device_,
+                        h.width,
+                        h.height,
+                        h.mipLevels,
+                        format,
+                        VK_IMAGE_TILING_OPTIMAL,
+                        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                        image,
+                        mem,
+                        h.layers,
+                        flags);
+
+      VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+      view                      = createImageViewHelper(device_, image, format, aspect, h.mipLevels, viewType, 0, h.layers, 0);
+
+      VkSamplerCreateInfo samplerInfo{};
+      samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+      samplerInfo.magFilter               = VK_FILTER_LINEAR;
+      samplerInfo.minFilter               = VK_FILTER_LINEAR;
+      samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.anisotropyEnable        = VK_FALSE;
+      samplerInfo.maxAnisotropy           = 1.0f;
+      samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+      samplerInfo.unnormalizedCoordinates = VK_FALSE;
+      samplerInfo.compareEnable           = VK_FALSE;
+      samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+      samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+      samplerInfo.mipLodBias              = 0.0f;
+      samplerInfo.minLod                  = 0.0f;
+      samplerInfo.maxLod                  = static_cast<float>(h.mipLevels);
+      if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS) return false;
+
+      Buffer staging{device_, 1, static_cast<uint32_t>(data.size()), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+      staging.map();
+      staging.writeToBuffer((void*)data.data(), data.size());
+      staging.unmap();
+
+      std::vector<VkBufferImageCopy> regions;
+      regions.reserve(static_cast<size_t>(h.mipLevels) * static_cast<size_t>(h.layers));
+
+      VkDeviceSize offset = 0;
+      for (uint32_t mip = 0; mip < h.mipLevels; ++mip)
+      {
+        uint32_t const     w        = (std::max)(1u, h.width >> mip);
+        uint32_t const     ht       = (std::max)(1u, h.height >> mip);
+        VkDeviceSize const mipBytes = static_cast<VkDeviceSize>(w) * static_cast<VkDeviceSize>(ht) * h.bytesPerPx;
+        for (uint32_t layer = 0; layer < h.layers; ++layer)
+        {
+          VkBufferImageCopy region{};
+          region.bufferOffset                    = offset;
+          region.bufferRowLength                 = 0;
+          region.bufferImageHeight               = 0;
+          region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+          region.imageSubresource.mipLevel       = mip;
+          region.imageSubresource.baseArrayLayer = layer;
+          region.imageSubresource.layerCount     = 1;
+          region.imageOffset                     = {0, 0, 0};
+          region.imageExtent                     = {w, ht, 1};
+          regions.push_back(region);
+          offset += mipBytes;
+        }
+      }
+
+      transitionImageLayoutHelper(device_, image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, h.mipLevels, h.layers);
+      device_.memory().copyBufferToImage(staging.getBuffer(), image, regions);
+      transitionImageLayoutHelper(device_, image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, h.mipLevels, h.layers);
+      return true;
+    };
+
+    bool ok = true;
+    ok      = ok && upload(irradianceImage_, irradianceMemory_, irradianceImageView_, irradianceSampler_, irrH, irrData, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, true);
+    ok      = ok && upload(prefilteredImage_, prefilteredMemory_, prefilteredImageView_, prefilteredSampler_, preH, preData, VK_IMAGE_VIEW_TYPE_CUBE, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT, true);
+    ok      = ok && upload(brdfLUTImage_, brdfLUTMemory_, brdfLUTImageView_, brdfLUTSampler_, brdfH, brdfData, VK_IMAGE_VIEW_TYPE_2D, 0, false);
+
+    if (ok)
+    {
+      generated_ = true;
+      generationCounter_++;
+    }
+    return ok;
+  }
+
+  void IBLSystem::createFallbackResources()
+  {
+    // Tiny black textures: fast to create and good defaults when no environment is loaded.
+    // Note: include TRANSFER_DST so we can clear them.
+    createImageHelper(device_,
+                      1,
+                      1,
+                      1,
+                      VK_FORMAT_R32G32B32A32_SFLOAT,
+                      VK_IMAGE_TILING_OPTIMAL,
+                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                      irradianceImage_,
+                      irradianceMemory_,
+                      6,
+                      VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+
+    irradianceImageView_ = createImageViewHelper(device_, irradianceImage_, VK_FORMAT_R32G32B32A32_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1, VK_IMAGE_VIEW_TYPE_CUBE, 0, 6);
+
+    {
+      VkSamplerCreateInfo samplerInfo{};
+      samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+      samplerInfo.magFilter               = VK_FILTER_LINEAR;
+      samplerInfo.minFilter               = VK_FILTER_LINEAR;
+      samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.anisotropyEnable        = VK_FALSE;
+      samplerInfo.maxAnisotropy           = 1.0f;
+      samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+      samplerInfo.unnormalizedCoordinates = VK_FALSE;
+      samplerInfo.compareEnable           = VK_FALSE;
+      samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+      samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+      samplerInfo.mipLodBias              = 0.0f;
+      samplerInfo.minLod                  = 0.0f;
+      samplerInfo.maxLod                  = 0.0f;
+
+      if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &irradianceSampler_) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create fallback irradiance sampler!");
+      }
+    }
+
+    createImageHelper(device_,
+                      1,
+                      1,
+                      1,
+                      VK_FORMAT_R16G16B16A16_SFLOAT,
+                      VK_IMAGE_TILING_OPTIMAL,
+                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                      prefilteredImage_,
+                      prefilteredMemory_,
+                      6,
+                      VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+
+    prefilteredImageView_ = createImageViewHelper(device_, prefilteredImage_, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1, VK_IMAGE_VIEW_TYPE_CUBE, 0, 6);
+
+    {
+      VkSamplerCreateInfo samplerInfo{};
+      samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+      samplerInfo.magFilter               = VK_FILTER_LINEAR;
+      samplerInfo.minFilter               = VK_FILTER_LINEAR;
+      samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.anisotropyEnable        = VK_FALSE;
+      samplerInfo.maxAnisotropy           = 1.0f;
+      samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+      samplerInfo.unnormalizedCoordinates = VK_FALSE;
+      samplerInfo.compareEnable           = VK_FALSE;
+      samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+      samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+      samplerInfo.mipLodBias              = 0.0f;
+      samplerInfo.minLod                  = 0.0f;
+      samplerInfo.maxLod                  = 0.0f;
+
+      if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &prefilteredSampler_) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create fallback prefilter sampler!");
+      }
+    }
+
+    createImageHelper(device_,
+                      1,
+                      1,
+                      1,
+                      VK_FORMAT_R16G16_SFLOAT,
+                      VK_IMAGE_TILING_OPTIMAL,
+                      VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                      brdfLUTImage_,
+                      brdfLUTMemory_);
+
+    brdfLUTImageView_ = createImageViewHelper(device_, brdfLUTImage_, VK_FORMAT_R16G16_SFLOAT, VK_IMAGE_ASPECT_COLOR_BIT, 1, VK_IMAGE_VIEW_TYPE_2D);
+
+    {
+      VkSamplerCreateInfo samplerInfo{};
+      samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+      samplerInfo.magFilter               = VK_FILTER_LINEAR;
+      samplerInfo.minFilter               = VK_FILTER_LINEAR;
+      samplerInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      samplerInfo.anisotropyEnable        = VK_FALSE;
+      samplerInfo.maxAnisotropy           = 1.0f;
+      samplerInfo.borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+      samplerInfo.unnormalizedCoordinates = VK_FALSE;
+      samplerInfo.compareEnable           = VK_FALSE;
+      samplerInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
+      samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+      samplerInfo.mipLodBias              = 0.0f;
+      samplerInfo.minLod                  = 0.0f;
+      samplerInfo.maxLod                  = 0.0f;
+
+      if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &brdfLUTSampler_) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create fallback brdf LUT sampler!");
+      }
+    }
+
+    // Clear all fallback images to black and transition to shader read.
+    VkClearColorValue const clearColor{{0.0f, 0.0f, 0.0f, 1.0f}};
+
+    auto clearImage = [&](VkImage image, uint32_t mipLevels, uint32_t layers) {
+      transitionImageLayoutHelper(device_, image, VK_FORMAT_UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels, layers);
+
+      VkCommandBuffer cmd = device_.getMemory().beginSingleTimeCommands();
+
+      VkImageSubresourceRange range{};
+      range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+      range.baseMipLevel   = 0;
+      range.levelCount     = mipLevels;
+      range.baseArrayLayer = 0;
+      range.layerCount     = layers;
+
+      vkCmdClearColorImage(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
+
+      device_.getMemory().endSingleTimeCommands(cmd);
+
+      transitionImageLayoutHelper(device_, image, VK_FORMAT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels, layers);
+    };
+
+    clearImage(irradianceImage_, 1, 6);
+    clearImage(prefilteredImage_, 1, 6);
+    clearImage(brdfLUTImage_, 1, 1);
+
+    generated_ = false;
+    generationCounter_++;
   }
 
   void IBLSystem::cleanup()
   {
     VkDevice dev = device_.device();
+
+    generated_ = false;
 
     // Irradiance resources
     if (irradianceSampler_ != nullptr)
@@ -255,142 +794,156 @@ namespace engine {
   }
 
   namespace {
-  // Helper to create image
-  void createImageHelper(Device&               device,
-                                uint32_t              width,
-                                uint32_t              height,
-                                uint32_t              mipLevels,
-                                VkFormat              format,
-                                VkImageTiling         tiling,
-                                VkImageUsageFlags     usage,
-                                VkMemoryPropertyFlags properties,
-                                VkImage&              image,
-                                VkDeviceMemory&       imageMemory,
-                                uint32_t              arrayLayers = 1,
-                                VkImageCreateFlags    flags       = 0)
-  {
-    VkImageCreateInfo imageInfo{};
-    imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
-    imageInfo.extent.width  = width;
-    imageInfo.extent.height = height;
-    imageInfo.extent.depth  = 1;
-    imageInfo.mipLevels     = mipLevels;
-    imageInfo.arrayLayers   = arrayLayers;
-    imageInfo.format        = format;
-    imageInfo.tiling        = tiling;
-    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage         = usage;
-    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-    imageInfo.flags         = flags;
-
-    device.getMemory().createImageWithInfo(imageInfo, properties, image, imageMemory);
-  }
-
-  // Helper to create image view
-  VkImageView createImageViewHelper(Device&            device,
-                                           VkImage            image,
-                                           VkFormat           format,
-                                           VkImageAspectFlags aspectFlags,
-                                           uint32_t           mipLevels,
-                                           VkImageViewType    viewType       = VK_IMAGE_VIEW_TYPE_2D,
-                                           uint32_t           baseMipLevel   = 0,
-                                           uint32_t           layerCount     = 1,
-                                           uint32_t           baseArrayLayer = 0)
-  {
-    VkImageViewCreateInfo viewInfo{};
-    viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image                           = image;
-    viewInfo.viewType                        = viewType;
-    viewInfo.format                          = format;
-    viewInfo.subresourceRange.aspectMask     = aspectFlags;
-    viewInfo.subresourceRange.baseMipLevel   = baseMipLevel;
-    viewInfo.subresourceRange.levelCount     = mipLevels;
-    viewInfo.subresourceRange.baseArrayLayer = baseArrayLayer;
-    viewInfo.subresourceRange.layerCount     = layerCount;
-
-    VkImageView imageView;
-    if (vkCreateImageView(device.device(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+    // Helper to create image
+    void createImageHelper(Device&               device,
+                           uint32_t              width,
+                           uint32_t              height,
+                           uint32_t              mipLevels,
+                           VkFormat              format,
+                           VkImageTiling         tiling,
+                           VkImageUsageFlags     usage,
+                           VkMemoryPropertyFlags properties,
+                           VkImage&              image,
+                           VkDeviceMemory&       imageMemory,
+                           uint32_t              arrayLayers,
+                           VkImageCreateFlags    flags)
     {
-      throw std::runtime_error("failed to create texture image view!");
-    }
-    return imageView;
-  }
+      VkImageCreateInfo imageInfo{};
+      imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+      imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+      imageInfo.extent.width  = width;
+      imageInfo.extent.height = height;
+      imageInfo.extent.depth  = 1;
+      imageInfo.mipLevels     = mipLevels;
+      imageInfo.arrayLayers   = arrayLayers;
+      imageInfo.format        = format;
+      imageInfo.tiling        = tiling;
+      imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      imageInfo.usage         = usage;
+      imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+      imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+      imageInfo.flags         = flags;
 
-  // Helper to transition image layout
-  void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1)
-  {
-    VkCommandBuffer commandBuffer = device.getMemory().beginSingleTimeCommands();
-
-    VkImageMemoryBarrier barrier{};
-    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout                       = oldLayout;
-
-    barrier.newLayout                       = newLayout;
-    barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                           = image;
-    barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel   = 0;
-    barrier.subresourceRange.levelCount     = mipLevels;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount     = layerCount;
-
-    VkPipelineStageFlags sourceStage;
-    VkPipelineStageFlags destinationStage;
-
-    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-    {
-      barrier.srcAccessMask = 0;
-      barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-      sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
-      barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-      sourceStage           = VK_PIPELINE_STAGE_TRANSFER_BIT;
-      destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-    {
-      barrier.srcAccessMask = 0;
-      barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      destinationStage      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
-      barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-      sourceStage           = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_GENERAL)
-    {
-      barrier.srcAccessMask = 0;
-      barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-      sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      destinationStage      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    }
-    else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-    {
-      barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-      barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-      sourceStage           = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-      destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    }
-    else
-    {
-      throw std::invalid_argument("unsupported layout transition!");
+      device.getMemory().createImageWithInfo(imageInfo, properties, image, imageMemory);
     }
 
-    vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    // Helper to create image view
+    VkImageView createImageViewHelper(Device&            device,
+                                      VkImage            image,
+                                      VkFormat           format,
+                                      VkImageAspectFlags aspectFlags,
+                                      uint32_t           mipLevels,
+                                      VkImageViewType    viewType,
+                                      uint32_t           baseMipLevel,
+                                      uint32_t           layerCount,
+                                      uint32_t           baseArrayLayer)
+    {
+      VkImageViewCreateInfo viewInfo{};
+      viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+      viewInfo.image                           = image;
+      viewInfo.viewType                        = viewType;
+      viewInfo.format                          = format;
+      viewInfo.subresourceRange.aspectMask     = aspectFlags;
+      viewInfo.subresourceRange.baseMipLevel   = baseMipLevel;
+      viewInfo.subresourceRange.levelCount     = mipLevels;
+      viewInfo.subresourceRange.baseArrayLayer = baseArrayLayer;
+      viewInfo.subresourceRange.layerCount     = layerCount;
 
-    device.getMemory().endSingleTimeCommands(commandBuffer);
-  }
+      VkImageView imageView;
+      if (vkCreateImageView(device.device(), &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+      {
+        throw std::runtime_error("failed to create texture image view!");
+      }
+      return imageView;
+    }
+
+    // Helper to transition image layout
+    void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount)
+    {
+      VkCommandBuffer commandBuffer = device.getMemory().beginSingleTimeCommands();
+
+      VkImageMemoryBarrier barrier{};
+      barrier.sType     = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      barrier.oldLayout = oldLayout;
+
+      barrier.newLayout                       = newLayout;
+      barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image                           = image;
+      barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+      barrier.subresourceRange.baseMipLevel   = 0;
+      barrier.subresourceRange.levelCount     = mipLevels;
+      barrier.subresourceRange.baseArrayLayer = 0;
+      barrier.subresourceRange.layerCount     = layerCount;
+
+      VkPipelineStageFlags sourceStage;
+      VkPipelineStageFlags destinationStage;
+
+      if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+      {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+      {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+      {
+        barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+      {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+      {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+      {
+        barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_GENERAL)
+      {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      }
+      else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+      {
+        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage           = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      }
+      else
+      {
+        throw std::invalid_argument("unsupported layout transition!");
+      }
+
+      vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+      device.getMemory().endSingleTimeCommands(commandBuffer);
+    }
 
   } // namespace
 
@@ -1022,10 +1575,10 @@ namespace engine {
 
     for (int mip = 0; mip < settings_.prefilterMipLevels; ++mip)
     {
-      uint32_t const baseSize  = static_cast<uint32_t>(settings_.prefilterSize);
+      auto const     baseSize  = static_cast<uint32_t>(settings_.prefilterSize);
       uint32_t const divisor   = 1u << static_cast<uint32_t>(mip);
-      uint32_t const mipWidth  = std::max(1u, baseSize / divisor);
-      uint32_t const mipHeight = std::max(1u, baseSize / divisor);
+      uint32_t const mipWidth  = (std::max)(1u, baseSize / divisor);
+      uint32_t const mipHeight = (std::max)(1u, baseSize / divisor);
       float const    roughness = (float)mip / (float)(settings_.prefilterMipLevels - 1);
 
       for (int i = 0; i < 6; ++i)

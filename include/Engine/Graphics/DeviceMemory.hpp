@@ -28,6 +28,10 @@ namespace engine {
 
     void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount) const;
 
+    // More flexible transfer helpers (multiple mips/layers).
+    void copyBufferToImage(VkBuffer buffer, VkImage image, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) const;
+    void copyImageToBuffer(VkImage image, VkBuffer buffer, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) const;
+
     void createImageWithInfo(const VkImageCreateInfo& imageInfo, VkMemoryPropertyFlags memoryPropertyFlags, VkImage& image, VkDeviceMemory& imageMemory) const;
 
   private:

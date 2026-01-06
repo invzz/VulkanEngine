@@ -19,7 +19,9 @@ namespace engine {
     SettingsPanel(entt::entity              cameraEntity,
                   Scene*                    scene,
                   IBLSystem&                iblSystem,
-                  Skybox&                   skybox,
+                  std::unique_ptr<Skybox>*  skybox,
+                  bool&                     showSkybox,
+                  bool&                     showGrid,
                   SkyboxSettings&           skySettings,
                   DustSettings&             dustSettings,
                   FogSettings&              fogSettings,
@@ -34,6 +36,10 @@ namespace engine {
     std::unique_ptr<IBLPanel>         iblPanel_;
     std::unique_ptr<PostProcessPanel> postProcessPanel_;
     std::unique_ptr<DebugPanel>       debugPanel_;
+
+    std::unique_ptr<Skybox>* skybox_;
+    bool&                    showSkybox_;
+    bool&                    showGrid_;
 
     SkyboxSettings& skySettings_;
     DustSettings&   dustSettings_;

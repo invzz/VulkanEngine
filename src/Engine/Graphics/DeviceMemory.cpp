@@ -145,6 +145,20 @@ namespace engine {
     endSingleTimeCommands(commandBuffer);
   }
 
+  void DeviceMemory::copyBufferToImage(VkBuffer buffer, VkImage image, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout) const
+  {
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, imageLayout, static_cast<uint32_t>(regions.size()), regions.data());
+    endSingleTimeCommands(commandBuffer);
+  }
+
+  void DeviceMemory::copyImageToBuffer(VkImage image, VkBuffer buffer, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout) const
+  {
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    vkCmdCopyImageToBuffer(commandBuffer, image, imageLayout, buffer, static_cast<uint32_t>(regions.size()), regions.data());
+    endSingleTimeCommands(commandBuffer);
+  }
+
   void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo, VkMemoryPropertyFlags memoryPropertyFlags, VkImage& image, VkDeviceMemory& imageMemory) const
   {
     if (vkCreateImage(device.device_, &imageInfo, nullptr, &image) != VK_SUCCESS)

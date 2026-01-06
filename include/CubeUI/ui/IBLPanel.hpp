@@ -9,13 +9,13 @@ namespace engine {
   class IBLPanel : public UIPanel
   {
   public:
-    IBLPanel(IBLSystem& iblSystem, Skybox& skybox);
+    IBLPanel(IBLSystem& iblSystem, std::unique_ptr<Skybox>* skybox);
     void render(FrameInfo& frameInfo) override;
 
   private:
-    IBLSystem&          iblSystem_;
-    Skybox&             skybox_;
-    IBLSystem::Settings settings_;
+    IBLSystem&               iblSystem_;
+    std::unique_ptr<Skybox>* skybox_;
+    IBLSystem::Settings      settings_;
   };
 } // namespace engine
 

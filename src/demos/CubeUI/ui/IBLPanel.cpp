@@ -11,7 +11,7 @@
 
 namespace engine {
 
-  IBLPanel::IBLPanel(IBLSystem& iblSystem, Skybox& skybox) : iblSystem_{iblSystem}, skybox_{skybox}
+  IBLPanel::IBLPanel(IBLSystem& iblSystem, std::unique_ptr<Skybox>* skybox) : iblSystem_{iblSystem}, skybox_{skybox}
   {
     settings_ = iblSystem_.getSettings();
   }
@@ -66,7 +66,16 @@ namespace engine {
 
     if (ImGui::Button("Regenerate IBL"))
     {
-      iblSystem_.requestRegeneration(settings_, skybox_);
+      if (skybox_ != nullptr && *skybox_ != nullptr)
+      {
+        iblSystem_.requestRegeneration(settings_, **skybox_);
+      }
+    }
+
+    if (skybox_ == nullptr || *skybox_ == nullptr)
+    {
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("Load/enable a skybox to generate IBL");
+      ImGui::TextDisabled("No skybox loaded; IBL regeneration disabled");
     }
 
     // ImGui::End();

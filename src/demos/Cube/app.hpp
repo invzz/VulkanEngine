@@ -40,6 +40,7 @@ namespace engine {
   class IBLSystem;
   class ImGuiManager;
   class RenderGraph;
+  class GridRenderSystem;
 
   struct GameLoopState
   {
@@ -52,10 +53,12 @@ namespace engine {
     LightSystem&           lightSystem;
     ShadowSystem&          shadowSystem;
     SkyboxRenderSystem&    skyboxRenderSystem;
+    GridRenderSystem&      gridRenderSystem;
     DustRenderSystem&      dustRenderSystem;
     RenderContext&         renderContext;
     UIManager&             uiManager;
     Skybox*                skybox;
+    bool                   showGrid;
     SkyboxSettings&        skySettings;
     DustSettings&          dustSettings;
   };
@@ -124,6 +127,7 @@ namespace engine {
 
     // Render Systems
     std::unique_ptr<SkyboxRenderSystem>     skyboxRenderSystem;
+    std::unique_ptr<GridRenderSystem>       gridRenderSystem;
     std::unique_ptr<DustRenderSystem>       dustRenderSystem;
     std::unique_ptr<ModelRenderSystem>      modelRenderSystem;
     std::unique_ptr<LightSystem>            lightSystem;
@@ -135,6 +139,12 @@ namespace engine {
     SkyboxSettings          skySettings;
     DustSettings            dustSettings;
     FogSettings             fogSettings;
+
+    // View toggles
+    bool showSkybox = false;
+    bool showGrid   = true;
+
+    uint64_t iblGenerationCounter = 0;
 
     // UI
     std::unique_ptr<ImGuiManager> imguiManager;

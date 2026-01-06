@@ -41,6 +41,7 @@
 #include "Engine/Graphics/RenderGraph.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
+#include "Engine/Systems/GridRenderSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/InputSystem.hpp"
 #include "Engine/Systems/LODSystem.hpp"
@@ -107,10 +108,12 @@ namespace engine {
             .lightSystem           = *lightSystem,
             .shadowSystem          = *shadowSystem,
             .skyboxRenderSystem    = *skyboxRenderSystem,
+            .gridRenderSystem      = *gridRenderSystem,
             .dustRenderSystem      = *dustRenderSystem,
             .renderContext         = *renderContext,
             .uiManager             = *uiManager,
-            .skybox                = skybox.get(),
+            .skybox                = showSkybox ? skybox.get() : nullptr,
+            .showGrid              = showGrid,
             .skySettings           = skySettings,
             .dustSettings          = dustSettings,
     };
@@ -153,16 +156,6 @@ namespace engine {
     scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
     scene.getRegistry().get<TransformComponent>(cameraEntity).translation = {0.0f, -0.2f, -2.5f};
     scene.getRegistry().emplace<CameraComponent>(cameraEntity);
-
-    // Create Sun
-    auto sunEntity = scene.createEntity();
-    scene.getRegistry().emplace<TransformComponent>(sunEntity);
-    scene.getRegistry().emplace<NameComponent>(sunEntity, "Sun");
-    scene.getRegistry().emplace<DirectionalLightComponent>(sunEntity);
-
-    // Load Skybox
-    std::cout << "[App] Loading skybox..." << '\n';
-    skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
   }
 
   void App::setupSystems()
@@ -180,12 +173,12 @@ namespace engine {
     shadowSystem = std::make_unique<ShadowSystem>(device, 2048);
     iblSystem    = std::make_unique<IBLSystem>(device);
 
-    std::cout << "[App] Generating IBL maps..." << '\n';
-    iblSystem->generateFromSkybox(*skybox);
+    iblGenerationCounter = iblSystem->getGenerationCounter();
 
     // Render Systems
     std::cout << "[App] Creating render systems..." << '\n';
     skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
+    gridRenderSystem   = std::make_unique<GridRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout());
     dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
     modelRenderSystem =
             std::make_unique<ModelRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout(), resourceManager.getTextureManager().getDescriptorSetLayout());
@@ -300,7 +293,7 @@ namespace engine {
     uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
-    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, *skybox, skySettings, dustSettings, fogSettings, postProcessPush, debugMode));
+    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, &skybox, showSkybox, showGrid, skySettings, dustSettings, fogSettings, postProcessPush, debugMode));
   }
 
   void App::setupRenderGraph()
@@ -500,7 +493,7 @@ namespace engine {
         glm::vec3 const sunWorldPos = camera->getPosition() + sunDir * 1000.0f;
         glm::vec4 const clipPos     = camera->getProjection() * camera->getView() * glm::vec4(sunWorldPos, 1.0f);
 
-        if (clipPos.w > 0.0f)
+        if (sunInfo.valid && (sunInfo.intensity > 0.0f) && (clipPos.w > 0.0f))
         {
           glm::vec3 const ndc          = glm::vec3(clipPos) / clipPos.w;
           glm::vec2 const screenPos    = glm::vec2(ndc.x, ndc.y) * 0.5f + 0.5f;
@@ -571,7 +564,38 @@ namespace engine {
       scenePanel->processDelayedDeletions(selectedEntity, selectedObjectId);
     }
 
+    // On-demand environment: only load skybox + generate IBL when the user enables skybox display.
+    if (showSkybox && (skybox == nullptr))
+    {
+      std::cout << "[App] Loading skybox..." << '\n';
+      skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
+
+      // Preferred path: load prebaked IBL (offline-generated) instead of regenerating at runtime.
+      // Convention: assets/textures/ibl/<SkyboxName>/
+      //   irradiance.vtex, prefilter.vtex, brdf_lut.vtex
+      if (!iblSystem->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama"))
+      {
+        std::cout << "[App] No prebaked IBL found for Yokohama (assets/textures/ibl/Yokohama). Using fallback until you regenerate/bake." << '\n';
+      }
+    }
+
     iblSystem->update();
+
+    // If IBL images/samplers changed (fallback -> generated, or regeneration), refresh descriptor sets.
+    uint64_t const newGen = iblSystem->getGenerationCounter();
+    if (newGen != iblGenerationCounter)
+    {
+      auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
+      auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
+      auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
+
+      for (auto& deferredIblDescriptorSet : deferredIblDescriptorSets)
+      {
+        DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).overwrite(deferredIblDescriptorSet);
+      }
+
+      iblGenerationCounter = newGen;
+    }
   }
 
   void App::render(float frameTime)
@@ -782,6 +806,10 @@ namespace engine {
 
   void App::renderDebugPass(FrameInfo& frameInfo, GameLoopState& state)
   {
+    if (state.showGrid)
+    {
+      state.gridRenderSystem.render(frameInfo);
+    }
     state.lightSystem.render(frameInfo);  // Draw light debug visualizations
     state.cameraSystem.render(frameInfo); // Draw camera debug visualizations
   }

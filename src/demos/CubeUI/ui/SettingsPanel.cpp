@@ -22,13 +22,20 @@ namespace engine {
   SettingsPanel::SettingsPanel(entt::entity              cameraEntity,
                                Scene*                    scene,
                                IBLSystem&                iblSystem,
-                               Skybox&                   skybox,
+                               std::unique_ptr<Skybox>*  skybox,
+                               bool&                     showSkybox,
+                               bool&                     showGrid,
                                SkyboxSettings&           skySettings,
                                DustSettings&             dustSettings,
                                FogSettings&              fogSettings,
                                PostProcessPushConstants& pushConstants,
                                int&                      debugMode)
-      : skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings)
+      : skybox_(skybox),
+        showSkybox_(showSkybox),
+        showGrid_(showGrid),
+        skySettings_(skySettings),
+        dustSettings_(dustSettings),
+        fogSettings_(fogSettings)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
@@ -42,6 +49,15 @@ namespace engine {
 
     if (ImGui::Begin("Settings", &visible_))
     {
+      ImGui::Checkbox("Show Skybox", &showSkybox_);
+      ImGui::SameLine();
+      ImGui::Checkbox("Show Grid", &showGrid_);
+      if (showSkybox_ && (skybox_ != nullptr) && (*skybox_ == nullptr))
+      {
+        ImGui::TextDisabled("(Skybox will load next frame)");
+      }
+      ImGui::Separator();
+
       if (ImGui::CollapsingHeader("Sky"))
       {
         ImGui::Checkbox("Debug Cubemap Faces", &skySettings_.debugCubemapFaces);

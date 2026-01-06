@@ -116,6 +116,17 @@ target("Cube")
             add_ldflags("-Wl,--gc-sections", "-Wl,--print-gc-sections", {force = true})
         end
     end
+    target("IBLBaker")
+        set_kind("binary")
+        add_files("src/tools/IBLBaker/**.cpp")
+        add_includedirs("include", {public = true})
+        if is_plat("windows") then
+            add_packages("glfw", "glm", "vulkan-headers", "entt", "nlohmann_json", "tinygltf")
+            add_syslinks("vulkan-1")
+        else
+            add_packages("glfw", "glm", "vulkan", "entt", "nlohmann_json", "tinygltf")
+        end
+        add_deps("Engine")
     
 target("CubeUI")
     set_kind("static")

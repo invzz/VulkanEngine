@@ -25,10 +25,10 @@ namespace engine {
     struct Settings
     {
       int   irradianceSize        = 64;
-      int   prefilterSize         = 512;
-      int   prefilterMipLevels    = 9;
-      int   brdfLUTSize           = 512;
-      int   prefilterSampleCount  = 4096;
+      int   prefilterSize         = 256;
+      int   prefilterMipLevels    = 8;
+      int   brdfLUTSize           = 256;
+      int   prefilterSampleCount  = 1024;
       float irradianceSampleDelta = 0.025f;
     };
 
@@ -45,6 +45,14 @@ namespace engine {
      */
     void generateFromSkybox(Skybox& skybox);
 
+    // Preferred workflow: load prebaked IBL assets from disk.
+    // Directory convention (recommended):
+    //   <dir>/irradiance.vtex
+    //   <dir>/prefilter.vtex
+    //   <dir>/brdf_lut.vtex
+    [[nodiscard]] bool loadFromDisk(const std::string& directory);
+    [[nodiscard]] bool saveToDisk(const std::string& directory) const;
+
     void requestRegeneration(const Settings& settings, Skybox& skybox);
     void update();
 
@@ -55,6 +63,10 @@ namespace engine {
      * @brief Check if IBL textures have been generated
      */
     [[nodiscard]] bool isGenerated() const { return generated_; }
+
+    // Incremented whenever the underlying IBL image views/samplers change.
+    // Useful for callers to refresh descriptor sets after regeneration.
+    [[nodiscard]] uint64_t getGenerationCounter() const { return generationCounter_; }
 
     // Accessors for descriptor binding
     [[nodiscard]] VkDescriptorImageInfo getIrradianceDescriptorInfo() const;
@@ -76,9 +88,14 @@ namespace engine {
     void createBRDFResources();
 
     void cleanup();
+    void createFallbackResources();
 
-    Device& device_;
-    bool    generated_ = false;
+    // Ensure BRDF LUT exists (it is environment-independent and should be created once).
+    void ensureBRDFLUT();
+
+    Device&  device_;
+    bool     generated_         = false;
+    uint64_t generationCounter_ = 0;
 
     // Irradiance cubemap
     VkImage        irradianceImage_     = VK_NULL_HANDLE;
