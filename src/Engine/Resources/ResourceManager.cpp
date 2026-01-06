@@ -28,7 +28,8 @@
 namespace engine {
 
   // Simple FNV-1a hash (fast, good distribution)
-  static uint64_t hashBytes(const unsigned char* data, size_t length)
+  namespace {
+    uint64_t hashBytes(const unsigned char* data, size_t length)
   {
     uint64_t hash = 14695981039346656037ULL; // FNV offset basis
     for (size_t i = 0; i < length; ++i)
@@ -38,6 +39,8 @@ namespace engine {
     }
     return hash;
   }
+
+  } // namespace
 
   ResourceManager::ResourceManager(Device& device) : device_(device)
   {

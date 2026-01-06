@@ -540,7 +540,7 @@ namespace engine {
       postProcessingSystem->render(frameInfo, postProcessDescriptorSets[frameInfo.frameIndex], postProcessPush);
 
       uiPhase(frameInfo, frameInfo.commandBuffer, state);
-      renderer.endSwapChainRenderPass(frameInfo.commandBuffer);
+      engine::Renderer::endSwapChainRenderPass(frameInfo.commandBuffer);
     }));
   }
 

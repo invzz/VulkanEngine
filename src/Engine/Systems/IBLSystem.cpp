@@ -254,8 +254,9 @@ namespace engine {
     generated_ = false;
   }
 
+  namespace {
   // Helper to create image
-  static void createImageHelper(Device&               device,
+  void createImageHelper(Device&               device,
                                 uint32_t              width,
                                 uint32_t              height,
                                 uint32_t              mipLevels,
@@ -288,7 +289,7 @@ namespace engine {
   }
 
   // Helper to create image view
-  static VkImageView createImageViewHelper(Device&            device,
+  VkImageView createImageViewHelper(Device&            device,
                                            VkImage            image,
                                            VkFormat           format,
                                            VkImageAspectFlags aspectFlags,
@@ -318,13 +319,14 @@ namespace engine {
   }
 
   // Helper to transition image layout
-  static void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1)
+  void transitionImageLayoutHelper(Device& device, VkImage image, VkFormat /*format*/, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1)
   {
     VkCommandBuffer commandBuffer = device.getMemory().beginSingleTimeCommands();
 
     VkImageMemoryBarrier barrier{};
     barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout                       = oldLayout;
+
     barrier.newLayout                       = newLayout;
     barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
@@ -389,6 +391,8 @@ namespace engine {
 
     device.getMemory().endSingleTimeCommands(commandBuffer);
   }
+
+  } // namespace
 
   void IBLSystem::createIrradianceMap()
   {

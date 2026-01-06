@@ -9,7 +9,6 @@
 #include <functional>
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -62,10 +61,8 @@ namespace engine {
       vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
       return;
     }
-    else
-    {
-      vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
-    }
+
+    vkCmdDraw(commandBuffer, vertexCount, 1, 0, 0);
   }
 
   void Model::drawSubMesh(VkCommandBuffer commandBuffer, size_t subMeshIndex) const

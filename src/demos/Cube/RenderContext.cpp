@@ -186,19 +186,21 @@ namespace engine {
     writeSet(globalDescriptorSetsCurrentHzb_[frameIndex], 5, spotInfo);
   }
 
-  static void updateHzbDescriptorSet(Device& device, VkDescriptorSet dstSet, VkDescriptorImageInfo const& hzbImageInfo)
-  {
-    VkWriteDescriptorSet write{};
-    write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.dstSet          = dstSet;
-    write.dstBinding      = 2;
-    write.dstArrayElement = 0;
-    write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    write.descriptorCount = 1;
-    write.pImageInfo      = &hzbImageInfo;
+  namespace {
+    void updateHzbDescriptorSet(Device& device, VkDescriptorSet dstSet, VkDescriptorImageInfo const& hzbImageInfo)
+    {
+      VkWriteDescriptorSet write{};
+      write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      write.dstSet          = dstSet;
+      write.dstBinding      = 2;
+      write.dstArrayElement = 0;
+      write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      write.descriptorCount = 1;
+      write.pImageInfo      = &hzbImageInfo;
 
-    vkUpdateDescriptorSets(device.device(), 1, &write, 0, nullptr);
-  }
+      vkUpdateDescriptorSets(device.device(), 1, &write, 0, nullptr);
+    }
+  } // namespace
 
   void RenderContext::updateHZBDescriptorPrev(int frameIndex, VkDescriptorImageInfo hzbImageInfo)
   {

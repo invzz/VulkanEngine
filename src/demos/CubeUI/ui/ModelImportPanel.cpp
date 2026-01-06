@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 
+#include <cassert>
 #include <cstring>
 #include <exception>
 #include <fstream>
@@ -14,7 +15,6 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Resources/Model.hpp"
-#include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Resources/Texture.hpp"
 #include "Engine/Scene/Scene.hpp"
@@ -76,7 +76,8 @@ namespace engine {
         {
           const auto& entry = availableModels_[i];
 
-          ImGui::PushID((int)i);
+          assert(i <= static_cast<size_t>(std::numeric_limits<int>::max()));
+          ImGui::PushID(static_cast<int>(i));
 
           // Image Button
           if (entry.descriptorSet != VK_NULL_HANDLE)

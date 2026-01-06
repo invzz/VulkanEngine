@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "CubeUI/ui/UIPanel.hpp"
@@ -45,8 +46,8 @@ namespace engine {
       return nullptr;
     }
 
-    void setOnSaveScene(std::function<void()> callback) { onSaveScene_ = callback; }
-    void setOnLoadScene(std::function<void()> callback) { onLoadScene_ = callback; }
+    void setOnSaveScene(std::function<void()> callback) { onSaveScene_ = std::move(callback); }
+    void setOnLoadScene(std::function<void()> callback) { onLoadScene_ = std::move(callback); }
 
   private:
     ImGuiManager&                         imguiManager_;

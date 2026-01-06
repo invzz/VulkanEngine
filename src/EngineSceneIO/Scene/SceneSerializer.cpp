@@ -21,20 +21,50 @@
 #include "glm/ext/vector_float3.hpp"
 #include "nlohmann/json_fwd.hpp"
 
-// Helper for glm serialization
-namespace glm {
-  static void to_json(nlohmann::json& j, const vec3& v)
+namespace {
+  void glmVec3ToJson(nlohmann::json& j, const glm::vec3& v)
   {
     j = nlohmann::json{v.x, v.y, v.z};
   }
 
-  static void from_json(const nlohmann::json& j, vec3& v)
+  void glmVec3FromJson(const nlohmann::json& j, glm::vec3& v)
   {
     v.x = j[0];
     v.y = j[1];
     v.z = j[2];
   }
-} // namespace glm
+
+  void glmVec4ToJson(nlohmann::json& j, const glm::vec4& v)
+  {
+    j = nlohmann::json{v.x, v.y, v.z, v.w};
+  }
+
+  void glmVec4FromJson(const nlohmann::json& j, glm::vec4& v)
+  {
+    v.x = j[0];
+    v.y = j[1];
+    v.z = j[2];
+    v.w = j[3];
+  }
+
+} // namespace
+
+namespace nlohmann {
+  template <>
+  struct adl_serializer<glm::vec3>
+  {
+    static void to_json(json& j, const glm::vec3& v) { glmVec3ToJson(j, v); }
+    static void from_json(const json& j, glm::vec3& v) { glmVec3FromJson(j, v); }
+  };
+
+  template <>
+  struct adl_serializer<glm::vec4>
+  {
+    static void to_json(json& j, const glm::vec4& v) { glmVec4ToJson(j, v); }
+    static void from_json(const json& j, glm::vec4& v) { glmVec4FromJson(j, v); }
+  };
+
+} // namespace nlohmann
 
 namespace engine {
 

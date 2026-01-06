@@ -148,7 +148,8 @@ namespace engine {
     }
   }
 
-  static MaterialUniformData buildMaterialUniformData(const PBRMaterial* pMaterial, float isSelected)
+  namespace {
+    MaterialUniformData buildMaterialUniformData(const PBRMaterial* pMaterial, float isSelected)
   {
     MaterialUniformData matData{};
 
@@ -314,6 +315,8 @@ namespace engine {
 
     return matData;
   }
+
+  } // namespace
 
   void MaterialRenderBindings::writeAndBind(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, const void* data, VkDeviceSize dataSize)
   {

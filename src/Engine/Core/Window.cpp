@@ -21,7 +21,7 @@
 // events instead of relying on the backend to auto-install them.
 
 // Small helpers to keep initWindow simple and readable.
-namespace window_detail {
+namespace {
 
 #ifdef __linux__
   // Try to get the global cursor position via X11 (useful for XWayland).
@@ -50,7 +50,7 @@ namespace window_detail {
 
   // Pick a monitor containing the cursor. If haveCursor is false, returns
   // nullptr.
-  static GLFWmonitor* pickMonitorForCursor(GLFWmonitor** monitors, int monitorCount, int cursorX, int cursorY)
+  GLFWmonitor* pickMonitorForCursor(GLFWmonitor** monitors, int monitorCount, int cursorX, int cursorY)
   {
     for (int i = 0; i < monitorCount; ++i)
     {
@@ -71,7 +71,7 @@ namespace window_detail {
 
   // Choose a target monitor given cursor availability; returns primary
   // monitor as fallback.
-  static GLFWmonitor* chooseTargetMonitor(bool haveCursor, int cursorX, int cursorY)
+  GLFWmonitor* chooseTargetMonitor(bool haveCursor, int cursorX, int cursorY)
   {
     int           monitorCount = 0;
     GLFWmonitor** monitors     = glfwGetMonitors(&monitorCount);
@@ -85,7 +85,7 @@ namespace window_detail {
 
   // Wait for the window position to stabilize or become non-zero. Returns
   // last pos.
-  static void waitForWindowStabilize(GLFWwindow* window, int& outX, int& outY)
+  void waitForWindowStabilize(GLFWwindow* window, int& outX, int& outY)
   {
     int       prevX    = INT_MIN;
     int       prevY    = INT_MIN;
@@ -102,7 +102,7 @@ namespace window_detail {
   }
 
   // Request centering on the given monitor (best-effort).
-  static void centerWindowOnMonitor(GLFWwindow* window, GLFWmonitor* monitor, int width, int height)
+  void centerWindowOnMonitor(GLFWwindow* window, GLFWmonitor* monitor, int width, int height)
   {
     if (monitor == nullptr) return;
     int mx = 0;
@@ -117,7 +117,7 @@ namespace window_detail {
     glfwSetWindowPos(window, xpos, ypos);
   }
 
-} // namespace window_detail
+} // namespace
 
 namespace engine {
 
@@ -171,10 +171,10 @@ namespace engine {
     bool const haveCursor = false;
 
 #ifdef __linux__
-    haveCursor = window_detail::tryGetXCursorPosition(cursorX, cursorY);
+    haveCursor = tryGetXCursorPosition(cursorX, cursorY);
 #endif
 
-    GLFWmonitor* targetMonitor = window_detail::chooseTargetMonitor(haveCursor, cursorX, cursorY);
+    GLFWmonitor* targetMonitor = chooseTargetMonitor(haveCursor, cursorX, cursorY);
 
     // Create the window (hidden)
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
@@ -218,7 +218,7 @@ namespace engine {
     // to react.
     int posX = 0;
     int posY = 0;
-    window_detail::waitForWindowStabilize(window, posX, posY);
+    waitForWindowStabilize(window, posX, posY);
 
     // Show the window now that we've attempted to position it.
     glfwShowWindow(window);
@@ -229,7 +229,7 @@ namespace engine {
       glfwGetWindowPos(window, &posX, &posY);
       if (posX == 0 && posY == 0)
       {
-        window_detail::centerWindowOnMonitor(window, targetMonitor, width, height);
+        centerWindowOnMonitor(window, targetMonitor, width, height);
       }
     }
   }
