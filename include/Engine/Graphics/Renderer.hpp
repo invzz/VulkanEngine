@@ -28,7 +28,7 @@ namespace engine {
 
     // Render pass helpers
     void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
-    static void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
+    void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
     void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
     void beginOffscreenDepthPrepassRenderPass(VkCommandBuffer commandBuffer);
     void beginOffscreenRenderPassLoadDepth(VkCommandBuffer commandBuffer);

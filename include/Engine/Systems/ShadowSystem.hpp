@@ -27,7 +27,7 @@ namespace engine {
   class ShadowSystem
   {
   public:
-    static constexpr int DIRECTIONAL_CASCADE_COUNT = 4;
+    static constexpr int DIRECTIONAL_CASCADE_COUNT = 10;
     static constexpr int MAX_SPOT_SHADOW_MAPS      = 4;
     static constexpr int MAX_SHADOW_MAPS           = DIRECTIONAL_CASCADE_COUNT + MAX_SPOT_SHADOW_MAPS;
     static constexpr int MAX_CUBE_SHADOW_MAPS      = 4;
@@ -106,7 +106,7 @@ namespace engine {
 
     int   directionalCascadeCount_     = 0;
     int   directionalCascadeBaseIndex_ = 0;
-    float directionalCascadeSplits_[DIRECTIONAL_CASCADE_COUNT]{0.0f, 0.0f, 0.0f, 0.0f};
+    float directionalCascadeSplits_[DIRECTIONAL_CASCADE_COUNT]{0.0f};
 
     glm::vec3 pointLightPositions_[MAX_CUBE_SHADOW_MAPS];
     float     pointLightRanges_[MAX_CUBE_SHADOW_MAPS];

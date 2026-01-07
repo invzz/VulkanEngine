@@ -68,6 +68,18 @@ namespace engine {
   class Model
   {
   public:
+    struct MeshletBuildConfig
+    {
+      size_t maxVertices  = 64;   // upper bound of unique vertices per meshlet
+      size_t maxTriangles = 124;  // upper bound of triangles per meshlet
+      float  coneWeight   = 0.0f; // 0 = favor locality, 1 = favor backface culling
+      float  maxRadius    = 0.0f; // max bounding sphere radius in model units (0 = no limit)
+                                  // Recommended: 2-4m for indoor scenes, 1-2m for detailed objects
+    };
+
+    // Global configuration for meshlet building
+    static void                                    setMeshletBuildConfig(const MeshletBuildConfig& cfg);
+    [[nodiscard]] static const MeshletBuildConfig& getMeshletBuildConfig();
     struct Vertex
     {
       glm::vec3                                             position;
@@ -284,9 +296,11 @@ namespace engine {
     [[nodiscard]] bool     hasIndices() const { return hasIndexBuffer; }
 
   private:
-    Device&     device;
-    std::string filePath;
-    uint32_t    meshId = 0;
+    // Global meshlet build configuration (shared across all models)
+    static MeshletBuildConfig s_meshletConfig_;
+    Device&                   device;
+    std::string               filePath;
+    uint32_t                  meshId = 0;
 
     std::unique_ptr<Buffer> vertexBuffer;
     uint32_t                vertexCount = 0;

@@ -40,6 +40,58 @@ namespace engine {
 
     if (ImGui::Begin("Assets", &visible_))
     {
+      if (ImGui::CollapsingHeader("Meshlet Settings"))
+      {
+        ImGui::TextWrapped("Configure meshlet generation for GPU-driven rendering. Smaller meshlets improve culling but increase count.");
+        ImGui::Separator();
+
+        ImGui::SliderInt("Max Vertices", &meshletMaxVertices_, 8, 64, "%d");
+        if (ImGui::IsItemHovered())
+        {
+          ImGui::SetTooltip("Maximum unique vertices per meshlet (8-64). Lower = more meshlets, better culling.");
+        }
+
+        ImGui::SliderInt("Max Triangles", &meshletMaxTriangles_, 8, 124, "%d");
+        if (ImGui::IsItemHovered())
+        {
+          ImGui::SetTooltip("Maximum triangles per meshlet (8-124). Lower = more meshlets, better culling.");
+        }
+
+        ImGui::SliderFloat("Cone Weight", &meshletConeWeight_, 0.0f, 1.0f, "%.2f");
+        if (ImGui::IsItemHovered())
+        {
+          ImGui::SetTooltip("0 = favor spatial locality, 1 = favor backface culling effectiveness.");
+        }
+
+        ImGui::SliderFloat("Max Radius (m)", &meshletMaxRadius_, 0.0f, 10.0f, "%.1f");
+        if (ImGui::IsItemHovered())
+        {
+          ImGui::SetTooltip("Maximum bounding sphere radius in meters. 0 = disabled.\n"
+                            "Meshlets larger than this will be split for better culling.\n"
+                            "Recommended: 2-4m for indoor scenes (Sponza), 1-2m for detailed objects.");
+        }
+
+        if (ImGui::Button("Reset to Defaults"))
+        {
+          meshletMaxVertices_  = 64;
+          meshletMaxTriangles_ = 124;
+          meshletConeWeight_   = 0.0f;
+          meshletMaxRadius_    = 0.0f;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("High Quality Culling"))
+        {
+          meshletMaxVertices_  = 32;
+          meshletMaxTriangles_ = 64;
+          meshletConeWeight_   = 0.5f;
+          meshletMaxRadius_    = 2.0f;
+        }
+        if (ImGui::IsItemHovered())
+        {
+          ImGui::SetTooltip("Preset for indoor scenes with large walls/floors (e.g., Sponza).");
+        }
+      }
+
       if (ImGui::CollapsingHeader("Import Model", ImGuiTreeNodeFlags_DefaultOpen))
       {
         ImGui::InputText("glTF Path", modelPath_, sizeof(modelPath_));
@@ -202,6 +254,14 @@ namespace engine {
   {
     try
     {
+      // Configure meshlet generation using panel settings
+      engine::Model::MeshletBuildConfig meshletCfg;
+      meshletCfg.maxVertices  = static_cast<size_t>(meshletMaxVertices_);
+      meshletCfg.maxTriangles = static_cast<size_t>(meshletMaxTriangles_);
+      meshletCfg.coneWeight   = meshletConeWeight_;
+      meshletCfg.maxRadius    = meshletMaxRadius_;
+      engine::Model::setMeshletBuildConfig(meshletCfg);
+
       // Load the model
       auto modelPtr = Model::createModelFromGLTF(device_, fullPath, false, true, true);
 

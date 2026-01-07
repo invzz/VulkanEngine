@@ -47,6 +47,12 @@ namespace engine {
     ResourceManager&        resourceManager_;
     char                    modelPath_[256] = "glTF/DamagedHelmet/glTF/DamagedHelmet.gltf";
     std::vector<ModelEntry> availableModels_;
+
+    // Meshlet generation settings
+    int   meshletMaxVertices_  = 64;   // 1-64
+    int   meshletMaxTriangles_ = 124;  // 1-124
+    float meshletConeWeight_   = 0.0f; // 0.0 = locality, 1.0 = backface culling
+    float meshletMaxRadius_    = 0.0f; // 0.0 = disabled, >0 = max bounding sphere radius in meters
   };
 
 } // namespace engine

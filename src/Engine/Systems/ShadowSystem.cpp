@@ -278,9 +278,15 @@ namespace engine {
 
     {
       glm::vec3 const centerLS = 0.5f * (minLS + maxLS);
-      float const     extentX  = maxLS.x - minLS.x;
-      float const     extentY  = maxLS.y - minLS.y;
-      float const     extent   = glm::max(extentX, extentY);
+      float           extentX  = maxLS.x - minLS.x;
+      float           extentY  = maxLS.y - minLS.y;
+      float           extent   = glm::max(extentX, extentY);
+
+      // Clamp the extent to a stable value to reduce shimmering
+      // You can tune this value per cascade for best results
+      const float minExtent = 20.0f;  // Minimum shadow area (world units)
+      const float maxExtent = 200.0f; // Maximum shadow area (world units)
+      extent                = glm::clamp(extent, minExtent, maxExtent);
 
       float const halfExtent = 0.5f * extent;
 
