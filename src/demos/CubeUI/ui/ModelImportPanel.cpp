@@ -4,6 +4,7 @@
 #include <imgui_impl_vulkan.h>
 
 #include <cassert>
+#include <cstdio>
 #include <cstring>
 #include <exception>
 #include <fstream>
@@ -98,14 +99,12 @@ namespace engine {
         ImGui::SameLine();
         if (ImGui::Button("Browse"))
         {
-          // Set default path to models directory
           std::string const defaultPath = std::string(MODEL_PATH) + "/glTF/";
-          strncpy_s(modelPath_, defaultPath.c_str(), sizeof(modelPath_) - 1);
+          std::snprintf(modelPath_, sizeof(modelPath_), "%s", defaultPath.c_str());
         }
 
         if (ImGui::Button("Load Model"))
         {
-          // Create full path if it's relative
           std::string fullPath = modelPath_;
           if (fullPath[0] != '/')
           {
@@ -117,7 +116,7 @@ namespace engine {
 
       if (ImGui::CollapsingHeader("Available Models", ImGuiTreeNodeFlags_DefaultOpen))
       {
-        ImGui::BeginChild("AvailableModelsScroll", ImVec2(0, 0), 1); // Use 0 height to fill remaining space
+        ImGui::BeginChild("AvailableModelsScroll", ImVec2(0, 0), 1);
 
         float const       windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
         ImGuiStyle const& style           = ImGui::GetStyle();
@@ -131,7 +130,6 @@ namespace engine {
           assert(i <= static_cast<size_t>(std::numeric_limits<int>::max()));
           ImGui::PushID(static_cast<int>(i));
 
-          // Image Button
           if (entry.descriptorSet != VK_NULL_HANDLE)
           {
             if (ImGui::ImageButton("##image", (ImTextureID)entry.descriptorSet, ImVec2(buttonSize, buttonSize)))
@@ -149,7 +147,6 @@ namespace engine {
             }
           }
 
-          // Tooltip
           if (ImGui::IsItemHovered())
           {
             ImGui::BeginTooltip();
@@ -157,7 +154,6 @@ namespace engine {
             ImGui::EndTooltip();
           }
 
-          // Layout logic for grid
           float const lastButtonX2 = ImGui::GetItemRectMax().x;
           float const nextButtonX2 = lastButtonX2 + spacing + buttonSize;
           if (i + 1 < availableModels_.size() && nextButtonX2 < windowVisibleX2) ImGui::SameLine();
@@ -191,18 +187,13 @@ namespace engine {
         if (!item.contains("name")) continue;
         entry.name = item["name"];
 
-        // Get screenshot path
         if (item.contains("screenshot"))
         {
           std::string const screenshotRel = item["screenshot"];
-          // Construct full path: MODEL_PATH + /glTF/ + name + / + screenshotRel
-          // Note: screenshotRel is usually "screenshot/screenshot.png"
-          // And the folder is assets/models/glTF/<name>/
+
           std::string const fullScreenshotPath = std::string(MODEL_PATH) + "/glTF/" + entry.name + "/" + screenshotRel;
           entry.screenshotPath                 = fullScreenshotPath;
 
-          // Load texture
-          // Use flipY=false for UI images
           try
           {
             entry.screenshotTexture = resourceManager_.loadTexture(fullScreenshotPath, true, false);
@@ -217,24 +208,10 @@ namespace engine {
           }
         }
 
-        // Get glTF path
         if (item.contains("variants") && item["variants"].contains("glTF"))
         {
           std::string const variantFile = item["variants"]["glTF"];
-          // Path relative to MODEL_PATH
-          // assets/models/glTF/<name>/glTF/<variantFile>
-          // But wait, is it always in a glTF subfolder?
-          // Based on 2CylinderEngine and DamagedHelmet, yes.
-          // But let's be careful. The variantFile might be just the filename.
-          // The structure seems to be: assets/models/glTF/<name>/glTF/<filename>
-          // Or maybe assets/models/glTF/<name>/<filename> if the variant key is just "glTF"?
-          // Let's assume the standard structure for this repo.
-          // Actually, looking at 2CylinderEngine:
-          // "variants": { "glTF": "2CylinderEngine.gltf" }
-          // File: .../2CylinderEngine/glTF/2CylinderEngine.gltf
-          // So there is an extra "glTF" folder.
-          // Is it possible that the "glTF" key implies the "glTF" folder?
-          // Let's assume so for now.
+
           entry.relativePath = "glTF/" + entry.name + "/glTF/" + variantFile;
         }
 
@@ -254,7 +231,6 @@ namespace engine {
   {
     try
     {
-      // Configure meshlet generation using panel settings
       engine::Model::MeshletBuildConfig meshletCfg;
       meshletCfg.maxVertices  = static_cast<size_t>(meshletMaxVertices_);
       meshletCfg.maxTriangles = static_cast<size_t>(meshletMaxTriangles_);
@@ -262,10 +238,8 @@ namespace engine {
       meshletCfg.maxRadius    = meshletMaxRadius_;
       engine::Model::setMeshletBuildConfig(meshletCfg);
 
-      // Load the model
       auto modelPtr = Model::createModelFromGLTF(device_, fullPath, false, true, true);
 
-      // Load textures for materials
       for (auto& mat : modelPtr->getMaterials())
       {
         if (!mat.diffuseTexPath.empty())
@@ -286,8 +260,7 @@ namespace engine {
         }
         if (!mat.specularGlossinessTexPath.empty())
         {
-          mat.pbrMaterial.specularGlossinessMap = resourceManager_.loadTexture(mat.specularGlossinessTexPath, true,
-                                                                               true); // sRGB? Specular is color, glossiness is linear. Usually sRGB for color.
+          mat.pbrMaterial.specularGlossinessMap = resourceManager_.loadTexture(mat.specularGlossinessTexPath, true, true);
         }
         if (!mat.emissiveTexPath.empty())
         {
@@ -322,16 +295,13 @@ namespace engine {
 
       auto& modelComp = scene_.getRegistry().get<ModelComponent>(entity);
 
-      // Check for animations
       if (modelComp.model->hasAnimations())
       {
         scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
       }
 
-      // Check for morph targets
       if (modelComp.model->hasMorphTargets())
       {
-        // If not already registered (e.g. if it had animations it was registered above)
         if (!scene_.getRegistry().all_of<AnimationComponent>(entity))
         {
           scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);

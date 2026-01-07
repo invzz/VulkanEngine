@@ -101,10 +101,11 @@ target("Cube")
     else
         add_packages("glfw", "glm", "vulkan", "imgui", "entt", "nlohmann_json", "tinygltf")
     end
+    -- Ensure libraries that depend on importers are listed first so linker ordering resolves symbols
+    add_deps("CubeUI")
     add_deps("Engine")
     add_deps("EngineImporters")
     add_deps("EngineSceneIO")
-    add_deps("CubeUI")
 
     if has_config("deadcode") then
         if is_plat("windows") then

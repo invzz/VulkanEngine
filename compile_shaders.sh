@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 
 # Default folders
 SHADER_DIR="assets/shaders"
-OUTPUT_DIR="assets/shaders/compiled"
+OUTPUT_DIR="assets/shaders/OK"
 
 INCLUDE_ARGS=("-I" "${SHADER_DIR}" "-I" "${SHADER_DIR}/includes")
 
@@ -45,7 +45,7 @@ for shader in "$SHADER_DIR"/*.vert; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.vert}.vert.spv"
     if glslc --target-spv=spv1.5 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
     fi
@@ -55,12 +55,12 @@ for shader in "$SHADER_DIR"/*.frag; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.frag}.frag.spv"
     if glslc --target-spv=spv1.5 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
     fi
 
-    # Build an additional "standard" PBR variant with expensive features compiled out.
+    # Build an additional "standard" PBR variant with expensive features OK out.
     if [[ "$filename" == "pbr_shader.frag" ]]; then
         standard_out="$OUTPUT_DIR/pbr_shader_standard.frag.spv"
         if glslc --target-spv=spv1.5 \
@@ -82,7 +82,7 @@ for shader in "$SHADER_DIR"/*.comp; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.comp}.comp.spv"
     if glslc --target-spv=spv1.5 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
     fi
@@ -92,7 +92,7 @@ for shader in "$SHADER_DIR"/*.task; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.task}.task.spv"
     if glslc --target-env=vulkan1.3 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
     fi
@@ -102,7 +102,7 @@ for shader in "$SHADER_DIR"/*.mesh; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.mesh}.mesh.spv"
     if glslc --target-env=vulkan1.3 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
     fi
@@ -112,7 +112,7 @@ for shader in "$SHADER_DIR"/*.vert; do
     filename=$(basename -- "$shader")
     output_file="$OUTPUT_DIR/${filename%.vert}.vert.spv"
     if glslc --target-spv=spv1.5 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}Compiled${NC} ] $shader -> ${VIOLET}$output_file${NC}"
+        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
     else
         echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
     fi

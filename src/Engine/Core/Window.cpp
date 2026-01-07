@@ -27,9 +27,9 @@ namespace {
   // Try to get the global cursor position via X11 (useful for XWayland).
   bool tryGetXCursorPosition(int& outX, int& outY)
   {
-    if (!getenv("DISPLAY")) return false;
+    if (getenv("DISPLAY") == nullptr) return false;
     ::Display* dpy = XOpenDisplay(nullptr);
-    if (!dpy) return false;
+    if (dpy == nullptr) return false;
 
     ::Window     root  = DefaultRootWindow(dpy);
     ::Window     ret   = 0;
@@ -41,7 +41,7 @@ namespace {
     unsigned int mask  = 0;
     const Bool   ok    = XQueryPointer(dpy, root, &ret, &child, &rootx, &rooty, &winx, &winy, &mask);
     XCloseDisplay(dpy);
-    if (!ok) return false;
+    if (ok == 0) return false;
     outX = rootx;
     outY = rooty;
     return true;
@@ -166,9 +166,9 @@ namespace engine {
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     // Try to pick the monitor where the user likely wants the window.
-    int const  cursorX    = 0;
-    int const  cursorY    = 0;
-    bool const haveCursor = false;
+    int  cursorX    = 0;
+    int  cursorY    = 0;
+    bool haveCursor = false;
 
 #ifdef __linux__
     haveCursor = tryGetXCursorPosition(cursorX, cursorY);
