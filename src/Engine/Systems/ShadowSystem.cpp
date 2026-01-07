@@ -30,18 +30,38 @@
 
 namespace engine {
 
-  struct ShadowPushConstants
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Push constants for mesh shader shadow rendering (Level 3)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  struct ShadowMeshPushConstants
   {
     glm::mat4 modelMatrix;
     glm::mat4 lightSpaceMatrix;
+
+    uint64_t meshletBufferAddress;
+    uint64_t meshletVerticesAddress;
+    uint64_t meshletTrianglesAddress;
+    uint64_t vertexBufferAddress;
+    uint32_t meshletOffset;
+    uint32_t meshletCount;
   };
 
-  struct CubeShadowPushConstants
+  struct CubeShadowMeshPushConstants
   {
     glm::mat4 modelMatrix;
     glm::mat4 lightSpaceMatrix;
     glm::vec4 lightPosAndFarPlane; // xyz = light position, w = far plane
+
+    uint64_t meshletBufferAddress;
+    uint64_t meshletVerticesAddress;
+    uint64_t meshletTrianglesAddress;
+    uint64_t vertexBufferAddress;
+    uint32_t meshletOffset;
+    uint32_t meshletCount;
   };
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   ShadowSystem::ShadowSystem(Device& device, uint32_t shadowMapSize) : device_{device}, shadowMapSize_{shadowMapSize}
   {
@@ -60,34 +80,33 @@ namespace engine {
       pointLightRanges_[i]    = 25.0f;
     }
 
-    createPipelineLayout();
-    createPipeline();
-    createCubeShadowPipelineLayout();
-    createCubeShadowPipeline();
+    createMeshPipelineLayout();
+    createMeshPipeline();
+    createCubeMeshPipelineLayout();
+    createCubeMeshPipeline();
 
     std::cout << "[" << GREEN << "ShadowSystem" << RESET << "] Initialized with " << MAX_SHADOW_MAPS << " 2D shadow maps and " << MAX_CUBE_SHADOW_MAPS << " cube shadow maps (" << shadowMapSize << "x"
-              << shadowMapSize << ")" << '\n';
+              << shadowMapSize << "), mesh shader culling (Level 3)\n";
   }
 
   ShadowSystem::~ShadowSystem()
   {
-    if (pipelineLayout_ != VK_NULL_HANDLE)
+    if (meshPipelineLayout_ != VK_NULL_HANDLE)
     {
-      vkDestroyPipelineLayout(device_.device(), pipelineLayout_, nullptr);
+      vkDestroyPipelineLayout(device_.device(), meshPipelineLayout_, nullptr);
     }
-    if (cubePipelineLayout_ != VK_NULL_HANDLE)
+    if (cubeMeshPipelineLayout_ != VK_NULL_HANDLE)
     {
-      vkDestroyPipelineLayout(device_.device(), cubePipelineLayout_, nullptr);
+      vkDestroyPipelineLayout(device_.device(), cubeMeshPipelineLayout_, nullptr);
     }
   }
 
-  void ShadowSystem::createPipelineLayout()
+  void ShadowSystem::createMeshPipelineLayout()
   {
     VkPushConstantRange pushConstantRange{};
-    // Shadow shaders use vertex + fragment stages for small push constants
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT;
     pushConstantRange.offset     = 0;
-    pushConstantRange.size       = sizeof(ShadowPushConstants);
+    pushConstantRange.size       = sizeof(ShadowMeshPushConstants);
 
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -96,56 +115,93 @@ namespace engine {
     layoutInfo.pushConstantRangeCount = 1;
     layoutInfo.pPushConstantRanges    = &pushConstantRange;
 
-    if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &pipelineLayout_) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &meshPipelineLayout_) != VK_SUCCESS)
     {
-      throw std::runtime_error("Failed to create shadow pipeline layout");
+      throw std::runtime_error("Failed to create shadow mesh pipeline layout");
     }
   }
 
-  void ShadowSystem::createPipeline()
+  void ShadowSystem::createMeshPipeline()
   {
     PipelineConfigInfo configInfo{};
-    Pipeline::defaultPipelineConfigInfo(configInfo);
-
-    // Only need position for shadow mapping
-    configInfo.bindingDescriptions   = Model::Vertex::getBindingDescriptions();
-    configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
+    Pipeline::defaultMeshPipelineConfigInfo(configInfo);
 
     // No color attachment - depth only
     configInfo.colorBlendInfo.attachmentCount = 0;
-    configInfo.colorBlendAttachment           = {}; // Not used
+    configInfo.colorBlendAttachment           = {};
 
     // Depth bias to prevent shadow acne
     configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
     configInfo.rasterizationInfo.depthBiasConstantFactor = 1.25f;
     configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
 
-    // Cull front faces to reduce peter-panning
-    // configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_BIT;
+    // No culling for shadows (all geometry matters)
     configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
-    // Use the render pass from the first shadow map (all are identical)
     configInfo.renderPass     = shadowMaps_[0]->getRenderPass();
-    configInfo.pipelineLayout = pipelineLayout_;
+    configInfo.pipelineLayout = meshPipelineLayout_;
 
-    pipeline_ = std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(shadow.vert.spv)", std::string(SHADER_PATH) + R"(shadow.frag.spv)", configInfo);
+    meshPipeline_ = std::make_unique<Pipeline>(device_,
+                                               std::string(SHADER_PATH) + R"(shadow.task.spv)",
+                                               std::string(SHADER_PATH) + R"(shadow.mesh.spv)",
+                                               std::string(SHADER_PATH) + R"(shadow.frag.spv)",
+                                               configInfo);
+  }
+
+  void ShadowSystem::createCubeMeshPipelineLayout()
+  {
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConstantRange.offset     = 0;
+    pushConstantRange.size       = sizeof(CubeShadowMeshPushConstants);
+
+    VkPipelineLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount         = 0;
+    layoutInfo.pSetLayouts            = nullptr;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges    = &pushConstantRange;
+
+    if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &cubeMeshPipelineLayout_) != VK_SUCCESS)
+    {
+      throw std::runtime_error("Failed to create cube shadow mesh pipeline layout");
+    }
+  }
+
+  void ShadowSystem::createCubeMeshPipeline()
+  {
+    PipelineConfigInfo configInfo{};
+    Pipeline::defaultMeshPipelineConfigInfo(configInfo);
+
+    // No color attachment - depth only
+    configInfo.colorBlendInfo.attachmentCount = 0;
+    configInfo.colorBlendAttachment           = {};
+
+    // Depth bias to prevent shadow acne
+    configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
+    configInfo.rasterizationInfo.depthBiasConstantFactor = 1.25f;
+    configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
+
+    // No culling for point light shadows
+    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+
+    configInfo.renderPass     = cubeShadowMaps_[0]->getRenderPass();
+    configInfo.pipelineLayout = cubeMeshPipelineLayout_;
+
+    cubeMeshPipeline_ = std::make_unique<Pipeline>(device_,
+                                                   std::string(SHADER_PATH) + R"(cube_shadow.task.spv)",
+                                                   std::string(SHADER_PATH) + R"(cube_shadow.mesh.spv)",
+                                                   std::string(SHADER_PATH) + R"(cube_shadow_mesh.frag.spv)",
+                                                   configInfo);
   }
 
   glm::mat4 ShadowSystem::calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection, const Camera& camera, float cascadeNear, float cascadeFar) const
   {
-    // Fit a directional shadow frustum to a slice of the camera view frustum (CSM).
-    // cascadeNear/cascadeFar are view-space distances along the camera forward axis.
-
     glm::vec3 const lightDir = glm::normalize(lightDirection);
 
     glm::mat4 const proj    = camera.getProjectionMatrix();
     glm::mat4 const invView = camera.getInverseView();
 
-    // Derive perspective params from Vulkan-style projection matrix.
-    // Camera::setPerspectiveProjection encodes:
-    //   proj[2][2] = far/(far-near)
-    //   proj[3][2] = -(far*near)/(far-near)
-    // So near = -B/A.
     float const A         = proj[2][2];
     float const B         = proj[3][2];
     float       nearPlane = 0.1f;
@@ -176,7 +232,6 @@ namespace engine {
     glm::vec3 const camUp    = glm::normalize(glm::vec3(invView[1]));
     glm::vec3 const camFwd   = glm::normalize(glm::vec3(invView[2]));
 
-    // 8 frustum corners in world space (camera forward is +Z in this engine).
     glm::vec3 frustumCorners[8];
 
     float const nearZ = sliceNear;
@@ -186,12 +241,10 @@ namespace engine {
     float const fx    = farWidth * 0.5f;
     float const fy    = farHeight * 0.5f;
 
-    // Near plane
     frustumCorners[0] = camPos + camFwd * nearZ - camRight * nx - camUp * ny;
     frustumCorners[1] = camPos + camFwd * nearZ + camRight * nx - camUp * ny;
     frustumCorners[2] = camPos + camFwd * nearZ + camRight * nx + camUp * ny;
     frustumCorners[3] = camPos + camFwd * nearZ - camRight * nx + camUp * ny;
-    // Far plane
     frustumCorners[4] = camPos + camFwd * farZ - camRight * fx - camUp * fy;
     frustumCorners[5] = camPos + camFwd * farZ + camRight * fx - camUp * fy;
     frustumCorners[6] = camPos + camFwd * farZ + camRight * fx + camUp * fy;
@@ -204,15 +257,12 @@ namespace engine {
     }
     frustumCenter /= 8.0f;
 
-    // Handle edge case where light is directly above/below.
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     if (glm::abs(glm::dot(lightDir, up)) > 0.99f)
     {
       up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
-    // Place the light back along its direction; exact distance doesn't matter as
-    // long as we compute extents in this same view space.
     glm::vec3 const lightPos  = frustumCenter - lightDir * (sliceFar * 2.0f);
     glm::mat4 const lightView = glm::lookAt(lightPos, frustumCenter, up);
 
@@ -226,8 +276,6 @@ namespace engine {
       maxLS                     = glm::max(maxLS, cornerLS);
     }
 
-    // Stabilize the projection to avoid shimmering when the camera moves.
-    // Snap the ortho bounds to the shadow-map texel grid in light space.
     {
       glm::vec3 const centerLS = 0.5f * (minLS + maxLS);
       float const     extentX  = maxLS.x - minLS.x;
@@ -250,27 +298,19 @@ namespace engine {
       maxLS.y = snappedCenter.y + halfExtent;
     }
 
-    // Expand depth (light-space Z) to include potential casters not on the receiver frustum slice.
-    // This is important indoors (e.g. ceilings/roofs): the receiver slice may be mostly floor,
-    // but overhead occluders still need to be inside the shadow frustum.
     float const extentX = maxLS.x - minLS.x;
     float const extentY = maxLS.y - minLS.y;
     float const extentZ = maxLS.z - minLS.z;
     float const extent  = glm::max(glm::max(extentX, extentY), extentZ);
 
-    // Scale padding with cascade size to keep casters around the receiver area.
     float const depthPadding = glm::max(10.0f, extent);
     minLS.z -= depthPadding;
     maxLS.z += depthPadding;
 
-    // glm::lookAt uses a right-handed view where forward is -Z.
-    // Visible points tend to have negative Z in light view space, while near/far
-    // passed to ortho are positive distances.
     float const orthoNear = glm::max(0.01f, -maxLS.z);
     float const orthoFar  = glm::max(orthoNear + 0.01f, -minLS.z);
 
     glm::mat4 lightProj = glm::orthoZO(minLS.x, maxLS.x, minLS.y, maxLS.y, orthoNear, orthoFar);
-    // Vulkan clip space correction (Y flip)
     lightProj[1][1] *= -1;
 
     return lightProj * lightView;
@@ -280,7 +320,6 @@ namespace engine {
   {
     glm::vec3 const lightDir = glm::normalize(direction);
 
-    // Handle edge case where light points directly up/down
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
     if (glm::abs(glm::dot(lightDir, up)) > 0.99f)
     {
@@ -289,51 +328,59 @@ namespace engine {
 
     glm::mat4 const lightView = glm::lookAt(position, position + lightDir, up);
 
-    // Perspective projection based on spotlight cone angle
-    // outerCutoffDegrees is the outer cone angle in degrees
-    // FOV should be 2 * angle to cover the full cone, add some margin
-    float const fov       = glm::radians((outerCutoffDegrees * 2.0f) + 5.0f); // Add 5 degree margin
+    float const fov       = glm::radians((outerCutoffDegrees * 2.0f) + 5.0f);
     float const nearPlane = 0.1f;
     float const farPlane  = range > 0.0f ? range : 100.0f;
 
     glm::mat4 lightProj = glm::perspective(fov, 1.0f, nearPlane, farPlane);
-
-    // Vulkan clip space correction (Y flip)
     lightProj[1][1] *= -1;
 
     return lightProj * lightView;
   }
 
-  void ShadowSystem::renderToShadowMap(FrameInfo& frameInfo, ShadowMap& shadowMap, const glm::mat4& lightSpaceMatrix)
+  void ShadowSystem::renderToShadowMapMesh(FrameInfo& frameInfo, ShadowMap& shadowMap, const glm::mat4& lightSpaceMatrix)
   {
-    // Begin shadow render pass
-
     shadowMap.beginRenderPass(frameInfo.commandBuffer);
+    meshPipeline_->bind(frameInfo.commandBuffer);
 
-    // Bind shadow pipeline
-    pipeline_->bind(frameInfo.commandBuffer);
-
-    // Render all objects to shadow map
+    // Render all shadow-casting objects using mesh shaders (GPU culling built-in)
     auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
     for (auto entity : view)
     {
       auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
-      if (!modelComp.model)
+      if (!modelComp.model || modelComp.model->getMeshletCount() == 0)
       {
         continue;
       }
 
-      ShadowPushConstants push{};
-      push.modelMatrix      = transform.modelTransform();
-      push.lightSpaceMatrix = lightSpaceMatrix;
+      const auto& model = modelComp.model;
 
-      vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+      // For each submesh, dispatch mesh shader draws
+      for (const auto& subMesh : model->getSubMeshes())
+      {
+        if (subMesh.meshletCount == 0)
+        {
+          continue;
+        }
 
-      modelComp.model->bind(frameInfo.commandBuffer);
-      modelComp.model->draw(frameInfo.commandBuffer);
+        ShadowMeshPushConstants push{};
+        push.modelMatrix             = transform.modelTransform();
+        push.lightSpaceMatrix        = lightSpaceMatrix;
+        push.meshletBufferAddress    = model->getMeshletBufferAddress();
+        push.meshletVerticesAddress  = model->getMeshletVerticesAddress();
+        push.meshletTrianglesAddress = model->getMeshletTrianglesAddress();
+        push.vertexBufferAddress     = model->getVertexBufferAddress();
+        push.meshletOffset           = subMesh.meshletOffset;
+        push.meshletCount            = subMesh.meshletCount;
+
+        vkCmdPushConstants(frameInfo.commandBuffer, meshPipelineLayout_, VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(push), &push);
+
+        // Dispatch mesh shader task groups (32 meshlets per group)
+        uint32_t const groupCount = (subMesh.meshletCount + 31) / 32;
+        device_.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
+      }
     }
 
-    // End shadow render pass
     engine::ShadowMap::endRenderPass(frameInfo.commandBuffer);
   }
 
@@ -360,7 +407,6 @@ namespace engine {
 
       glm::vec3 const lightDir = transform.getForwardDir();
 
-      // Compute camera near/far from projection (Vulkan-style, depth 0..1).
       glm::mat4 const proj      = frameInfo.camera.getProjectionMatrix();
       float const     A         = proj[2][2];
       float const     B         = proj[3][2];
@@ -378,7 +424,6 @@ namespace engine {
 
       float const csmFar = glm::clamp(shadowDistance, nearPlane + 0.5f, farPlane);
 
-      // Practical split scheme: blend log/linear splits.
       float const lambda = 0.5f;
       float       splits[DIRECTIONAL_CASCADE_COUNT];
       for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; i++)
@@ -404,13 +449,11 @@ namespace engine {
         }
 
         lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar);
-        renderToShadowMap(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
+        renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
         shadowLightCount_++;
       }
 
-      // Only one directional light shadow for now? The old code took
-      // dirLights[0]. I'll break after one.
-      break;
+      break; // Only one directional light
     }
 
     // Render shadow maps for spotlights
@@ -430,61 +473,12 @@ namespace engine {
       float const range              = 50.0f;
 
       lightSpaceMatrices_[shadowLightCount_] = calculateSpotLightMatrix(position, direction, outerCutoffDegrees, range);
-      renderToShadowMap(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
+      renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
       shadowLightCount_++;
     }
 
     // Render cube shadow maps for point lights
     renderPointLightShadowMaps(frameInfo);
-  }
-
-  void ShadowSystem::createCubeShadowPipelineLayout()
-  {
-    VkPushConstantRange pushConstantRange{};
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset     = 0;
-    pushConstantRange.size       = sizeof(CubeShadowPushConstants);
-
-    VkPipelineLayoutCreateInfo layoutInfo{};
-    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount         = 0;
-    layoutInfo.pSetLayouts            = nullptr;
-    layoutInfo.pushConstantRangeCount = 1;
-    layoutInfo.pPushConstantRanges    = &pushConstantRange;
-
-    if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &cubePipelineLayout_) != VK_SUCCESS)
-    {
-      throw std::runtime_error("Failed to create cube shadow pipeline layout");
-    }
-  }
-
-  void ShadowSystem::createCubeShadowPipeline()
-  {
-    PipelineConfigInfo configInfo{};
-    Pipeline::defaultPipelineConfigInfo(configInfo);
-
-    // Only need position for shadow mapping
-    configInfo.bindingDescriptions   = Model::Vertex::getBindingDescriptions();
-    configInfo.attributeDescriptions = Model::Vertex::getAttributeDescriptions();
-
-    // No color attachment - depth only
-    configInfo.colorBlendInfo.attachmentCount = 0;
-    configInfo.colorBlendAttachment           = {};
-
-    // Depth bias to prevent shadow acne
-    configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
-    configInfo.rasterizationInfo.depthBiasConstantFactor = 1.25f;
-    configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
-
-    // No culling for point light shadows to ensure all geometry is captured
-    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-
-    // Use the render pass from the first cube shadow map
-    configInfo.renderPass     = cubeShadowMaps_[0]->getRenderPass();
-    configInfo.pipelineLayout = cubePipelineLayout_;
-
-    // Use specialized cube shadow shaders that write linear depth
-    cubePipeline_ = std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(cube_shadow.vert.spv)", std::string(SHADER_PATH) + R"(cube_shadow.frag.spv)", configInfo);
   }
 
   void ShadowSystem::renderPointLightShadowMaps(FrameInfo& frameInfo)
@@ -501,13 +495,11 @@ namespace engine {
       auto [pointLight, transform] = view.get<PointLightComponent, TransformComponent>(entity);
 
       glm::vec3 const position = transform.translation;
-      float const     range    = 25.0f; // Default range
+      float const     range    = 25.0f;
 
-      // Store light data for UBO
       pointLightPositions_[cubeShadowLightCount_] = position;
       pointLightRanges_[cubeShadowLightCount_]    = range;
 
-      // Render to cube map faces
       renderToCubeShadowMap(frameInfo, *cubeShadowMaps_[cubeShadowLightCount_], position, range);
 
       cubeShadowLightCount_++;
@@ -518,8 +510,6 @@ namespace engine {
   {
     float const nearPlane  = 0.1f;
     glm::mat4   projection = glm::perspective(glm::radians(90.0f), 1.0f, nearPlane, range);
-
-    // Vulkan Y flip
     projection[1][1] *= -1;
 
     glm::mat4 const view = CubeShadowMap::getFaceViewMatrix(position, face);
@@ -532,38 +522,50 @@ namespace engine {
     for (int face = 0; face < 6; face++)
     {
       glm::mat4 const lightSpaceMatrix = calculatePointLightMatrix(position, face, range);
-      renderToCubeFace(frameInfo, cubeShadowMap, face, lightSpaceMatrix, position, range);
+      renderToCubeFaceMesh(frameInfo, cubeShadowMap, face, lightSpaceMatrix, position, range);
     }
   }
 
-  void ShadowSystem::renderToCubeFace(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, int face, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, float farPlane)
+  void ShadowSystem::renderToCubeFaceMesh(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, int face, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, float farPlane)
   {
-    // Begin render pass for this face
-
     cubeShadowMap.beginRenderPass(frameInfo.commandBuffer, face);
+    cubeMeshPipeline_->bind(frameInfo.commandBuffer);
 
-    // Bind cube shadow pipeline
-    cubePipeline_->bind(frameInfo.commandBuffer);
-
-    // Render all objects
+    // Render all shadow-casting objects using mesh shaders
     auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
     for (auto entity : view)
     {
       auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
-      if (!modelComp.model)
+      if (!modelComp.model || modelComp.model->getMeshletCount() == 0)
       {
         continue;
       }
 
-      CubeShadowPushConstants push{};
-      push.modelMatrix         = transform.modelTransform();
-      push.lightSpaceMatrix    = lightSpaceMatrix;
-      push.lightPosAndFarPlane = glm::vec4(lightPos, farPlane);
+      const auto& model = modelComp.model;
 
-      vkCmdPushConstants(frameInfo.commandBuffer, cubePipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CubeShadowPushConstants), &push);
+      for (const auto& subMesh : model->getSubMeshes())
+      {
+        if (subMesh.meshletCount == 0)
+        {
+          continue;
+        }
 
-      modelComp.model->bind(frameInfo.commandBuffer);
-      modelComp.model->draw(frameInfo.commandBuffer);
+        CubeShadowMeshPushConstants push{};
+        push.modelMatrix             = transform.modelTransform();
+        push.lightSpaceMatrix        = lightSpaceMatrix;
+        push.lightPosAndFarPlane     = glm::vec4(lightPos, farPlane);
+        push.meshletBufferAddress    = model->getMeshletBufferAddress();
+        push.meshletVerticesAddress  = model->getMeshletVerticesAddress();
+        push.meshletTrianglesAddress = model->getMeshletTrianglesAddress();
+        push.vertexBufferAddress     = model->getVertexBufferAddress();
+        push.meshletOffset           = subMesh.meshletOffset;
+        push.meshletCount            = subMesh.meshletCount;
+
+        vkCmdPushConstants(frameInfo.commandBuffer, cubeMeshPipelineLayout_, VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+
+        uint32_t const groupCount = (subMesh.meshletCount + 31) / 32;
+        device_.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
+      }
     }
 
     engine::CubeShadowMap::endRenderPass(frameInfo.commandBuffer);

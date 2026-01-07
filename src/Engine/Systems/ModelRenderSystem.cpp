@@ -30,6 +30,94 @@
 
 namespace engine {
 
+  // ============================================================================
+  // CPU Frustum Culling
+  // ============================================================================
+
+  /**
+   * @brief Frustum representation using 6 normalized planes
+   */
+  struct Frustum
+  {
+    glm::vec4 planes[6]; // Left, Right, Bottom, Top, Near, Far
+  };
+
+  /**
+   * @brief Extract frustum planes from view-projection matrix (Gribb-Hartmann method)
+   */
+  inline Frustum extractFrustumFromMatrix(const glm::mat4& vp)
+  {
+    Frustum   f;
+    glm::mat4 vpT  = glm::transpose(vp);
+    glm::vec4 row0 = vpT[0];
+    glm::vec4 row1 = vpT[1];
+    glm::vec4 row2 = vpT[2];
+    glm::vec4 row3 = vpT[3];
+
+    f.planes[0] = row3 + row0; // Left
+    f.planes[1] = row3 - row0; // Right
+    f.planes[2] = row3 + row1; // Bottom
+    f.planes[3] = row3 - row1; // Top
+    f.planes[4] = row2;        // Near
+    f.planes[5] = row3 - row2; // Far
+
+    // Normalize planes
+    for (auto& plane : f.planes)
+    {
+      float len = glm::length(glm::vec3(plane));
+      plane /= len;
+    }
+
+    return f;
+  }
+
+  /**
+   * @brief Test if AABB is inside or intersecting frustum
+   * @return true if visible (should be rendered), false if completely outside
+   */
+  inline bool aabbInFrustum(const AABB& box, const Frustum& f)
+  {
+    for (int i = 0; i < 6; ++i)
+    {
+      glm::vec3 normal(f.planes[i]);
+      float     d = f.planes[i].w;
+
+      // Find the positive vertex (farthest in plane normal direction)
+      glm::vec3 pVertex;
+      pVertex.x = (normal.x >= 0.0f) ? box.max.x : box.min.x;
+      pVertex.y = (normal.y >= 0.0f) ? box.max.y : box.min.y;
+      pVertex.z = (normal.z >= 0.0f) ? box.max.z : box.min.z;
+
+      // If positive vertex is outside this plane, AABB is completely outside frustum
+      if (glm::dot(normal, pVertex) + d < 0.0f)
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * @brief Check if an entity with model and transform is visible in the camera frustum
+   */
+  inline bool isEntityVisible(const Model* model, const glm::mat4& modelMatrix, const Frustum& frustum)
+  {
+    if (model == nullptr)
+    {
+      return false;
+    }
+
+    const AABB& localBounds = model->getLocalBounds();
+    if (!localBounds.isValid())
+    {
+      // No valid bounds - assume visible
+      return true;
+    }
+
+    AABB worldBounds = transformAABB(localBounds, modelMatrix);
+    return aabbInFrustum(worldBounds, frustum);
+  }
+
   struct MeshPushConstantData
   {
     glm::mat4 modelMatrix{1.0f};
@@ -42,7 +130,7 @@ namespace engine {
     uint32_t  meshletOffset;
     uint32_t  meshletCount;
     glm::vec2 screenSize;
-    uint32_t  cullingFlags; // Bit 0: Double Sided
+    uint32_t  cullingFlags; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
   };
 
   namespace {
@@ -64,7 +152,13 @@ namespace engine {
       return nullptr;
     }
 
-    MeshPushConstantData makeMeshPush(FrameInfo const& frameInfo, const ModelComponent& modelComp, const Model::SubMesh& subMesh, const glm::mat4& modelMatrix, bool doubleSided)
+    MeshPushConstantData makeMeshPush(FrameInfo const&      frameInfo,
+                                      const ModelComponent& modelComp,
+                                      const Model::SubMesh& subMesh,
+                                      const glm::mat4&      modelMatrix,
+                                      bool                  doubleSided,
+                                      bool                  isTransparent = false,
+                                      bool                  skipHZB       = false)
     {
       MeshPushConstantData push{};
       push.modelMatrix             = modelMatrix;
@@ -77,7 +171,10 @@ namespace engine {
       push.meshletOffset           = subMesh.meshletOffset;
       push.meshletCount            = subMesh.meshletCount;
       push.screenSize              = glm::vec2(frameInfo.extent.width, frameInfo.extent.height);
-      push.cullingFlags            = doubleSided ? 1u : 0u;
+      // Bit 0: double-sided (skip cone culling)
+      // Bit 1: transparent (skip cone culling - back faces may be visible)
+      // Bit 2: skip HZB occlusion culling (used for depth prepass)
+      push.cullingFlags = (doubleSided ? 1u : 0u) | (isTransparent ? 2u : 0u) | (skipHZB ? 4u : 0u);
       return push;
     }
 
@@ -307,6 +404,10 @@ namespace engine {
       return;
     }
 
+    // Extract frustum for CPU culling
+    glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
+    Frustum const   frustum = extractFrustumFromMatrix(vp);
+
     auto view = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
 
     Pipeline* boundPipeline        = nullptr;
@@ -339,6 +440,13 @@ namespace engine {
     {
       auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
       if (!modelComp.model)
+      {
+        continue;
+      }
+
+      // CPU frustum culling: skip entire object if outside view
+      glm::mat4 const modelMatrix = transform.modelTransform();
+      if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum))
       {
         continue;
       }
@@ -441,6 +549,10 @@ namespace engine {
 
   void ModelRenderSystem::renderTransmission(FrameInfo& frameInfo)
   {
+    // Extract frustum for CPU culling
+    glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
+    Frustum const   frustum = extractFrustumFromMatrix(vp);
+
     Pipeline* boundPipeline        = nullptr;
     auto      bindPipelineIfNeeded = [&](Pipeline* p) {
       if (p != nullptr && boundPipeline != p)
@@ -463,7 +575,7 @@ namespace engine {
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
       auto& modelComp = view.get<ModelComponent>(entity);
 
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided);
+      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
 
       float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
       if (materialBindings_ != nullptr)
@@ -478,6 +590,13 @@ namespace engine {
     {
       auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
       if (!modelComp.model)
+      {
+        continue;
+      }
+
+      // CPU frustum culling: skip entire object if outside view
+      glm::mat4 const modelMatrix = transform.modelTransform();
+      if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum))
       {
         continue;
       }
@@ -513,6 +632,10 @@ namespace engine {
 
   void ModelRenderSystem::renderAlphaBlend(FrameInfo& frameInfo)
   {
+    // Extract frustum for CPU culling
+    glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
+    Frustum const   frustum = extractFrustumFromMatrix(vp);
+
     Pipeline* boundPipeline        = nullptr;
     auto      bindPipelineIfNeeded = [&](Pipeline* p) {
       if (p != nullptr && boundPipeline != p)
@@ -546,7 +669,7 @@ namespace engine {
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
       auto& modelComp = view.get<ModelComponent>(entity);
 
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided);
+      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
 
       float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
       if (materialBindings_ != nullptr)
@@ -561,6 +684,13 @@ namespace engine {
     {
       auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
       if (!modelComp.model)
+      {
+        continue;
+      }
+
+      // CPU frustum culling: skip entire object if outside view
+      glm::mat4 const modelMatrix = transform.modelTransform();
+      if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum))
       {
         continue;
       }
@@ -614,6 +744,10 @@ namespace engine {
       return;
     }
 
+    // Extract frustum for CPU culling
+    glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
+    Frustum const   frustum = extractFrustumFromMatrix(vp);
+
     Pipeline* boundPipeline        = nullptr;
     auto      bindPipelineIfNeeded = [&](Pipeline* p) {
       if (p != nullptr && boundPipeline != p)
@@ -640,7 +774,8 @@ namespace engine {
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
       auto& modelComp = view.get<ModelComponent>(entity);
 
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided);
+      // Depth prepass skips HZB culling (bit 2) to ensure complete depth buffer for HZB generation
+      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided, false, true);
 
       // Populate a default material record so the dynamic UBO binding is always valid.
       if (materialBindings_ != nullptr)
@@ -656,6 +791,13 @@ namespace engine {
     {
       auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
       if (!modelComp.model)
+      {
+        continue;
+      }
+
+      // CPU frustum culling: skip entire object if outside view
+      glm::mat4 const modelMatrix = transform.modelTransform();
+      if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum))
       {
         continue;
       }

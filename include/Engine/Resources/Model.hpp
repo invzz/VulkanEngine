@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -15,6 +16,48 @@
 #include "Engine/Resources/PBRMaterial.hpp"
 
 namespace engine {
+
+  /**
+   * @brief Axis-aligned bounding box
+   */
+  struct AABB
+  {
+    glm::vec3 min{std::numeric_limits<float>::max()};
+    glm::vec3 max{std::numeric_limits<float>::lowest()};
+
+    void expand(const glm::vec3& p)
+    {
+      min = glm::min(min, p);
+      max = glm::max(max, p);
+    }
+
+    [[nodiscard]] glm::vec3 center() const { return 0.5f * (min + max); }
+    [[nodiscard]] glm::vec3 extents() const { return 0.5f * (max - min); }
+    [[nodiscard]] bool      isValid() const { return min.x <= max.x && min.y <= max.y && min.z <= max.z; }
+  };
+
+  /**
+   * @brief Transform a local-space AABB to world space
+   */
+  inline AABB transformAABB(const AABB& local, const glm::mat4& world)
+  {
+    glm::vec3 corners[8] = {
+            glm::vec3(world * glm::vec4(local.min.x, local.min.y, local.min.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.max.x, local.min.y, local.min.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.min.x, local.max.y, local.min.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.max.x, local.max.y, local.min.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.min.x, local.min.y, local.max.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.max.x, local.min.y, local.max.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.min.x, local.max.y, local.max.z, 1.0f)),
+            glm::vec3(world * glm::vec4(local.max.x, local.max.y, local.max.z, 1.0f)),
+    };
+    AABB result;
+    for (const auto& c : corners)
+    {
+      result.expand(c);
+    }
+    return result;
+  }
 
   struct MeshBuffers
   {
@@ -232,6 +275,14 @@ namespace engine {
     [[nodiscard]] uint64_t                    getMeshletTrianglesAddress() const { return meshletTrianglesBuffer ? meshletTrianglesBuffer->getDeviceAddress() : 0; }
     [[nodiscard]] uint32_t                    getMeshletCount() const { return static_cast<uint32_t>(meshlets.size()); }
 
+    // Bounding box support
+    [[nodiscard]] const AABB& getLocalBounds() const { return localBounds_; }
+
+    // Index/vertex counts for indirect draws
+    [[nodiscard]] uint32_t getIndexCount() const { return indexCount; }
+    [[nodiscard]] uint32_t getVertexCount() const { return vertexCount; }
+    [[nodiscard]] bool     hasIndices() const { return hasIndexBuffer; }
+
   private:
     Device&     device;
     std::string filePath;
@@ -256,6 +307,8 @@ namespace engine {
     std::vector<Animation>      animations_;      // Animations from glTF
     std::vector<Node>           nodes_;           // Scene graph nodes
     std::vector<MorphTargetSet> morphTargetSets_; // Morph targets
+
+    AABB localBounds_; // Object-space bounding box
 
     void createVertexBuffers(const std::vector<Vertex>& vertices);
     void createIndexBuffers(const std::vector<uint32_t>& indices);

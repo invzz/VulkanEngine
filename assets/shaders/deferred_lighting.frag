@@ -121,6 +121,16 @@ void main() {
         return;
     }
 
+    // Debug mode 9: Depth visualization
+    if (ubo.debugMode == 9) {
+        // Linearize depth for better visualization
+        float near        = 0.1;
+        float far         = 100.0;
+        float linearDepth = (2.0 * near) / (far + near - depth * (far - near));
+        outColor          = vec4(vec3(linearDepth), 1.0);
+        return;
+    }
+
     vec3 worldPos = reconstructWorldPos(inUV, depth);
     vec3 V        = normalize(ubo.cameraPosition.xyz - worldPos);
 
@@ -139,6 +149,13 @@ void main() {
     vec4  albedoA              = texture(gbufferAlbedo, inUV);
     vec3  albedo               = albedoA.rgb;
     float iridescenceThickness = albedoA.a;
+
+    // Debug modes 7 (Meshlets) and 8 (Meshlet Cones) use negative alpha as flag
+    // The debug color is stored in albedo by gbuffer.frag
+    if (iridescenceThickness < 0.0) {
+        outColor = vec4(albedo, 1.0);
+        return;
+    }
 
     vec4  matRMao           = texture(gbufferMaterial, inUV);
     float metallic          = matRMao.r;

@@ -9,262 +9,225 @@
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-struct Meshlet
-{
-  uint vertexOffset;
-  uint triangleOffset;
-  uint vertexCount;
-  uint triangleCount;
+struct Meshlet {
+    uint vertexOffset;
+    uint triangleOffset;
+    uint vertexCount;
+    uint triangleCount;
 
-  float center[3];
-  float radius;
+    float center[3];
+    float radius;
 
-  float cone_axis[3];
-  float cone_cutoff;
+    float cone_axis[3];
+    float cone_cutoff;
 
-  uint padding[4];
+    uint padding[4];
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletBuffer
-{
-  Meshlet meshlets[];
+layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
+    Meshlet meshlets[];
 };
 
-layout(push_constant) uniform Push
-{
-  mat4 modelMatrix;
-  mat4 normalMatrix;
-  uint meshId;
+layout(push_constant) uniform Push {
+    mat4 modelMatrix;
+    mat4 normalMatrix;
+    uint meshId;
 
-  uint64_t meshletBufferAddress;
-  uint64_t meshletVerticesAddress;
-  uint64_t meshletTrianglesAddress;
-  uint64_t vertexBufferAddress;
-  uint     meshletOffset;
-  uint     meshletCount;
-  vec2     screenSize;
-  uint     cullingFlags;
+    uint64_t meshletBufferAddress;
+    uint64_t meshletVerticesAddress;
+    uint64_t meshletTrianglesAddress;
+    uint64_t vertexBufferAddress;
+    uint     meshletOffset;
+    uint     meshletCount;
+    vec2     screenSize;
+    uint     cullingFlags;
 }
 push;
 
-struct PointLight
-{
-  vec4 position;
-  vec4 color;
-};
-
-struct DirectionalLight
-{
-  vec4 direction;
-  vec4 color;
-};
-
-struct SpotLight
-{
-  vec4  position;
-  vec4  direction;
-  vec4  color;
-  float outerCutoff;
-  float constantAtten;
-  float linearAtten;
-  float quadraticAtten;
-};
-
-layout(set = 0, binding = 0) uniform GlobalUbo
-{
-  mat4             projection;
-  mat4             view;
-  vec4             ambientLightColor;
-  vec4             cameraPosition;
-  PointLight       pointLights[16];
-  DirectionalLight directionalLights[16];
-  SpotLight        spotLights[16];
-  mat4             lightSpaceMatrices[16];
-  vec4             pointLightShadowData[4];
-  int              pointLightCount;
-  int              directionalLightCount;
-  int              spotLightCount;
-  int              shadowLightCount;
-  int              cubeShadowLightCount;
-  int              debugMode;
-  int              _pad2;
-  int              _pad3;
-  vec4             frustumPlanes[6];
-}
-ubo;
+// Include shared UBO definition
+// Use shared scene UBO definition
+#include "includes/scene_ubo.glsl"
 
 layout(set = 0, binding = 2) uniform sampler2D hzbTexture;
 
 // Task payload to pass to mesh shader
-struct TaskPayload
-{
-  uint meshletIndices[32];
+struct TaskPayload {
+    uint meshletIndices[32];
 };
 
 taskPayloadSharedEXT TaskPayload payload;
 
 shared uint sharedCount;
 
-bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos)
-{
-  // 1. Transform center to world space
-  vec3  center      = vec3(meshlet.center[0], meshlet.center[1], meshlet.center[2]);
-  vec3  worldCenter = (model * vec4(center, 1.0)).xyz;
-  float radius      = meshlet.radius * max(length(model[0]), max(length(model[1]), length(model[2]))); // Approximate scale
+bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos) {
+    // Center and distance used by multiple culling stages
+    vec3  center       = vec3(meshlet.center[0], meshlet.center[1], meshlet.center[2]);
+    vec3  worldCenter  = (model * vec4(center, 1.0)).xyz;
+    float distToCamera = length(worldCenter - cameraPos);
 
-  // 2. Frustum Culling (Optimized)
-  for (int i = 0; i < 6; i++)
-  {
-    if (dot(ubo.frustumPlanes[i], vec4(worldCenter, 1.0)) < -radius)
-    {
-      return false;
-    }
-  }
+    // 1. Transform center to world space
+    float radius = meshlet.radius * max(length(model[0]), max(length(model[1]), length(model[2]))); // Approximate scale
 
-  // 3. Cone Culling (Backface)
-  if (false && (push.cullingFlags & 1) == 0)
-  {
-    vec3 coneAxis = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
-    // Use normal matrix to transform cone axis correctly (handles non-uniform scale)
-    vec3 worldConeAxis = normalize(mat3(push.normalMatrix) * coneAxis);
-
-    vec3  toCamera = cameraPos - worldCenter;
-    float distSq   = dot(toCamera, toCamera);
-    float dist     = sqrt(distSq);
-    vec3  viewDir  = toCamera / dist;
-
-    float coneCutoff = meshlet.cone_cutoff;
-
-    // Only cull if the cone is tight enough (angle < 90 degrees)
-    if (coneCutoff > 0.0)
-    {
-      float coneSin = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
-
-      // Conservative culling: account for perspective (meshlet radius)
-      // We effectively widen the cone by the angle subtended by the meshlet radius
-      // sin(gamma) = radius / dist
-
-      // If we are inside the radius, don't cull
-      if (dist > radius)
-      {
-        float sinGamma = radius / dist;
-        float cosGamma = sqrt(max(0.0, 1.0 - sinGamma * sinGamma));
-
-        // cos(alpha + gamma) = cos(alpha)cos(gamma) - sin(alpha)sin(gamma)
-        float cosAlphaPlusGamma = coneCutoff * cosGamma - coneSin * sinGamma;
-
-        // Only cull if the expanded cone is still within 90 degrees
-        if (cosAlphaPlusGamma >= 0.0)
-        {
-          // sin(alpha + gamma) = sin(alpha)cos(gamma) + cos(alpha)sin(gamma)
-          float sinAlphaPlusGamma = coneSin * cosGamma + coneCutoff * sinGamma;
-
-          if (dot(worldConeAxis, viewDir) < -sinAlphaPlusGamma)
-          {
+    // 2. Frustum Culling (Optimized)
+    for (int i = 0; i < 6; i++) {
+        if (dot(ubo.frustumPlanes[i], vec4(worldCenter, 1.0)) < -radius) {
             return false;
-          }
         }
-      }
-    }
-  }
-
-  // 4. Screen Size Culling (LOD)
-  vec4  viewCenter = ubo.view * vec4(worldCenter, 1.0);
-  float dist       = -viewCenter.z;
-
-  if (dist > 0.01)
-  {
-    float p11             = ubo.projection[1][1];
-    float projectedRadius = (radius * p11) / dist;
-    float pixelRadius     = projectedRadius * push.screenSize.y * 0.5;
-
-    if (pixelRadius < 1.0)
-    {
-      return false;
     }
 
-    // 5. Occlusion Culling (HZB)
-    // Project sphere to screen space
-    // We need a bounding box in screen space.
-    // A simple approximation is a square around the projected center.
+    // 3. Cone Culling (Backface)
+    // Bit 0: double-sided material (skip cone cull)
+    // Bit 1: transparent mesh (skip cone cull - may have back-facing visible surfaces)
+    bool skipConeCull = ((push.cullingFlags & 0x3) != 0);
+    if (!skipConeCull) {
+        vec3 coneAxis = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
+        // Use normal matrix to transform cone axis correctly (handles non-uniform scale)
+        vec3 worldConeAxis = normalize(mat3(push.normalMatrix) * coneAxis);
 
-    // Projected center
-    vec4 clipCenter = ubo.projection * viewCenter;
-    clipCenter.xyz /= clipCenter.w;
+        vec3  toCamera = cameraPos - worldCenter;
+        float distSq   = dot(toCamera, toCamera);
+        float dist     = sqrt(distSq);
+        vec3  viewDir  = toCamera / dist;
 
-    // Check if inside screen (already done by frustum culling, but depth check needs valid coords)
-    if (clipCenter.z < 0.0 || clipCenter.z > 1.0) return true; // Should be caught by frustum culling
+        float coneCutoff = meshlet.cone_cutoff;
 
-    // Convert to UV [0, 1]
-    vec2 uvCenter = clipCenter.xy * 0.5 + 0.5;
+        // Only cull if the cone is tight enough (angle < 90 degrees)
+        if (coneCutoff > 0.0) {
+            float coneSin = sqrt(max(0.0, 1.0 - coneCutoff * coneCutoff));
 
-    // Projected radius in UV space
-    // radius / dist is tangent of half angle.
-    // projected length on screen (vertical) is radius * p11 / dist
-    // In UV space (0..1), it is radius * p11 / dist * 0.5
-    float uvRadius = projectedRadius * 0.5;
+            // Conservative culling: account for perspective (meshlet radius)
+            // We effectively widen the cone by the angle subtended by the meshlet radius
+            // sin(gamma) = radius / dist
 
-    // Calculate LOD level
-    // We want a mip level where the object covers roughly 2x2 pixels (or 4x4 for safety)
-    // Texture size
-    ivec2 texSize = textureSize(hzbTexture, 0);
-    float mip     = ceil(log2(max(texSize.x, texSize.y) * uvRadius * 2.0));
-    mip           = max(0.0, mip);
+            // If we are inside the radius, don't cull
+            if (dist > radius) {
+                float sinGamma = radius / dist;
+                float cosGamma = sqrt(max(0.0, 1.0 - sinGamma * sinGamma));
 
-    // Sample HZB
-    // We sample 4 texels covering the bounding box
-    float d1 = textureLod(hzbTexture, uvCenter + vec2(-uvRadius, -uvRadius), mip).r;
-    float d2 = textureLod(hzbTexture, uvCenter + vec2(uvRadius, -uvRadius), mip).r;
-    float d3 = textureLod(hzbTexture, uvCenter + vec2(-uvRadius, uvRadius), mip).r;
-    float d4 = textureLod(hzbTexture, uvCenter + vec2(uvRadius, uvRadius), mip).r;
+                // cos(alpha + gamma) = cos(alpha)cos(gamma) - sin(alpha)sin(gamma)
+                float cosAlphaPlusGamma = coneCutoff * cosGamma - coneSin * sinGamma;
 
-    float depth = max(max(d1, d2), max(d3, d4));
+                // Only cull if the expanded cone is still within 90 degrees
+                if (cosAlphaPlusGamma >= 0.0) {
+                    // sin(alpha + gamma) = sin(alpha)cos(gamma) + cos(alpha)sin(gamma)
+                    float sinAlphaPlusGamma = coneSin * cosGamma + coneCutoff * sinGamma;
 
-    vec4 nearPointView = viewCenter;
-    nearPointView.z += radius; // Closer to camera (z is negative)
-    vec4  nearPointClip = ubo.projection * nearPointView;
-    float nearDepth     = nearPointClip.z / nearPointClip.w;
-
-    if (nearDepth > depth)
-    {
-      return false;
+                    if (dot(worldConeAxis, viewDir) < -sinAlphaPlusGamma) {
+                        return false;
+                    }
+                }
+            }
+        }
     }
-  }
 
-  return true;
+    // 4. Screen Size Culling (LOD)
+    vec4  viewCenter = ubo.view * vec4(worldCenter, 1.0);
+    float dist       = -viewCenter.z;
+
+    if (dist > 0.01) {
+        float p11             = ubo.proj[1][1];
+        float projectedRadius = (radius * p11) / dist;
+        float pixelRadius     = projectedRadius * push.screenSize.y * 0.5;
+
+        // Sub-pixel culling: objects smaller than 1 pixel are not visible
+        if (pixelRadius < 1.0) {
+            return false;
+        }
+
+        // 5. Occlusion Culling (HZB)
+        // Skip HZB if disabled or skipHZB flag is set (depth prepass)
+        // Bit 2 of cullingFlags = skip HZB (used for depth prepass to ensure complete depth buffer)
+
+        // Occlusion culling (HZB)
+        if (ubo.hzbEnabled != 0 && (push.cullingFlags & 4u) == 0u) {
+            // Skip HZB for very small objects (early-z will handle them)
+            if (pixelRadius >= ubo.hzbMinScreenPixels) {
+                // Project sphere center to clip space
+                vec4 clipCenter = ubo.proj * viewCenter;
+
+                // Only test if in front of camera
+                if (clipCenter.w > 0.0) {
+                    vec3 ndc = clipCenter.xyz / clipCenter.w;
+
+                    // Only test if within valid depth range
+                    if (ndc.z >= 0.0 && ndc.z <= 1.0) {
+                        // Convert to UV [0, 1]
+                        vec2 uvCenter = clamp(ndc.xy * 0.5 + 0.5, vec2(0.0), vec2(1.0));
+
+                        // Projected radius in UV space
+                        float uvRadius = projectedRadius * 0.5;
+
+                        // Calculate mip level
+                        ivec2 texSize        = textureSize(hzbTexture, 0);
+                        float diameterPixels = uvRadius * 2.0 * float(max(texSize.x, texSize.y));
+                        float mip            = ceil(log2(max(1.0, diameterPixels)) * ubo.hzbScreenSizeScale);
+                        mip                  = clamp(mip, 0.0, float(ubo.hzbMaxMipLevel));
+
+                        // Sample HZB - use MAX of samples for conservative test
+                        float hzbDepth;
+                        if (pixelRadius > 64.0) {
+                            // Large object: sample 4 corners
+                            vec2  offset = vec2(uvRadius * 0.5);
+                            float d1     = textureLod(hzbTexture, clamp(uvCenter + vec2(-offset.x, -offset.y), vec2(0.0), vec2(1.0)), mip).r;
+                            float d2     = textureLod(hzbTexture, clamp(uvCenter + vec2(offset.x, -offset.y), vec2(0.0), vec2(1.0)), mip).r;
+                            float d3     = textureLod(hzbTexture, clamp(uvCenter + vec2(-offset.x, offset.y), vec2(0.0), vec2(1.0)), mip).r;
+                            float d4     = textureLod(hzbTexture, clamp(uvCenter + vec2(offset.x, offset.y), vec2(0.0), vec2(1.0)), mip).r;
+                            hzbDepth     = max(max(d1, d2), max(d3, d4));
+                        }
+                        else {
+                            hzbDepth = textureLod(hzbTexture, uvCenter, mip).r;
+                        }
+
+                        // Compute the nearest depth of the bounding sphere
+                        float nearViewZ = viewCenter.z + radius;
+
+                        // Only cull if sphere is fully in front of near plane
+                        if (nearViewZ < -0.001) {
+                            vec4  nearClip  = ubo.proj * vec4(0.0, 0.0, nearViewZ, 1.0);
+                            float nearDepth = clamp(nearClip.z / nearClip.w, 0.0, 1.0);
+
+                            // Occluded if nearest point is behind all HZB samples
+                            // Standard depth: 0=near, 1=far, so occluded if nearDepth > hzbDepth
+                            if (nearDepth > hzbDepth) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
-void main()
-{
-  uint meshletIndex = gl_GlobalInvocationID.x;
-  if (meshletIndex >= push.meshletCount)
-  {
-    return;
-  }
+void main() {
+    uint meshletIndex = gl_GlobalInvocationID.x;
+    if (meshletIndex >= push.meshletCount) {
+        return;
+    }
 
-  uint meshletId = push.meshletOffset + meshletIndex;
+    uint meshletId = push.meshletOffset + meshletIndex;
 
-  // We don't know the total meshlet count here easily without passing it.
-  // But we can assume the dispatch size is correct.
-  // However, we should check if meshletId is valid if we passed a total count.
-  // For now, assume dispatch is aligned.
+    // We don't know the total meshlet count here easily without passing it.
+    // But we can assume the dispatch size is correct.
+    // However, we should check if meshletId is valid if we passed a total count.
+    // For now, assume dispatch is aligned.
 
-  MeshletBuffer meshletBuffer = MeshletBuffer(push.meshletBufferAddress);
-  Meshlet       meshlet       = meshletBuffer.meshlets[meshletId];
+    MeshletBuffer meshletBuffer = MeshletBuffer(push.meshletBufferAddress);
+    Meshlet       meshlet       = meshletBuffer.meshlets[meshletId];
 
-  bool visible = isVisible(meshlet, push.modelMatrix, ubo.cameraPosition.xyz);
+    bool visible = isVisible(meshlet, push.modelMatrix, ubo.cameraPosition.xyz);
 
-  uvec4 ballot = subgroupBallot(visible);
-  uint  count  = subgroupBallotBitCount(ballot);
-  uint  index  = subgroupBallotExclusiveBitCount(ballot);
+    uvec4 ballot = subgroupBallot(visible);
+    uint  count  = subgroupBallotBitCount(ballot);
+    uint  index  = subgroupBallotExclusiveBitCount(ballot);
 
-  if (visible)
-  {
-    payload.meshletIndices[index] = meshletId;
-  }
+    if (visible) {
+        payload.meshletIndices[index] = meshletId;
+    }
 
-  if (gl_LocalInvocationIndex == 0)
-  {
-    EmitMeshTasksEXT(count, 1, 1);
-  }
+    if (gl_LocalInvocationIndex == 0) {
+        EmitMeshTasksEXT(count, 1, 1);
+    }
 }

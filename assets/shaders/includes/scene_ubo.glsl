@@ -29,30 +29,36 @@ struct SpotLight {
     float _pad2;
 };
 
-layout(set = 0, binding = 0) uniform UBO {
-    mat4  proj;
-    mat4  view;
-    vec4  ambientLightColor;
-    vec4  cameraPosition;
-    mat4  lightSpaceMatrices[16];
-    vec4  pointLightShadowData[4];
-    vec4  directionalCascadeSplits;
-    int   pointLightCount;
-    int   directionalLightCount;
-    int   spotLightCount;
-    int   shadowLightCount;
-    int   cubeShadowLightCount;
-    int   directionalCascadeCount;
-    int   directionalCascadeBaseIndex;
-    int   debugMode;
-    int   _pad2;
+layout(set = 0, binding = 0, std140) uniform UBO {
+    mat4 proj;
+    mat4 view;
+    vec4 ambientLightColor;
+    vec4 cameraPosition;
+    mat4 lightSpaceMatrices[16];
+    vec4 pointLightShadowData[4];
+    vec4 directionalCascadeSplits;
+    int  pointLightCount;
+    int  directionalLightCount;
+    int  spotLightCount;
+    int  shadowLightCount;
+    int  cubeShadowLightCount;
+    int  directionalCascadeCount;
+    int  directionalCascadeBaseIndex;
+    int  debugMode;
+    // Note: 8 ints = 32 bytes, already 16-byte aligned - no padding needed before vec4 array
     vec4  frustumPlanes[6];
     vec4  fogColor;
     vec4  fogZenithColor;
     float fogHeight;
     float fogHeightDensity;
-    float _pad4;
-    float _pad5;
+    // Padding to align HZB settings to 16-byte boundary
+    float _padFog0;
+    float _padFog1;
+    // HZB occlusion culling settings - now at 16-byte aligned offset
+    int   hzbMaxMipLevel;     // Maximum mip level for HZB testing
+    float hzbMinScreenPixels; // Skip HZB for objects smaller than this in pixels
+    float hzbScreenSizeScale; // Mip selection bias (higher = coarser mips)
+    int   hzbEnabled;         // 0 = disabled, 1 = enabled
 }
 ubo;
 

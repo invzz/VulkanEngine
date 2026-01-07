@@ -293,7 +293,8 @@ namespace engine {
     uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
-    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, &skybox, showSkybox, showGrid, skySettings, dustSettings, fogSettings, postProcessPush, debugMode));
+    uiManager->addPanel(
+            std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, &skybox, showSkybox, showGrid, skySettings, dustSettings, fogSettings, hzbSettings, postProcessPush, debugMode));
   }
 
   void App::setupRenderGraph()
@@ -689,8 +690,7 @@ namespace engine {
     ubo.directionalLightCount = lightCounts.directional;
     ubo.spotLightCount        = lightCounts.spot;
 
-    // Render shadow maps for all shadow-casting lights (after positions are
-    // updated)
+    // Render shadow maps for all shadow-casting lights (mesh shader culling - Level 3)
     state.shadowSystem.renderShadowMaps(frameInfo, 50.0f);
 
     ubo.projection                  = frameInfo.camera.getProjection();
@@ -754,6 +754,12 @@ namespace engine {
     ubo.fogZenithColor   = glm::vec4(zenithColor, 0.0f);
     ubo.fogHeight        = fogSettings.height;
     ubo.fogHeightDensity = fogSettings.heightDensity;
+
+    // HZB Occlusion Culling Settings
+    ubo.hzbMaxMipLevel     = hzbSettings.maxMipLevel;
+    ubo.hzbMinScreenPixels = hzbSettings.minScreenPixels;
+    ubo.hzbScreenSizeScale = hzbSettings.screenSizeScale;
+    ubo.hzbEnabled         = hzbSettings.enabled;
 
     // Calculate Frustum Planes for Culling (Normalized)
     glm::mat4 const vp   = ubo.projection * ubo.view;

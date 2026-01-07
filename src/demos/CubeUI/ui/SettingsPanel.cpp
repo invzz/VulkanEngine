@@ -28,14 +28,10 @@ namespace engine {
                                SkyboxSettings&           skySettings,
                                DustSettings&             dustSettings,
                                FogSettings&              fogSettings,
+                               HZBSettings&              hzbSettings,
                                PostProcessPushConstants& pushConstants,
                                int&                      debugMode)
-      : skybox_(skybox),
-        showSkybox_(showSkybox),
-        showGrid_(showGrid),
-        skySettings_(skySettings),
-        dustSettings_(dustSettings),
-        fogSettings_(fogSettings)
+      : skybox_(skybox), showSkybox_(showSkybox), showGrid_(showGrid), skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings), hzbSettings_(hzbSettings)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
@@ -107,6 +103,26 @@ namespace engine {
       if (ImGui::CollapsingHeader("Post Processing"))
       {
         postProcessPanel_->render(frameInfo);
+      }
+      if (ImGui::CollapsingHeader("Occlusion Culling (HZB)"))
+      {
+        bool enabled = (hzbSettings_.enabled != 0);
+        if (ImGui::Checkbox("Enable HZB", &enabled))
+        {
+          hzbSettings_.enabled = enabled ? 1 : 0;
+        }
+
+        if (hzbSettings_.enabled)
+        {
+          ImGui::SliderInt("Max Mip Level", &hzbSettings_.maxMipLevel, 1, 12);
+          ImGui::SetItemTooltip("Higher = coarser testing. Limits the maximum mip level used.");
+
+          ImGui::SliderFloat("Min Screen Pixels", &hzbSettings_.minScreenPixels, 0.5f, 32.0f, "%.1f");
+          ImGui::SetItemTooltip("Objects smaller than this skip HZB (early-z handles them).");
+
+          ImGui::SliderFloat("Mip Scale", &hzbSettings_.screenSizeScale, 0.5f, 2.0f, "%.2f");
+          ImGui::SetItemTooltip("Bias for mip selection. Higher = coarser mips = faster but more false positives.");
+        }
       }
       if (ImGui::CollapsingHeader("Debug"))
       {

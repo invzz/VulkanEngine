@@ -5,6 +5,7 @@
     }
   ],
   "settings": {
+    "explorer.sortOrder": "type",
     "clang-format.style": "file",
     "clangd.arguments": ["--clang-tidy"],
     // Semantic token colors (clangd)

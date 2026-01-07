@@ -45,6 +45,17 @@ namespace engine {
     float     _pad2{0.0f};
   };
 
+  /**
+   * @brief HZB (Hierarchical Z-Buffer) occlusion culling settings
+   */
+  struct HZBSettings
+  {
+    int   maxMipLevel     = 10;   // Maximum mip level to test against (limits coarse testing)
+    float minScreenPixels = 2.0f; // Skip HZB test for objects smaller than this in pixels
+    float screenSizeScale = 1.0f; // Mip selection bias (higher = use coarser mips = fewer tests)
+    int   enabled         = 1;    // 0 = disabled, 1 = enabled
+  };
+
   struct GlobalUbo
   {
     glm::mat4 projection{1.0f};
@@ -64,15 +75,21 @@ namespace engine {
     int       directionalCascadeCount     = 0;
     int       directionalCascadeBaseIndex = 0; // Index into lightSpaceMatrices / shadowMaps
     int       debugMode                   = 0; // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting
-    int       _pad2;
+    // Note: 8 ints = 32 bytes, already 16-byte aligned - no padding needed before vec4 array
     glm::vec4 frustumPlanes[6]; // Frustum planes for culling (Left, Right,
                                 // Bottom, Top, Near, Far)
     glm::vec4 fogColor;         // xyz = Horizon Color, w = density
     glm::vec4 fogZenithColor;   // xyz = Zenith Color, w = unused
     float     fogHeight;
     float     fogHeightDensity;
-    float     _pad4;
-    float     _pad5;
+    // Padding to align HZB settings to 16-byte boundary
+    float _padFog0 = 0.0f;
+    float _padFog1 = 0.0f;
+    // HZB settings - now starts at 16-byte aligned offset
+    int   hzbMaxMipLevel     = 10;   // Maximum mip level for HZB testing
+    float hzbMinScreenPixels = 2.0f; // Skip HZB for objects smaller than this
+    float hzbScreenSizeScale = 1.0f; // Mip selection bias
+    int   hzbEnabled         = 1;    // 0 = disabled, 1 = enabled
   };
 
   struct FrameInfo

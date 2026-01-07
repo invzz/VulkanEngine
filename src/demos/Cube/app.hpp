@@ -139,6 +139,7 @@ namespace engine {
     SkyboxSettings          skySettings;
     DustSettings            dustSettings;
     FogSettings             fogSettings;
+    HZBSettings             hzbSettings;
 
     // View toggles
     bool showSkybox = false;

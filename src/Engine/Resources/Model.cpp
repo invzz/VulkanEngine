@@ -128,6 +128,13 @@ namespace engine {
     VkDeviceSize const bufferSize = sizeof(vertices[0]) * vertexCount;
     uint32_t const     vertexSize = sizeof(vertices[0]);
 
+    // Compute local-space AABB from vertex positions
+    localBounds_ = AABB{};
+    for (const auto& v : vertices)
+    {
+      localBounds_.expand(v.position);
+    }
+
     Buffer stagingBuffer(device, vertexSize, vertexCount, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     stagingBuffer.map();

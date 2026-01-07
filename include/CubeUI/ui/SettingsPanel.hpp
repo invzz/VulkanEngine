@@ -8,6 +8,7 @@
 #include "CubeUI/ui/IBLPanel.hpp"
 #include "CubeUI/ui/PostProcessPanel.hpp"
 #include "CubeUI/ui/UIPanel.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -25,6 +26,7 @@ namespace engine {
                   SkyboxSettings&           skySettings,
                   DustSettings&             dustSettings,
                   FogSettings&              fogSettings,
+                  HZBSettings&              hzbSettings,
                   PostProcessPushConstants& pushConstants,
                   int&                      debugMode);
 
@@ -44,6 +46,7 @@ namespace engine {
     SkyboxSettings& skySettings_;
     DustSettings&   dustSettings_;
     FogSettings&    fogSettings_;
+    HZBSettings&    hzbSettings_;
   };
 
 } // namespace engine
