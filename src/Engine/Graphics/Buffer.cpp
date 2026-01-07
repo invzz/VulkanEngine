@@ -37,8 +37,21 @@ namespace engine {
   Buffer::~Buffer()
   {
     unmap();
-    vkDestroyBuffer(device.device(), buffer, nullptr);
-    vkFreeMemory(device.device(), memory, nullptr);
+
+    // Defer actual Vulkan destroys until the frame that will safely allow
+    // resources to be released (avoids vkDestroy* called while buffer still in use).
+    VkBuffer       buf = buffer;
+    VkDeviceMemory mem = memory;
+    device.deferDestroy([buf, mem](VkDevice dev) {
+      if (buf != VK_NULL_HANDLE)
+      {
+        vkDestroyBuffer(dev, buf, nullptr);
+      }
+      if (mem != VK_NULL_HANDLE)
+      {
+        vkFreeMemory(dev, mem, nullptr);
+      }
+    });
   }
 
   VkResult Buffer::map(VkDeviceSize size, VkDeviceSize offset)

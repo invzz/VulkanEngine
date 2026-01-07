@@ -139,25 +139,29 @@ namespace engine::ibl_detail::vtex {
     VkFormat const format = static_cast<VkFormat>(header.vkFormat);
     if (header.bytesPerPx != bytesPerPixelFor(format)) return false;
 
-    // Destroy previous resources (keep behavior identical to previous IBLSystem.cpp implementation)
+    // Defer destroys of previous resources to avoid destroying while still in use
     if (sampler != VK_NULL_HANDLE)
     {
-      vkDestroySampler(device.device(), sampler, nullptr);
+      VkSampler toDestroy = sampler;
+      device.deferDestroy([toDestroy](VkDevice dev) { vkDestroySampler(dev, toDestroy, nullptr); });
       sampler = VK_NULL_HANDLE;
     }
     if (view != VK_NULL_HANDLE)
     {
-      vkDestroyImageView(device.device(), view, nullptr);
+      VkImageView toDestroy = view;
+      device.deferDestroy([toDestroy](VkDevice dev) { vkDestroyImageView(dev, toDestroy, nullptr); });
       view = VK_NULL_HANDLE;
     }
     if (image != VK_NULL_HANDLE)
     {
-      vkDestroyImage(device.device(), image, nullptr);
+      VkImage toDestroy = image;
+      device.deferDestroy([toDestroy](VkDevice dev) { vkDestroyImage(dev, toDestroy, nullptr); });
       image = VK_NULL_HANDLE;
     }
     if (memory != VK_NULL_HANDLE)
     {
-      vkFreeMemory(device.device(), memory, nullptr);
+      VkDeviceMemory toDestroy = memory;
+      device.deferDestroy([toDestroy](VkDevice dev) { vkFreeMemory(dev, toDestroy, nullptr); });
       memory = VK_NULL_HANDLE;
     }
 

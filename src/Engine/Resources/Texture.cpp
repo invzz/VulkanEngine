@@ -86,21 +86,28 @@ namespace engine {
 
   Texture::~Texture()
   {
-    if (sampler_ != VK_NULL_HANDLE)
+    // Defer destroys so resources aren't freed while still referenced by in-flight
+    // command buffers or descriptor sets.
+    VkSampler      sampler = sampler_;
+    VkImageView    view    = imageView_;
+    VkImage        image   = image_;
+    VkDeviceMemory mem     = imageMemory_;
+
+    if (sampler != VK_NULL_HANDLE)
     {
-      vkDestroySampler(device_.device(), sampler_, nullptr);
+      device_.deferDestroy([sampler](VkDevice dev) { vkDestroySampler(dev, sampler, nullptr); });
     }
-    if (imageView_ != VK_NULL_HANDLE)
+    if (view != VK_NULL_HANDLE)
     {
-      vkDestroyImageView(device_.device(), imageView_, nullptr);
+      device_.deferDestroy([view](VkDevice dev) { vkDestroyImageView(dev, view, nullptr); });
     }
-    if (image_ != VK_NULL_HANDLE)
+    if (image != VK_NULL_HANDLE)
     {
-      vkDestroyImage(device_.device(), image_, nullptr);
+      device_.deferDestroy([image](VkDevice dev) { vkDestroyImage(dev, image, nullptr); });
     }
-    if (imageMemory_ != VK_NULL_HANDLE)
+    if (mem != VK_NULL_HANDLE)
     {
-      vkFreeMemory(device_.device(), imageMemory_, nullptr);
+      device_.deferDestroy([mem](VkDevice dev) { vkFreeMemory(dev, mem, nullptr); });
     }
   }
 
@@ -108,7 +115,7 @@ namespace engine {
   Texture::Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format) : device_{device}, width_{width}, height_{height}
   {
     VkDeviceSize const imageSize = width_ * height_ * 4; // RGBA
-    mipLevels_             = 1;                    // No mipmaps for default textures
+    mipLevels_                   = 1;                    // No mipmaps for default textures
 
     // Create staging buffer
     Buffer stagingBuffer{device_, 1, static_cast<uint32_t>(imageSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};

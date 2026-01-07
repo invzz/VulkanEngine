@@ -150,11 +150,11 @@ namespace engine {
     submitInfo.pCommandBuffers    = buffers;
 
     VkSemaphore const signalSemaphores[] = {renderFinishedSemaphores[*imageIndex]};
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores    = signalSemaphores;
+    submitInfo.signalSemaphoreCount      = 1;
+    submitInfo.pSignalSemaphores         = signalSemaphores;
 
     vkResetFences(device.device(), 1, &inFlightFences[currentFrame]);
-    VkResult const submitResult = vkQueueSubmit(device.graphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]);
+    VkResult const submitResult = device.submitGraphics(&submitInfo, inFlightFences[currentFrame]);
     if (submitResult != VK_SUCCESS)
     {
       throw CommandBufferSubmissionException("failed to submit draw command buffer! Error: " + std::to_string(submitResult));
@@ -167,8 +167,8 @@ namespace engine {
     presentInfo.pWaitSemaphores    = signalSemaphores;
 
     VkSwapchainKHR const swapChains[] = {swapChain};
-    presentInfo.swapchainCount  = 1;
-    presentInfo.pSwapchains     = swapChains;
+    presentInfo.swapchainCount        = 1;
+    presentInfo.pSwapchains           = swapChains;
 
     presentInfo.pImageIndices = imageIndex;
 
@@ -184,7 +184,7 @@ namespace engine {
       presentInfo.pNext            = &presentIdInfo;
     }
 
-    auto result = vkQueuePresentKHR(device.presentQueue(), &presentInfo);
+    auto result = device.present(&presentInfo);
 
     currentFrame = (currentFrame + 1) % static_cast<size_t>(maxFramesInFlight());
 
@@ -227,7 +227,7 @@ namespace engine {
     createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     QueueFamilyIndices const indices              = device.findPhysicalQueueFamilies();
-    uint32_t           queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
+    uint32_t                 queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
 
     if (indices.graphicsFamily != indices.presentFamily)
     {
@@ -253,7 +253,7 @@ namespace engine {
 
     // Pick a composite alpha the surface supports, prefer opaque.
     VkCompositeAlphaFlagsKHR const supportedAlpha = swapChainSupport.capabilities.supportedCompositeAlpha;
-    VkCompositeAlphaFlagBitsKHR compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    VkCompositeAlphaFlagBitsKHR    compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     if ((supportedAlpha & compositeAlpha) == 0u)
     {
       const VkCompositeAlphaFlagBitsKHR candidates[] = {VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR, VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR, VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR};
