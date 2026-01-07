@@ -4,13 +4,19 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
 #include <limits>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/SceneUtils.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -25,7 +31,9 @@
 
 namespace engine {
 
-  ScenePanel::ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem) : device_(device), scene_(scene), animationSystem_(animationSystem) {}
+  ScenePanel::ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem, ResourceManager& resourceManager)
+      : device_(device), scene_(scene), animationSystem_(animationSystem), resourceManager_(resourceManager)
+  {}
 
   void ScenePanel::render(FrameInfo& frameInfo)
   {
@@ -33,37 +41,67 @@ namespace engine {
 
     if (ImGui::Begin("Scene Objects", &visible_))
     {
-      if (ImGui::Button("Add Camera"))
+      // Temporary auto-test: if AUTO_ADD_MODEL env var is set, auto-load that model once.
+      static bool autoTestDone = false;
+      if (!autoTestDone)
       {
-        auto entity = scene_.createEntity();
-        scene_.getRegistry().emplace<TransformComponent>(entity);
-        scene_.getRegistry().emplace<CameraComponent>(entity);
-        scene_.getRegistry().emplace<NameComponent>(entity, "Camera");
+        const char* autoModelEnv = std::getenv("AUTO_ADD_MODEL");
+        if (autoModelEnv && autoModelEnv[0] != '\0')
+        {
+          std::string autoModelName(autoModelEnv);
+          std::string indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
+          try
+          {
+            std::ifstream f(indexPath);
+            if (f.is_open())
+            {
+              nlohmann::json j;
+              f >> j;
+              for (const auto& item : j)
+              {
+                if (!item.contains("name")) continue;
+                std::string name = item["name"].get<std::string>();
+                if (name != autoModelName) continue;
+
+                std::string relativePath;
+                if (item.contains("variants") && item["variants"].contains("glTF"))
+                {
+                  std::string variantFile = item["variants"]["glTF"].get<std::string>();
+                  relativePath            = "glTF/" + name + "/glTF/" + variantFile;
+                }
+
+                std::string fullPath = relativePath.empty() ? (std::string(MODEL_PATH) + "/glTF/" + name + "/glTF/" + name + ".gltf") : (std::string(MODEL_PATH) + "/" + relativePath);
+                try
+                {
+                  engine::ModelInsertionOptions opts;
+                  opts.enableTextures     = true;
+                  opts.loadMaterials      = true;
+                  opts.enableMorphTargets = true;
+
+                  engine::addModelToScene(resourceManager_, scene_, fullPath, name, opts);
+                  std::cerr << "AUTO_ADD_MODEL: loaded and added model: " << fullPath << '\n';
+                }
+                catch (const std::exception& e)
+                {
+                  std::cerr << "AUTO_ADD_MODEL exception: " << e.what() << '\n';
+                }
+                break;
+              }
+            }
+            else
+            {
+              std::cerr << "AUTO_ADD_MODEL: failed to open model index: " << indexPath << '\n';
+            }
+          }
+          catch (const std::exception& e)
+          {
+            std::cerr << "AUTO_ADD_MODEL: error parsing index: " << e.what() << '\n';
+          }
+        }
+        autoTestDone = true;
       }
-      ImGui::SameLine();
-      if (ImGui::Button("Add Point Light"))
-      {
-        auto entity = scene_.createEntity();
-        scene_.getRegistry().emplace<TransformComponent>(entity);
-        scene_.getRegistry().emplace<PointLightComponent>(entity);
-        scene_.getRegistry().emplace<NameComponent>(entity, "Point Light");
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("Add Dir Light"))
-      {
-        auto entity = scene_.createEntity();
-        scene_.getRegistry().emplace<TransformComponent>(entity);
-        scene_.getRegistry().emplace<DirectionalLightComponent>(entity);
-        scene_.getRegistry().emplace<NameComponent>(entity, "Directional Light");
-      }
-      ImGui::SameLine();
-      if (ImGui::Button("Add Spot Light"))
-      {
-        auto entity = scene_.createEntity();
-        scene_.getRegistry().emplace<TransformComponent>(entity);
-        scene_.getRegistry().emplace<SpotLightComponent>(entity);
-        scene_.getRegistry().emplace<NameComponent>(entity, "Spot Light");
-      }
+
+      // Add buttons moved into category headers (see Cameras / Lights sections below)
 
       ImGui::Separator();
 
@@ -132,7 +170,7 @@ namespace engine {
         ImGuiStyle const& style        = ImGui::GetStyle();
         float             actionsWidth = 0.0f;
 
-        auto actionWidthForText = [&](const char* text) { return ImGui::CalcTextSize(text).x + style.FramePadding.x * 2.0f; };
+        auto actionWidthForText = [&](const char* text) { return ImGui::CalcTextSize(text).x + (style.FramePadding.x * 2.0f); };
 
         // Reserve space for per-row actions so the label becomes a clickable row.
         if (scene_.getRegistry().all_of<CameraComponent>(entity))
@@ -201,7 +239,20 @@ namespace engine {
 
       {
         std::string const header = "Cameras (" + std::to_string(cameras.size()) + ")";
-        if (ImGui::TreeNodeEx("##cameras", rootFlags, "%s", header.c_str()))
+        ImGui::PushID("cameras_header");
+        ImGuiStyle const& style = ImGui::GetStyle();
+        float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+        bool const        open  = ImGui::TreeNodeEx("##cameras", rootFlags, "%s", header.c_str());
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
+        if (ImGui::SmallButton("+##add_camera"))
+        {
+          auto entity = scene_.createEntity();
+          scene_.getRegistry().emplace<TransformComponent>(entity);
+          scene_.getRegistry().emplace<CameraComponent>(entity);
+          scene_.getRegistry().emplace<NameComponent>(entity, "Camera");
+        }
+        ImGui::PopID();
+        if (open)
         {
           for (auto entity : cameras)
           {
@@ -214,7 +265,45 @@ namespace engine {
       {
         size_t const      lightsTotal = dirLights.size() + pointLights.size() + spotLights.size();
         std::string const header      = "Lights (" + std::to_string(lightsTotal) + ")";
-        if (ImGui::TreeNodeEx("##lights", rootFlags, "%s", header.c_str()))
+        ImGui::PushID("lights_header");
+        ImGuiStyle const& style = ImGui::GetStyle();
+        float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+        bool const        open  = ImGui::TreeNodeEx("##lights", rootFlags, "%s", header.c_str());
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
+        if (ImGui::SmallButton("+##add_light"))
+        {
+          ImGui::OpenPopup("AddLightPopup");
+        }
+        if (ImGui::BeginPopup("AddLightPopup"))
+        {
+          if (ImGui::Selectable("Add Directional"))
+          {
+            auto entity = scene_.createEntity();
+            scene_.getRegistry().emplace<TransformComponent>(entity);
+            scene_.getRegistry().emplace<DirectionalLightComponent>(entity);
+            scene_.getRegistry().emplace<NameComponent>(entity, "Directional Light");
+            ImGui::CloseCurrentPopup();
+          }
+          if (ImGui::Selectable("Add Point"))
+          {
+            auto entity = scene_.createEntity();
+            scene_.getRegistry().emplace<TransformComponent>(entity);
+            scene_.getRegistry().emplace<PointLightComponent>(entity);
+            scene_.getRegistry().emplace<NameComponent>(entity, "Point Light");
+            ImGui::CloseCurrentPopup();
+          }
+          if (ImGui::Selectable("Add Spot"))
+          {
+            auto entity = scene_.createEntity();
+            scene_.getRegistry().emplace<TransformComponent>(entity);
+            scene_.getRegistry().emplace<SpotLightComponent>(entity);
+            scene_.getRegistry().emplace<NameComponent>(entity, "Spot Light");
+            ImGui::CloseCurrentPopup();
+          }
+          ImGui::EndPopup();
+        }
+        ImGui::PopID();
+        if (open)
         {
           if (ImGui::TreeNodeEx("##dirlights", rootFlags, "Directional (%zu)", dirLights.size()))
           {
@@ -246,7 +335,90 @@ namespace engine {
 
       {
         std::string const header = "Models (" + std::to_string(models.size()) + ")";
-        if (ImGui::TreeNodeEx("##models", rootFlags, "%s", header.c_str()))
+        ImGui::PushID("models_header");
+        ImGuiStyle const& style = ImGui::GetStyle();
+        float const       btnW  = ImGui::CalcTextSize("+").x + style.FramePadding.x * 2.0f;
+        bool const        open  = ImGui::TreeNodeEx("##models", rootFlags, "%s", header.c_str());
+        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
+        if (ImGui::SmallButton("+##add_model"))
+        {
+          ImGui::OpenPopup("AddModelPopup");
+        }
+
+        // Popup: list available models from model-index.json
+        if (ImGui::BeginPopup("AddModelPopup"))
+        {
+          static char filter[128] = "";
+          ImGui::InputText("Filter", filter, sizeof(filter));
+          ImGui::Separator();
+
+          std::string const indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
+          try
+          {
+            std::ifstream f(indexPath);
+            if (!f.is_open())
+            {
+              ImGui::Text("Failed to open model index: %s", indexPath.c_str());
+            }
+            else
+            {
+              nlohmann::json j;
+              f >> j;
+              for (const auto& item : j)
+              {
+                if (!item.contains("name")) continue;
+                std::string name = item["name"].get<std::string>();
+
+                // Build glTF relative path if present
+                std::string relativePath;
+                if (item.contains("variants") && item["variants"].contains("glTF"))
+                {
+                  std::string variantFile = item["variants"]["glTF"].get<std::string>();
+                  relativePath            = "glTF/" + name + "/glTF/" + variantFile;
+                }
+
+                if (filter[0] != '\0')
+                {
+                  std::string lowName   = name;
+                  std::string lowFilter = filter;
+                  std::transform(lowName.begin(), lowName.end(), lowName.begin(), ::tolower);
+                  std::transform(lowFilter.begin(), lowFilter.end(), lowFilter.begin(), ::tolower);
+                  if (lowName.find(lowFilter) == std::string::npos) continue;
+                }
+
+                ImGui::Selectable(name.c_str());
+                if (ImGui::IsItemActivated())
+                {
+                  // Create entity and load model via ResourceManager
+                  std::string fullPath = relativePath.empty() ? (std::string(MODEL_PATH) + "/glTF/" + name + "/glTF/" + name + ".gltf") : (std::string(MODEL_PATH) + "/" + relativePath);
+                  try
+                  {
+                    engine::ModelInsertionOptions opts;
+                    opts.enableTextures     = true;
+                    opts.loadMaterials      = true;
+                    opts.enableMorphTargets = true;
+
+                    engine::addModelToScene(resourceManager_, scene_, fullPath, name, opts);
+                    ImGui::CloseCurrentPopup();
+                  }
+                  catch (const std::exception& e)
+                  {
+                    std::cerr << "Exception loading model: " << e.what() << '\n';
+                  }
+                }
+              }
+            }
+          }
+          catch (const std::exception& e)
+          {
+            ImGui::Text("Error parsing model index: %s", e.what());
+          }
+
+          ImGui::EndPopup();
+        }
+
+        ImGui::PopID();
+        if (open)
         {
           for (auto entity : models)
           {

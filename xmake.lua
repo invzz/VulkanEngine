@@ -188,7 +188,34 @@ target("EngineImporters")
     add_packages("stb")
     add_packages("nlohmann_json")
     add_packages("meshoptimizer")
-    add_deps("Engine")
+    -- Note: EngineImporters are implementation detail of Engine; Engine should depend on them so the final link order places EngineImporters after Engine.
+
+target("Engine")
+    set_kind("static")
+    add_files("src/Engine/**.cpp")
+    -- Keep runtime/core in Engine. Optional modules are split into separate targets.
+    add_includedirs("include", {public = true})
+    if is_mode("debug") then
+        add_defines("ENABLE_PROFILING")
+        add_defines("PROFILE_OUTPUT_DIR=\"" .. profile_path .. "\"")
+    end
+    if is_plat("windows") then
+        add_packages("glfw", "glm", "vulkan-headers")
+        -- Link the system Vulkan loader on Windows
+        add_syslinks("vulkan-1")
+    else
+        add_packages("glfw", "glm", "vulkan-headers")
+    end
+    add_packages("tinyobjloader")
+    add_packages("tinygltf")
+    add_packages("stb")
+    add_packages("nlohmann_json")
+    add_packages("meshoptimizer")
+    add_packages("imgui")
+    add_packages("entt")
+
+    -- Ensure Engine links against EngineImporters so the importers are available at link time
+    add_deps("EngineImporters")
 
 -- Scene serialization/deserialization (json). Split from Engine for cleaner boundaries.
 target("EngineSceneIO")

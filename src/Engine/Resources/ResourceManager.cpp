@@ -7,6 +7,7 @@
 #include <future>
 #include <iomanip>
 #include <ios>
+#include <iostream>
 #include <memory>
 #include <mutex>
 #include <sstream>
@@ -30,15 +31,15 @@ namespace engine {
   // Simple FNV-1a hash (fast, good distribution)
   namespace {
     uint64_t hashBytes(const unsigned char* data, size_t length)
-  {
-    uint64_t hash = 14695981039346656037ULL; // FNV offset basis
-    for (size_t i = 0; i < length; ++i)
     {
-      hash ^= data[i];
-      hash *= 1099511628211ULL; // FNV prime
+      uint64_t hash = 14695981039346656037ULL; // FNV offset basis
+      for (size_t i = 0; i < length; ++i)
+      {
+        hash ^= data[i];
+        hash *= 1099511628211ULL; // FNV prime
+      }
+      return hash;
     }
-    return hash;
-  }
 
   } // namespace
 
@@ -152,9 +153,92 @@ namespace engine {
       modelAccessOrder_.erase(std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), modelAccessOrder_.end());
     }
 
-    // Load new model
-    auto         model   = std::shared_ptr<Model>(Model::createModelFromFile(device_, path, enableTextures, loadMaterials, enableMorphTargets));
+    // Load new model: choose importer based on file extension
+    auto toLower = [](std::string s) {
+      std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+      return s;
+    };
+
+    std::string ext;
+    auto        pos = path.find_last_of('.');
+    if (pos != std::string::npos) ext = toLower(path.substr(pos + 1));
+
+    std::shared_ptr<Model> model;
+    try
+    {
+      if (ext == "gltf" || ext == "glb")
+      {
+        // Use glTF importer for glTF files
+        model = std::shared_ptr<Model>(Model::createModelFromGLTF(device_, path, false, true, true));
+      }
+      else
+      {
+        // Fall back to file loader (OBJ)
+        model = std::shared_ptr<Model>(Model::createModelFromFile(device_, path, false, true, true));
+      }
+    }
+    catch (const std::exception& e)
+    {
+      // Propagate error to caller
+      throw;
+    }
+
     size_t const memSize = model->getMemorySize();
+
+    // Optionally load material textures according to flags
+    if (enableTextures || loadMaterials)
+    {
+      try
+      {
+        for (auto& mat : model->getMaterials())
+        {
+          if (!mat.diffuseTexPath.empty() && enableTextures)
+          {
+            mat.pbrMaterial.albedoMap = loadTexture(mat.diffuseTexPath, true, true);
+          }
+          if (!mat.normalTexPath.empty() && enableTextures)
+          {
+            mat.pbrMaterial.normalMap = loadTexture(mat.normalTexPath, false, true);
+          }
+          if (!mat.roughnessTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.roughnessMap = loadTexture(mat.roughnessTexPath, false, true);
+          }
+          if (!mat.aoTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.aoMap = loadTexture(mat.aoTexPath, false, true);
+          }
+          if (!mat.emissiveTexPath.empty() && enableTextures)
+          {
+            mat.pbrMaterial.emissiveMap = loadTexture(mat.emissiveTexPath, true, true);
+          }
+          if (!mat.specularGlossinessTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.specularGlossinessMap = loadTexture(mat.specularGlossinessTexPath, true, true);
+          }
+          if (!mat.transmissionTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.transmissionMap = loadTexture(mat.transmissionTexPath, false, true);
+          }
+          if (!mat.clearcoatTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.clearcoatMap = loadTexture(mat.clearcoatTexPath, false, true);
+          }
+          if (!mat.clearcoatRoughnessTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.clearcoatRoughnessMap = loadTexture(mat.clearcoatRoughnessTexPath, false, true);
+          }
+          if (!mat.clearcoatNormalTexPath.empty() && loadMaterials)
+          {
+            mat.pbrMaterial.clearcoatNormalMap = loadTexture(mat.clearcoatNormalTexPath, false, true);
+          }
+        }
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "ResourceManager: failed loading material textures for " << path << ": " << e.what() << '\n';
+      }
+    }
 
     // Check memory budget and evict if necessary
     if (memoryBudget_ > 0)

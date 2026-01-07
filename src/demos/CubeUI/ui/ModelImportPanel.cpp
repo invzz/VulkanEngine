@@ -19,6 +19,7 @@
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Resources/Texture.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/SceneUtils.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
@@ -236,77 +237,15 @@ namespace engine {
       meshletCfg.maxTriangles = static_cast<size_t>(meshletMaxTriangles_);
       meshletCfg.coneWeight   = meshletConeWeight_;
       meshletCfg.maxRadius    = meshletMaxRadius_;
-      engine::Model::setMeshletBuildConfig(meshletCfg);
 
-      auto modelPtr = Model::createModelFromGLTF(device_, fullPath, false, true, true);
+      engine::ModelInsertionOptions opts;
+      opts.enableTextures     = true;
+      opts.loadMaterials      = true;
+      opts.enableMorphTargets = true;
+      opts.meshletCfg         = meshletCfg;
 
-      for (auto& mat : modelPtr->getMaterials())
-      {
-        if (!mat.diffuseTexPath.empty())
-        {
-          mat.pbrMaterial.albedoMap = resourceManager_.loadTexture(mat.diffuseTexPath, true, true);
-        }
-        if (!mat.normalTexPath.empty())
-        {
-          mat.pbrMaterial.normalMap = resourceManager_.loadTexture(mat.normalTexPath, false, true);
-        }
-        if (!mat.roughnessTexPath.empty())
-        {
-          mat.pbrMaterial.roughnessMap = resourceManager_.loadTexture(mat.roughnessTexPath, false, true);
-        }
-        if (!mat.aoTexPath.empty())
-        {
-          mat.pbrMaterial.aoMap = resourceManager_.loadTexture(mat.aoTexPath, false, true);
-        }
-        if (!mat.specularGlossinessTexPath.empty())
-        {
-          mat.pbrMaterial.specularGlossinessMap = resourceManager_.loadTexture(mat.specularGlossinessTexPath, true, true);
-        }
-        if (!mat.emissiveTexPath.empty())
-        {
-          mat.pbrMaterial.emissiveMap = resourceManager_.loadTexture(mat.emissiveTexPath, true, true);
-        }
-        if (!mat.transmissionTexPath.empty())
-        {
-          mat.pbrMaterial.transmissionMap = resourceManager_.loadTexture(mat.transmissionTexPath, false, true);
-        }
-        if (!mat.clearcoatTexPath.empty())
-        {
-          mat.pbrMaterial.clearcoatMap = resourceManager_.loadTexture(mat.clearcoatTexPath, false, true);
-        }
-        if (!mat.clearcoatRoughnessTexPath.empty())
-        {
-          mat.pbrMaterial.clearcoatRoughnessMap = resourceManager_.loadTexture(mat.clearcoatRoughnessTexPath, false, true);
-        }
-        if (!mat.clearcoatNormalTexPath.empty())
-        {
-          mat.pbrMaterial.clearcoatNormalMap = resourceManager_.loadTexture(mat.clearcoatNormalTexPath, false, true);
-        }
-      }
+      engine::addModelToScene(resourceManager_, scene_, fullPath, name, opts);
 
-      auto entity = scene_.createEntity();
-      scene_.getRegistry().emplace<TransformComponent>(entity);
-      scene_.getRegistry().emplace<ModelComponent>(entity, std::move(modelPtr));
-      scene_.getRegistry().emplace<NameComponent>(entity, name);
-
-      auto& transform       = scene_.getRegistry().get<TransformComponent>(entity);
-      transform.scale       = {1.0f, 1.0f, 1.0f};
-      transform.translation = {0.0f, 0.0f, 0.0f};
-
-      auto& modelComp = scene_.getRegistry().get<ModelComponent>(entity);
-
-      if (modelComp.model->hasAnimations())
-      {
-        scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
-      }
-
-      if (modelComp.model->hasMorphTargets())
-      {
-        if (!scene_.getRegistry().all_of<AnimationComponent>(entity))
-        {
-          scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
-        }
-      }
       std::cout << "Loaded model: " << fullPath << '\n';
     }
     catch (const std::exception& e)

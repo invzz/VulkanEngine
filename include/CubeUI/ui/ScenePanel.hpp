@@ -5,6 +5,7 @@
 
 #include "CubeUI/ui/UIPanel.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 
@@ -16,7 +17,7 @@ namespace engine {
   class ScenePanel : public UIPanel
   {
   public:
-    ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem);
+    ScenePanel(Device& device, Scene& scene, AnimationSystem& animationSystem, ResourceManager& resourceManager);
 
     void               render(FrameInfo& frameInfo) override;
     [[nodiscard]] bool isSeparateWindow() const override { return true; }
@@ -26,6 +27,7 @@ namespace engine {
     Device&                   device_;
     Scene&                    scene_;
     AnimationSystem&          animationSystem_;
+    ResourceManager&          resourceManager_;
     std::vector<entt::entity> toDelete_;
   };
 
