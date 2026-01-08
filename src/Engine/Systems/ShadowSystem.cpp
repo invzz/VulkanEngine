@@ -211,15 +211,17 @@ namespace engine {
     glm::mat4 const invView = camera.getInverseView();
 
     // Extract near/far planes from projection matrix
-    float const A = proj[2][2];
-    float const B = proj[3][2];
-    float nearPlane = 0.1f;
-    if (glm::abs(A) > 1e-6f) {
+    float const A         = proj[2][2];
+    float const B         = proj[3][2];
+    float       nearPlane = 0.1f;
+    if (glm::abs(A) > 1e-6f)
+    {
       nearPlane = glm::max(0.001f, -B / A);
     }
 
     float farPlane = nearPlane + 100.0f;
-    if (glm::abs(A - 1.0f) > 1e-6f) {
+    if (glm::abs(A - 1.0f) > 1e-6f)
+    {
       farPlane = (A * nearPlane) / (A - 1.0f);
     }
 
@@ -244,7 +246,7 @@ namespace engine {
     glm::vec3 const camFwd   = glm::normalize(glm::vec3(invView[2]));
 
     // Calculate frustum corners in world space
-    glm::vec3 frustumCorners[8];
+    glm::vec3   frustumCorners[8];
     float const nearZ = sliceNear;
     float const farZ  = sliceFar;
     float const nx    = nearWidth * 0.5f;
@@ -263,29 +265,32 @@ namespace engine {
 
     // Calculate frustum center
     glm::vec3 frustumCenter{0.0f};
-    for (glm::vec3 const& corner : frustumCorners) {
+    for (glm::vec3 const& corner : frustumCorners)
+    {
       frustumCenter += corner;
     }
     frustumCenter /= 8.0f;
 
     // Choose up vector for light view matrix
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-    if (glm::abs(glm::dot(lightDir, up)) > 0.99f) {
+    if (glm::abs(glm::dot(lightDir, up)) > 0.99f)
+    {
       up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
     // Create light view matrix
-    glm::vec3 const lightPos = frustumCenter - lightDir * 50.0f; // Position light far enough from frustum
+    glm::vec3 const lightPos  = frustumCenter - lightDir * 50.0f; // Position light far enough from frustum
     glm::mat4 const lightView = glm::lookAt(lightPos, frustumCenter, up);
 
     // Transform frustum corners to light space and find AABB
     glm::vec3 minLS(std::numeric_limits<float>::infinity());
     glm::vec3 maxLS(-std::numeric_limits<float>::infinity());
-    for (glm::vec3 const& cornerWS : frustumCorners) {
+    for (glm::vec3 const& cornerWS : frustumCorners)
+    {
       glm::vec4 const cornerLS4 = lightView * glm::vec4(cornerWS, 1.0f);
       glm::vec3 const cornerLS  = glm::vec3(cornerLS4);
-      minLS = glm::min(minLS, cornerLS);
-      maxLS = glm::max(maxLS, cornerLS);
+      minLS                     = glm::min(minLS, cornerLS);
+      maxLS                     = glm::max(maxLS, cornerLS);
     }
 
     // Add some padding to prevent artifacts at edges
