@@ -326,6 +326,10 @@ namespace engine {
     glm::mat4 lightProj = glm::orthoZO(minLS.x, maxLS.x, minLS.y, maxLS.y, orthoNear, orthoFar);
     lightProj[1][1] *= -1;
 
+    // Optionally expose computed light-space bounds for debugging/visualization
+    if (outMinLS) *outMinLS = minLS;
+    if (outMaxLS) *outMaxLS = maxLS;
+
     return lightProj * lightView;
   }
 
@@ -461,7 +465,12 @@ namespace engine {
           break;
         }
 
-        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar);
+        glm::vec3 minLS, maxLS;
+        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, &minLS, &maxLS);
+
+        // Debug print cascade bounds (light-space AABB) to help verify stability
+        std::cout << "[ShadowSystem] Cascade " << cascade << " bounds (LS): min=" << minLS.x << "," << minLS.y << "," << minLS.z << " max=" << maxLS.x << "," << maxLS.y << "," << maxLS.z << "\n";
+
         renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
         shadowLightCount_++;
       }

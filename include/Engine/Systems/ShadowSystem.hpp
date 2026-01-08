@@ -71,7 +71,8 @@ namespace engine {
     void createCubeMeshPipelineLayout();
     void createCubeMeshPipeline();
 
-    glm::mat4        calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection, const Camera& camera, float cascadeNear, float cascadeFar) const;
+    glm::mat4
+    calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection, const Camera& camera, float cascadeNear, float cascadeFar, glm::vec3* outMinLS = nullptr, glm::vec3* outMaxLS = nullptr) const;
     static glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
     static glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
 
