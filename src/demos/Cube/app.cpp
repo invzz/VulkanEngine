@@ -293,6 +293,7 @@ namespace engine {
     uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
+    uiManager->addPanel(std::make_unique<LightsPanel>(scene));
     uiManager->addPanel(
             std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, &skybox, showSkybox, showGrid, skySettings, dustSettings, fogSettings, hzbSettings, postProcessPush, debugMode));
   }

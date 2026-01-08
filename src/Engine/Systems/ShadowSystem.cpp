@@ -195,45 +195,56 @@ namespace engine {
                                                    configInfo);
   }
 
-  glm::mat4 ShadowSystem::calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection, const Camera& camera, float cascadeNear, float cascadeFar) const
+  glm::mat4 ShadowSystem::calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection,
+                                                            const Camera&    camera,
+                                                            float            cascadeNear,
+                                                            float            cascadeFar,
+                                                            int              cascadeIndex,
+                                                            glm::vec3*       outMinLS,
+                                                            glm::vec3*       outMaxLS)
   {
+    // Normalize light direction
     glm::vec3 const lightDir = glm::normalize(lightDirection);
 
+    // Get camera matrices
     glm::mat4 const proj    = camera.getProjectionMatrix();
     glm::mat4 const invView = camera.getInverseView();
 
-    float const A         = proj[2][2];
-    float const B         = proj[3][2];
-    float       nearPlane = 0.1f;
-    if (glm::abs(A) > 1e-6f)
-    {
+    // Extract near/far planes from projection matrix
+    float const A = proj[2][2];
+    float const B = proj[3][2];
+    float nearPlane = 0.1f;
+    if (glm::abs(A) > 1e-6f) {
       nearPlane = glm::max(0.001f, -B / A);
     }
 
     float farPlane = nearPlane + 100.0f;
-    if (glm::abs(A - 1.0f) > 1e-6f)
-    {
+    if (glm::abs(A - 1.0f) > 1e-6f) {
       farPlane = (A * nearPlane) / (A - 1.0f);
     }
 
+    // Extract field of view and aspect ratio
     float const tanHalfFovy = 1.0f / glm::max(proj[1][1], 1e-6f);
     float const aspect      = proj[1][1] / glm::max(proj[0][0], 1e-6f);
 
+    // Clamp cascade distances to valid range
     float const sliceNear = glm::clamp(cascadeNear, nearPlane, farPlane - 0.01f);
     float const sliceFar  = glm::clamp(cascadeFar, sliceNear + 0.01f, farPlane);
 
+    // Calculate frustum dimensions at near and far planes
     float const nearHeight = 2.0f * tanHalfFovy * sliceNear;
     float const nearWidth  = nearHeight * aspect;
     float const farHeight  = 2.0f * tanHalfFovy * sliceFar;
     float const farWidth   = farHeight * aspect;
 
+    // Get camera position and orientation
     glm::vec3 const camPos   = glm::vec3(invView[3]);
     glm::vec3 const camRight = glm::normalize(glm::vec3(invView[0]));
     glm::vec3 const camUp    = glm::normalize(glm::vec3(invView[1]));
     glm::vec3 const camFwd   = glm::normalize(glm::vec3(invView[2]));
 
+    // Calculate frustum corners in world space
     glm::vec3 frustumCorners[8];
-
     float const nearZ = sliceNear;
     float const farZ  = sliceFar;
     float const nx    = nearWidth * 0.5f;
@@ -241,92 +252,55 @@ namespace engine {
     float const fx    = farWidth * 0.5f;
     float const fy    = farHeight * 0.5f;
 
-    frustumCorners[0] = camPos + camFwd * nearZ - camRight * nx - camUp * ny;
-    frustumCorners[1] = camPos + camFwd * nearZ + camRight * nx - camUp * ny;
-    frustumCorners[2] = camPos + camFwd * nearZ + camRight * nx + camUp * ny;
-    frustumCorners[3] = camPos + camFwd * nearZ - camRight * nx + camUp * ny;
-    frustumCorners[4] = camPos + camFwd * farZ - camRight * fx - camUp * fy;
-    frustumCorners[5] = camPos + camFwd * farZ + camRight * fx - camUp * fy;
-    frustumCorners[6] = camPos + camFwd * farZ + camRight * fx + camUp * fy;
-    frustumCorners[7] = camPos + camFwd * farZ - camRight * fx + camUp * fy;
+    frustumCorners[0] = camPos + camFwd * nearZ - camRight * nx - camUp * ny; // Near bottom left
+    frustumCorners[1] = camPos + camFwd * nearZ + camRight * nx - camUp * ny; // Near bottom right
+    frustumCorners[2] = camPos + camFwd * nearZ + camRight * nx + camUp * ny; // Near top right
+    frustumCorners[3] = camPos + camFwd * nearZ - camRight * nx + camUp * ny; // Near top left
+    frustumCorners[4] = camPos + camFwd * farZ - camRight * fx - camUp * fy;  // Far bottom left
+    frustumCorners[5] = camPos + camFwd * farZ + camRight * fx - camUp * fy;  // Far bottom right
+    frustumCorners[6] = camPos + camFwd * farZ + camRight * fx + camUp * fy;  // Far top right
+    frustumCorners[7] = camPos + camFwd * farZ - camRight * fx + camUp * fy;  // Far top left
 
+    // Calculate frustum center
     glm::vec3 frustumCenter{0.0f};
-    for (glm::vec3 const& c : frustumCorners)
-    {
-      frustumCenter += c;
+    for (glm::vec3 const& corner : frustumCorners) {
+      frustumCenter += corner;
     }
     frustumCenter /= 8.0f;
 
+    // Choose up vector for light view matrix
     glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-    if (glm::abs(glm::dot(lightDir, up)) > 0.99f)
-    {
+    if (glm::abs(glm::dot(lightDir, up)) > 0.99f) {
       up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
-    glm::vec3 const lightPos  = frustumCenter - lightDir * (sliceFar * 2.0f);
+    // Create light view matrix
+    glm::vec3 const lightPos = frustumCenter - lightDir * 50.0f; // Position light far enough from frustum
     glm::mat4 const lightView = glm::lookAt(lightPos, frustumCenter, up);
 
+    // Transform frustum corners to light space and find AABB
     glm::vec3 minLS(std::numeric_limits<float>::infinity());
     glm::vec3 maxLS(-std::numeric_limits<float>::infinity());
-    for (glm::vec3 const& cornerWS : frustumCorners)
-    {
+    for (glm::vec3 const& cornerWS : frustumCorners) {
       glm::vec4 const cornerLS4 = lightView * glm::vec4(cornerWS, 1.0f);
       glm::vec3 const cornerLS  = glm::vec3(cornerLS4);
-      minLS                     = glm::min(minLS, cornerLS);
-      maxLS                     = glm::max(maxLS, cornerLS);
+      minLS = glm::min(minLS, cornerLS);
+      maxLS = glm::max(maxLS, cornerLS);
     }
 
-    // Expand by a fixed world-space margin to make cascades conservative and stable
-    // Recommended: 1-3 meters (or a small fraction of cascade depth). This prevents
-    // shadow popping and indoor edge cases without coupling to camera visibility.
-    const float cascadeMarginMeters = 2.0f; // tuneable
-    minLS -= glm::vec3(cascadeMarginMeters);
-    maxLS += glm::vec3(cascadeMarginMeters);
+    // Add some padding to prevent artifacts at edges
+    glm::vec3 const padding(5.0f, 5.0f, 5.0f);
+    minLS -= padding;
+    maxLS += padding;
 
-    {
-      glm::vec3 const centerLS = 0.5f * (minLS + maxLS);
-      float           extentX  = maxLS.x - minLS.x;
-      float           extentY  = maxLS.y - minLS.y;
-      float           extent   = glm::max(extentX, extentY);
-
-      // Clamp the extent to a stable value to reduce shimmering
-      // You can tune this value per cascade for best results
-      const float minExtent = 20.0f;  // Minimum shadow area (world units)
-      const float maxExtent = 200.0f; // Maximum shadow area (world units)
-      extent                = glm::clamp(extent, minExtent, maxExtent);
-
-      float const halfExtent = 0.5f * extent;
-
-      float const texelSize     = extent / glm::max(1.0f, static_cast<float>(shadowMapSize_));
-      glm::vec3   snappedCenter = centerLS;
-      if (texelSize > 0.0f)
-      {
-        snappedCenter.x = glm::floor(snappedCenter.x / texelSize) * texelSize;
-        snappedCenter.y = glm::floor(snappedCenter.y / texelSize) * texelSize;
-      }
-
-      minLS.x = snappedCenter.x - halfExtent;
-      maxLS.x = snappedCenter.x + halfExtent;
-      minLS.y = snappedCenter.y - halfExtent;
-      maxLS.y = snappedCenter.y + halfExtent;
-    }
-
-    float const extentX = maxLS.x - minLS.x;
-    float const extentY = maxLS.y - minLS.y;
-    float const extentZ = maxLS.z - minLS.z;
-    float const extent  = glm::max(glm::max(extentX, extentY), extentZ);
-
-    float const depthPadding = glm::max(10.0f, extent);
-    minLS.z -= depthPadding;
-    maxLS.z += depthPadding;
-
-    float const orthoNear = glm::max(0.01f, -maxLS.z);
-    float const orthoFar  = glm::max(orthoNear + 0.01f, -minLS.z);
+    // Create orthographic projection matrix
+    float const orthoNear = -maxLS.z - 10.0f; // Extend near plane
+    float const orthoFar  = -minLS.z + 10.0f; // Extend far plane
 
     glm::mat4 lightProj = glm::orthoZO(minLS.x, maxLS.x, minLS.y, maxLS.y, orthoNear, orthoFar);
-    lightProj[1][1] *= -1;
+    lightProj[1][1] *= -1; // Flip Y for Vulkan
 
-    // Optionally expose computed light-space bounds for debugging/visualization
+    // Output bounds if requested
     if (outMinLS) *outMinLS = minLS;
     if (outMaxLS) *outMaxLS = maxLS;
 
@@ -465,11 +439,7 @@ namespace engine {
           break;
         }
 
-        glm::vec3 minLS, maxLS;
-        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, &minLS, &maxLS);
-
-        // Debug print cascade bounds (light-space AABB) to help verify stability
-        std::cout << "[ShadowSystem] Cascade " << cascade << " bounds (LS): min=" << minLS.x << "," << minLS.y << "," << minLS.z << " max=" << maxLS.x << "," << maxLS.y << "," << maxLS.z << "\n";
+        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, nullptr, nullptr);
 
         renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
         shadowLightCount_++;

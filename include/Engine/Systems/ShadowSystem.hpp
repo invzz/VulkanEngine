@@ -71,8 +71,13 @@ namespace engine {
     void createCubeMeshPipelineLayout();
     void createCubeMeshPipeline();
 
-    glm::mat4
-    calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection, const Camera& camera, float cascadeNear, float cascadeFar, glm::vec3* outMinLS = nullptr, glm::vec3* outMaxLS = nullptr) const;
+    glm::mat4        calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection,
+                                                       const Camera&    camera,
+                                                       float            cascadeNear,
+                                                       float            cascadeFar,
+                                                       int              cascadeIndex,
+                                                       glm::vec3*       outMinLS = nullptr,
+                                                       glm::vec3*       outMaxLS = nullptr);
     static glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
     static glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
 
@@ -83,10 +88,6 @@ namespace engine {
 
     void renderPointLightShadowMaps(FrameInfo& frameInfo);
     void renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range);
-
-    /**
-     * @brief Render scene to a single face of a cube shadow map using mesh shaders
-     */
     void renderToCubeFaceMesh(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, int face, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, float farPlane);
 
     Device&  device_;
