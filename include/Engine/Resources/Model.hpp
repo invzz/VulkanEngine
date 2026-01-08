@@ -210,15 +210,15 @@ namespace engine {
 
     struct Builder
     {
-      std::vector<Vertex>         vertices;
-      std::vector<uint32_t>       indices;
-      std::vector<MaterialInfo>   materials;       // Materials loaded from MTL file
-      std::vector<SubMesh>        subMeshes;       // Sub-meshes by material
+      std::vector<Vertex>          vertices;
+      std::vector<uint32_t>        indices;
+      std::vector<MaterialInfo>    materials;           // Materials loaded from MTL file
+      std::vector<SubMesh>         subMeshes;           // Sub-meshes by material
       std::unordered_map<int, int> meshPrimaryMaterial; // map meshIndex -> representative materialId
-      std::vector<Animation>      animations;      // Animations from glTF
-      std::vector<Node>           nodes;           // Scene graph nodes
-      std::vector<MorphTargetSet> morphTargetSets; // Morph targets per mesh
-      std::string                 filePath;
+      std::vector<Animation>       animations;          // Animations from glTF
+      std::vector<Node>            nodes;               // Scene graph nodes
+      std::vector<MorphTargetSet>  morphTargetSets;     // Morph targets per mesh
+      std::string                  filePath;
 
       void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
       void loadModelFromGLTF(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
@@ -320,12 +320,12 @@ namespace engine {
     std::unique_ptr<Buffer> meshletVerticesBuffer;
     std::unique_ptr<Buffer> meshletTrianglesBuffer;
 
-    std::vector<MaterialInfo>   materials_;       // Materials from MTL file
-    std::vector<SubMesh>        subMeshes_;       // Sub-meshes by material
+    std::vector<MaterialInfo>    materials_;           // Materials from MTL file
+    std::vector<SubMesh>         subMeshes_;           // Sub-meshes by material
     std::unordered_map<int, int> meshPrimaryMaterial_; // map meshIndex -> representative materialId
-    std::vector<Animation>      animations_;      // Animations from glTF
-    std::vector<Node>           nodes_;           // Scene graph nodes
-    std::vector<MorphTargetSet> morphTargetSets_; // Morph targets
+    std::vector<Animation>       animations_;          // Animations from glTF
+    std::vector<Node>            nodes_;               // Scene graph nodes
+    std::vector<MorphTargetSet>  morphTargetSets_;     // Morph targets
 
     AABB localBounds_; // Object-space bounding box
 

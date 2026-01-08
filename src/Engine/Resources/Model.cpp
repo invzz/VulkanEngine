@@ -351,8 +351,8 @@ namespace engine {
   }
 
   Model::Model(Device& device, const Builder& builder)
-      : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, meshPrimaryMaterial_{builder.meshPrimaryMaterial}, animations_{builder.animations}, nodes_{builder.nodes}, morphTargetSets_{builder.morphTargetSets},
-        filePath{builder.filePath}
+      : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, meshPrimaryMaterial_{builder.meshPrimaryMaterial}, animations_{builder.animations}, nodes_{builder.nodes},
+        morphTargetSets_{builder.morphTargetSets}, filePath{builder.filePath}
   {
     createVertexBuffers(builder.vertices);
     createIndexBuffers(builder.indices);
@@ -361,12 +361,12 @@ namespace engine {
 
   Model::~Model() = default;
 
-int Model::getPrimaryMaterialForMesh(int meshIndex) const
-{
-  auto it = meshPrimaryMaterial_.find(meshIndex);
-  if (it == meshPrimaryMaterial_.end()) return -1;
-  return it->second;
-}
+  int Model::getPrimaryMaterialForMesh(int meshIndex) const
+  {
+    auto it = meshPrimaryMaterial_.find(meshIndex);
+    if (it == meshPrimaryMaterial_.end()) return -1;
+    return it->second;
+  }
 
   void Model::bind(VkCommandBuffer commandBuffer) const
   {
