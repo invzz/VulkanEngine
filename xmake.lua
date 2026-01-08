@@ -46,6 +46,7 @@ if is_plat("windows") then
     add_requires("tinyobjloader")
     add_requires("tinygltf")
     add_requires("stb")
+    add_requires("tinyexr")
     add_requires("nlohmann_json")
     add_requires("meshoptimizer")
     add_requires("entt")
@@ -77,6 +78,7 @@ else
     add_requires("tinyobjloader")
     add_requires("tinygltf")
     add_requires("stb")
+    add_requires("tinyexr")
     add_requires("nlohmann_json")
     add_requires("meshoptimizer")
     add_requires("entt")
@@ -95,7 +97,7 @@ target("Cube")
         add_defines("PROFILE_OUTPUT_DIR=\"" .. profile_path .. "\"")
     end
     if is_plat("windows") then
-        add_packages("glfw", "glm", "vulkan-headers", "imgui", "entt", "nlohmann_json", "tinygltf")
+        add_packages("glfw", "glm", "vulkan-headers", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
         -- Link the system Vulkan loader on Windows for the final executable
         add_syslinks("vulkan-1")
     else
@@ -128,6 +130,19 @@ target("Cube")
             add_packages("glfw", "glm", "vulkan", "entt", "nlohmann_json", "tinygltf")
         end
         add_deps("Engine")
+
+    -- ModelLightBaker: offline baker for per-model directional lightmaps
+    target("ModelLightBaker")
+        set_kind("binary")
+        add_files("src/tools/ModelLightBaker/**.cpp")
+        add_includedirs("include", {public = true})
+        if is_plat("windows") then
+            add_packages("glfw", "glm", "vulkan-headers", "entt", "nlohmann_json", "tinygltf", "stb", "tinyexr")
+            add_syslinks("vulkan-1")
+        else
+            add_packages("glfw", "glm", "vulkan", "entt", "nlohmann_json", "tinygltf", "stb", "tinyexr")
+        end
+        add_deps("EngineImporters", "Engine")
     
 target("CubeUI")
     set_kind("static")
@@ -150,11 +165,11 @@ target("Engine")
         add_defines("PROFILE_OUTPUT_DIR=\"" .. profile_path .. "\"")
     end
     if is_plat("windows") then
-        add_packages("glfw", "glm", "vulkan-headers")
+        add_packages("glfw", "glm", "vulkan-headers", "tinyexr")
         -- Link the system Vulkan loader on Windows
         add_syslinks("vulkan-1")
     else
-        add_packages("glfw", "glm", "vulkan-headers")
+        add_packages("glfw", "glm", "vulkan-headers", "tinyexr")
     end
     add_packages("tinyobjloader")
     add_packages("tinygltf")

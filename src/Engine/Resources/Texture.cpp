@@ -12,6 +12,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+// TinyEXR for EXR loading
+#include <tinyexr.h>
+
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -86,21 +89,28 @@ namespace engine {
 
   Texture::~Texture()
   {
-    if (sampler_ != VK_NULL_HANDLE)
+    // Defer destroys so resources aren't freed while still referenced by in-flight
+    // command buffers or descriptor sets.
+    VkSampler      sampler = sampler_;
+    VkImageView    view    = imageView_;
+    VkImage        image   = image_;
+    VkDeviceMemory mem     = imageMemory_;
+
+    if (sampler != VK_NULL_HANDLE)
     {
-      vkDestroySampler(device_.device(), sampler_, nullptr);
+      device_.deferDestroy([sampler](VkDevice dev) { vkDestroySampler(dev, sampler, nullptr); });
     }
-    if (imageView_ != VK_NULL_HANDLE)
+    if (view != VK_NULL_HANDLE)
     {
-      vkDestroyImageView(device_.device(), imageView_, nullptr);
+      device_.deferDestroy([view](VkDevice dev) { vkDestroyImageView(dev, view, nullptr); });
     }
-    if (image_ != VK_NULL_HANDLE)
+    if (image != VK_NULL_HANDLE)
     {
-      vkDestroyImage(device_.device(), image_, nullptr);
+      device_.deferDestroy([image](VkDevice dev) { vkDestroyImage(dev, image, nullptr); });
     }
-    if (imageMemory_ != VK_NULL_HANDLE)
+    if (mem != VK_NULL_HANDLE)
     {
-      vkFreeMemory(device_.device(), imageMemory_, nullptr);
+      device_.deferDestroy([mem](VkDevice dev) { vkFreeMemory(dev, mem, nullptr); });
     }
   }
 
@@ -108,7 +118,7 @@ namespace engine {
   Texture::Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format) : device_{device}, width_{width}, height_{height}
   {
     VkDeviceSize const imageSize = width_ * height_ * 4; // RGBA
-    mipLevels_             = 1;                    // No mipmaps for default textures
+    mipLevels_                   = 1;                    // No mipmaps for default textures
 
     // Create staging buffer
     Buffer stagingBuffer{device_, 1, static_cast<uint32_t>(imageSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
@@ -142,6 +152,69 @@ namespace engine {
     // RGB
     unsigned char normalPixel[4] = {128, 128, 255, 255};
     return std::shared_ptr<Texture>(new Texture(device, normalPixel, 1, 1, VK_FORMAT_R8G8B8A8_UNORM));
+  }
+
+  // Load EXR file as a linear float RGBA texture
+  std::shared_ptr<Texture> Texture::createFromEXR(Device& device, const std::string& filepath)
+  {
+    const char* err    = nullptr;
+    int         width  = 0;
+    int         height = 0;
+    float*      rgba   = nullptr;
+
+    int ret = LoadEXR(&rgba, &width, &height, filepath.c_str(), &err);
+    if (ret != TINYEXR_SUCCESS)
+    {
+      std::string msg = "Failed to load EXR: ";
+      if (err != nullptr)
+      {
+        msg += err;
+        FreeEXRErrorMessage(err);
+      }
+      throw std::runtime_error(msg);
+    }
+
+    if (rgba == nullptr || width <= 0 || height <= 0)
+    {
+      if (rgba) free(rgba);
+      throw std::runtime_error("Invalid EXR image data: " + filepath);
+    }
+
+    // Use the float-pixels constructor to create the texture
+    std::shared_ptr<Texture> tex = std::shared_ptr<Texture>(new Texture(device, rgba, width, height, VK_FORMAT_R32G32B32A32_SFLOAT));
+
+    // Free the temporary EXR data (staging buffer now contains the image)
+    free(rgba);
+
+    std::cout << "[Texture] Loaded EXR: " << filepath << " (" << width << "x" << height << ")" << '\n';
+
+    return tex;
+  }
+
+  // Private constructor for creating textures from float RGBA memory
+  Texture::Texture(Device& device, const float* pixels, int width, int height, VkFormat format) : device_{device}, width_{width}, height_{height}
+  {
+    VkDeviceSize const imageSize = static_cast<VkDeviceSize>(sizeof(float) * 4 * width * height);
+    mipLevels_                   = 1; // No mipmaps for EXR textures
+
+    // Create staging buffer
+    Buffer stagingBuffer{device_, 1, static_cast<uint32_t>(imageSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+
+    stagingBuffer.map();
+    stagingBuffer.writeToBuffer((void*)pixels);
+    stagingBuffer.unmap();
+
+    // Create Vulkan image
+    createImage(width_, height_, mipLevels_, format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // Transition image layout and copy buffer to image
+    transitionImageLayout(image_, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels_);
+    copyBufferToImage(stagingBuffer.getBuffer(), image_, static_cast<uint32_t>(width_), static_cast<uint32_t>(height_));
+    transitionImageLayout(image_, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels_);
+
+    // Create image view and sampler
+    createImageView(format);
+    createSampler();
   }
 
   void Texture::createImage(int width, int height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)

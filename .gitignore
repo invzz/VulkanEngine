@@ -10,6 +10,7 @@ assets/shaders/compiled/*.spv.map
 ./tools/
 profile/
 planiing/
+out/
 
 
 # MacOS Cache

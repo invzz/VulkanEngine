@@ -214,6 +214,7 @@ namespace engine {
       std::vector<uint32_t>       indices;
       std::vector<MaterialInfo>   materials;       // Materials loaded from MTL file
       std::vector<SubMesh>        subMeshes;       // Sub-meshes by material
+      std::unordered_map<int, int> meshPrimaryMaterial; // map meshIndex -> representative materialId
       std::vector<Animation>      animations;      // Animations from glTF
       std::vector<Node>           nodes;           // Scene graph nodes
       std::vector<MorphTargetSet> morphTargetSets; // Morph targets per mesh
@@ -318,6 +319,7 @@ namespace engine {
 
     std::vector<MaterialInfo>   materials_;       // Materials from MTL file
     std::vector<SubMesh>        subMeshes_;       // Sub-meshes by material
+    std::unordered_map<int, int> meshPrimaryMaterial_; // map meshIndex -> representative materialId
     std::vector<Animation>      animations_;      // Animations from glTF
     std::vector<Node>           nodes_;           // Scene graph nodes
     std::vector<MorphTargetSet> morphTargetSets_; // Morph targets

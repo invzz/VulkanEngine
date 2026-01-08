@@ -815,9 +815,15 @@ namespace engine {
   {
     const tinygltf::Mesh& mesh = model.meshes[meshIndex];
 
+    int firstMaterial = -1;
     for (size_t primIdx = 0; primIdx < mesh.primitives.size(); primIdx++)
     {
       const auto& primitive = mesh.primitives[primIdx];
+
+      if (firstMaterial < 0 && primitive.material >= 0)
+      {
+        firstMaterial = primitive.material;
+      }
 
       // Record the starting vertex offset for this primitive (for morph targets)
       auto const        primitiveVertexOffset = static_cast<uint32_t>(builder.vertices.size());
@@ -1043,6 +1049,12 @@ namespace engine {
 
         currentOffset += subMesh.indexCount;
       }
+    }
+
+    // Record a primary material per mesh (first material encountered)
+    if (firstMaterial >= 0)
+    {
+      builder.meshPrimaryMaterial[meshIndex] = firstMaterial;
     }
 
     // Rebuild indices array grouped by material

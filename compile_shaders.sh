@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 
 # Default folders
 SHADER_DIR="assets/shaders"
-OUTPUT_DIR="assets/shaders/OK"
+OUTPUT_DIR="assets/shaders/compiled"
 
 INCLUDE_ARGS=("-I" "${SHADER_DIR}" "-I" "${SHADER_DIR}/includes")
 

@@ -15,6 +15,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -438,6 +439,18 @@ namespace engine {
     }
   }
 
+  VkResult Device::submitGraphics(const VkSubmitInfo* submitInfo, VkFence fence)
+  {
+    std::scoped_lock const lock(queueSubmitMutex_);
+    return vkQueueSubmit(graphicsQueue_, 1, submitInfo, fence);
+  }
+
+  VkResult Device::present(const VkPresentInfoKHR* presentInfo)
+  {
+    std::scoped_lock const lock(queueSubmitMutex_);
+    return vkQueuePresentKHR(presentQueue_, const_cast<VkPresentInfoKHR*>(presentInfo));
+  }
+
   /**
    * @brief Creates the Vulkan surface for window presentation.
    */
@@ -461,7 +474,7 @@ namespace engine {
     if (extensionsSupported)
     {
       SwapChainSupportDetails const swapChainSupport = querySwapChainSupport(device);
-      swapChainAdequate                        = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+      swapChainAdequate                              = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
     }
 
     VkPhysicalDeviceFeatures supportedFeatures;
@@ -670,14 +683,35 @@ namespace engine {
 
   VkCommandBuffer Device::beginSingleTimeCommands()
   {
+    // Create a temporary command pool for this single-time command buffer so worker
+    // threads can allocate/record independently without contending on a shared
+    // command pool (avoids threading validation errors).
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = findPhysicalQueueFamilies().graphicsFamily;
+
+    VkCommandPool tempPool = VK_NULL_HANDLE;
+    if (vkCreateCommandPool(device_, &poolInfo, nullptr, &tempPool) != VK_SUCCESS)
+    {
+      throw engine::RuntimeException("failed to create temporary command pool for single-time commands");
+    }
+
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool        = commandPool;
+    allocInfo.commandPool        = tempPool;
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
+
+    // Remember which pool owns this command buffer so endSingleTimeCommands can
+    // free and destroy the pool when done.
+    {
+      std::scoped_lock const lock(singleCmdMutex);
+      cmdBufferToPoolMap_[commandBuffer] = tempPool;
+    }
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -697,10 +731,38 @@ namespace engine {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers    = &commandBuffer;
 
-    vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE);
+    // Submit serialized to avoid simultaneous use of the VkQueue object from
+    // different threads (fixes validation threading warnings).
+    VkResult const submitRes = submitGraphics(&submitInfo, VK_NULL_HANDLE);
+    if (submitRes != VK_SUCCESS)
+    {
+      throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
+    }
+
     vkQueueWaitIdle(graphicsQueue_);
 
-    vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
+    VkCommandPool pool = VK_NULL_HANDLE;
+    {
+      std::scoped_lock const lock(singleCmdMutex);
+      auto                   it = cmdBufferToPoolMap_.find(commandBuffer);
+      if (it != cmdBufferToPoolMap_.end())
+      {
+        pool = it->second;
+        cmdBufferToPoolMap_.erase(it);
+      }
+    }
+
+    if (pool != VK_NULL_HANDLE)
+    {
+      vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+      vkDestroyCommandPool(device_, pool, nullptr);
+    }
+    else
+    {
+      // Fallback to freeing from the shared command pool if we couldn't find
+      // an associated temporary pool (shouldn't happen normally).
+      vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
+    }
   }
 
 } // namespace engine

@@ -41,6 +41,70 @@ namespace engine {
 
     if (ImGui::Begin("Scene Objects", &visible_))
     {
+      // Process pending async model loads. If a model is ready, insert it into the
+      // scene on the main thread (entt registry must be modified from main thread).
+      if (!pendingLoads_.empty())
+      {
+        std::vector<ScenePanel::PendingModelLoad> remaining;
+        remaining.reserve(pendingLoads_.size());
+
+        for (auto& pending : pendingLoads_)
+        {
+          if (pending.cancelled)
+          {
+            // Skip cancelled entries
+            continue;
+          }
+
+          // Check readiness using ResourceManager helper
+          if (ResourceManager::isReady<engine::Model>(pending.future))
+          {
+            try
+            {
+              auto modelPtr = pending.future.get();
+              if (modelPtr)
+              {
+                // Insert into scene (main thread)
+                auto entity = scene_.createEntity();
+                scene_.getRegistry().emplace<TransformComponent>(entity);
+                scene_.getRegistry().emplace<ModelComponent>(entity, modelPtr);
+                scene_.getRegistry().emplace<NameComponent>(entity, pending.name);
+
+                auto& modelComp = scene_.getRegistry().get<ModelComponent>(entity);
+                if (modelComp.model->hasAnimations())
+                {
+                  scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
+                }
+                if (modelComp.model->hasMorphTargets())
+                {
+                  if (!scene_.getRegistry().all_of<AnimationComponent>(entity))
+                  {
+                    scene_.getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
+                  }
+                }
+
+                std::cout << "[Model] Added to scene (async): " << pending.path << "\n";
+              }
+              else
+              {
+                std::cerr << "[Model] Async load returned null model: " << pending.path << "\n";
+              }
+            }
+            catch (const std::exception& e)
+            {
+              std::cerr << "[Model] Async load failed for " << pending.path << ": " << e.what() << '\n';
+            }
+          }
+          else
+          {
+            // Not ready yet, keep it
+            remaining.emplace_back(std::move(pending));
+          }
+        }
+
+        pendingLoads_.swap(remaining);
+      }
+
       // Temporary auto-test: if AUTO_ADD_MODEL env var is set, auto-load that model once.
       static bool autoTestDone = false;
       if (!autoTestDone)
@@ -73,13 +137,20 @@ namespace engine {
                 std::string fullPath = relativePath.empty() ? (std::string(MODEL_PATH) + "/glTF/" + name + "/glTF/" + name + ".gltf") : (std::string(MODEL_PATH) + "/" + relativePath);
                 try
                 {
+                  // Start async load (do not block UI)
                   engine::ModelInsertionOptions opts;
                   opts.enableTextures     = true;
                   opts.loadMaterials      = true;
                   opts.enableMorphTargets = true;
 
-                  engine::addModelToScene(resourceManager_, scene_, fullPath, name, opts);
-                  std::cerr << "AUTO_ADD_MODEL: loaded and added model: " << fullPath << '\n';
+                  ScenePanel::PendingModelLoad pending;
+                  pending.path    = fullPath;
+                  pending.name    = name;
+                  pending.options = opts;
+                  pending.future  = resourceManager_.loadModelAsync(fullPath, opts.enableTextures, opts.loadMaterials, opts.enableMorphTargets);
+
+                  pendingLoads_.emplace_back(std::move(pending));
+                  std::cerr << "AUTO_ADD_MODEL: queued model for async load: " << fullPath << '\n';
                 }
                 catch (const std::exception& e)
                 {
@@ -104,6 +175,23 @@ namespace engine {
       // Add buttons moved into category headers (see Cameras / Lights sections below)
 
       ImGui::Separator();
+
+      // Show pending async model loads
+      if (!pendingLoads_.empty())
+      {
+        ImGui::Text("Pending loads: %zu", pendingLoads_.size());
+        for (size_t i = 0; i < pendingLoads_.size(); ++i)
+        {
+          auto& p = pendingLoads_[i];
+          ImGui::Text("%s", p.name.c_str());
+          ImGui::SameLine();
+          if (ImGui::SmallButton((std::string("Cancel##") + std::to_string(i)).c_str()))
+          {
+            p.cancelled = true;
+          }
+        }
+        ImGui::Separator();
+      }
 
       auto view = scene_.getRegistry().view<entt::entity>();
       ImGui::Text("Total: %zu", view.size());
@@ -391,6 +479,7 @@ namespace engine {
                 {
                   // Create entity and load model via ResourceManager
                   std::string fullPath = relativePath.empty() ? (std::string(MODEL_PATH) + "/glTF/" + name + "/glTF/" + name + ".gltf") : (std::string(MODEL_PATH) + "/" + relativePath);
+                  // Enqueue async model load and insert when complete (do not block UI)
                   try
                   {
                     engine::ModelInsertionOptions opts;
@@ -398,12 +487,18 @@ namespace engine {
                     opts.loadMaterials      = true;
                     opts.enableMorphTargets = true;
 
-                    engine::addModelToScene(resourceManager_, scene_, fullPath, name, opts);
+                    ScenePanel::PendingModelLoad pending;
+                    pending.path    = fullPath;
+                    pending.name    = name;
+                    pending.options = opts;
+                    pending.future  = resourceManager_.loadModelAsync(fullPath, opts.enableTextures, opts.loadMaterials, opts.enableMorphTargets);
+
+                    pendingLoads_.emplace_back(std::move(pending));
                     ImGui::CloseCurrentPopup();
                   }
                   catch (const std::exception& e)
                   {
-                    std::cerr << "Exception loading model: " << e.what() << '\n';
+                    std::cerr << "Exception starting async model load: " << e.what() << '\n';
                   }
                 }
               }

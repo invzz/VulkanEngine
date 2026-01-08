@@ -25,6 +25,9 @@ namespace engine {
     static std::shared_ptr<Texture> createWhiteTexture(Device& device);
     static std::shared_ptr<Texture> createNormalTexture(Device& device); // Flat normal (0.5, 0.5, 1.0)
 
+    // Load high-dynamic-range EXR textures as linear float RGBA
+    static std::shared_ptr<Texture> createFromEXR(Device& device, const std::string& filepath);
+
     [[nodiscard]] VkImageView           getImageView() const { return imageView_; }
     [[nodiscard]] VkSampler             getSampler() const { return sampler_; }
     [[nodiscard]] VkImage               getImage() const { return image_; }
@@ -53,6 +56,8 @@ namespace engine {
   private:
     // Private constructor for creating textures from memory
     Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);
+    // Private constructor for creating float RGBA textures (EXR loader)
+    Texture(Device& device, const float* pixels, int width, int height, VkFormat format);
 
     void createImage(int width, int height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
     void createImageView(VkFormat format);

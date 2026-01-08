@@ -7,6 +7,7 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/SceneUtils.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 
 namespace engine {
@@ -24,11 +25,22 @@ namespace engine {
     void               processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
   private:
-    Device&                   device_;
-    Scene&                    scene_;
-    AnimationSystem&          animationSystem_;
-    ResourceManager&          resourceManager_;
-    std::vector<entt::entity> toDelete_;
+    // Pending async model load data
+    struct PendingModelLoad
+    {
+      std::future<std::shared_ptr<engine::Model>> future;
+      std::string                                 path;
+      std::string                                 name;
+      engine::ModelInsertionOptions               options;
+      bool                                        cancelled = false;
+    };
+
+    Device&                       device_;
+    Scene&                        scene_;
+    AnimationSystem&              animationSystem_;
+    ResourceManager&              resourceManager_;
+    std::vector<entt::entity>     toDelete_;
+    std::vector<PendingModelLoad> pendingLoads_;
   };
 
 } // namespace engine
