@@ -19,6 +19,12 @@
 #include "Engine/Resources/Texture.hpp"
 #include "Engine/Resources/TextureManager.hpp"
 
+// Filesystem + JSON + EXR utilities for runtime lightmap atlas assembly
+#include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
+#include <tinyexr.h>
+
 // Simple SHA256 implementation for content hashing
 #include <cstdint>
 #include <cstring>
@@ -238,6 +244,138 @@ namespace engine {
       {
         std::cerr << "ResourceManager: failed loading material textures for " << path << ": " << e.what() << '\n';
       }
+    }
+
+    // After loading material textures, try to find a per-model mesh lightmap manifest
+    try
+    {
+      std::filesystem::path modelPath{path};
+      std::string           baseName = modelPath.stem().string();
+      std::string           manifestName = baseName + std::string("_mesh_lightmaps.json");
+      std::filesystem::path manifestPath = modelPath.parent_path() / manifestName;
+
+      if (std::filesystem::exists(manifestPath))
+      {
+        std::ifstream in(manifestPath);
+        nlohmann::json j;
+        in >> j;
+
+        if (j.contains("meshes") && j["meshes"].is_array())
+        {
+          // Build a per-mesh map of tiles (meshIndex -> vector of entries)
+          std::unordered_map<int, std::vector<nlohmann::json>> tilesByMesh;
+          for (const auto& entry : j["meshes"])
+          {
+            int meshIndex = entry.value("mesh", -1);
+            if (meshIndex < 0) continue;
+            tilesByMesh[meshIndex].push_back(entry);
+          }
+
+          // For each mesh that has tiles, assemble an atlas and assign to the mesh's primary material
+          for (auto& [meshIdx, tiles] : tilesByMesh)
+          {
+            // Compute atlas size: pack tiles in a reasonable grid (simple square packing)
+            int tileW = tiles[0].value("resolution", std::vector<int>{0, 0})[0];
+            int tileH = tiles[0].value("resolution", std::vector<int>{0, 0})[1];
+            int nTiles = static_cast<int>(tiles.size());
+            int atlasCols = static_cast<int>(std::ceil(std::sqrt(nTiles)));
+            int atlasRows = static_cast<int>(std::ceil(static_cast<float>(nTiles) / atlasCols));
+            int atlasW = atlasCols * tileW;
+            int atlasH = atlasRows * tileH;
+
+            // Create HDR float atlas buffer (RGBA)
+            std::vector<float> atlasPixels(static_cast<size_t>(atlasW) * static_cast<size_t>(atlasH) * 4, 0.0f);
+
+            for (int t = 0; t < nTiles; ++t)
+            {
+              int col = t % atlasCols;
+              int row = t / atlasCols;
+              int offsetX = col * tileW;
+              int offsetY = row * tileH;
+              std::filesystem::path tilePath = modelPath.parent_path() / tiles[t].value("file", std::string());
+
+              try
+              {
+                auto tex = loadTexture(tilePath.string(), false, true);
+                // Read back texture pixels from device: TODO use proper readback helper. As a shortcut, use Texture::getImageView() and a staging copy path is required.
+                // Instead, for now, load EXR directly from disk using tinyexr again to fill atlas.
+
+                const char* err = nullptr;
+                float* rgba = nullptr;
+                int w = 0, h = 0;
+                int ret = LoadEXR(&rgba, &w, &h, tilePath.string().c_str(), &err);
+                if (ret != TINYEXR_SUCCESS)
+                {
+                  if (err) { FreeEXRErrorMessage(err); }
+                  std::cerr << "ResourceManager: failed to load tile EXR " << tilePath.string() << "\n";
+                  continue;
+                }
+
+                // Copy tile into atlas
+                for (int y = 0; y < h; ++y)
+                {
+                  for (int x = 0; x < w; ++x)
+                  {
+                    int srcIdx = (y * w + x) * 3; // saved as RGB in baker
+                    int dstIdx = ((offsetY + y) * atlasW + (offsetX + x)) * 4; // atlas is RGBA
+                    atlasPixels[dstIdx + 0] = rgba[srcIdx + 0];
+                    atlasPixels[dstIdx + 1] = rgba[srcIdx + 1];
+                    atlasPixels[dstIdx + 2] = rgba[srcIdx + 2];
+                    atlasPixels[dstIdx + 3] = 1.0f;
+                  }
+                }
+
+                free(rgba);
+
+              }
+              catch (const std::exception& e)
+              {
+                std::cerr << "ResourceManager: failed to load tile " << tiles[t].value("file", std::string()) << ": " << e.what() << "\n";
+              }
+            }
+
+            // Save atlas to a temporary file in the model directory
+            std::string atlasName = baseName + "_mesh" + std::to_string(meshIdx) + "_lightmap_atlas.exr";
+            std::filesystem::path atlasPath = modelPath.parent_path() / atlasName;
+            const char* err = nullptr;
+            int ret = SaveEXR(atlasPixels.data(), atlasW, atlasH, 4, 0, atlasPath.string().c_str(), &err);
+            if (ret != TINYEXR_SUCCESS)
+            {
+              std::cerr << "ResourceManager: failed to write atlas " << atlasPath.string() << "\n";
+              if (err) { FreeEXRErrorMessage(err); }
+              continue;
+            }
+
+            // Load atlas as a float EXR texture and assign to the mesh's primary material
+            try
+            {
+              auto atlasTex = Texture::createFromEXR(device_, atlasPath.string());
+              auto& materials = model->getMaterials();
+              int primaryMat = -1;
+              primaryMat = model->getPrimaryMaterialForMesh(meshIdx);
+              if (primaryMat >= 0 && primaryMat < static_cast<int>(materials.size()))
+              {
+                materials[primaryMat].pbrMaterial.lightmap = atlasTex;
+                uint32_t const globalIndex = textureManager_->addTexture(atlasTex);
+                atlasTex->setGlobalIndex(globalIndex);
+                std::cout << "ResourceManager: assigned atlas " << atlasPath.string() << " to material " << primaryMat << " (mesh " << meshIdx << ")\n";
+              }
+              else
+              {
+                std::cerr << "ResourceManager: no primary material for mesh " << meshIdx << "\n";
+              }
+            }
+            catch (const std::exception& e)
+            {
+              std::cerr << "ResourceManager: failed to create atlas texture " << e.what() << "\n";
+            }
+          }
+        }
+      }
+    }
+    catch (const std::exception& e)
+    {
+      std::cerr << "ResourceManager: failed processing mesh lightmap manifest: " << e.what() << "\n";
     }
 
     // Check memory budget and evict if necessary

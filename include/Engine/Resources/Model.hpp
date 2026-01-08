@@ -240,6 +240,9 @@ namespace engine {
     // Draw a specific sub-mesh
     void drawSubMesh(VkCommandBuffer commandBuffer, size_t subMeshIndex) const;
 
+    // Get representative material for a mesh (returns -1 if none)
+    [[nodiscard]] int getPrimaryMaterialForMesh(int meshIndex) const;
+
     // Get materials loaded from MTL file
     [[nodiscard]] const std::vector<MaterialInfo>& getMaterials() const { return materials_; }
     std::vector<MaterialInfo>&                     getMaterials() { return materials_; }

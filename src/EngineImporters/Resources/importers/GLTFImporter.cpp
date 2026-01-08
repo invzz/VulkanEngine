@@ -1051,12 +1051,6 @@ namespace engine {
       }
     }
 
-    // Record a primary material per mesh (first material encountered)
-    if (firstMaterial >= 0)
-    {
-      builder.meshPrimaryMaterial[meshIndex] = firstMaterial;
-    }
-
     // Rebuild indices array grouped by material
     std::vector<uint32_t> groupedIndices;
     groupedIndices.reserve(builder.indices.size());
