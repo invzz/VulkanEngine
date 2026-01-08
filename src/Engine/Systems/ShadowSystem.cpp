@@ -276,6 +276,13 @@ namespace engine {
       maxLS                     = glm::max(maxLS, cornerLS);
     }
 
+    // Expand by a fixed world-space margin to make cascades conservative and stable
+    // Recommended: 1-3 meters (or a small fraction of cascade depth). This prevents
+    // shadow popping and indoor edge cases without coupling to camera visibility.
+    const float cascadeMarginMeters = 2.0f; // tuneable
+    minLS -= glm::vec3(cascadeMarginMeters);
+    maxLS += glm::vec3(cascadeMarginMeters);
+
     {
       glm::vec3 const centerLS = 0.5f * (minLS + maxLS);
       float           extentX  = maxLS.x - minLS.x;
