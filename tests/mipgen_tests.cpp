@@ -17,7 +17,9 @@ TEST(MipGen, AllInvalidProducesInvalid)
 {
     int sw = 2, sh = 2;
     std::vector<BakeTexel> src(sw*sh, make(0,0,0,0));
-    std::vector<BakeTexel> dst((sw/2)*(sh/2));
+    int dstW = std::max(1, sw/2);
+    int dstH = std::max(1, sh/2);
+    std::vector<BakeTexel> dst(dstW * dstH);
 
     generateMipLevel(src.data(), sw, sh, dst.data());
     EXPECT_EQ(dst[0].valid, 0);
@@ -30,7 +32,9 @@ TEST(MipGen, AveragesValidContributors)
     // top-left and bottom-right valid
     src[0] = make(1.0f, 0.0f, 0.0f, 1);
     src[3] = make(0.0f, 1.0f, 0.0f, 1);
-    std::vector<BakeTexel> dst((sw/2)*(sh/2));
+    int dstW = std::max(1, sw/2);
+    int dstH = std::max(1, sh/2);
+    std::vector<BakeTexel> dst(dstW * dstH);
 
     generateMipLevel(src.data(), sw, sh, dst.data());
     EXPECT_EQ(dst[0].valid, 1);
@@ -45,12 +49,16 @@ TEST(MipGen, MipChainRespectValidity)
     std::vector<BakeTexel> lvl0(sw*sh, make(0,0,0,0));
     lvl0[0] = make(2.0f, 0.0f, 0.0f, 1);
 
-    std::vector<BakeTexel> lvl1((sw/2)*(sh/2));
+    int dst1W = std::max(1, sw/2);
+    int dst1H = std::max(1, sh/2);
+    std::vector<BakeTexel> lvl1(dst1W * dst1H);
     generateMipLevel(lvl0.data(), sw, sh, lvl1.data());
     // lvl1 has valid at top-left
     EXPECT_EQ(lvl1[0].valid, 1);
 
-    std::vector<BakeTexel> lvl2((sw/4)*(sh/4));
-    generateMipLevel(lvl1.data(), sw/2, sh/2, lvl2.data());
+    int dst2W = std::max(1, dst1W/2);
+    int dst2H = std::max(1, dst1H/2);
+    std::vector<BakeTexel> lvl2(dst2W * dst2H);
+    generateMipLevel(lvl1.data(), dst1W, dst1H, lvl2.data());
     EXPECT_EQ(lvl2[0].valid, 1);
 }
