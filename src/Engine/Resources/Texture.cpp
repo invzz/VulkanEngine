@@ -192,14 +192,81 @@ namespace engine {
     return tex;
   }
 
+  // CPU-only helper: load EXR into memory, write VTEX container to disk, and optionally load the VTEX into a Texture.
+  std::shared_ptr<Texture> Texture::createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu)
+  {
+    const char* err    = nullptr;
+    int         width  = 0;
+    int         height = 0;
+    float*      rgba   = nullptr;
+
+    int ret = LoadEXR(&rgba, &width, &height, exrPath.c_str(), &err);
+    if (ret != TINYEXR_SUCCESS)
+    {
+      std::string msg = "Failed to load EXR: ";
+      if (err != nullptr)
+      {
+        msg += err;
+        FreeEXRErrorMessage(err);
+      }
+      throw std::runtime_error(msg);
+    }
+
+    if (rgba == nullptr || width <= 0 || height <= 0)
+    {
+      if (rgba) free(rgba);
+      throw std::runtime_error("Invalid EXR image data: " + exrPath);
+    }
+
+    // Write a VTEX container from the raw float pixels on CPU
+    size_t dataSize = static_cast<size_t>(sizeof(float) * 4 * width * height);
+    bool   ok       = ibl_detail::vtex::writeImageFromRaw(outVtexPath, rgba, dataSize, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1, 1);
+
+    // Free the EXR memory after writing
+    free(rgba);
+
+    if (!ok)
+    {
+      throw std::runtime_error("Failed to write VTEX from EXR: " + outVtexPath);
+    }
+
+    if (loadIntoGpu)
+    {
+      // Load back into GPU and return the Texture
+      return createFromVTEX(device, outVtexPath);
+    }
+
+    // Caller requested only file output
+    return nullptr;
+  }
+
   // Create a Texture by loading a VTEX container into a Vulkan image and adopting the handles
   std::shared_ptr<Texture> Texture::createFromVTEX(Device& device, const std::string& filepath)
   {
-    VkImage                  image   = VK_NULL_HANDLE;
-    VkDeviceMemory           memory  = VK_NULL_HANDLE;
-    VkImageView              view    = VK_NULL_HANDLE;
-    VkSampler                sampler = VK_NULL_HANDLE;
+    return createFromVTEX(device, filepath, false);
+  }
+
+  std::shared_ptr<Texture> Texture::createFromVTEX(Device& device, const std::string& filepath, bool cpuOnly)
+  {
     ibl_detail::vtex::Header header{};
+
+    if (cpuOnly)
+    {
+      if (!ibl_detail::vtex::readHeader(filepath, header))
+      {
+        throw std::runtime_error("Failed to read VTEX header: " + filepath);
+      }
+      // Create a Texture instance that only contains metadata (no GPU resources)
+      std::shared_ptr<Texture> tex =
+              std::shared_ptr<Texture>(new Texture(device, static_cast<int>(header.width), static_cast<int>(header.height), header.mipLevels, static_cast<VkFormat>(header.vkFormat), true));
+      std::cout << "[Texture] (cpu-only) Read VTEX: " << filepath << " (" << header.width << "x" << header.height << ")" << '\n';
+      return tex;
+    }
+
+    VkImage        image   = VK_NULL_HANDLE;
+    VkDeviceMemory memory  = VK_NULL_HANDLE;
+    VkImageView    view    = VK_NULL_HANDLE;
+    VkSampler      sampler = VK_NULL_HANDLE;
 
     // Use VTEX loader to populate image/memory/view/sampler
     bool ok = ibl_detail::vtex::loadImage(device, filepath, image, memory, view, sampler, VK_IMAGE_VIEW_TYPE_2D, 0, &header);
@@ -220,6 +287,16 @@ namespace engine {
   {
     // Constructor adopts externally-created Vulkan handles; nothing else to do
     (void)format; // format is metadata here; image/view already created with correct format
+  }
+
+  // CPU-only constructor: does not create GPU resources, used for test-only metadata verification
+  Texture::Texture(Device& device, int width, int height, uint32_t mipLevels, VkFormat format, bool cpuOnly) : device_{device}, width_{width}, height_{height}, mipLevels_{mipLevels}, cpuOnly_{cpuOnly}
+  {
+    (void)format;
+    image_       = VK_NULL_HANDLE;
+    imageMemory_ = VK_NULL_HANDLE;
+    imageView_   = VK_NULL_HANDLE;
+    sampler_     = VK_NULL_HANDLE;
   }
 
   // Private constructor for creating textures from float RGBA memory

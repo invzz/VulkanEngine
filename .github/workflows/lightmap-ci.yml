@@ -41,6 +41,11 @@ jobs:
       - name: Build tools & tests
         run: xmake build -v EXR2VTEX LightmapTests
 
+      - name: Smoke-check Vulkan on runner
+        run: |
+          chmod +x .github/scripts/check_vulkan.sh
+          ./.github/scripts/check_vulkan.sh
+
       - name: Run hardware test (EXR2VTEX integration)
         env:
           RUN_HARDWARE_TESTS: "1"

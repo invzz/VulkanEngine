@@ -136,6 +136,52 @@ namespace engine::ibl_detail::vtex {
     return static_cast<bool>(out);
   }
 
+  bool writeImageFromRaw(const std::string& filePath, const void* data, size_t dataSize, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers)
+  {
+    if (data == nullptr) return false;
+
+    uint32_t const bpp = bytesPerPixelFor(format);
+
+    // Validate size roughly matches expectations
+    size_t expected = 0;
+    for (uint32_t mip = 0; mip < mipLevels; ++mip)
+    {
+      uint32_t const w = (std::max)(1u, width >> mip);
+      uint32_t const h = (std::max)(1u, height >> mip);
+      expected += static_cast<size_t>(w) * static_cast<size_t>(h) * bpp * layers;
+    }
+
+    if (dataSize < expected) return false;
+
+    Header header;
+    header.vkFormat   = static_cast<uint32_t>(format);
+    header.width      = width;
+    header.height     = height;
+    header.mipLevels  = mipLevels;
+    header.layers     = layers;
+    header.bytesPerPx = bpp;
+
+    std::filesystem::path outPath(filePath);
+    if (outPath.has_parent_path())
+    {
+      std::error_code ec;
+      std::filesystem::create_directories(outPath.parent_path(), ec);
+      if (ec)
+      {
+        return false;
+      }
+    }
+
+    std::ofstream out(filePath, std::ios::binary);
+    if (!out) return false;
+
+    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    out.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(expected));
+    out.close();
+
+    return static_cast<bool>(out);
+  }
+
   bool readHeader(const std::string& filePath, Header& outHeader)
   {
     Header                 header{};

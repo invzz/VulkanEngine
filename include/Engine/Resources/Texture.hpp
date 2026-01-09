@@ -28,6 +28,10 @@ namespace engine {
     // Load high-dynamic-range EXR textures as linear float RGBA
     static std::shared_ptr<Texture> createFromEXR(Device& device, const std::string& filepath);
 
+    // Create a VTEX from an EXR on the CPU (writes VTEX container to disk). If loadIntoGpu is true
+    // the resulting VTEX will be loaded into a Texture and returned; otherwise returns nullptr.
+    static std::shared_ptr<Texture> createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu = false);
+
     // Load engine VTEX container produced by baking pipeline (fast GPU-ready container)
     static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath);
 
@@ -52,6 +56,10 @@ namespace engine {
     void                   setGlobalIndex(uint32_t index) { globalIndex_ = index; }
     [[nodiscard]] uint32_t getGlobalIndex() const { return globalIndex_; }
 
+    // CPU-only load path: read VTEX header and create a Texture-like object without allocating GPU resources.
+    // Used by unit tests to validate metadata without requiring a Vulkan device.
+    static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath, bool cpuOnly);
+
     /**
      * @brief Get approximate memory size of this texture
      * @return Memory size in bytes (includes mipmaps)
@@ -66,6 +74,8 @@ namespace engine {
     Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);
     // Private constructor for creating float RGBA textures (EXR loader)
     Texture(Device& device, const float* pixels, int width, int height, VkFormat format);
+    // Private constructor for cpu-only metadata-only Texture (no GPU resources)
+    Texture(Device& device, int width, int height, uint32_t mipLevels, VkFormat format, bool cpuOnly);
 
     void createImage(int width, int height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
     void createImageView(VkFormat format);
@@ -85,6 +95,9 @@ namespace engine {
     int      height_      = 0;
     uint32_t mipLevels_   = 1;
     uint32_t globalIndex_ = 0;
+
+    // True when this Texture instance was created in CPU-only mode and does not own Vulkan resources
+    bool cpuOnly_ = false;
   };
 
 } // namespace engine

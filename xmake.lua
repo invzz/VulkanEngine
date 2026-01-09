@@ -117,6 +117,21 @@ target("Cube")
     add_deps("CubeUI")
     add_deps("Engine")
     add_deps("EngineImporters")
+
+    -- xatlas third-party static target (submodule at third_party/xatlas)
+    target("xatlas")
+        set_kind("static")
+        add_files("third_party/xatlas/source/xatlas/xatlas.cpp")
+        add_includedirs("third_party/xatlas/source/xatlas", {public = true})
+
+    -- UV unwrap library (API only - no image allocation or baking here)
+    target("UVUnwrap")
+        set_kind("static")
+        add_files("src/tools/UVUnwrap/**.cpp")
+        add_includedirs("include", {public = true})
+        add_includedirs("include/Tools/UVUnwrap", {public = true})
+        add_deps("xatlas")
+
     add_deps("EngineSceneIO")
 
     if has_config("deadcode") then
@@ -310,10 +325,14 @@ target("EngineSceneIO")
 -- Unit tests for scene lightmap manifest parsing
 target("LightmapTests")
     set_kind("binary")
-    add_files("tests/lightmap_manifest_tests.cpp", "tests/scene_binding_tests.cpp", "tests/lightmap_integration_tests.cpp", "tests/lightmap_exr_tests.cpp", "tests/lightmap_vtex_tests.cpp", "tests/lightmap_vtex_pixel_tests.cpp", "tests/lightmap_vtex_mip_layer_tests.cpp", "tests/lightmap_exr2vtex_integration_tests.cpp")
+    add_files("tests/*.cpp")
     add_packages("gtest", "nlohmann_json", "entt", "glm", "glfw", "vulkan", "tinyexr")
     add_links("gtest_main")
     add_deps("EngineSceneIO", "Engine")
+    -- Depend on xatlas so xatlas-based tests/linking succeed
+    add_deps("xatlas")
+    -- Depend on the UVUnwrap library (stub) so tests can link against the API
+    add_deps("UVUnwrap")
 
 -- Utility target to (re)compile shaders on demand.
 target("Shaders")

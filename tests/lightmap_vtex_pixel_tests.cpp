@@ -67,13 +67,10 @@ TEST(LightmapVTEXPixel, EXRToVTEXRoundtrip)
     header.layers     = 1;
     header.bytesPerPx = ibl_detail::vtex::bytesPerPixelFor(VK_FORMAT_R32G32B32A32_SFLOAT);
 
-    std::ofstream out(outR32, std::ios::binary);
-    ASSERT_TRUE(out.good());
-    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
-    out.write(reinterpret_cast<const char*>(exrPixels.data()), static_cast<std::streamsize>(exrPixels.size() * sizeof(float)));
-    out.close();
+    ASSERT_TRUE(
+            ibl_detail::vtex::writeImageFromRaw(outR32, exrPixels.data(), exrPixels.size() * sizeof(float), VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(w), static_cast<uint32_t>(h), 1, 1));
 
-    // Read the VTEX file directly and inspect the first pixel without invoking GPU loader.
+    // Read the VTEX file header and inspect the first pixel without invoking GPU loader.
     std::ifstream in(outR32, std::ios::binary);
     ASSERT_TRUE(in.good());
     ibl_detail::vtex::Header fileHeader{};
