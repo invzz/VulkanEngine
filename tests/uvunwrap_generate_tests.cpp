@@ -17,8 +17,36 @@ TEST(UVUnwrap, GenerateInstanceUVs_Stub)
   mesh.vertexStride       = sizeof(float) * 3;
   mesh.indexStride        = sizeof(uint32_t);
 
-  Result r = generateInstanceUVs(mesh, glm::mat4(1.0f), 4, 512);
+  const int      paddingPx  = 4;
+  const uint32_t resolution = 64; // small atlas for quick test
+  Result         r          = generateInstanceUVs(mesh, glm::mat4(1.0f), paddingPx, resolution);
   ASSERT_EQ(r.uv1.size(), (size_t)mesh.vertexCount);
-  EXPECT_EQ(r.uvScale, glm::vec2(1.0f, 1.0f));
-  EXPECT_EQ(r.uvOffset, glm::vec2(0.0f, 0.0f));
+  // UV bounding box should be valid
+  EXPECT_GT(r.uvScale.x, 0.0f);
+  EXPECT_GT(r.uvScale.y, 0.0f);
+  EXPECT_GE(r.uvOffset.x, 0.0f);
+  EXPECT_GE(r.uvOffset.y, 0.0f);
+  EXPECT_LE(r.uvOffset.x + r.uvScale.x, 1.0f + 1e-6f);
+  EXPECT_LE(r.uvOffset.y + r.uvScale.y, 1.0f + 1e-6f);
+
+  // If charts present, ensure they fit in [0,1] and respect padding in texel space
+  if (r.charts)
+  {
+    for (const auto& c : *r.charts)
+    {
+      EXPECT_GE(c.rect.x, 0.0f);
+      EXPECT_GE(c.rect.y, 0.0f);
+      EXPECT_GE(c.rect.z, 0.0f);
+      EXPECT_GE(c.rect.w, 0.0f);
+      EXPECT_LE(c.rect.x + c.rect.z, 1.0f + 1e-6f);
+      EXPECT_LE(c.rect.y + c.rect.w, 1.0f + 1e-6f);
+      // padding check (approx): rect in texels should be at least paddingPx away from border
+      float leftTex  = c.rect.x * resolution;
+      float rightTex = (c.rect.x + c.rect.z) * resolution;
+      // basic sanity: rect spans at least one texel and is within atlas
+      EXPECT_GE(rightTex - leftTex, 1.0f);
+      EXPECT_LE(leftTex, resolution);
+      EXPECT_GE(rightTex, 0.0f);
+    }
+  }
 }

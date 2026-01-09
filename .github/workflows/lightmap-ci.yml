@@ -30,6 +30,37 @@ jobs:
           name: lightmap-tests-logs
           path: build/linux/x86_64/release/*.log || true
 
+  cli-smoke:
+    name: UVUnwrap CLI smoke test
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system deps (minimal)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libvulkan-dev vulkan-tools
+
+      - name: Build CLI & tests
+        run: xmake build -v UVUnwrapCLI LightmapTests
+
+      - name: List tools directory
+        run: |
+          ls -la tools || true
+          if [ -f tools/UVUnwrapCLI ]; then echo "Found tools/UVUnwrapCLI"; else echo "tools/UVUnwrapCLI missing"; ls -la build/linux/x86_64/release || true; exit 1; fi
+
+      - name: Run CLI integration test
+        run: ./build/linux/x86_64/release/LightmapTests --gtest_filter=UVUnwrapCLI.GeneratesManifestFromInput --gtest_color=yes
+
+      - name: Upload CLI test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uvunwarp-cli-logs
+          path: build/linux/x86_64/release/*.log || true
+
   gpu-integration:
     name: Hardware-dependent integration tests
     runs-on: [self-hosted, linux, gpu]
