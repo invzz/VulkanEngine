@@ -12,9 +12,9 @@ namespace engine::lightmap {
   // and receives the average radiance of its valid neighbors.
   static inline void dilateBakeTexels(const BakeTexel* src, BakeTexel* dst, int width, int height, int iterations = 1)
   {
-    if (width <= 0 || height <= 0 || iterations <= 0)
+    // Defensive guards to avoid undefined behaviour (UB) in optimized builds
+    if (src == nullptr || width <= 0 || height <= 0 || iterations <= 0)
     {
-      if (dst != src && dst != nullptr && src != nullptr) std::copy(src, src + (size_t)width * height, dst);
       return;
     }
 
