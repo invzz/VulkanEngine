@@ -4,7 +4,7 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 
 ---
 
-## Sprint 1 — Scene export & importer (In-Progress) 🔧 ✅
+## Sprint 1 — Scene export & importer (Completed) 🔧 ✅
 - Goal: Produce an authoritative `scene.json` (authoring) and a generated `scene_lightmaps.json` (bake bindings). Implement a `SceneExporter` and `SceneLoader` + runtime ingestion.
 - Estimated effort: 3–7 days
 - Deliverables:
@@ -29,12 +29,15 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 
 ---
 
-## Sprint 2 — UV1 generation & instancing ✳️
+## Sprint 2 — UV1 generation & instancing ✳️ (Completed) ✅
+- Status: Completed 2026-01-09
+- Summary: Integrated `xatlas`, implemented the `UVUnwrap` API, added `UVUnwrapCLI` with an integration test, and added a CI smoke-check that builds and verifies the CLI.
 - Goal: Generate unique per-instance UV1 (lightmap UVs) without changing GLTF files. Integrate `xatlas` and provide packing utilities.
 - Estimated effort: 1–2 weeks
 - Deliverables:
   - `third_party/xatlas` integration + build target
   - `src/tools/UVUnwrap/*` utilities (per-instance mesh cloning, chart generation, atlas packing)
+  - `tools/UVUnwrapCLI` binary and integration test
   - Tests and validation tools (overlap checks, padding verification)
 - Subtasks:
   1. Add `xatlas` to project (submodule or vendored third_party), add `xmake.lua` target and build rules.
@@ -47,7 +50,8 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 
 ---
 
-## Sprint 3 — Dilation & Mip Generation (MANDATORY) 🧽
+## Sprint 3 — Dilation & Mip Generation (MANDATORY) 🧽 (In-Progress)
+- Started: 2026-01-09
 - Goal: Implement mandatory validity mask, seam-aware dilation and correct mip generation (average only valid texels).
 - Estimated effort: 1–2 weeks
 - Deliverables:
@@ -137,8 +141,4 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 
 ---
 
-If you want, I can now:
-- start implementing Sprint 1 subtasks (schema + exporter prototype), or
-- begin Sprint 3 work by adding the validity-mask to the baker (critical / mandatory).
-
-Which should I start now?
+Planned next step: Begin **Sprint 3** — implement the per-texel validity mask, seam-aware dilation, and CPU mip generation (reference implementation + tests). If you'd prefer I switch to Sprint 1 (scene exporter/schema) instead, say so and I'll pivot.
