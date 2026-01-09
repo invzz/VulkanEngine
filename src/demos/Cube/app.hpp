@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CUBE_APP_HPP
+#define CUBE_APP_HPP
 
 #include <glm/glm.hpp>
 #include <glm/vec2.hpp>
@@ -11,15 +12,14 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/SceneSerializer.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
+#include "EngineSceneIO/Scene/SceneSerializer.hpp"
 
 namespace engine {
 
@@ -28,7 +28,7 @@ namespace engine {
   class CameraSystem;
   class InputSystem;
   class ObjectSelectionSystem;
-  class MeshRenderSystem;
+  class ModelRenderSystem;
   class LightSystem;
   class RenderContext;
   class ShadowSystem;
@@ -40,6 +40,7 @@ namespace engine {
   class IBLSystem;
   class ImGuiManager;
   class RenderGraph;
+  class GridRenderSystem;
 
   struct GameLoopState
   {
@@ -48,14 +49,16 @@ namespace engine {
     CameraSystem&          cameraSystem;
     AnimationSystem&       animationSystem;
     LODSystem&             lodSystem;
-    MeshRenderSystem&      meshRenderSystem;
+    ModelRenderSystem&     modelRenderSystem;
     LightSystem&           lightSystem;
     ShadowSystem&          shadowSystem;
     SkyboxRenderSystem&    skyboxRenderSystem;
+    GridRenderSystem&      gridRenderSystem;
     DustRenderSystem&      dustRenderSystem;
     RenderContext&         renderContext;
     UIManager&             uiManager;
     Skybox*                skybox;
+    bool                   showGrid;
     SkyboxSettings&        skySettings;
     DustSettings&          dustSettings;
   };
@@ -82,14 +85,19 @@ namespace engine {
     void setupUI();
     void setupRenderGraph();
 
+    GameLoopState makeGameLoopState();
+
     void update(float frameTime);
     void render(float frameTime);
 
-    void updatePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void computePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
-    void renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
-    void uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
+    void        updatePhase(FrameInfo& frameInfo, GameLoopState& state);
+    static void computePhase(FrameInfo& frameInfo, GameLoopState& state);
+    void        shadowPhase(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderScenePhase(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderSkyPass(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderGeometryPass(FrameInfo& frameInfo, GameLoopState& state);
+    static void renderDebugPass(FrameInfo& frameInfo, GameLoopState& state);
+    void        uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
 
     Window          window{width(), height(), "Engine App"};
     Device          device{window};
@@ -118,21 +126,26 @@ namespace engine {
     std::unique_ptr<IBLSystem>             iblSystem;
 
     // Render Systems
-    std::unique_ptr<SkyboxRenderSystem>   skyboxRenderSystem;
-    std::unique_ptr<DustRenderSystem>     dustRenderSystem;
-    std::unique_ptr<MeshRenderSystem>     meshRenderSystem;
-    std::unique_ptr<LightSystem>          lightSystem;
-    std::unique_ptr<PostProcessingSystem> postProcessingSystem;
+    std::unique_ptr<SkyboxRenderSystem>     skyboxRenderSystem;
+    std::unique_ptr<GridRenderSystem>       gridRenderSystem;
+    std::unique_ptr<DustRenderSystem>       dustRenderSystem;
+    std::unique_ptr<ModelRenderSystem>      modelRenderSystem;
+    std::unique_ptr<LightSystem>            lightSystem;
+    std::unique_ptr<DeferredLightingSystem> deferredLightingSystem;
+    std::unique_ptr<PostProcessingSystem>   postProcessingSystem;
 
     // Scene Resources
     std::unique_ptr<Skybox> skybox;
     SkyboxSettings          skySettings;
     DustSettings            dustSettings;
     FogSettings             fogSettings;
+    HZBSettings             hzbSettings;
 
-    float     timeOfDay{0.0f};
-    float     daySpeed{0.1f};
-    glm::vec4 lastSunDirection{0.0f};
+    // View toggles
+    bool showSkybox = false;
+    bool showGrid   = true;
+
+    uint64_t iblGenerationCounter = 0;
 
     // UI
     std::unique_ptr<ImGuiManager> imguiManager;
@@ -142,6 +155,18 @@ namespace engine {
     std::unique_ptr<RenderGraph> renderGraph;
 
     // State
+    std::unique_ptr<DescriptorPool>      gbufferPool;
+    std::unique_ptr<DescriptorSetLayout> gbufferSetLayout;
+    std::vector<VkDescriptorSet>         gbufferDescriptorSets;
+
+    std::unique_ptr<DescriptorPool>      deferredIblPool;
+    std::unique_ptr<DescriptorSetLayout> deferredIblSetLayout;
+    std::vector<VkDescriptorSet>         deferredIblDescriptorSets;
+
+    std::unique_ptr<DescriptorPool>      deferredShadowPool;
+    std::unique_ptr<DescriptorSetLayout> deferredShadowSetLayout;
+    std::vector<VkDescriptorSet>         deferredShadowDescriptorSets;
+
     std::unique_ptr<DescriptorPool>      postProcessPool;
     std::unique_ptr<DescriptorSetLayout> postProcessSetLayout;
     std::vector<VkDescriptorSet>         postProcessDescriptorSets;
@@ -151,3 +176,5 @@ namespace engine {
     entt::entity selectedEntity   = entt::null;
   };
 } // namespace engine
+
+#endif // CUBE_APP_HPP

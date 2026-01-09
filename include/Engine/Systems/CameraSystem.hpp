@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -18,13 +19,13 @@ namespace engine {
     CameraSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
     ~CameraSystem();
 
-    void update(FrameInfo& frameInfo, float aspectRatio) const;
+    static void update(FrameInfo& frameInfo, float aspectRatio);
     void render(FrameInfo& frameInfo) const;
 
   private:
-    void updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio) const;
-    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
-    void createPipeline(VkRenderPass renderPass);
+    static void updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio);
+    void        createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+    void        createPipeline(VkRenderPass renderPass);
 
     Device&                   device;
     VkPipelineLayout          pipelineLayout;
@@ -32,3 +33,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP

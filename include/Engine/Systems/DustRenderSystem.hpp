@@ -1,10 +1,10 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_DUSTRENDERSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_DUSTRENDERSYSTEM_HPP
 
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
 #include <memory>
-#include <vector>
 
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/Device.hpp"
@@ -49,3 +49,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_DUSTRENDERSYSTEM_HPP

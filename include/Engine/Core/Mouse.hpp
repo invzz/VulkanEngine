@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
+
 #include <GLFW/glfw3.h>
 
 #include <utility>
@@ -12,17 +14,17 @@ namespace engine {
     explicit Mouse(Window& window) : window{window} {}
     ~Mouse() = default;
 
-    std::pair<double, double> getCursorPosition() const;
+    [[nodiscard]] std::pair<double, double> getCursorPosition() const;
 
     void lookAround(float deltaTime, struct TransformComponent& transform);
 
     void reset();
 
   private:
-    void        lockCursor();
-    void        unlockCursor();
-    void        recenterCursor();
-    GLFWwindow* getGLFWwindow() const { return window.getGLFWwindow(); }
+    void                      lockCursor();
+    void                      unlockCursor();
+    void                      recenterCursor();
+    [[nodiscard]] GLFWwindow* getGLFWwindow() const { return window.getGLFWwindow(); }
 
     Window& window;
     float   lookSpeed         = 1.5f;           // scalar multiplier for look sensitivity
@@ -33,3 +35,5 @@ namespace engine {
     bool    cursorLocked_     = false;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP

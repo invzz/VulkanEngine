@@ -1,28 +1,58 @@
 #include "Engine/Systems/LightSystem.hpp"
 
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-
-// Ensure GLM uses radians for all angle measurements
-#define GLM_FORCE_RADIANS
-// Ensure depth range is [0, 1] for Vulkan
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLFW/glfw3.h>
-
-#include <array>
-#include <cmath>
-#include <glm/common.hpp>
-#include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
-#include <iostream>
-#include <stdexcept>
-
-#include "Engine/Systems/LightSystem.hpp"
+#include "entt/entity/fwd.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float4.hpp"
+#include "glm/trigonometric.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
+  namespace {
+    void updateTargetLockedLights(entt::registry& registry)
+    {
+      {
+        auto dirView = registry.view<DirectionalLightComponent, TransformComponent>();
+        for (auto entity : dirView)
+        {
+          auto& dirLight  = dirView.get<DirectionalLightComponent>(entity);
+          auto& transform = dirView.get<TransformComponent>(entity);
+          if (dirLight.useTargetPoint)
+          {
+            transform.lookAt(dirLight.targetPoint);
+          }
+        }
+      }
+
+      {
+        auto spotView = registry.view<SpotLightComponent, TransformComponent>();
+        for (auto entity : spotView)
+        {
+          auto& spotLight = spotView.get<SpotLightComponent>(entity);
+          auto& transform = spotView.get<TransformComponent>(entity);
+          if (spotLight.useTargetPoint)
+          {
+            transform.lookAt(spotLight.targetPoint);
+          }
+        }
+      }
+    }
+  } // namespace
+
   struct PointLightPushConstants
   {
     /* data */
@@ -43,7 +73,7 @@ namespace engine {
 
   void LightSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
   {
-    VkPushConstantRange pushConstantRange{
+    const VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset     = 0,
             .size       = sizeof(PointLightPushConstants),
@@ -51,7 +81,7 @@ namespace engine {
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
 
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{
+    const VkPipelineLayoutCreateInfo pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount         = static_cast<uint32_t>(descriptorSetLayouts.size()),
             .pSetLayouts            = descriptorSetLayouts.data(),
@@ -80,7 +110,7 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.renderPass     = renderPass;
     pipelineConfig.pipelineLayout = pipelineLayout;
-    pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/point_light.vert.spv", SHADER_PATH "/point_light.frag.spv", pipelineConfig);
+    pipeline                      = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(point_light.vert.spv)", std::string(SHADER_PATH) + R"(point_light.frag.spv)", pipelineConfig);
   }
 
   void LightSystem::render(FrameInfo& frameInfo)
@@ -88,6 +118,8 @@ namespace engine {
     pipeline->bind(frameInfo.commandBuffer);
 
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
+
+    constexpr float kPointLightDebugRadiusScale = 0.15f;
 
     auto view = frameInfo.scene->getRegistry().view<PointLightComponent, TransformComponent>();
     for (auto entity : view)
@@ -97,28 +129,16 @@ namespace engine {
       PointLightPushConstants push{};
       push.position = glm::vec4(transform.translation, 1.f);
       push.color    = glm::vec4(pointLight.color, pointLight.intensity);
-      push.radius   = transform.scale.x;
+      push.radius   = transform.scale.x * kPointLightDebugRadiusScale;
 
-      vkCmdPushConstants(frameInfo.commandBuffer,
-                         pipelineLayout,
-                         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                         0,
-                         sizeof(PointLightPushConstants),
-                         &push);
+      vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PointLightPushConstants), &push);
       // inefficient to draw a quad for each light, but okay for demo purposes
       vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
     }
 
     // Render directional lights as arrows
     directionalPipeline->bind(frameInfo.commandBuffer);
-    vkCmdBindDescriptorSets(frameInfo.commandBuffer,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            directionalPipelineLayout,
-                            0,
-                            1,
-                            &frameInfo.globalDescriptorSet,
-                            0,
-                            nullptr);
+    vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, directionalPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
     auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
     for (auto entity : dirView)
@@ -126,8 +146,8 @@ namespace engine {
       auto [dirLight, transform] = dirView.get<DirectionalLightComponent, TransformComponent>(entity);
 
       // Create a model matrix that orients the arrow in the light direction
-      glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, transform.translation);
+      auto modelMatrix = glm::mat4(1.0f);
+      modelMatrix      = glm::translate(modelMatrix, transform.translation);
 
       // Apply rotation to orient arrow
       modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -158,8 +178,8 @@ namespace engine {
       auto [spotLight, transform] = spotView.get<SpotLightComponent, TransformComponent>(entity);
 
       // Create a model matrix that positions and orients the cone
-      glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, transform.translation);
+      auto modelMatrix = glm::mat4(1.0f);
+      modelMatrix      = glm::translate(modelMatrix, transform.translation);
 
       // Apply rotation to orient cone
       modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -209,6 +229,11 @@ namespace engine {
     }
   }
 
+  void LightSystem::updateAllTargetLockedLights(Scene& scene)
+  {
+    updateTargetLockedLights(scene.getRegistry());
+  }
+
   void LightSystem::update(FrameInfo& frameInfo, GlobalUbo& ubo) const
   {
     ubo.pointLightCount       = 0;
@@ -219,15 +244,13 @@ namespace engine {
 
     auto& registry = frameInfo.scene->getRegistry();
 
+    // Keep target-locked lights oriented correctly before any other logic.
+    updateTargetLockedLights(registry);
+
     // Process point lights
     auto pointView = registry.view<TransformComponent, PointLightComponent>();
-    for (auto entity : pointView)
+    for ([[maybe_unused]] auto entity : pointView)
     {
-      auto [transform, pointLight] = pointView.get<TransformComponent, PointLightComponent>(entity);
-
-      assert(ubo.pointLightCount < maxLightCount && "Exceeded maximum point light count!");
-      ubo.pointLights[ubo.pointLightCount].position = glm::vec4(transform.translation, 1.f);
-      ubo.pointLights[ubo.pointLightCount].color    = glm::vec4(pointLight.color, pointLight.intensity);
       ubo.pointLightCount++;
     }
 
@@ -236,18 +259,6 @@ namespace engine {
     for (auto entity : dirView)
     {
       auto [transform, dirLight] = dirView.get<TransformComponent, DirectionalLightComponent>(entity);
-
-      assert(ubo.directionalLightCount < maxLightCount && "Exceeded maximum directional light count!");
-
-      // Update rotation to look at target if enabled
-      if (dirLight.useTargetPoint)
-      {
-        transform.lookAt(dirLight.targetPoint);
-      }
-
-      glm::vec3 direction                                        = transform.getForwardDir();
-      ubo.directionalLights[ubo.directionalLightCount].direction = glm::vec4(glm::normalize(direction), 0.f);
-      ubo.directionalLights[ubo.directionalLightCount].color     = glm::vec4(dirLight.color, dirLight.intensity);
       ubo.directionalLightCount++;
     }
 
@@ -256,24 +267,6 @@ namespace engine {
     for (auto entity : spotView)
     {
       auto [transform, spotLight] = spotView.get<TransformComponent, SpotLightComponent>(entity);
-
-      assert(ubo.spotLightCount < maxLightCount && "Exceeded maximum spot light count!");
-
-      // Update rotation to look at target if enabled
-      if (spotLight.useTargetPoint)
-      {
-        transform.lookAt(spotLight.targetPoint);
-      }
-
-      glm::vec3 direction = transform.getForwardDir();
-
-      ubo.spotLights[ubo.spotLightCount].position       = glm::vec4(transform.translation, 1.f);
-      ubo.spotLights[ubo.spotLightCount].direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(spotLight.innerCutoffAngle)));
-      ubo.spotLights[ubo.spotLightCount].color          = glm::vec4(spotLight.color, spotLight.intensity);
-      ubo.spotLights[ubo.spotLightCount].outerCutoff    = glm::cos(glm::radians(spotLight.outerCutoffAngle));
-      ubo.spotLights[ubo.spotLightCount].constantAtten  = spotLight.constantAttenuation;
-      ubo.spotLights[ubo.spotLightCount].linearAtten    = spotLight.linearAttenuation;
-      ubo.spotLights[ubo.spotLightCount].quadraticAtten = spotLight.quadraticAttenuation;
       ubo.spotLightCount++;
     }
   }
@@ -313,8 +306,7 @@ namespace engine {
     pipelineConfig.renderPass                 = renderPass;
     pipelineConfig.pipelineLayout             = directionalPipelineLayout;
     pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    directionalPipeline =
-            std::make_unique<Pipeline>(device, SHADER_PATH "/directional_light.vert.spv", SHADER_PATH "/directional_light.frag.spv", pipelineConfig);
+    directionalPipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(directional_light.vert.spv)", std::string(SHADER_PATH) + R"(directional_light.frag.spv)", pipelineConfig);
   }
 
   void LightSystem::createSpotLightPipelineLayout(VkDescriptorSetLayout globalSetLayout)

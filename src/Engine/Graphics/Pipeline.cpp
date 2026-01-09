@@ -1,14 +1,19 @@
 #include "Engine/Graphics/Pipeline.hpp"
 
+#include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/Model.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -17,20 +22,14 @@ namespace engine {
   {
     createGraphicsPipeline(vertFilePath, fragFilePath, configInfo);
     std::cout << "[" << GREEN << "Pipeline" << RESET << "] vert: " << BLUE << std::filesystem::path(vertFilePath).filename().string() << " frag: " << BLUE
-              << std::filesystem::path(fragFilePath).filename().string() << RESET << std::endl;
+              << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
   }
 
-  Pipeline::Pipeline(Device&                   device,
-                     const std::string&        taskFilePath,
-                     const std::string&        meshFilePath,
-                     const std::string&        fragFilePath,
-                     const PipelineConfigInfo& configInfo)
-      : device(device)
+  Pipeline::Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device)
   {
     createMeshPipeline(taskFilePath, meshFilePath, fragFilePath, configInfo);
     std::cout << "[" << GREEN << "Pipeline" << RESET << "] task: " << BLUE << std::filesystem::path(taskFilePath).filename().string() << " mesh: " << BLUE
-              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string()
-              << RESET << std::endl;
+              << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
   }
 
   std::vector<char> Pipeline::readFile(const std::string& filePath)
@@ -151,12 +150,10 @@ namespace engine {
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
   }
 
-  void Pipeline::createMeshPipeline(const std::string&        taskFilePath,
-                                    const std::string&        meshFilePath,
-                                    const std::string&        fragFilePath,
-                                    const PipelineConfigInfo& configInfo)
+  void Pipeline::createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo)
   {
-    assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in configInfo");
+    assert(configInfo.pipelineLayout != VK_NULL_HANDLE && "Cannot create graphics pipeline: no pipeline layout provided in "
+                                                          "configInfo");
     assert(configInfo.renderPass != VK_NULL_HANDLE && "Cannot create graphics pipeline: no render pass provided in configInfo");
 
     auto taskShaderCode = readFile(taskFilePath);
@@ -194,15 +191,17 @@ namespace engine {
             },
     };
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{
+    VkPipelineVertexInputStateCreateInfo const vertexInputInfo{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
     };
 
-    VkGraphicsPipelineCreateInfo pipelineInfo{
-            .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-            .stageCount          = 3,
-            .pStages             = shaderStages,
-            .pVertexInputState   = &vertexInputInfo, // Ignored by mesh shaders but required by validation layers sometimes? No, should be null or empty.
+    VkGraphicsPipelineCreateInfo const pipelineInfo{
+            .sType             = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount        = 3,
+            .pStages           = shaderStages,
+            .pVertexInputState = &vertexInputInfo, // Ignored by mesh shaders but required by
+                                                   // validation layers sometimes? No, should be null
+                                                   // or empty.
             .pInputAssemblyState = &configInfo.inputAssemblyInfo,
             .pViewportState      = &configInfo.viewportInfo,
             .pRasterizationState = &configInfo.rasterizationInfo,
@@ -259,7 +258,7 @@ namespace engine {
     auto& bindingDescriptions   = configInfo.bindingDescriptions;
     auto& attributeDescriptions = configInfo.attributeDescriptions;
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo{
+    VkPipelineVertexInputStateCreateInfo const vertexInputInfo{
             .sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .vertexBindingDescriptionCount   = static_cast<uint32_t>(bindingDescriptions.size()),
             .pVertexBindingDescriptions      = bindingDescriptions.data(),
@@ -267,7 +266,7 @@ namespace engine {
             .pVertexAttributeDescriptions    = attributeDescriptions.data(),
     };
 
-    if (VkGraphicsPipelineCreateInfo pipelineInfo{
+    if (VkGraphicsPipelineCreateInfo const pipelineInfo{
                 .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
                 .stageCount          = 2,
                 .pStages             = shaderStages,

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTUREMANAGER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTUREMANAGER_HPP
 
 #include <memory>
 #include <unordered_map>
@@ -22,10 +23,10 @@ namespace engine {
     TextureManager& operator=(const TextureManager&) = delete;
 
     // Returns the global index of the texture
-    uint32_t addTexture(std::shared_ptr<Texture> texture);
+    uint32_t addTexture(const std::shared_ptr<Texture>& texture);
 
-    VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout->getDescriptorSetLayout(); }
-    VkDescriptorSet       getDescriptorSet() const { return descriptorSet; }
+    [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout->getDescriptorSetLayout(); }
+    [[nodiscard]] VkDescriptorSet       getDescriptorSet() const { return descriptorSet; }
 
   private:
     void createDescriptorSetLayout();
@@ -47,3 +48,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTUREMANAGER_HPP

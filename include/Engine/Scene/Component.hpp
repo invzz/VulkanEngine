@@ -1,8 +1,5 @@
-#pragma once
-
-#include <memory>
-#include <typeindex>
-#include <typeinfo>
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP
 
 namespace engine {
 
@@ -13,11 +10,13 @@ namespace engine {
   public:
     virtual ~Component() = default;
 
-    GameObject* getOwner() const { return owner; }
-    void        setOwner(GameObject* newOwner) { owner = newOwner; }
+    [[nodiscard]] GameObject* getOwner() const { return owner; }
+    void                      setOwner(GameObject* newOwner) { owner = newOwner; }
 
   protected:
     GameObject* owner = nullptr;
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENT_HPP

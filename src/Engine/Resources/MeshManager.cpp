@@ -1,26 +1,33 @@
 #include "Engine/Resources/MeshManager.hpp"
 
+#include <cstdint>
 #include <iostream>
+#include <memory>
 
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Buffer.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Resources/Model.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
   MeshManager::MeshManager(Device& device) : device(device)
   {
-    // Initialize with a dummy entry at index 0 so ID 0 can be "invalid" or "default"
+    // Initialize with a dummy entry at index 0 so ID 0 can be "invalid" or
+    // "default"
     meshInfos.push_back({0, 0});
     updateBuffer();
   }
 
   uint32_t MeshManager::registerModel(const Model* model)
   {
-    if (modelToId.find(model) != modelToId.end())
+    if (modelToId.contains(model))
     {
       return modelToId[model];
     }
 
-    uint32_t id = static_cast<uint32_t>(meshInfos.size());
+    auto const id = static_cast<uint32_t>(meshInfos.size());
 
     MeshBuffers info{};
     info.vertexBufferAddress = model->getVertexBufferAddress();
@@ -31,15 +38,14 @@ namespace engine {
 
     updateBuffer();
 
-    std::cout << "[" << GREEN << "MeshManager" << RESET << "] Registered model with ID " << id << " (VA: " << info.vertexBufferAddress
-              << ", IA: " << info.indexBufferAddress << ")" << std::endl;
+    std::cout << "[" << GREEN << "MeshManager" << RESET << "] Registered model with ID " << id << " (VA: " << info.vertexBufferAddress << ", IA: " << info.indexBufferAddress << ")" << '\n';
 
     return id;
   }
 
   void MeshManager::updateBuffer()
   {
-    VkDeviceSize bufferSize = sizeof(MeshBuffers) * meshInfos.size();
+    VkDeviceSize const bufferSize = sizeof(MeshBuffers) * meshInfos.size();
 
     // Create a staging buffer
     Buffer stagingBuffer{device,
@@ -52,18 +58,15 @@ namespace engine {
     stagingBuffer.writeToBuffer(meshInfos.data());
 
     // Create or resize the GPU buffer
-    // Note: In a real engine, you might want to allocate a larger buffer upfront to avoid frequent reallocations
+    // Note: In a real engine, you might want to allocate a larger buffer upfront
+    // to avoid frequent reallocations
     meshBuffer = std::make_unique<Buffer>(device,
                                           sizeof(MeshBuffers),
                                           static_cast<uint32_t>(meshInfos.size()),
                                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    device.memory().copyBufferImmediate(stagingBuffer.getBuffer(),
-                                        meshBuffer->getBuffer(),
-                                        bufferSize,
-                                        VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
-                                        VK_ACCESS_SHADER_READ_BIT);
+    device.memory().copyBufferImmediate(stagingBuffer.getBuffer(), meshBuffer->getBuffer(), bufferSize, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
   }
 
   VkDescriptorBufferInfo MeshManager::getDescriptorInfo() const

@@ -1,11 +1,16 @@
 #include "Engine/Systems/PostProcessingSystem.hpp"
 
-// libs
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <array>
-#include <glm/glm.hpp>
+#include <cassert>
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -69,7 +74,7 @@ namespace engine {
     pipelineConfig.bindingDescriptions.clear();
     pipelineConfig.attributeDescriptions.clear();
 
-    pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/post_process.vert.spv", SHADER_PATH "/post_process.frag.spv", pipelineConfig);
+    pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(post_process.vert.spv)", std::string(SHADER_PATH) + R"(post_process.frag.spv)", pipelineConfig);
   }
 
   void PostProcessingSystem::render(FrameInfo& frameInfo, VkDescriptorSet descriptorSet, const PostProcessPushConstants& push)

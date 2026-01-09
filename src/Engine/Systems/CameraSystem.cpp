@@ -1,12 +1,22 @@
 #include "Engine/Systems/CameraSystem.hpp"
 
-#include <glm/gtc/constants.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+#include <cassert>
+#include <cstdint>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
-#include "Engine/Core/Exceptions.hpp"
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float4.hpp"
+#include "glm/trigonometric.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -33,7 +43,7 @@ namespace engine {
 
   void CameraSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout)
   {
-    VkPushConstantRange pushConstantRange{
+    VkPushConstantRange const pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset     = 0,
             .size       = sizeof(CameraDebugPush),
@@ -41,7 +51,7 @@ namespace engine {
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
 
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{
+    VkPipelineLayoutCreateInfo const pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount         = static_cast<uint32_t>(descriptorSetLayouts.size()),
             .pSetLayouts            = descriptorSetLayouts.data(),
@@ -67,7 +77,7 @@ namespace engine {
     pipelineConfig.pipelineLayout             = pipelineLayout;
     pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 
-    pipeline = std::make_unique<Pipeline>(device, SHADER_PATH "/debug_frustum.vert.spv", SHADER_PATH "/debug_frustum.frag.spv", pipelineConfig);
+    pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + "debug_frustum.vert.spv", std::string(SHADER_PATH) + "debug_frustum.frag.spv", pipelineConfig);
   }
 
   void CameraSystem::render(FrameInfo& frameInfo) const
@@ -81,15 +91,18 @@ namespace engine {
     if (registry.valid(frameInfo.selectedEntity) && registry.all_of<CameraComponent, TransformComponent>(frameInfo.selectedEntity))
     {
       // Don't render the active camera's frustum (it would be weird/invisible)
-      if (frameInfo.selectedEntity == frameInfo.cameraEntity) return;
+      if (frameInfo.selectedEntity == frameInfo.cameraEntity)
+      {
+        return;
+      }
 
       auto [cameraComp, transform] = registry.get<CameraComponent, TransformComponent>(frameInfo.selectedEntity);
 
-      glm::mat4 modelMatrix = glm::mat4(1.0f);
-      modelMatrix           = glm::translate(modelMatrix, transform.translation);
-      modelMatrix           = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-      modelMatrix           = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-      modelMatrix           = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+      auto modelMatrix = glm::mat4(1.0f);
+      modelMatrix      = glm::translate(modelMatrix, transform.translation);
+      modelMatrix      = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+      modelMatrix      = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+      modelMatrix      = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
       CameraDebugPush push{};
       push.modelMatrix = modelMatrix;
@@ -105,7 +118,7 @@ namespace engine {
     }
   }
 
-  void CameraSystem::update(FrameInfo& frameInfo, float aspectRatio) const
+  void CameraSystem::update(FrameInfo& frameInfo, float aspectRatio)
   {
     auto& registry = frameInfo.scene->getRegistry();
     if (registry.valid(frameInfo.cameraEntity))
@@ -125,7 +138,7 @@ namespace engine {
     }
   }
 
-  void CameraSystem::updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio) const
+  void CameraSystem::updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio)
   {
     // Update projection
     if (!cameraComp.isOrthographic)
@@ -136,8 +149,8 @@ namespace engine {
     {
       // For orthographic, we need to define the bounds.
       // Assuming orthoSize is the height, width is derived from aspect ratio.
-      float orthoHeight = cameraComp.orthoSize;
-      float orthoWidth  = aspectRatio * orthoHeight;
+      float const orthoHeight = cameraComp.orthoSize;
+      float const orthoWidth  = aspectRatio * orthoHeight;
       cameraComp.camera.setOrtographicProjection(-orthoWidth, orthoWidth, -orthoHeight, orthoHeight, cameraComp.nearZ, cameraComp.farZ);
     }
 

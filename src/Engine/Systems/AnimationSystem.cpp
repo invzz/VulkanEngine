@@ -1,13 +1,25 @@
 #include "Engine/Systems/AnimationSystem.hpp"
 
 #include <algorithm>
-#include <glm/gtc/matrix_transform.hpp>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
 #include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
 
-#include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Resources/MorphTargetManager.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "glm/common.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/quaternion_common.hpp"
+#include "glm/gtc/quaternion.hpp"
 
 namespace engine {
 
@@ -16,11 +28,11 @@ namespace engine {
     try
     {
       morphManager_ = std::make_unique<MorphTargetManager>(device);
-      std::cout << "[AnimationSystem] Initialized successfully" << std::endl;
+      std::cout << "[AnimationSystem] Initialized successfully" << '\n';
     }
     catch (const std::exception& e)
     {
-      std::cerr << "[AnimationSystem] ERROR: " << e.what() << std::endl;
+      std::cerr << "[AnimationSystem] ERROR: " << e.what() << '\n';
       throw;
     }
   }
@@ -29,7 +41,8 @@ namespace engine {
 
   void AnimationSystem::update(FrameInfo& frameInfo)
   {
-    // Step 1: Update animation components (CPU-side: interpolate weights/transforms)
+    // Step 1: Update animation components (CPU-side: interpolate
+    // weights/transforms)
     updateAnimations(frameInfo);
 
     // Step 2: Dispatch morph target compute shaders (GPU-side: blend vertices)
@@ -78,10 +91,10 @@ namespace engine {
       for (size_t i = 0; i < nodes.size(); i++)
       {
         bool isRoot = true;
-        for (size_t j = 0; j < nodes.size(); j++)
+        for (const auto& node : nodes)
         {
-          const auto& children = nodes[j].children;
-          if (std::find(children.begin(), children.end(), static_cast<int>(i)) != children.end())
+          const auto& children = node.children;
+          if (std::ranges::find(children, static_cast<int>(i)) != children.end())
           {
             isRoot = false;
             break;
@@ -95,7 +108,7 @@ namespace engine {
         }
       }
 
-      if (rootNodeIndex >= 0 && rootNodeIndex < static_cast<int>(nodes.size()))
+      if (rootNodeIndex >= 0 && std::cmp_less(rootNodeIndex, nodes.size()))
       {
         const auto& rootNode  = nodes[rootNodeIndex];
         transform.translation = rootNode.translation;
@@ -128,7 +141,7 @@ namespace engine {
           }
           catch (const std::exception& e)
           {
-            std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t)entity << ": " << e.what() << std::endl;
+            std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t)entity << ": " << e.what() << '\n';
             continue;
           }
         }
@@ -146,7 +159,7 @@ namespace engine {
 
     for (const auto& channel : animation.channels)
     {
-      if (channel.targetNode < 0 || channel.targetNode >= static_cast<int>(nodes.size()))
+      if (channel.targetNode < 0 || std::cmp_greater_equal(channel.targetNode, nodes.size()))
       {
         continue;
       }
@@ -175,10 +188,10 @@ namespace engine {
     for (size_t i = 0; i < nodes.size(); i++)
     {
       bool isRoot = true;
-      for (size_t j = 0; j < nodes.size(); j++)
+      for (auto& node : nodes)
       {
-        const auto& children = nodes[j].children;
-        if (std::find(children.begin(), children.end(), static_cast<int>(i)) != children.end())
+        const auto& children = node.children;
+        if (std::ranges::find(children, static_cast<int>(i)) != children.end())
         {
           isRoot = false;
           break;
@@ -194,20 +207,20 @@ namespace engine {
 
   void AnimationSystem::computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform)
   {
-    if (nodeIndex < 0 || nodeIndex >= static_cast<int>(animComp.model->getNodes().size()))
+    if (nodeIndex < 0 || std::cmp_greater_equal(nodeIndex, animComp.model->getNodes().size()))
     {
       return;
     }
 
-    const auto& node           = animComp.model->getNodes()[nodeIndex];
-    glm::mat4   localTransform = node.getLocalTransform();
+    const auto&     node           = animComp.model->getNodes()[nodeIndex];
+    glm::mat4 const localTransform = node.getLocalTransform();
 
-    if (nodeIndex < static_cast<int>(animComp.nodeTransforms.size()))
+    if (std::cmp_less(nodeIndex, animComp.nodeTransforms.size()))
     {
       animComp.nodeTransforms[nodeIndex] = parentTransform * localTransform;
     }
 
-    for (int childIdx : node.children)
+    for (int const childIdx : node.children)
     {
       computeGlobalTransforms(animComp, childIdx, animComp.nodeTransforms[nodeIndex]);
     }
@@ -233,16 +246,16 @@ namespace engine {
       }
     }
 
-    size_t prevIndex = nextIndex - 1;
+    size_t const prevIndex = nextIndex - 1;
 
     if (sampler.interpolation == Model::AnimationSampler::STEP)
     {
       return sampler.translations[prevIndex];
     }
 
-    float t0     = sampler.times[prevIndex];
-    float t1     = sampler.times[nextIndex];
-    float factor = (time - t0) / (t1 - t0);
+    float const t0     = sampler.times[prevIndex];
+    float const t1     = sampler.times[nextIndex];
+    float const factor = (time - t0) / (t1 - t0);
 
     return glm::mix(sampler.translations[prevIndex], sampler.translations[nextIndex], factor);
   }
@@ -251,7 +264,7 @@ namespace engine {
   {
     if (sampler.times.empty() || sampler.rotations.empty())
     {
-      return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+      return {1.0f, 0.0f, 0.0f, 0.0f};
     }
 
     if (time <= sampler.times.front()) return sampler.rotations.front();
@@ -267,16 +280,16 @@ namespace engine {
       }
     }
 
-    size_t prevIndex = nextIndex - 1;
+    size_t const prevIndex = nextIndex - 1;
 
     if (sampler.interpolation == Model::AnimationSampler::STEP)
     {
       return sampler.rotations[prevIndex];
     }
 
-    float t0     = sampler.times[prevIndex];
-    float t1     = sampler.times[nextIndex];
-    float factor = (time - t0) / (t1 - t0);
+    float const t0     = sampler.times[prevIndex];
+    float const t1     = sampler.times[nextIndex];
+    float const factor = (time - t0) / (t1 - t0);
 
     return glm::slerp(sampler.rotations[prevIndex], sampler.rotations[nextIndex], factor);
   }
@@ -301,16 +314,16 @@ namespace engine {
       }
     }
 
-    size_t prevIndex = nextIndex - 1;
+    size_t const prevIndex = nextIndex - 1;
 
     if (sampler.interpolation == Model::AnimationSampler::STEP)
     {
       return sampler.morphWeights[prevIndex];
     }
 
-    float t0     = sampler.times[prevIndex];
-    float t1     = sampler.times[nextIndex];
-    float factor = (time - t0) / (t1 - t0);
+    float const t0     = sampler.times[prevIndex];
+    float const t1     = sampler.times[nextIndex];
+    float const factor = (time - t0) / (t1 - t0);
 
     const auto&        prevWeights = sampler.morphWeights[prevIndex];
     const auto&        nextWeights = sampler.morphWeights[nextIndex];
@@ -318,7 +331,7 @@ namespace engine {
 
     for (size_t i = 0; i < prevWeights.size(); i++)
     {
-      result[i] = prevWeights[i] * (1.0f - factor) + nextWeights[i] * factor;
+      result[i] = (prevWeights[i] * (1.0f - factor)) + (nextWeights[i] * factor);
     }
 
     return result;

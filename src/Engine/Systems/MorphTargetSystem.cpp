@@ -1,7 +1,13 @@
 #include "Engine/Systems/MorphTargetSystem.hpp"
 
+#include <cstdint>
+#include <exception>
 #include <iostream>
+#include <memory>
 
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Resources/MorphTargetManager.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 
 namespace engine {
@@ -11,11 +17,11 @@ namespace engine {
     try
     {
       manager_ = std::make_unique<MorphTargetManager>(device);
-      std::cout << "[MorphTargetSystem] Initialized successfully" << std::endl;
+      std::cout << "[MorphTargetSystem] Initialized successfully" << '\n';
     }
     catch (const std::exception& e)
     {
-      std::cerr << "[MorphTargetSystem] ERROR: " << e.what() << std::endl;
+      std::cerr << "[MorphTargetSystem] ERROR: " << e.what() << '\n';
       throw;
     }
   }
@@ -45,12 +51,13 @@ namespace engine {
           }
           catch (const std::exception& e)
           {
-            std::cerr << "[MorphTargetSystem] ERROR initializing object " << (uint32_t)entity << ": " << e.what() << std::endl;
+            std::cerr << "[MorphTargetSystem] ERROR initializing object " << (uint32_t)entity << ": " << e.what() << '\n';
             continue; // Skip this object
           }
         }
 
-        // Dispatch compute shader: baseVertices + morphDeltas * weights → blendedVertices
+        // Dispatch compute shader: baseVertices + morphDeltas * weights →
+        // blendedVertices
         manager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
       }
     }

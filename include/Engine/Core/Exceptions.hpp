@@ -1,7 +1,7 @@
-#pragma once
-#include <exception>
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_EXCEPTIONS_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_EXCEPTIONS_HPP
+
 #include <stdexcept>
-#include <string>
 namespace engine {
 
   /**
@@ -100,3 +100,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_EXCEPTIONS_HPP

@@ -1,42 +1,62 @@
+---
 Checks: >
   -*,
+
+  # High-signal families (good maintainability ROI)
+  clang-analyzer-*,
   bugprone-*,
   performance-*,
-  readability-*,
   modernize-*,
-  cppcoreguidelines-*,
-  clang-analyzer-*,
+  readability-*,
   misc-*,
   portability-*,
-  hicpp-*,
-  concurrency-*,
-  google-*,
-  llvm-*,
-  cert-*
 
-# Disable some noisy or style-preference-only checks
-WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
-AnalyzeTemporaryDtors: false
+  # Disable noisy / policy-heavy checks for now
+  -cppcoreguidelines-*,
+  -hicpp-*,
+  -google-*,
+  -llvm-*,
+  -cert-*,
+  -concurrency-*,
+  -bugprone-easily-swappable-parameters
+
+  # Style-nits that tend to overwhelm real findings in this codebase
+  -readability-identifier-naming,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -readability-qualified-auto,
+  -readability-function-cognitive-complexity,
+
+  # Tooling / format churn
+  -misc-include-cleaner,
+  -modernize-use-designated-initializers,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays
+
+WarningsAsErrors: ""
+
+# Only report diagnostics for headers inside this repo.
+HeaderFilterRegex: '.*[/\\\\](include|src)[/\\\\].*'
+
+# Avoid diagnostics from system headers (SDKs, toolchain headers, etc.)
+SystemHeaders: false
+
+# Respect your clang-format file
 FormatStyle: file
+
 CheckOptions:
-  # Modernize options
   - key: modernize-use-nullptr.NullMacros
-    value: 'NULL'
+    value: "NULL"
   - key: modernize-use-override.IgnoreDestructors
-    value: '1'
+    value: "1"
   - key: modernize-use-auto.MinTypeNameLength
-    value: '5'
-  # Readability options
-  - key: readability-identifier-naming.VariableCase
-    value: lower_case
-  - key: readability-identifier-naming.FunctionCase
-    value: CamelCase
+    value: "5"
   - key: readability-braces-around-statements.ShortStatementLines
-    value: '1'
-  # Performance options
+    value: "1"
   - key: performance-for-range-copy.WarnOnAllAutoCopies
-    value: '1'
-  # Misc options
+    value: "1"
   - key: misc-unused-parameters.IgnoreUnnamedParameters
-    value: '1'
+    value: "1"
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: "1"

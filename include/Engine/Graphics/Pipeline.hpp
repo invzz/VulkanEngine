@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP
+
 #include <cassert>
 #include <string>
 #include <vector>
@@ -33,18 +35,14 @@ namespace engine {
   {
   public:
     Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
-    Pipeline(Device&                   device,
-             const std::string&        taskFilePath,
-             const std::string&        meshFilePath,
-             const std::string&        fragFilePath,
-             const PipelineConfigInfo& configInfo);
+    Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
 
     ~Pipeline()
     {
-      if (vertShaderModule) vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
-      if (fragShaderModule) vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
-      if (taskShaderModule) vkDestroyShaderModule(device.device(), taskShaderModule, nullptr);
-      if (meshShaderModule) vkDestroyShaderModule(device.device(), meshShaderModule, nullptr);
+      if (vertShaderModule != nullptr) vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
+      if (fragShaderModule != nullptr) vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
+      if (taskShaderModule != nullptr) vkDestroyShaderModule(device.device(), taskShaderModule, nullptr);
+      if (meshShaderModule != nullptr) vkDestroyShaderModule(device.device(), meshShaderModule, nullptr);
       vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
     };
 
@@ -64,8 +62,7 @@ namespace engine {
 
   private:
     void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
-    void
-    createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+    void createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
 
     void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
 
@@ -93,3 +90,5 @@ namespace engine {
     VkShaderModule meshShaderModule = VK_NULL_HANDLE;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP

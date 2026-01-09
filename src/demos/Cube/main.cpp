@@ -1,6 +1,6 @@
 #include <cstdlib>
+#include <exception>
 #include <iostream>
-#include <stdexcept>
 
 #include "app.hpp"
 
@@ -19,7 +19,7 @@ int main()
   catch (const std::exception& e)
   {
     // Handle exceptions appropriately
-    std::cerr << "Error: " << e.what() << std::endl;
+    std::cerr << "Error: " << e.what() << '\n';
     return EXIT_FAILURE;
   }
 

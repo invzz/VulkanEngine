@@ -1,12 +1,14 @@
 #include "Engine/Core/Window.hpp"
 
-#include <algorithm>
 #include <chrono>
 #include <climits>
-#include <cstdlib>
 #include <iostream>
+#include <string>
 #include <thread>
-#include <vector>
+#include <utility>
+
+#include "GLFW/glfw3.h"
+#include "vulkan/vulkan_core.h"
 
 #ifdef __linux__
 #include <X11/Xlib.h>
@@ -15,16 +17,19 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
 
+// Forward ImGui GLFW callbacks so the app can choose to install or forward
+// events instead of relying on the backend to auto-install them.
+
 // Small helpers to keep initWindow simple and readable.
-namespace window_detail {
+namespace {
 
 #ifdef __linux__
   // Try to get the global cursor position via X11 (useful for XWayland).
   bool tryGetXCursorPosition(int& outX, int& outY)
   {
-    if (!getenv("DISPLAY")) return false;
+    if (getenv("DISPLAY") == nullptr) return false;
     ::Display* dpy = XOpenDisplay(nullptr);
-    if (!dpy) return false;
+    if (dpy == nullptr) return false;
 
     ::Window     root  = DefaultRootWindow(dpy);
     ::Window     ret   = 0;
@@ -36,7 +41,7 @@ namespace window_detail {
     unsigned int mask  = 0;
     const Bool   ok    = XQueryPointer(dpy, root, &ret, &child, &rootx, &rooty, &winx, &winy, &mask);
     XCloseDisplay(dpy);
-    if (!ok) return false;
+    if (ok == 0) return false;
     outX = rootx;
     outY = rooty;
     return true;
@@ -53,9 +58,9 @@ namespace window_detail {
       int my = 0;
       glfwGetMonitorPos(monitors[i], &mx, &my);
       const GLFWvidmode* mode = glfwGetVideoMode(monitors[i]);
-      if (!mode) continue;
-      int mw = mode->width;
-      int mh = mode->height;
+      if (mode == nullptr) continue;
+      int const mw = mode->width;
+      int const mh = mode->height;
       if (cursorX >= mx && cursorX < mx + mw && cursorY >= my && cursorY < my + mh)
       {
         return monitors[i];
@@ -73,7 +78,7 @@ namespace window_detail {
     if (haveCursor)
     {
       GLFWmonitor* found = pickMonitorForCursor(monitors, monitorCount, cursorX, cursorY);
-      if (found) return found;
+      if (found != nullptr) return found;
     }
     return glfwGetPrimaryMonitor();
   }
@@ -99,32 +104,31 @@ namespace window_detail {
   // Request centering on the given monitor (best-effort).
   void centerWindowOnMonitor(GLFWwindow* window, GLFWmonitor* monitor, int width, int height)
   {
-    if (!monitor) return;
+    if (monitor == nullptr) return;
     int mx = 0;
     int my = 0;
     glfwGetMonitorPos(monitor, &mx, &my);
     const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-    if (!mode) return;
-    int xpos = mx + (mode->width - width) / 2;
-    int ypos = my + (mode->height - height) / 2;
-    std::cout << "[" << BLUE << "Window" << RESET << "]" << YELLOW << (glfwGetMonitorName(monitor) ? glfwGetMonitorName(monitor) : "unknown") << "' at ("
-              << xpos << ", " << ypos << ")" << RESET << "\n";
+    if (mode == nullptr) return;
+    int const xpos = mx + ((mode->width - width) / 2);
+    int const ypos = my + ((mode->height - height) / 2);
+    std::cout << "[" << BLUE << "Window" << RESET << "]" << YELLOW << ((glfwGetMonitorName(monitor) != nullptr) ? glfwGetMonitorName(monitor) : "unknown") << "' at (" << xpos << ", " << ypos << ")"
+              << RESET << "\n";
     glfwSetWindowPos(window, xpos, ypos);
   }
 
-} // namespace window_detail
+} // namespace
 
 namespace engine {
 
-  Window::Window(int width, int height, const std::string& title)
-      : window(nullptr), width(width), height(height), glfwInitialized(false), framebufferResized(false), title(title)
+  Window::Window(int width, int height, std::string title) : window(nullptr), width(width), height(height), title(std::move(title))
   {
     initWindow();
   }
 
   Window::~Window()
   {
-    if (window)
+    if (window != nullptr)
     {
       glfwDestroyWindow(window);
       window = nullptr;
@@ -139,7 +143,7 @@ namespace engine {
   void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
   {
     auto win = static_cast<Window*>(glfwGetWindowUserPointer(window));
-    if (!win) return;
+    if (win == nullptr) return;
     win->framebufferResized = true;
     win->width              = width;
     win->height             = height;
@@ -149,7 +153,7 @@ namespace engine {
   {
     if (glfwInitialized) return;
 
-    if (!glfwInit())
+    if (glfwInit() == 0)
     {
       throw WindowInitializationException("GLFW initialization failed");
     }
@@ -167,14 +171,14 @@ namespace engine {
     bool haveCursor = false;
 
 #ifdef __linux__
-    haveCursor = window_detail::tryGetXCursorPosition(cursorX, cursorY);
+    haveCursor = tryGetXCursorPosition(cursorX, cursorY);
 #endif
 
-    GLFWmonitor* targetMonitor = window_detail::chooseTargetMonitor(haveCursor, cursorX, cursorY);
+    GLFWmonitor* targetMonitor = chooseTargetMonitor(haveCursor, cursorX, cursorY);
 
     // Create the window (hidden)
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
-    if (!window)
+    if (window == nullptr)
     {
       throw WindowCreationException("Failed to create GLFW window");
     }
@@ -183,23 +187,28 @@ namespace engine {
     glfwSetWindowUserPointer(window, this);
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
+    // Input callbacks are now installed by ImGui (we initialize ImGui with
+    // install_callbacks=true). If you need custom app-level callbacks, install
+    // them and call through to ImGui's handlers (e.g. ImGui_ImplGlfw_KeyCallback)
+    // to keep ImGui input working.
+
     // If we have a target monitor, compute centered position and request
     // it. Note: on Wayland compositors (Hyperland) the compositor may
     // ignore this request.
-    if (targetMonitor)
+    if (targetMonitor != nullptr)
     {
       int mx = 0;
       int my = 0;
       glfwGetMonitorPos(targetMonitor, &mx, &my);
       const GLFWvidmode* mode = glfwGetVideoMode(targetMonitor);
-      if (mode)
+      if (mode != nullptr)
       {
-        int xpos = mx + (mode->width - width) / 2;
-        int ypos = my + (mode->height - height) / 2;
+        int const xpos = mx + ((mode->width - width) / 2);
+        int const ypos = my + ((mode->height - height) / 2);
 
         auto monitorName = glfwGetMonitorName(targetMonitor);
-        std::cout << "[ " << BLUE << "Window" << RESET << " ] " << YELLOW << (monitorName ? monitorName : "unknown") << BLUE << " position (" << xpos << ", "
-                  << ypos << ")" << RESET << "\n";
+        std::cout << "[ " << BLUE << "Window" << RESET << " ] " << YELLOW << ((monitorName != nullptr) ? monitorName : "unknown") << BLUE << " position (" << xpos << ", " << ypos << ")" << RESET
+                  << "\n";
         glfwSetWindowPos(window, xpos, ypos);
       }
     }
@@ -209,18 +218,18 @@ namespace engine {
     // to react.
     int posX = 0;
     int posY = 0;
-    window_detail::waitForWindowStabilize(window, posX, posY);
+    waitForWindowStabilize(window, posX, posY);
 
     // Show the window now that we've attempted to position it.
     glfwShowWindow(window);
 
     // If the compositor still left us at (0, 0), try centering manually.
-    if (targetMonitor)
+    if (targetMonitor != nullptr)
     {
       glfwGetWindowPos(window, &posX, &posY);
       if (posX == 0 && posY == 0)
       {
-        window_detail::centerWindowOnMonitor(window, targetMonitor, width, height);
+        centerWindowOnMonitor(window, targetMonitor, width, height);
       }
     }
   }

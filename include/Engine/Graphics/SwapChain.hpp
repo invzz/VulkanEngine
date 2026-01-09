@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAIN_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAIN_HPP
 
 #include "Engine/Graphics/Device.hpp"
 
@@ -8,7 +9,6 @@
 // std lib headers
 #include <cstdint>
 #include <memory>
-#include <string>
 #include <vector>
 
 namespace engine {
@@ -16,7 +16,7 @@ namespace engine {
   class SwapChain
   {
   public:
-    static int maxFramesInFlight() { return 2; }
+    static int maxFramesInFlight() { return static_cast<int>(Device::kMaxFramesInFlight); }
 
     SwapChain(Device& deviceRef, VkExtent2D windowExtent);
     SwapChain(Device& deviceRef, VkExtent2D windowExtent, std::shared_ptr<SwapChain> previous);
@@ -26,26 +26,23 @@ namespace engine {
     SwapChain(const SwapChain&)            = delete;
     SwapChain& operator=(const SwapChain&) = delete;
 
-    VkFramebuffer getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
-    VkRenderPass  getRenderPass() { return renderPass; }
-    VkImageView   getImageView(int index) { return swapChainImageViews[index]; }
-    size_t        imageCount() const { return swapChainImages.size(); }
-    VkFormat      getSwapChainImageFormat() const { return swapChainImageFormat; }
-    VkExtent2D    getSwapChainExtent() const { return swapChainExtent; }
-    uint32_t      width() const { return swapChainExtent.width; }
-    uint32_t      height() const { return swapChainExtent.height; }
+    VkFramebuffer            getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
+    VkRenderPass             getRenderPass() { return renderPass; }
+    VkImageView              getImageView(int index) { return swapChainImageViews[index]; }
+    [[nodiscard]] size_t     imageCount() const { return swapChainImages.size(); }
+    [[nodiscard]] VkFormat   getSwapChainImageFormat() const { return swapChainImageFormat; }
+    [[nodiscard]] VkExtent2D getSwapChainExtent() const { return swapChainExtent; }
+    [[nodiscard]] uint32_t   width() const { return swapChainExtent.width; }
+    [[nodiscard]] uint32_t   height() const { return swapChainExtent.height; }
 
-    float extentAspectRatio() const { return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height); }
+    [[nodiscard]] float extentAspectRatio() const { return static_cast<float>(swapChainExtent.width) / static_cast<float>(swapChainExtent.height); }
 
     VkFormat findDepthFormat();
 
-    bool compareSwapFormats(const SwapChain& other) const
-    {
-      return other.swapChainDepthFormat == swapChainDepthFormat && other.swapChainImageFormat == swapChainImageFormat;
-    }
+    [[nodiscard]] bool compareSwapFormats(const SwapChain& other) const { return other.swapChainDepthFormat == swapChainDepthFormat && other.swapChainImageFormat == swapChainImageFormat; }
 
     VkResult acquireNextImage(uint32_t* imageIndex);
-    VkResult submitCommandBuffers(const VkCommandBuffer* buffers, uint32_t* imageIndex);
+    VkResult submitCommandBuffers(const VkCommandBuffer* buffers, const uint32_t* imageIndex);
 
   private:
     void Init();
@@ -57,9 +54,9 @@ namespace engine {
     void createSyncObjects();
 
     // Helper functions
-    VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const;
-    VkPresentModeKHR   chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const;
-    VkExtent2D         chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
+    [[nodiscard]] static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    [[nodiscard]] static VkPresentModeKHR   chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+    [[nodiscard]] VkExtent2D                chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) const;
 
     VkFormat   swapChainImageFormat;
     VkFormat   swapChainDepthFormat;
@@ -96,3 +93,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAIN_HPP

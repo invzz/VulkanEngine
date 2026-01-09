@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
 
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
@@ -24,3 +25,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP

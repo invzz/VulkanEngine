@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_CAMERACOMPONENT_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_CAMERACOMPONENT_HPP
 
 #include "Engine/Scene/Camera.hpp"
 
@@ -6,7 +7,7 @@ namespace engine {
 
   struct CameraComponent
   {
-    Camera camera{};
+    Camera camera;
 
     // Perspective settings
     float fovY  = 80.0f;
@@ -21,3 +22,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_CAMERACOMPONENT_HPP

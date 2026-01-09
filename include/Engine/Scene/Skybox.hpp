@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -13,8 +14,8 @@ namespace engine {
   /**
    * @brief Cubemap texture for skybox rendering
    *
-   * Loads 6 face textures (right, left, top, bottom, front, back) into a Vulkan cubemap.
-   * Supports JPG, PNG, and other formats via stb_image.
+   * Loads 6 face textures (right, left, top, bottom, front, back) into a Vulkan
+   * cubemap. Supports JPG, PNG, and other formats via stb_image.
    */
   class Skybox
   {
@@ -36,7 +37,7 @@ namespace engine {
     static std::unique_ptr<Skybox> loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension = "jpg");
 
     /**
-     * @brief Create an empty skybox for rendering (e.g. procedural sky)
+     * @brief Create an empty skybox cubemap for rendering (e.g. runtime capture)
      * @param device Vulkan device
      * @param size Resolution of each face (e.g. 1024)
      */
@@ -49,11 +50,12 @@ namespace engine {
     Skybox(Skybox&&)                 = delete;
     Skybox& operator=(Skybox&&)      = delete;
 
-    VkImageView getImageView() const { return imageView_; }
-    VkSampler   getSampler() const { return sampler_; }
-    VkImage     getImage() const { return image_; }
+    [[nodiscard]] VkImageView getImageView() const { return imageView_; }
+    [[nodiscard]] VkSampler   getSampler() const { return sampler_; }
+    [[nodiscard]] VkImage     getImage() const { return image_; }
+    [[nodiscard]] VkFormat    getFormat() const { return imageFormat_; }
 
-    VkDescriptorImageInfo getDescriptorInfo() const
+    [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
     {
       return VkDescriptorImageInfo{
               .sampler     = sampler_,
@@ -62,7 +64,7 @@ namespace engine {
       };
     }
 
-    int getSize() const { return size_; }
+    [[nodiscard]] int getSize() const { return size_; }
 
   private:
     void createCubemapImage(const std::array<std::string, 6>& facePaths);
@@ -78,7 +80,11 @@ namespace engine {
     VkImageView    imageView_   = VK_NULL_HANDLE;
     VkSampler      sampler_     = VK_NULL_HANDLE;
 
+    VkFormat imageFormat_ = VK_FORMAT_UNDEFINED;
+
     int size_ = 0; // Width/height of each face (assumed square)
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP

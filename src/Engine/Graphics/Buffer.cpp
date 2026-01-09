@@ -8,9 +8,11 @@
 #include "Engine/Graphics/Buffer.hpp"
 
 #include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 // std
 #include <cassert>
+#include <cstdint>
 #include <cstring>
 
 namespace engine {
@@ -24,12 +26,7 @@ namespace engine {
     return instanceSize;
   }
 
-  Buffer::Buffer(Device&               device,
-                 VkDeviceSize          instanceSize,
-                 uint32_t              instanceCount,
-                 VkBufferUsageFlags    usageFlags,
-                 VkMemoryPropertyFlags memoryPropertyFlags,
-                 VkDeviceSize          minOffsetAlignment)
+  Buffer::Buffer(Device& device, VkDeviceSize instanceSize, uint32_t instanceCount, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize minOffsetAlignment)
       : device{device}, instanceSize{instanceSize}, instanceCount{instanceCount}, usageFlags{usageFlags}, memoryPropertyFlags{memoryPropertyFlags}
   {
     alignmentSize = getAlignment(instanceSize, minOffsetAlignment);
@@ -40,8 +37,21 @@ namespace engine {
   Buffer::~Buffer()
   {
     unmap();
-    vkDestroyBuffer(device.device(), buffer, nullptr);
-    vkFreeMemory(device.device(), memory, nullptr);
+
+    // Defer actual Vulkan destroys until the frame that will safely allow
+    // resources to be released (avoids vkDestroy* called while buffer still in use).
+    VkBuffer       buf = buffer;
+    VkDeviceMemory mem = memory;
+    device.deferDestroy([buf, mem](VkDevice dev) {
+      if (buf != VK_NULL_HANDLE)
+      {
+        vkDestroyBuffer(dev, buf, nullptr);
+      }
+      if (mem != VK_NULL_HANDLE)
+      {
+        vkFreeMemory(dev, mem, nullptr);
+      }
+    });
   }
 
   VkResult Buffer::map(VkDeviceSize size, VkDeviceSize offset)
@@ -52,7 +62,7 @@ namespace engine {
 
   void Buffer::unmap()
   {
-    if (mapped)
+    if (mapped != nullptr)
     {
       vkUnmapMemory(device.device(), memory);
       mapped = nullptr;

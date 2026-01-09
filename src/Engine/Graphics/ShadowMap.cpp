@@ -1,7 +1,11 @@
 #include "Engine/Graphics/ShadowMap.hpp"
 
 #include <array>
+#include <cstdint>
 #include <stdexcept>
+
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 

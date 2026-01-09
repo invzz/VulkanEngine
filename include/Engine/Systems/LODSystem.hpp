@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LODSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LODSYSTEM_HPP
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
@@ -9,7 +10,9 @@ namespace engine {
   public:
     LODSystem() = default;
 
-    void update(FrameInfo& frameInfo);
+    static void update(FrameInfo& frameInfo);
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LODSYSTEM_HPP

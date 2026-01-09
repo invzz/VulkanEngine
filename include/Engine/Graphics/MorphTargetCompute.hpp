@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_MORPHTARGETCOMPUTE_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_MORPHTARGETCOMPUTE_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -14,9 +15,9 @@ namespace engine {
   /**
    * @brief Manages GPU-side morph target blending using compute shaders
    *
-   * This class handles the creation and execution of a compute pipeline that blends
-   * morph targets (blend shapes) on the GPU. It takes base mesh vertices, morph target
-   * deltas, and weights to produce blended output vertices.
+   * This class handles the creation and execution of a compute pipeline that
+   * blends morph targets (blend shapes) on the GPU. It takes base mesh vertices,
+   * morph target deltas, and weights to produce blended output vertices.
    */
   class MorphTargetCompute
   {
@@ -38,7 +39,8 @@ namespace engine {
     /**
      * @brief Execute morph target blending for a mesh
      * @param commandBuffer Vulkan command buffer to record commands into
-     * @param descriptorSet Pre-allocated descriptor set (or VK_NULL_HANDLE to allocate new one)
+     * @param descriptorSet Pre-allocated descriptor set (or VK_NULL_HANDLE to
+     * allocate new one)
      * @param baseVertexBuffer Buffer containing base mesh vertices
      * @param morphDeltaBuffer Buffer containing morph target deltas
      * @param weightsBuffer Buffer containing current morph weights
@@ -69,3 +71,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_MORPHTARGETCOMPUTE_HPP

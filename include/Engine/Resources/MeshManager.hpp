@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
 
 #include <memory>
 #include <unordered_map>
@@ -20,7 +21,7 @@ namespace engine {
     uint32_t registerModel(const Model* model);
 
     // Get the descriptor info for the global mesh buffer
-    VkDescriptorBufferInfo getDescriptorInfo() const;
+    [[nodiscard]] VkDescriptorBufferInfo getDescriptorInfo() const;
 
     // Get the descriptor set layout binding for the mesh buffer
     static VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding();
@@ -35,3 +36,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP

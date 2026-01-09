@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP
 
 #include <assert.h>
 
@@ -7,6 +8,7 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameBuffer.hpp"
+#include "Engine/Graphics/HZBGenerator.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 
 namespace engine {
@@ -26,37 +28,52 @@ namespace engine {
 
     // Render pass helpers
     void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
-    void endSwapChainRenderPass(VkCommandBuffer commandBuffer) const;
-
+    void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
     void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
+    void beginOffscreenDepthPrepassRenderPass(VkCommandBuffer commandBuffer);
+    void beginOffscreenRenderPassLoadDepth(VkCommandBuffer commandBuffer);
+    void beginOffscreenRenderPassLoadColorDepth(VkCommandBuffer commandBuffer);
+    void beginGbufferRenderPass(VkCommandBuffer commandBuffer);
+    void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer);
     void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
     void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
     void generateDepthPyramid(VkCommandBuffer commandBuffer);
+    void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
 
     // Accessors
-    VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
-    VkRenderPass getOffscreenRenderPass() const { return offscreenFrameBuffer->getRenderPass(); }
+    [[nodiscard]] VkRenderPass getSwapChainRenderPass() const { return swapChain->getRenderPass(); }
+    [[nodiscard]] VkRenderPass getOffscreenRenderPass() const { return offscreenFrameBuffer->getRenderPass(); }
+    [[nodiscard]] VkRenderPass getOffscreenDepthPrepassRenderPass() const { return offscreenFrameBuffer->getDepthPrepassRenderPass(); }
+    [[nodiscard]] VkRenderPass getOffscreenRenderPassLoadDepth() const { return offscreenFrameBuffer->getRenderPassLoadDepth(); }
+    [[nodiscard]] VkRenderPass getOffscreenRenderPassLoadColorDepth() const { return offscreenFrameBuffer->getRenderPassLoadColorDepth(); }
+    [[nodiscard]] VkRenderPass getGbufferRenderPass() const { return offscreenFrameBuffer->getGbufferRenderPass(); }
+    [[nodiscard]] VkRenderPass getDeferredLightingRenderPass() const { return offscreenFrameBuffer->getDeferredLightingRenderPass(); }
 
-    VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
-    VkDescriptorImageInfo getDepthImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getDepthImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getHzbImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getSceneColorImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
 
-    bool isFrameInProgress() const { return isFrameStarted; }
-    bool wasSwapChainRecreated() const { return swapChainRecreated; }
+    [[nodiscard]] bool isFrameInProgress() const { return isFrameStarted; }
+    [[nodiscard]] bool wasSwapChainRecreated() const { return swapChainRecreated; }
 
-    VkCommandBuffer getCurrentCommandBuffer() const
+    [[nodiscard]] VkCommandBuffer getCurrentCommandBuffer() const
     {
       assert(isFrameStarted && "Cannot get command buffer when frame not in progress");
       return commandBuffers[currentFrameIndex];
     }
 
-    int getFrameIndex() const
+    [[nodiscard]] int getFrameIndex() const
     {
       assert(isFrameStarted && "Cannot get frame index when frame not in progress");
       return currentFrameIndex;
     }
 
-    float      getAspectRatio() const { return swapChain->extentAspectRatio(); }
-    VkExtent2D getSwapChainExtent() const { return swapChain->getSwapChainExtent(); }
+    [[nodiscard]] float      getAspectRatio() const { return swapChain->extentAspectRatio(); }
+    [[nodiscard]] VkExtent2D getSwapChainExtent() const { return swapChain->getSwapChainExtent(); }
 
   private:
     void createCommandBuffers();
@@ -67,19 +84,11 @@ namespace engine {
 
     Window&                      window;
     Device&                      device;
+    HZBGenerator                 hzbGenerator;
     std::unique_ptr<SwapChain>   swapChain;
     std::vector<VkCommandBuffer> commandBuffers;
 
     std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
-
-    // HZB Generation Resources
-    VkPipelineLayout      hzbPipelineLayout{VK_NULL_HANDLE};
-    VkPipeline            hzbPipeline{VK_NULL_HANDLE};
-    VkDescriptorSetLayout hzbSetLayout{VK_NULL_HANDLE};
-    VkDescriptorPool      hzbDescriptorPool{VK_NULL_HANDLE};
-    // Sets for each frame and each mip transition
-    // Outer: Frame, Inner: Mip Level
-    std::vector<std::vector<VkDescriptorSet>> hzbDescriptorSets;
 
     uint32_t currentImageIndex{0};
     // keep track of frame index for syncing [0, maxFramesInFlight]
@@ -89,3 +98,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP

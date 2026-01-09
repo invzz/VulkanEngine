@@ -1,9 +1,9 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SHADOWMAP_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SHADOWMAP_HPP
 
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
-#include <memory>
 
 #include "Engine/Graphics/Device.hpp"
 
@@ -24,15 +24,15 @@ namespace engine {
     ShadowMap(const ShadowMap&)            = delete;
     ShadowMap& operator=(const ShadowMap&) = delete;
 
-    VkRenderPass  getRenderPass() const { return renderPass_; }
-    VkFramebuffer getFramebuffer() const { return framebuffer_; }
-    VkImageView   getImageView() const { return depthImageView_; }
-    VkSampler     getSampler() const { return sampler_; }
+    [[nodiscard]] VkRenderPass  getRenderPass() const { return renderPass_; }
+    [[nodiscard]] VkFramebuffer getFramebuffer() const { return framebuffer_; }
+    [[nodiscard]] VkImageView   getImageView() const { return depthImageView_; }
+    [[nodiscard]] VkSampler     getSampler() const { return sampler_; }
 
-    uint32_t getWidth() const { return width_; }
-    uint32_t getHeight() const { return height_; }
+    [[nodiscard]] uint32_t getWidth() const { return width_; }
+    [[nodiscard]] uint32_t getHeight() const { return height_; }
 
-    VkDescriptorImageInfo getDescriptorInfo() const
+    [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
     {
       return VkDescriptorImageInfo{
               .sampler     = sampler_,
@@ -49,7 +49,7 @@ namespace engine {
     /**
      * @brief End shadow map render pass
      */
-    void endRenderPass(VkCommandBuffer commandBuffer);
+    static void endRenderPass(VkCommandBuffer commandBuffer);
 
   private:
     void createDepthResources();
@@ -72,3 +72,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SHADOWMAP_HPP

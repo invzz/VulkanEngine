@@ -1,16 +1,14 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LIGHTSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LIGHTSYSTEM_HPP
+
 #include <glm/glm.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <memory>
-#include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
-#include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Resources/Model.hpp"
-#include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 
 namespace engine {
@@ -30,6 +28,10 @@ namespace engine {
 
     // Update target-locked light rotation (call when light position or target changes)
     static void updateTargetLockedLight(entt::entity entity, Scene* scene);
+
+    // Update rotations of all target-locked lights in the scene.
+    // Intended to be called once per frame before gathering light data for rendering.
+    static void updateAllTargetLockedLights(Scene& scene);
 
   private:
     void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
@@ -54,3 +56,5 @@ namespace engine {
     VkPipelineLayout          spotPipelineLayout;
   };
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LIGHTSYSTEM_HPP

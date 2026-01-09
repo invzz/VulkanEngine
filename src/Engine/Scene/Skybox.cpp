@@ -1,7 +1,13 @@
 #include "Engine/Scene/Skybox.hpp"
 
-#include <cstring>
+#include <array>
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
+#include <string>
+
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 #define STB_IMAGE_IMPLEMENTATION_ALREADY_DEFINED
 #include <stb_image.h>
@@ -12,6 +18,7 @@ namespace engine {
 
   Skybox::Skybox(Device& device, const std::array<std::string, 6>& facePaths) : device_(device)
   {
+    imageFormat_ = VK_FORMAT_R8G8B8A8_SRGB;
     createCubemapImage(facePaths);
     createImageView();
     createSampler();
@@ -20,6 +27,7 @@ namespace engine {
   Skybox::Skybox(Device& device, uint32_t size) : device_(device), size_(static_cast<int>(size))
   {
     // Create cubemap image for rendering
+    imageFormat_ = VK_FORMAT_R16G16B16A16_SFLOAT;
     VkImageCreateInfo imageInfo{};
     imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -27,8 +35,8 @@ namespace engine {
     imageInfo.extent.height = size;
     imageInfo.extent.depth  = 1;
     imageInfo.mipLevels     = 1;
-    imageInfo.arrayLayers   = 6;                        // 6 faces
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM; // UNORM to store gamma-corrected values from shader
+    imageInfo.arrayLayers   = 6; // 6 faces
+    imageInfo.format        = imageFormat_;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -38,7 +46,7 @@ namespace engine {
 
     if (vkCreateImage(device_.device(), &imageInfo, nullptr, &image_) != VK_SUCCESS)
     {
-      throw std::runtime_error("Failed to create procedural skybox image");
+      throw std::runtime_error("Failed to create skybox image");
     }
 
     // Allocate memory
@@ -52,7 +60,7 @@ namespace engine {
 
     if (vkAllocateMemory(device_.device(), &allocInfo, nullptr, &imageMemory_) != VK_SUCCESS)
     {
-      throw std::runtime_error("Failed to allocate procedural skybox image memory");
+      throw std::runtime_error("Failed to allocate skybox image memory");
     }
 
     vkBindImageMemory(device_.device(), image_, imageMemory_, 0);
@@ -63,27 +71,43 @@ namespace engine {
 
   Skybox::~Skybox()
   {
-    if (sampler_ != VK_NULL_HANDLE)
+    // Important: Skybox can be disabled while command buffers from previous
+    // frames are still in flight. Destroying its image/view/sampler immediately
+    // can cause a GPU use-after-free and crash.
+    //
+    // Use the engine's deferred destruction queue (flushed after per-frame
+    // fence waits) to make teardown safe.
+    VkSampler      sampler = sampler_;
+    VkImageView    view    = imageView_;
+    VkImage        image   = image_;
+    VkDeviceMemory memory  = imageMemory_;
+
+    sampler_     = VK_NULL_HANDLE;
+    imageView_   = VK_NULL_HANDLE;
+    image_       = VK_NULL_HANDLE;
+    imageMemory_ = VK_NULL_HANDLE;
+
+    if (sampler != VK_NULL_HANDLE)
     {
-      vkDestroySampler(device_.device(), sampler_, nullptr);
+      device_.deferDestroy([sampler](VkDevice dev) { vkDestroySampler(dev, sampler, nullptr); });
     }
-    if (imageView_ != VK_NULL_HANDLE)
+    if (view != VK_NULL_HANDLE)
     {
-      vkDestroyImageView(device_.device(), imageView_, nullptr);
+      device_.deferDestroy([view](VkDevice dev) { vkDestroyImageView(dev, view, nullptr); });
     }
-    if (image_ != VK_NULL_HANDLE)
+    if (image != VK_NULL_HANDLE)
     {
-      vkDestroyImage(device_.device(), image_, nullptr);
+      device_.deferDestroy([image](VkDevice dev) { vkDestroyImage(dev, image, nullptr); });
     }
-    if (imageMemory_ != VK_NULL_HANDLE)
+    if (memory != VK_NULL_HANDLE)
     {
-      vkFreeMemory(device_.device(), imageMemory_, nullptr);
+      device_.deferDestroy([memory](VkDevice dev) { vkFreeMemory(dev, memory, nullptr); });
     }
   }
 
   std::unique_ptr<Skybox> Skybox::loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension)
   {
-    std::array<std::string, 6> facePaths = {
+    std::array<std::string, 6> const facePaths = {
             folderPath + "/posx." + extension, // +X (right)
             folderPath + "/negx." + extension, // -X (left)
             folderPath + "/posy." + extension, // +Y (top)
@@ -99,12 +123,14 @@ namespace engine {
   {
     // Load all 6 faces and determine size
     std::array<unsigned char*, 6> faceData{};
-    int                           width = 0, height = 0, channels = 0;
+    int                           width    = 0;
+    int                           height   = 0;
+    int                           channels = 0;
 
     for (int i = 0; i < 6; i++)
     {
       faceData[i] = stbi_load(facePaths[i].c_str(), &width, &height, &channels, STBI_rgb_alpha);
-      if (!faceData[i])
+      if (faceData[i] == nullptr)
       {
         // Clean up already loaded faces
         for (int j = 0; j < i; j++)
@@ -134,8 +160,7 @@ namespace engine {
       }
     }
 
-    VkDeviceSize faceSize  = static_cast<VkDeviceSize>(size_) * size_ * 4; // RGBA
-    VkDeviceSize totalSize = faceSize * 6;
+    VkDeviceSize const faceSize = static_cast<VkDeviceSize>(size_) * size_ * 4; // RGBA
 
     // Create staging buffer with all face data
     Buffer stagingBuffer{
@@ -163,7 +188,7 @@ namespace engine {
     imageInfo.extent.depth  = 1;
     imageInfo.mipLevels     = 1;
     imageInfo.arrayLayers   = 6; // 6 faces
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.format        = imageFormat_;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -226,7 +251,7 @@ namespace engine {
     viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image                           = image_;
     viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_CUBE;
-    viewInfo.format                          = VK_FORMAT_R8G8B8A8_SRGB;
+    viewInfo.format                          = imageFormat_;
     viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel   = 0;
     viewInfo.subresourceRange.levelCount     = 1;

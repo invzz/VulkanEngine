@@ -5,6 +5,8 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "entt/entity/entity.hpp"
+#include "entt/entity/fwd.hpp"
 
 namespace engine {
 
@@ -13,7 +15,7 @@ namespace engine {
   void InputSystem::update(FrameInfo& frameInfo)
   {
     // Handle cursor toggle (ESC key with debouncing)
-    bool toggleKeyPressed = keyboard_.isKeyPressed(keyboard_.mappings.toggleCursor);
+    bool const toggleKeyPressed = keyboard_.isKeyPressed(keyboard_.mappings.toggleCursor);
     if (toggleKeyPressed && !lastToggleKeyState_)
     {
       window_.toggleCursor();
@@ -28,7 +30,7 @@ namespace engine {
     }
 
     // Control the selected object (camera or a game object)
-    entt::entity controllableEntity = frameInfo.selectedEntity != entt::null ? frameInfo.selectedEntity : frameInfo.cameraEntity;
+    entt::entity const controllableEntity = frameInfo.selectedEntity != entt::null ? frameInfo.selectedEntity : frameInfo.cameraEntity;
 
     if (frameInfo.scene->getRegistry().valid(controllableEntity))
     {

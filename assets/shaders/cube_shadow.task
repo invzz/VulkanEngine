@@ -1,0 +1,112 @@
+#version 460
+#extension GL_EXT_mesh_shader : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_KHR_shader_subgroup_ballot : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
+
+struct Meshlet {
+    uint vertexOffset;
+    uint triangleOffset;
+    uint vertexCount;
+    uint triangleCount;
+
+    float center[3];
+    float radius;
+
+    float cone_axis[3];
+    float cone_cutoff;
+
+    uint padding[4];
+};
+
+layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
+    Meshlet meshlets[];
+};
+
+layout(push_constant) uniform Push {
+    mat4 modelMatrix;
+    mat4 lightSpaceMatrix;
+    vec4 lightPosAndFarPlane; // xyz = light position, w = far plane
+
+    uint64_t meshletBufferAddress;
+    uint64_t meshletVerticesAddress;
+    uint64_t meshletTrianglesAddress;
+    uint64_t vertexBufferAddress;
+    uint     meshletOffset;
+    uint     meshletCount;
+}
+push;
+
+// Extract frustum plane from VP matrix row (Gribb-Hartmann)
+vec4 getPlane(mat4 vp, int row, float sign) {
+    vec4  p   = vec4(vp[0][3] + sign * vp[0][row], vp[1][3] + sign * vp[1][row], vp[2][3] + sign * vp[2][row], vp[3][3] + sign * vp[3][row]);
+    float len = length(p.xyz);
+    return len > 1e-6 ? p / len : p;
+}
+
+bool sphereInFrustum(vec3 center, float radius, mat4 vp) {
+    // 6-plane frustum test
+    vec4 planes[6];
+    planes[0] = getPlane(vp, 0, 1.0);  // left
+    planes[1] = getPlane(vp, 0, -1.0); // right
+    planes[2] = getPlane(vp, 1, 1.0);  // bottom
+    planes[3] = getPlane(vp, 1, -1.0); // top
+    planes[4] = getPlane(vp, 2, 1.0);  // near
+    planes[5] = getPlane(vp, 2, -1.0); // far
+
+    for (int i = 0; i < 6; i++) {
+        float dist = dot(planes[i].xyz, center) + planes[i].w;
+        if (dist < -radius) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Task payload to pass to mesh shader
+struct TaskPayload {
+    uint meshletIndices[32];
+};
+
+taskPayloadSharedEXT TaskPayload payload;
+
+void main() {
+    uint meshletIndex = gl_GlobalInvocationID.x;
+    if (meshletIndex >= push.meshletCount) {
+        return;
+    }
+
+    uint meshletId = push.meshletOffset + meshletIndex;
+
+    MeshletBuffer meshletBuffer = MeshletBuffer(push.meshletBufferAddress);
+    Meshlet       meshlet       = meshletBuffer.meshlets[meshletId];
+
+    // Transform meshlet bounding sphere to world space
+    vec3 center      = vec3(meshlet.center[0], meshlet.center[1], meshlet.center[2]);
+    vec3 worldCenter = (push.modelMatrix * vec4(center, 1.0)).xyz;
+
+    // Approximate world-space radius (handle non-uniform scale)
+    float scale  = max(length(push.modelMatrix[0].xyz), max(length(push.modelMatrix[1].xyz), length(push.modelMatrix[2].xyz)));
+    float radius = meshlet.radius * scale;
+
+    // Cull against light frustum
+    bool visible = sphereInFrustum(worldCenter, radius, push.lightSpaceMatrix);
+
+    // Subgroup ballot to compact visible meshlets
+    uvec4 ballot = subgroupBallot(visible);
+    uint  count  = subgroupBallotBitCount(ballot);
+    uint  index  = subgroupBallotExclusiveBitCount(ballot);
+
+    if (visible) {
+        payload.meshletIndices[index] = meshletId;
+    }
+
+    if (gl_LocalInvocationIndex == 0) {
+        EmitMeshTasksEXT(count, 1, 1);
+    }
+}

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERGRAPH_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERGRAPH_HPP
 
 #include <functional>
 #include <memory>
@@ -17,7 +18,7 @@ namespace engine {
 
     virtual void execute(FrameInfo& frameInfo) = 0;
 
-    const std::string& getName() const { return name; }
+    [[nodiscard]] const std::string& getName() const { return name; }
 
   protected:
     std::string name;
@@ -52,3 +53,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERGRAPH_HPP

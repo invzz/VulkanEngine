@@ -1,9 +1,12 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
 
 #include <condition_variable>
 #include <future>
+#include <glm/glm.hpp>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
@@ -18,6 +21,7 @@ namespace engine {
   class Texture;
   class Model;
   class TextureManager;
+  class Scene;
 
   /**
    * @brief Async loading status for tracking resource load progress
@@ -54,7 +58,8 @@ namespace engine {
   };
 
   /**
-   * @brief Centralized resource management with automatic deduplication and lifetime tracking
+   * @brief Centralized resource management with automatic deduplication and
+   * lifetime tracking
    *
    * Features:
    * - Automatic resource deduplication (same path loaded once)
@@ -78,26 +83,26 @@ namespace engine {
     /**
      * @brief Load a texture from file with automatic caching
      * @param path Absolute or relative path to texture file
-     * @param srgb Whether to load as sRGB format (true for color textures, false for data)
+     * @param srgb Whether to load as sRGB format (true for color textures, false
+     * for data)
      * @param priority Resource priority for eviction policy
-     * @return Shared pointer to texture (returns cached instance if already loaded)
+     * @return Shared pointer to texture (returns cached instance if already
+     * loaded)
      */
     std::shared_ptr<Texture> loadTexture(const std::string& path, bool srgb = true, bool flipY = false, ResourcePriority priority = ResourcePriority::MEDIUM);
 
     /**
-     * @brief Load a texture from memory with automatic caching (for embedded textures)
+     * @brief Load a texture from memory with automatic caching (for embedded
+     * textures)
      * @param data Texture data in memory
      * @param dataSize Size of texture data in bytes
      * @param debugName Debug name for the texture (used for cache key)
      * @param srgb Whether to load as sRGB format
      * @param priority Resource priority for eviction policy
-     * @return Shared pointer to texture (returns cached instance if same data already loaded)
+     * @return Shared pointer to texture (returns cached instance if same data
+     * already loaded)
      */
-    std::shared_ptr<Texture> loadTextureFromMemory(const unsigned char* data,
-                                                   size_t               dataSize,
-                                                   const std::string&   debugName,
-                                                   bool                 srgb     = true,
-                                                   ResourcePriority     priority = ResourcePriority::MEDIUM);
+    std::shared_ptr<Texture> loadTextureFromMemory(const unsigned char* data, size_t dataSize, const std::string& debugName, bool srgb = true, ResourcePriority priority = ResourcePriority::MEDIUM);
 
     /**
      * @brief Load a model from file with automatic caching
@@ -108,15 +113,13 @@ namespace engine {
      * @param priority Resource priority for eviction policy
      * @return Shared pointer to model (returns cached instance if already loaded)
      */
-    std::shared_ptr<Model> loadModel(const std::string& path,
-                                     bool               enableTextures     = false,
-                                     bool               loadMaterials      = true,
-                                     bool               enableMorphTargets = false,
-                                     ResourcePriority   priority           = ResourcePriority::MEDIUM);
+    std::shared_ptr<Model>
+    loadModel(const std::string& path, bool enableTextures = false, bool loadMaterials = true, bool enableMorphTargets = false, ResourcePriority priority = ResourcePriority::MEDIUM);
 
     /**
-     * @brief Remove unused resources from cache (those with no external references)
-     * Call periodically (e.g., after scene transitions) to free memory
+     * @brief Remove unused resources from cache (those with no external
+     * references) Call periodically (e.g., after scene transitions) to free
+     * memory
      * @return Number of resources removed
      */
     size_t garbageCollect();
@@ -187,20 +190,14 @@ namespace engine {
      * @param priority Resource priority for eviction policy
      * @return Future that resolves to model when loading completes
      */
-    std::future<std::shared_ptr<Model>> loadModelAsync(const std::string& path,
-                                                       bool               enableTextures     = false,
-                                                       bool               loadMaterials      = true,
-                                                       bool               enableMorphTargets = false,
-                                                       ResourcePriority   priority           = ResourcePriority::MEDIUM);
+    std::future<std::shared_ptr<Model>>
+    loadModelAsync(const std::string& path, bool enableTextures = false, bool loadMaterials = true, bool enableMorphTargets = false, ResourcePriority priority = ResourcePriority::MEDIUM);
 
     /**
      * @brief Check if async loading is ready (non-blocking)
      * @return True if future is ready, false if still loading
      */
-    template <typename T> static bool isReady(const std::future<std::shared_ptr<T>>& future)
-    {
-      return future.valid() && future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-    }
+    template <typename T> static bool isReady(const std::future<std::shared_ptr<T>>& future) { return future.valid() && future.wait_for(std::chrono::seconds(0)) == std::future_status::ready; }
 
     /**
      * @brief Get number of pending async load tasks
@@ -210,7 +207,7 @@ namespace engine {
     /**
      * @brief Wait for all pending async loads to complete
      */
-    void waitForAsyncLoads();
+    void waitForAsyncLoads() const;
 
     /**
      * @brief Get the Texture Manager for bindless rendering
@@ -221,6 +218,71 @@ namespace engine {
      * @brief Get the Mesh Manager for bindless rendering
      */
     MeshManager& getMeshManager() const { return *meshManager_; }
+
+    // ------------------------------------------------------------------
+    // Scene-level lightmap manifest API
+    // ------------------------------------------------------------------
+
+    struct LightmapBinding
+    {
+      std::string lightmapId;
+      int         uvChannel = 1;
+      glm::vec2   uvScale{1.0f, 1.0f};
+      glm::vec2   uvOffset{0.0f, 0.0f};
+    };
+
+    struct LightmapInfo
+    {
+      std::string      id;
+      std::string      file;
+      std::string      format;
+      std::vector<int> resolution{0, 0};
+      int              paddingPx = 0;
+      std::string      usage;
+    };
+
+    /**
+     * @brief Load a generated scene-level lightmap manifest produced by the baker
+     * @param manifestPath Path to `scene_lightmaps.json`
+     * @return true on success
+     */
+    bool loadSceneLightmapManifest(const std::string& manifestPath);
+
+    /**
+     * @brief Query whether an object has a lightmap binding
+     * @return optional LightmapBinding if present
+     */
+    std::optional<LightmapBinding> getLightmapBindingForObject(const std::string& objectId) const;
+
+    /**
+     * @brief Apply the currently loaded scene-level lightmap bindings to entities in a scene.
+     * This does not automatically load texture files; it records binding info via `LightmapComponent` and
+     * sets `PBRMaterial::uvScale` as a convenience.
+     */
+    void applySceneLightmapBindings(engine::Scene& scene);
+
+    /**
+     * @brief Register a loaded lightmap texture by id (test/runtime helper). The texture will be registered
+     * with the TextureManager and can later be applied to materials via applyLoadedLightmapsToScene.
+     */
+    void registerLightmapTextureForId(const std::string& id, std::shared_ptr<Texture> texture);
+
+    /**
+     * @brief Load lightmap textures referenced by the currently-loaded scene manifest.
+     * For files that do not exist, a white fallback texture is created. basePath should be the project
+     * asset root (e.g., "assets") so manifest-relative paths like "lightmaps/lm.vtex" resolve.
+     */
+    bool loadSceneLightmapTextures(const std::string& basePath = "assets");
+
+    /**
+     * @brief Apply any previously-registered loaded lightmap textures to entities in a scene (sets PBRMaterial::lightmap).
+     */
+    void applyLoadedLightmapsToScene(engine::Scene& scene);
+
+    /**
+     * @brief Retrieve lightmap info by id if present
+     */
+    std::optional<LightmapInfo> getLightmapInfoById(const std::string& id) const;
 
   private:
     Device&                         device_;
@@ -248,22 +310,28 @@ namespace engine {
     // Content hash cache for embedded textures (hash -> cache key)
     std::unordered_map<std::string, std::string> contentHashToKey_;
 
+    // Scene-level manifests (populated by loadSceneLightmapManifest)
+    std::unordered_map<std::string, LightmapInfo>    sceneLightmaps_;        // id -> info
+    std::unordered_map<std::string, LightmapBinding> sceneLightmapBindings_; // objectId -> binding
+
+    // Loaded lightmap textures (id -> texture)
+    std::unordered_map<std::string, std::weak_ptr<Texture>> sceneLightmapTextures_;
     // Memory management
     size_t         memoryBudget_        = 0; // 0 = unlimited
     mutable size_t cachedTextureMemory_ = 0;
     mutable size_t cachedModelMemory_   = 0;
 
     // Helper to generate cache key from path and parameters
-    std::string makeTextureKey(const std::string& path, bool srgb) const;
-    std::string makeModelKey(const std::string& path, bool enableTextures, bool loadMaterials, bool enableMorphTargets) const;
+    static std::string makeTextureKey(const std::string& path, bool srgb);
+    static std::string makeModelKey(const std::string& path, bool enableTextures, bool loadMaterials, bool enableMorphTargets);
 
     // Memory management helpers
-    void        updateTextureAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
-    void        updateModelAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
-    void        evictLRUTextures();
-    void        evictLRUModels();
-    uint64_t    getCurrentTime() const;
-    std::string computeContentHash(const unsigned char* data, size_t dataSize) const;
+    void               updateTextureAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
+    void               updateModelAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
+    void               evictLRUTextures();
+    void               evictLRUModels();
+    static uint64_t    getCurrentTime();
+    static std::string computeContentHash(const unsigned char* data, size_t dataSize);
 
     // ========================================================================
     // ASYNC LOADING INFRASTRUCTURE
@@ -287,3 +355,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP

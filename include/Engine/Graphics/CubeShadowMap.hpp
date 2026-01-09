@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_CUBESHADOWMAP_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_CUBESHADOWMAP_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -24,17 +25,17 @@ namespace engine {
     CubeShadowMap(const CubeShadowMap&)            = delete;
     CubeShadowMap& operator=(const CubeShadowMap&) = delete;
 
-    VkRenderPass getRenderPass() const { return renderPass_; }
-    VkImageView  getCubeImageView() const { return cubeImageView_; }
-    VkSampler    getSampler() const { return sampler_; }
+    [[nodiscard]] VkRenderPass getRenderPass() const { return renderPass_; }
+    [[nodiscard]] VkImageView  getCubeImageView() const { return cubeImageView_; }
+    [[nodiscard]] VkSampler    getSampler() const { return sampler_; }
 
-    uint32_t getSize() const { return size_; }
+    [[nodiscard]] uint32_t getSize() const { return size_; }
 
     /**
      * @brief Get framebuffer for a specific cube face
      * @param face Face index (0-5: +X, -X, +Y, -Y, +Z, -Z)
      */
-    VkFramebuffer getFramebuffer(int face) const { return framebuffers_[face]; }
+    [[nodiscard]] VkFramebuffer getFramebuffer(int face) const { return framebuffers_[face]; }
 
     /**
      * @brief Get view matrix for a specific cube face
@@ -50,7 +51,7 @@ namespace engine {
      */
     static glm::mat4 getProjectionMatrix(float nearPlane, float farPlane);
 
-    VkDescriptorImageInfo getDescriptorInfo() const
+    [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
     {
       return VkDescriptorImageInfo{
               .sampler     = sampler_,
@@ -79,7 +80,7 @@ namespace engine {
     /**
      * @brief End render pass
      */
-    void endRenderPass(VkCommandBuffer commandBuffer);
+    static void endRenderPass(VkCommandBuffer commandBuffer);
 
   private:
     void createDepthResources();
@@ -100,7 +101,9 @@ namespace engine {
     VkFramebuffer  framebuffers_[6]   = {VK_NULL_HANDLE};
     VkFormat       depthFormat_       = VK_FORMAT_D32_SFLOAT;
 
-    VkImage getImage() const { return depthImage_; }
+    [[nodiscard]] VkImage getImage() const { return depthImage_; }
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_CUBESHADOWMAP_HPP

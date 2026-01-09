@@ -1,8 +1,17 @@
 #include "Engine/Graphics/CubeShadowMap.hpp"
 
+#include <vulkan/vulkan_core.h>
+
 #include <array>
-#include <glm/gtc/matrix_transform.hpp>
+#include <cstdint>
 #include <stdexcept>
+
+#include "Engine/Graphics/Device.hpp"
+#include "glm/ext/matrix_clip_space.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/trigonometric.hpp"
 
 namespace engine {
 
@@ -287,7 +296,7 @@ namespace engine {
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-    VkRect2D scissor{{0, 0}, {size_, size_}};
+    VkRect2D const scissor{{0, 0}, {size_, size_}};
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
   }
 
@@ -298,7 +307,8 @@ namespace engine {
 
   void CubeShadowMap::transitionToAttachmentLayout(VkCommandBuffer commandBuffer)
   {
-    // Transition ALL 6 layers from shader read (or undefined) to attachment optimal
+    // Transition ALL 6 layers from shader read (or undefined) to attachment
+    // optimal
     VkImageMemoryBarrier barrier{};
     barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED; // Don't care about previous contents
@@ -315,16 +325,7 @@ namespace engine {
     barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
     barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-    vkCmdPipelineBarrier(commandBuffer,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                         0,
-                         0,
-                         nullptr,
-                         0,
-                         nullptr,
-                         1,
-                         &barrier);
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
   }
 
   void CubeShadowMap::transitionToShaderReadLayout(VkCommandBuffer commandBuffer)
@@ -346,16 +347,7 @@ namespace engine {
     barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-    vkCmdPipelineBarrier(commandBuffer,
-                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0,
-                         0,
-                         nullptr,
-                         0,
-                         nullptr,
-                         1,
-                         &barrier);
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
   }
 
 } // namespace engine

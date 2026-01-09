@@ -1,15 +1,14 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP
 
 #include <glm/glm.hpp>
 #include <memory>
-
-#include "Engine/Scene/Component.hpp"
 
 namespace engine {
 
   class Texture; // Forward declaration
 
-  enum class AlphaMode
+  enum class AlphaMode : std::uint8_t
   {
     Opaque,
     Mask,
@@ -41,8 +40,9 @@ namespace engine {
     float     transmission{0.0f};                 // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
     float     ior{1.5f};                          // Index of Refraction (default 1.5)
     float     thickness{0.0f};                    // Volume thickness (0 = thin walled)
-    glm::vec3 attenuationColor{1.0f, 1.0f, 1.0f}; // Color that white light turns into after traversing attenuationDistance
-    float     attenuationDistance{1.0f};          // Distance at which light color becomes attenuationColor
+    glm::vec3 attenuationColor{1.0f, 1.0f, 1.0f}; // Color that white light turns into after
+                                                  // traversing attenuationDistance
+    float attenuationDistance{1.0f};              // Distance at which light color becomes attenuationColor
 
     // Iridescence (Thin film interference)
     float iridescence{0.0f};            // Iridescence intensity [0, 1]
@@ -54,8 +54,10 @@ namespace engine {
     float     emissiveStrength{1.0f}; // Emissive strength multiplier
 
     // Workflow
-    bool useMetallicRoughnessTexture{false};          // If true, metallic/roughness are packed in roughnessMap (B/G channels)
-    bool useOcclusionRoughnessMetallicTexture{false}; // If true, occlusion/roughness/metallic are packed in roughnessMap (R/G/B channels)
+    bool useMetallicRoughnessTexture{false};          // If true, metallic/roughness are packed in roughnessMap (B/G
+                                                      // channels)
+    bool useOcclusionRoughnessMetallicTexture{false}; // If true, occlusion/roughness/metallic are packed in
+                                                      // roughnessMap (R/G/B channels)
     bool useSpecularGlossinessWorkflow{false};        // If true, use KHR_materials_pbrSpecularGlossiness workflow
 
     // Specular Glossiness Workflow
@@ -77,18 +79,23 @@ namespace engine {
     std::shared_ptr<Texture> clearcoatMap;          // Clearcoat texture (R channel)
     std::shared_ptr<Texture> clearcoatRoughnessMap; // Clearcoat roughness texture (G channel)
     std::shared_ptr<Texture> clearcoatNormalMap;    // Clearcoat normal map
+    // Optional baked lightmap (linear float EXR)
+    std::shared_ptr<Texture> lightmap;
 
     // Helper methods to check if textures are present
-    bool hasAlbedoMap() const { return albedoMap != nullptr; }
-    bool hasNormalMap() const { return normalMap != nullptr; }
-    bool hasMetallicMap() const { return metallicMap != nullptr; }
-    bool hasRoughnessMap() const { return roughnessMap != nullptr; }
-    bool hasAOMap() const { return aoMap != nullptr; }
-    bool hasEmissiveMap() const { return emissiveMap != nullptr; }
-    bool hasTransmissionMap() const { return transmissionMap != nullptr; }
-    bool hasClearcoatMap() const { return clearcoatMap != nullptr; }
-    bool hasClearcoatRoughnessMap() const { return clearcoatRoughnessMap != nullptr; }
-    bool hasClearcoatNormalMap() const { return clearcoatNormalMap != nullptr; }
+    [[nodiscard]] bool hasAlbedoMap() const { return albedoMap != nullptr; }
+    [[nodiscard]] bool hasLightmap() const { return lightmap != nullptr; }
+    [[nodiscard]] bool hasNormalMap() const { return normalMap != nullptr; }
+    [[nodiscard]] bool hasMetallicMap() const { return metallicMap != nullptr; }
+    [[nodiscard]] bool hasRoughnessMap() const { return roughnessMap != nullptr; }
+    [[nodiscard]] bool hasAOMap() const { return aoMap != nullptr; }
+    [[nodiscard]] bool hasEmissiveMap() const { return emissiveMap != nullptr; }
+    [[nodiscard]] bool hasTransmissionMap() const { return transmissionMap != nullptr; }
+    [[nodiscard]] bool hasClearcoatMap() const { return clearcoatMap != nullptr; }
+    [[nodiscard]] bool hasClearcoatRoughnessMap() const { return clearcoatRoughnessMap != nullptr; }
+    [[nodiscard]] bool hasClearcoatNormalMap() const { return clearcoatNormalMap != nullptr; }
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP

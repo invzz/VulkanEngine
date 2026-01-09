@@ -1,7 +1,21 @@
 #include "Engine/Systems/DustRenderSystem.hpp"
 
-#include <array>
+#include <cassert>
+#include <cstdint>
+#include <memory>
 #include <random>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "Engine/Graphics/Buffer.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/Pipeline.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include "glm/ext/vector_float4.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -97,8 +111,8 @@ namespace engine {
     pipelineConfig.attributeDescriptions.push_back(attributeDescription);
 
 #ifdef SHADER_PATH
-    std::string vertPath = std::string(SHADER_PATH) + "/dust.vert.spv";
-    std::string fragPath = std::string(SHADER_PATH) + "/dust.frag.spv";
+    std::string const vertPath = std::string(SHADER_PATH) + "/dust.vert.spv";
+    std::string const fragPath = std::string(SHADER_PATH) + "/dust.frag.spv";
 #else
     std::string vertPath = "assets/shaders/compiled/dust.vert.spv";
     std::string fragPath = "assets/shaders/compiled/dust.frag.spv";
@@ -121,24 +135,20 @@ namespace engine {
     for (auto& v : vertices)
     {
       v.x = distribution(generator) * 20.0f; // Pre-scale to max expected box size to avoid precision issues?
-                                             // Actually shader does mod(pos, boxSize), so initial pos should be large enough range
-                                             // or just [0, boxSize]. Let's use [0, 100]
+                                             // Actually shader does mod(pos, boxSize), so initial pos should
+                                             // be large enough range or just [0, boxSize]. Let's use [0, 100]
       v.y = distribution(generator) * 20.0f;
       v.z = distribution(generator) * 20.0f;
     }
 
-    VkDeviceSize bufferSize = sizeof(glm::vec3) * vertexCount;
+    VkDeviceSize const bufferSize = sizeof(glm::vec3) * vertexCount;
 
     Buffer stagingBuffer{device, bufferSize, 1, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
     stagingBuffer.map();
     stagingBuffer.writeToBuffer(vertices.data());
 
-    vertexBuffer = std::make_unique<Buffer>(device,
-                                            bufferSize,
-                                            1,
-                                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    vertexBuffer = std::make_unique<Buffer>(device, bufferSize, 1, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
@@ -151,11 +161,7 @@ namespace engine {
     device.endSingleTimeCommands(commandBuffer);
   }
 
-  void DustRenderSystem::render(FrameInfo&          frameInfo,
-                                const DustSettings& settings,
-                                const glm::vec4&    sunDir,
-                                const glm::vec3&    sunColor,
-                                const glm::vec3&    ambientColor)
+  void DustRenderSystem::render(FrameInfo& frameInfo, const DustSettings& settings, const glm::vec4& sunDir, const glm::vec3& sunColor, const glm::vec3& ambientColor)
   {
     if (!settings.enabled) return;
 
@@ -179,7 +185,7 @@ namespace engine {
 
     vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(DustPushConstants), &push);
 
-    VkBuffer     buffers[] = {vertexBuffer->getBuffer()};
+    VkBuffer const buffers[] = {vertexBuffer->getBuffer()};
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(frameInfo.commandBuffer, 0, 1, buffers, offsets);
 

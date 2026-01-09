@@ -1,6 +1,13 @@
 #include "Engine/Resources/TextureManager.hpp"
 
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
+
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Resources/Texture.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -17,7 +24,7 @@ namespace engine {
     addTexture(placeholderTexture);
   }
 
-  TextureManager::~TextureManager() {}
+  TextureManager::~TextureManager() = default;
 
   void TextureManager::createDescriptorSetLayout()
   {
@@ -32,11 +39,8 @@ namespace engine {
 
   void TextureManager::createDescriptorPool()
   {
-    descriptorPool = DescriptorPool::Builder(device)
-                             .setMaxSets(1)
-                             .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_TEXTURES)
-                             .setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT)
-                             .build();
+    descriptorPool =
+            DescriptorPool::Builder(device).setMaxSets(1).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_TEXTURES).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT).build();
   }
 
   void TextureManager::createDescriptorSet()
@@ -47,9 +51,9 @@ namespace engine {
     }
   }
 
-  uint32_t TextureManager::addTexture(std::shared_ptr<Texture> texture)
+  uint32_t TextureManager::addTexture(const std::shared_ptr<Texture>& texture)
   {
-    if (textureIndexMap.count(texture.get()))
+    if (textureIndexMap.contains(texture.get()) != 0u)
     {
       return textureIndexMap[texture.get()];
     }
@@ -58,8 +62,7 @@ namespace engine {
     {
       throw std::runtime_error("Max textures exceeded in TextureManager");
     }
-
-    uint32_t index = static_cast<uint32_t>(textures.size());
+    auto index = static_cast<uint32_t>(textures.size());
     textures.push_back(texture);
     textureIndexMap[texture.get()] = index;
 

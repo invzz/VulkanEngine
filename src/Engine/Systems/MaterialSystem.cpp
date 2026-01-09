@@ -1,8 +1,13 @@
 #include "Engine/Systems/MaterialSystem.hpp"
 
+#include <cstddef>
 #include <stdexcept>
 
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/Texture.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -41,7 +46,7 @@ namespace engine {
   VkDescriptorSet MaterialSystem::getMaterialDescriptorSet(const PBRMaterial& material)
   {
     // Use material pointer as hash key
-    size_t materialHash = reinterpret_cast<size_t>(&material);
+    auto const materialHash = reinterpret_cast<size_t>(&material);
 
     // Check cache first
     auto it = materialDescriptorCache_.find(materialHash);

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
 
 #include <GLFW/glfw3.h>
 
@@ -36,8 +37,8 @@ namespace engine {
       int toggleCursor = GLFW_KEY_ESCAPE;
     };
 
-    void moveInPlaneXZ(float deltaTime, struct TransformComponent& transform) const;
-    bool isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
+    void               moveInPlaneXZ(float deltaTime, struct TransformComponent& transform) const;
+    [[nodiscard]] bool isKeyPressed(int key) const { return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS; }
 
     KeyMappings mappings{};
 
@@ -48,3 +49,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP

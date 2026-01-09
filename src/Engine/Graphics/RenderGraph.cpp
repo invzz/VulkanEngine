@@ -1,5 +1,10 @@
 #include "Engine/Graphics/RenderGraph.hpp"
 
+#include <memory>
+#include <utility>
+
+#include "Engine/Graphics/FrameInfo.hpp"
+
 namespace engine {
 
   void RenderGraph::addPass(std::unique_ptr<RenderPass> pass)

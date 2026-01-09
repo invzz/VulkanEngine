@@ -1,4 +1,6 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_ANSI_COLORS_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_CORE_ANSI_COLORS_HPP
+
 #define RED           "\033[31m"
 #define GREEN         "\033[32m"
 #define YELLOW        "\033[33m"
@@ -14,3 +16,5 @@
 #define INVISIBLE     "\033[8m"
 #define STRIKETHROUGH "\033[9m"
 #define RESET         "\033[0m"
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_CORE_ANSI_COLORS_HPP

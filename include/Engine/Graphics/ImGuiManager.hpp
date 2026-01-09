@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_IMGUIMANAGER_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_IMGUIMANAGER_HPP
 
 #include <vulkan/vulkan.h>
 
@@ -27,13 +28,13 @@ namespace engine {
      * @brief Start a new ImGui frame
      * Call this before any ImGui UI code
      */
-    void newFrame();
+    static void newFrame();
 
     /**
      * @brief Render ImGui draw data to command buffer
      * Call this inside render pass after your scene rendering
      */
-    void render(VkCommandBuffer commandBuffer);
+    static void render(VkCommandBuffer commandBuffer);
 
     /**
      * @brief Update ImGui fonts/resources
@@ -52,3 +53,5 @@ namespace engine {
   };
 
 } // namespace engine
+
+#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_IMGUIMANAGER_HPP

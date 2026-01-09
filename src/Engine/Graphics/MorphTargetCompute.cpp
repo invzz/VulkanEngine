@@ -1,13 +1,18 @@
 #include "Engine/Graphics/MorphTargetCompute.hpp"
 
+#include <cstdint>
 #include <cstring>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -17,7 +22,7 @@ namespace engine {
     createComputePipeline();
     createDescriptorPool();
 
-    std::cout << "[" << GREEN << "MorphTargetCompute" << RESET << "] Compute pipeline created" << std::endl;
+    std::cout << "[" << GREEN << "MorphTargetCompute" << RESET << "] Compute pipeline created" << '\n';
   }
 
   MorphTargetCompute::~MorphTargetCompute()
@@ -30,23 +35,31 @@ namespace engine {
   void MorphTargetCompute::createDescriptorSetLayout()
   {
     descriptorSetLayout_ = DescriptorSetLayout::Builder(device_)
-                                   .addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Base vertices
-                                   .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Morph deltas
-                                   .addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Weights
-                                   .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT) // Output
+                                   .addBinding(0,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Base vertices
+                                   .addBinding(1,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Morph deltas
+                                   .addBinding(2,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Weights
+                                   .addBinding(3,
+                                               VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                               VK_SHADER_STAGE_COMPUTE_BIT) // Output
                                    .build();
   }
 
   void MorphTargetCompute::createComputePipeline()
   {
     // Read compiled compute shader
-    std::string shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
-    std::cout << "[MorphTargetCompute] Loading shader from: " << shaderPath << std::endl;
+    std::string const shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
+    std::cout << "[MorphTargetCompute] Loading shader from: " << shaderPath << '\n';
     std::ifstream file(shaderPath, std::ios::ate | std::ios::binary);
 
     if (!file.is_open())
     {
-      std::cerr << "[MorphTargetCompute] Failed to open shader file: " << shaderPath << std::endl;
+      std::cerr << "[MorphTargetCompute] Failed to open shader file: " << shaderPath << '\n';
       throw ReadFileException(std::string("Failed to open compute shader: " + shaderPath).c_str());
     }
 
@@ -60,7 +73,7 @@ namespace engine {
     // Create shader module
     VkShaderModule computeShaderModule = createShaderModule(shaderCode);
 
-    VkPipelineShaderStageCreateInfo shaderStageInfo{
+    VkPipelineShaderStageCreateInfo const shaderStageInfo{
             .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
             .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
             .module = computeShaderModule,
@@ -68,7 +81,7 @@ namespace engine {
     };
 
     // Push constants for configuration
-    VkPushConstantRange pushConstantRange{
+    VkPushConstantRange const pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
             .offset     = 0,
             .size       = sizeof(PushConstants),
@@ -76,7 +89,7 @@ namespace engine {
 
     // Pipeline layout
     VkDescriptorSetLayout      layout = descriptorSetLayout_->getDescriptorSetLayout();
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo{
+    VkPipelineLayoutCreateInfo const pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount         = 1,
             .pSetLayouts            = &layout,
@@ -90,7 +103,7 @@ namespace engine {
     }
 
     // Create compute pipeline
-    VkComputePipelineCreateInfo pipelineInfo{
+    VkComputePipelineCreateInfo const pipelineInfo{
             .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
             .stage  = shaderStageInfo,
             .layout = pipelineLayout_,
@@ -106,11 +119,7 @@ namespace engine {
 
   void MorphTargetCompute::createDescriptorPool()
   {
-    descriptorPool_ = DescriptorPool::Builder(device_)
-                              .setMaxSets(25)
-                              .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100)
-                              .setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT)
-                              .build();
+    descriptorPool_ = DescriptorPool::Builder(device_).setMaxSets(25).addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 100).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).build();
   }
 
   VkShaderModule MorphTargetCompute::createShaderModule(const std::vector<char>& code)
@@ -180,7 +189,7 @@ namespace engine {
 
     // Dispatch compute shader
     // Work group size is 256, so divide vertex count by 256 and round up
-    uint32_t workGroupCount = (pushConstants.vertexCount + 255) / 256;
+    uint32_t const workGroupCount = (pushConstants.vertexCount + 255) / 256;
     vkCmdDispatch(commandBuffer, workGroupCount, 1, 1);
 
     return descriptorSet;

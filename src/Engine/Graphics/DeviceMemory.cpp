@@ -1,9 +1,12 @@
 #include "Engine/Graphics/DeviceMemory.hpp"
 
-#include <stdexcept>
+#include <cstdint>
+#include <iostream>
+#include <thread>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -15,7 +18,7 @@ namespace engine {
     vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, &memProperties);
     for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
     {
-      if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
+      if (((typeFilter & (1 << i)) != 0u) && (memProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
       {
         return i;
       }
@@ -24,11 +27,7 @@ namespace engine {
     throw engine::RuntimeException("failed to find suitable memory type!");
   }
 
-  void DeviceMemory::createBuffer(VkDeviceSize          size,
-                                  VkBufferUsageFlags    usage,
-                                  VkMemoryPropertyFlags memoryPropertyFlags,
-                                  VkBuffer&             buffer,
-                                  VkDeviceMemory&       bufferMemory)
+  void DeviceMemory::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryPropertyFlags, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
   {
     VkBufferCreateInfo bufferInfo{};
     bufferInfo.sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -50,7 +49,7 @@ namespace engine {
     allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, memoryPropertyFlags);
 
     VkMemoryAllocateFlagsInfo allocFlagsInfo{};
-    if (usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    if ((usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) != 0u)
     {
       allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
       allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
@@ -67,44 +66,18 @@ namespace engine {
 
   VkCommandBuffer DeviceMemory::beginSingleTimeCommands() const
   {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool        = device.commandPool;
-    allocInfo.commandBufferCount = 1;
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(device.device_, &allocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-    return commandBuffer;
+    // Delegate to Device implementation which creates a temporary command pool
+    // per-call so worker threads don't share the main command pool.
+    return device.beginSingleTimeCommands();
   }
 
   void DeviceMemory::endSingleTimeCommands(VkCommandBuffer commandBuffer) const
   {
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers    = &commandBuffer;
-
-    vkQueueSubmit(device.graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(device.graphicsQueue_);
-
-    vkFreeCommandBuffers(device.device_, device.commandPool, 1, &commandBuffer);
+    // Delegate to Device implementation which frees the temp pool when done.
+    device.endSingleTimeCommands(commandBuffer);
   }
 
-  void DeviceMemory::copyBuffer(VkCommandBuffer      commandBuffer,
-                                VkBuffer             srcBuffer,
-                                VkBuffer             dstBuffer,
-                                VkDeviceSize         size,
-                                VkPipelineStageFlags dstStageMask,
-                                VkAccessFlags        dstAccessMask) const
+  void DeviceMemory::copyBuffer(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask)
   {
     VkBufferCopy copyRegion{};
     copyRegion.srcOffset = 0; // Optional
@@ -125,11 +98,7 @@ namespace engine {
     vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, dstStageMask, 0, 0, nullptr, 1, &barrier, 0, nullptr);
   }
 
-  void DeviceMemory::copyBufferImmediate(VkBuffer             srcBuffer,
-                                         VkBuffer             dstBuffer,
-                                         VkDeviceSize         size,
-                                         VkPipelineStageFlags dstStageMask,
-                                         VkAccessFlags        dstAccessMask) const
+  void DeviceMemory::copyBufferImmediate(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkPipelineStageFlags dstStageMask, VkAccessFlags dstAccessMask) const
   {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
     copyBuffer(commandBuffer, srcBuffer, dstBuffer, size, dstStageMask, dstAccessMask);
@@ -157,10 +126,23 @@ namespace engine {
     endSingleTimeCommands(commandBuffer);
   }
 
-  void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo,
-                                         VkMemoryPropertyFlags    memoryPropertyFlags,
-                                         VkImage&                 image,
-                                         VkDeviceMemory&          imageMemory) const
+  void DeviceMemory::copyBufferToImage(VkBuffer buffer, VkImage image, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout) const
+  {
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, imageLayout, static_cast<uint32_t>(regions.size()), regions.data());
+    endSingleTimeCommands(commandBuffer);
+  }
+
+  void DeviceMemory::copyImageToBuffer(VkImage image, VkBuffer buffer, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout) const
+  {
+    std::cerr << "[DeviceMemory] copyImageToBuffer - begin thread=" << std::this_thread::get_id() << " regions=" << regions.size() << "\n";
+    VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+    vkCmdCopyImageToBuffer(commandBuffer, image, imageLayout, buffer, static_cast<uint32_t>(regions.size()), regions.data());
+    endSingleTimeCommands(commandBuffer);
+    std::cerr << "[DeviceMemory] copyImageToBuffer - complete thread=" << std::this_thread::get_id() << "\n";
+  }
+
+  void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo, VkMemoryPropertyFlags memoryPropertyFlags, VkImage& image, VkDeviceMemory& imageMemory) const
   {
     if (vkCreateImage(device.device_, &imageInfo, nullptr, &image) != VK_SUCCESS)
     {
