@@ -29,7 +29,6 @@ namespace engine::lightmap {
       return;
     }
 
-    const int              N = width * height;
     std::vector<BakeTexel> cur(N);
     std::vector<BakeTexel> next(N);
 
