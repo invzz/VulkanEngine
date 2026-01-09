@@ -20,12 +20,20 @@ local shader_path = path.join(project_dir, "assets/shaders/compiled//"):gsub("\\
 local texture_path = path.join(project_dir, "assets/textures//"):gsub("\\", "/") .."/"
 local model_path = path.join(project_dir, "assets/models//"):gsub("\\", "/") .."/"
 local profile_path = path.join(project_dir, "profile/"):gsub("\\", "/") .."/"
-
+local tool_path = path.join(project_dir, "tools/"):gsub("\\", "/") .."/"
+if is_plat("windows") then
+    local exr2vtex_path = path.join(project_dir, "tools/EXR2VTEX")
+    add_defines("EXR2VTEX_PATH= \"" .. exr2vtex_path .. "\"")
+else
+    local exr2vtex_path = path.join(project_dir, "tools/EXR2VTEX")
+    add_defines("EXR2VTEX_PATH= \"" .. exr2vtex_path .. "\"")
+end
 -- Asset paths (make available to all targets)
 add_defines("SHADER_PATH=\"" .. shader_path .. "\"")
 add_defines("MODEL_PATH=\"" .. model_path .. "\"")
 add_defines("TEXTURE_PATH=\"" .. texture_path .. "\"")
-
+add_defines("TOOL_PATH=\"" .. tool_path .. "\"")
+            
 -- Platform-specific defines
 if is_plat("linux") then
     add_defines("GLFW_USE_WAYLAND=1")
@@ -135,6 +143,42 @@ target("Cube")
         add_ldflags("-Wl,--start-group", "-Wl,--end-group")
         add_deps("Engine")
 
+        -- After build: copy tool binary to tools/ for easy discovery
+        on_build(function (target)
+            local bin = target:targetfile()
+            if bin and os.isfile(bin) then
+                local outDir = path.join(project_dir, "tools")
+                os.mkdir(outDir)
+                local dest = path.join(outDir, path.filename(bin))
+                os.cp(bin, dest)
+                print("Copied tool: " .. dest)
+            end
+        end)
+
+    target("EXR2VTEX")
+        set_kind("binary")
+        add_files("src/tools/EXR2VTEX/**.cpp")
+        add_includedirs("include", {public = true})
+        if is_plat("windows") then
+            add_packages("glfw", "glm", "vulkan-headers", "tinyexr")
+            add_syslinks("vulkan-1")
+        else
+            add_packages("glfw", "glm", "vulkan", "tinyexr")
+        end
+        add_deps("Engine")
+
+        -- After build: copy tool binary to tools/ for easy discovery
+        on_build(function (target)
+            local bin = target:targetfile()
+            if bin and os.isfile(bin) then
+                local outDir = path.join(project_dir, "tools")
+                os.mkdir(outDir)
+                local dest = path.join(outDir, path.filename(bin))
+                os.cp(bin, dest)
+                print("Copied tool: " .. dest)
+            end
+        end)
+
     -- ModelLightBaker: offline baker for per-model directional lightmaps
     target("ModelLightBaker")
         set_kind("binary")
@@ -147,6 +191,18 @@ target("Cube")
             add_packages("glfw", "glm", "vulkan", "entt", "nlohmann_json", "tinygltf", "stb", "tinyexr")
         end
         add_deps("EngineImporters", "Engine")
+
+        -- After build: copy tool binary to tools/ for easy discovery
+        on_build(function (target)
+            local bin = target:targetfile()
+            if bin and os.isfile(bin) then
+                local outDir = path.join(project_dir, "tools")
+                os.mkdir(outDir)
+                local dest = path.join(outDir, path.filename(bin))
+                os.cp(bin, dest)
+                print("Copied tool: " .. dest)
+            end
+        end)
     
 target("CubeUI")
     set_kind("static")
@@ -254,7 +310,7 @@ target("EngineSceneIO")
 -- Unit tests for scene lightmap manifest parsing
 target("LightmapTests")
     set_kind("binary")
-    add_files("tests/lightmap_manifest_tests.cpp", "tests/scene_binding_tests.cpp", "tests/lightmap_integration_tests.cpp", "tests/lightmap_exr_tests.cpp")
+    add_files("tests/lightmap_manifest_tests.cpp", "tests/scene_binding_tests.cpp", "tests/lightmap_integration_tests.cpp", "tests/lightmap_exr_tests.cpp", "tests/lightmap_vtex_tests.cpp", "tests/lightmap_vtex_pixel_tests.cpp", "tests/lightmap_vtex_mip_layer_tests.cpp", "tests/lightmap_exr2vtex_integration_tests.cpp")
     add_packages("gtest", "nlohmann_json", "entt", "glm", "glfw", "vulkan", "tinyexr")
     add_links("gtest_main")
     add_deps("EngineSceneIO", "Engine")

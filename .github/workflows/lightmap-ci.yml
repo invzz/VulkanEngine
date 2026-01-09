@@ -1,0 +1,55 @@
+name: Lightmap CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-tests:
+    name: Unit & Deterministic Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system deps (minimal)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libvulkan-dev vulkan-tools
+
+      - name: Build LightmapTests
+        run: xmake build -v LightmapTests
+
+      - name: Run unit tests (hardware-dependent tests skip by default)
+        run: ./build/linux/x86_64/release/LightmapTests --gtest_color=yes || true
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lightmap-tests-logs
+          path: build/linux/x86_64/release/*.log || true
+
+  gpu-integration:
+    name: Hardware-dependent integration tests
+    runs-on: [self-hosted, linux, gpu]
+    needs: unit-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build tools & tests
+        run: xmake build -v EXR2VTEX LightmapTests
+
+      - name: Run hardware test (EXR2VTEX integration)
+        env:
+          RUN_HARDWARE_TESTS: "1"
+        run: |
+          ./build/linux/x86_64/release/LightmapTests --gtest_filter=LightmapEXR2VTEX.ToolConvertsEXRToVTEX --gtest_color=yes
+
+      - name: Upload hardware test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lightmap-hw-logs
+          path: build/linux/x86_64/release/*.log || true

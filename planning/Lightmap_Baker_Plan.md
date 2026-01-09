@@ -189,6 +189,7 @@ finalColor.rgb *= bakedLight;
 - Atlas growth: too many instances → mitigation: `--max-atlas-size`, automatic tiling.
 - Bake time: CPU-only path can be slow → mitigation: keep GPU path optional and measured.
 - CI time: baking scenes in CI can be heavy → mitigation: use tiny test scenes for CI job.
+- Hardware-dependent integration tests: run as a separate CI job on a self-hosted GPU runner (set `RUN_HARDWARE_TESTS=1` in the job) so unit tests remain deterministic.
 - Shader bindings: per-instance data should be pushed via instance buffer, not per-material updates.
 
 **Priority confirmation:** your ordering is correct. Follow: 1 → 2 → 3 → 5 first, then 4 → 7, and defer denoising/GI until UV1, dilation, mipgen, and VTEX are rock solid.

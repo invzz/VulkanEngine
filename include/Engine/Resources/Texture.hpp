@@ -28,6 +28,11 @@ namespace engine {
     // Load high-dynamic-range EXR textures as linear float RGBA
     static std::shared_ptr<Texture> createFromEXR(Device& device, const std::string& filepath);
 
+    // Load engine VTEX container produced by baking pipeline (fast GPU-ready container)
+    static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath);
+
+  public:
+    // Adopted handle constructor (used by VTEX loader)
     [[nodiscard]] VkImageView           getImageView() const { return imageView_; }
     [[nodiscard]] VkSampler             getSampler() const { return sampler_; }
     [[nodiscard]] VkImage               getImage() const { return image_; }
@@ -54,6 +59,9 @@ namespace engine {
     [[nodiscard]] size_t getMemorySize() const;
 
   private:
+    // Private constructor for adopting Vulkan handles created externally (used by VTEX loader)
+    Texture(Device& device, VkImage image, VkDeviceMemory memory, VkImageView view, VkSampler sampler, int width, int height, uint32_t mipLevels, VkFormat format);
+
     // Private constructor for creating textures from memory
     Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);
     // Private constructor for creating float RGBA textures (EXR loader)

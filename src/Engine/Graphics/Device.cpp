@@ -1,5 +1,9 @@
 #include "Engine/Graphics/Device.hpp"
 
+#include <chrono>
+#include <iostream>
+#include <thread>
+
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Core/ansi_colors.hpp"
@@ -442,7 +446,33 @@ namespace engine {
   VkResult Device::submitGraphics(const VkSubmitInfo* submitInfo, VkFence fence)
   {
     std::scoped_lock const lock(queueSubmitMutex_);
-    return vkQueueSubmit(graphicsQueue_, 1, submitInfo, fence);
+    const int              maxRetries = 2;
+    VkResult               lastRes    = VK_ERROR_INITIALIZATION_FAILED;
+    for (int attempt = 0; attempt <= maxRetries; ++attempt)
+    {
+      lastRes = vkQueueSubmit(graphicsQueue_, 1, submitInfo, fence);
+      if (lastRes == VK_SUCCESS)
+      {
+        return lastRes;
+      }
+
+      uint32_t cbCount = submitInfo ? submitInfo->commandBufferCount : 0u;
+      std::cerr << "[Device] submitGraphics failed: VkResult=" << lastRes << " commandBuffers=" << cbCount << " attempt=" << attempt << " thread=" << std::this_thread::get_id() << "\n";
+
+      if (lastRes == VK_ERROR_DEVICE_LOST)
+      {
+        // Dump physical device info to help debugging device lost errors
+        std::cerr << "[Device] VK_ERROR_DEVICE_LOST: physical device: " << properties.deviceName << " vendor=" << properties.vendorID << " driver=" << properties.driverVersion << "\n";
+        break; // no point retrying
+      }
+
+      if (attempt < maxRetries)
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+    }
+
+    return lastRes;
   }
 
   VkResult Device::present(const VkPresentInfoKHR* presentInfo)
@@ -719,6 +749,8 @@ namespace engine {
 
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
+    std::cerr << "[Device] beginSingleTimeCommands - created cmdBuffer=" << commandBuffer << " pool=" << tempPool << " thread=" << std::this_thread::get_id() << std::endl;
+
     return commandBuffer;
   }
 
@@ -733,13 +765,18 @@ namespace engine {
 
     // Submit serialized to avoid simultaneous use of the VkQueue object from
     // different threads (fixes validation threading warnings).
+    std::cerr << "[Device] endSingleTimeCommands - ending cmdBuffer=" << commandBuffer << " thread=" << std::this_thread::get_id() << "\n";
+
     VkResult const submitRes = submitGraphics(&submitInfo, VK_NULL_HANDLE);
     if (submitRes != VK_SUCCESS)
     {
+      std::cerr << "[Device] endSingleTimeCommands - submit failed for cmdBuffer=" << commandBuffer << " VkResult=" << submitRes << " thread=" << std::this_thread::get_id() << "\n";
       throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
     }
 
     vkQueueWaitIdle(graphicsQueue_);
+
+    std::cerr << "[Device] endSingleTimeCommands - submit OK for cmdBuffer=" << commandBuffer << "\n";
 
     VkCommandPool pool = VK_NULL_HANDLE;
     {

@@ -21,6 +21,7 @@
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/Buffer.hpp"
+#include "Engine/Systems/IBL/VTexIO.hpp"
 
 namespace engine {
 
@@ -189,6 +190,36 @@ namespace engine {
     std::cout << "[Texture] Loaded EXR: " << filepath << " (" << width << "x" << height << ")" << '\n';
 
     return tex;
+  }
+
+  // Create a Texture by loading a VTEX container into a Vulkan image and adopting the handles
+  std::shared_ptr<Texture> Texture::createFromVTEX(Device& device, const std::string& filepath)
+  {
+    VkImage                  image   = VK_NULL_HANDLE;
+    VkDeviceMemory           memory  = VK_NULL_HANDLE;
+    VkImageView              view    = VK_NULL_HANDLE;
+    VkSampler                sampler = VK_NULL_HANDLE;
+    ibl_detail::vtex::Header header{};
+
+    // Use VTEX loader to populate image/memory/view/sampler
+    bool ok = ibl_detail::vtex::loadImage(device, filepath, image, memory, view, sampler, VK_IMAGE_VIEW_TYPE_2D, 0, &header);
+    if (!ok)
+    {
+      throw std::runtime_error("Failed to load VTEX: " + filepath);
+    }
+
+    // Adopt the handles into a new Texture instance
+    std::shared_ptr<Texture> tex =
+            std::shared_ptr<Texture>(new Texture(device, image, memory, view, sampler, (int)header.width, (int)header.height, header.mipLevels, static_cast<VkFormat>(header.vkFormat)));
+    std::cout << "[Texture] Loaded VTEX: " << filepath << " (" << header.width << "x" << header.height << ")" << '\n';
+    return tex;
+  }
+
+  Texture::Texture(Device& device, VkImage image, VkDeviceMemory memory, VkImageView view, VkSampler sampler, int width, int height, uint32_t mipLevels, VkFormat format)
+      : device_{device}, image_{image}, imageMemory_{memory}, imageView_{view}, sampler_{sampler}, width_{width}, height_{height}, mipLevels_{mipLevels}
+  {
+    // Constructor adopts externally-created Vulkan handles; nothing else to do
+    (void)format; // format is metadata here; image/view already created with correct format
   }
 
   // Private constructor for creating textures from float RGBA memory

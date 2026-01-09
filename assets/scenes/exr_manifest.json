@@ -1,0 +1,1 @@
+{ "version": 1, "lightmaps": [ { "id": "exr_lm", "file": "lightmaps/test_lm.exr", "format": "exr", "resolution": [2,2], "usage": "Lightmap" } ], "lightmapBindings": {} }

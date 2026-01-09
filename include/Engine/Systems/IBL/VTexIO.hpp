@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <string>
 
-
 namespace engine {
   class Device;
 }
@@ -37,5 +36,8 @@ namespace engine::ibl_detail::vtex {
                  VkImageViewType    viewType,
                  VkImageCreateFlags flags,
                  Header*            outHeader = nullptr);
+
+  // Read only the VTEX header and return true if the file is a valid VTEX container.
+  bool readHeader(const std::string& filePath, Header& outHeader);
 
 } // namespace engine::ibl_detail::vtex

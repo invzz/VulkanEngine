@@ -686,12 +686,18 @@ namespace engine {
 
       if (std::filesystem::exists(candidate))
       {
+        // Prefer explicit VTEX loader when a .vtex container is provided.
         std::string ext = candidate.extension().string();
         for (auto& c : ext)
           c = (char)std::tolower(c);
         try
         {
-          if (ext == ".exr")
+          if (ext == ".vtex")
+          {
+            // Use VTEX loader (GPU-ready container)
+            tex = Texture::createFromVTEX(device_, candidate.string());
+          }
+          else if (ext == ".exr")
           {
             // Use EXR loader (linear HDR)
             tex = Texture::createFromEXR(device_, candidate.string());

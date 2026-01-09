@@ -1,6 +1,8 @@
 #include "Engine/Graphics/DeviceMemory.hpp"
 
 #include <cstdint>
+#include <iostream>
+#include <thread>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Device.hpp"
@@ -133,9 +135,11 @@ namespace engine {
 
   void DeviceMemory::copyImageToBuffer(VkImage image, VkBuffer buffer, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout) const
   {
+    std::cerr << "[DeviceMemory] copyImageToBuffer - begin thread=" << std::this_thread::get_id() << " regions=" << regions.size() << "\n";
     VkCommandBuffer commandBuffer = beginSingleTimeCommands();
     vkCmdCopyImageToBuffer(commandBuffer, image, imageLayout, buffer, static_cast<uint32_t>(regions.size()), regions.data());
     endSingleTimeCommands(commandBuffer);
+    std::cerr << "[DeviceMemory] copyImageToBuffer - complete thread=" << std::this_thread::get_id() << "\n";
   }
 
   void DeviceMemory::createImageWithInfo(const VkImageCreateInfo& imageInfo, VkMemoryPropertyFlags memoryPropertyFlags, VkImage& image, VkDeviceMemory& imageMemory) const

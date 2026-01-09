@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
@@ -107,6 +108,19 @@ namespace engine::ibl_detail::vtex {
     header.layers     = layers;
     header.bytesPerPx = bpp;
 
+    // Ensure the output directory exists before attempting to open the file.
+    std::filesystem::path outPath(filePath);
+    if (outPath.has_parent_path())
+    {
+      std::error_code ec;
+      std::filesystem::create_directories(outPath.parent_path(), ec);
+      if (ec)
+      {
+        staging.unmap();
+        return false;
+      }
+    }
+
     std::ofstream out(filePath, std::ios::binary);
     if (!out)
     {
@@ -120,6 +134,17 @@ namespace engine::ibl_detail::vtex {
 
     staging.unmap();
     return static_cast<bool>(out);
+  }
+
+  bool readHeader(const std::string& filePath, Header& outHeader)
+  {
+    Header                 header{};
+    std::vector<std::byte> data;
+    if (!readFileBytes(filePath, header, data)) return false;
+    VkFormat const format = static_cast<VkFormat>(header.vkFormat);
+    if (header.bytesPerPx != bytesPerPixelFor(format)) return false;
+    outHeader = header;
+    return true;
   }
 
   bool loadImage(Device&            device,
