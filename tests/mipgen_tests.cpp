@@ -45,9 +45,9 @@ TEST(MipGen, AveragesValidContributors)
 
 TEST(MipGen, SingleColumn)
 {
-  int sw = 1, sh = 4;
-  int dstW = std::max(1, sw / 2);
-  int dstH = std::max(1, sh / 2);
+  int                    sw = 1, sh = 4;
+  int                    dstW = std::max(1, sw / 2);
+  int                    dstH = std::max(1, sh / 2);
   std::vector<BakeTexel> src(sw * sh, make(0, 0, 0, 0));
   src[0] = make(1, 0, 0, 1);
   src[2] = make(0, 1, 0, 1);

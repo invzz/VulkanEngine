@@ -1,14 +1,15 @@
 #pragma once
 
 #include <cstdint>
+
 #include "glm/vec3.hpp"
 
 namespace engine {
 
-struct BakeTexel
-{
+  struct BakeTexel
+  {
     glm::vec3 radiance{0.0f, 0.0f, 0.0f};
-    uint8_t valid{0}; // 0 = invalid, 1 = valid
-};
+    uint8_t   valid{0}; // 0 = invalid, 1 = valid
+  };
 
 } // namespace engine
