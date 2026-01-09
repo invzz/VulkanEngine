@@ -692,7 +692,7 @@ namespace engine {
     ubo.spotLightCount        = lightCounts.spot;
 
     // Render shadow maps for all shadow-casting lights (mesh shader culling - Level 3)
-    state.shadowSystem.renderShadowMaps(frameInfo, 50.0f);
+    state.shadowSystem.renderShadowMaps(frameInfo, 100.0f);
 
     ubo.projection                  = frameInfo.camera.getProjection();
     ubo.view                        = frameInfo.camera.getView();

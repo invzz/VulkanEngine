@@ -16,8 +16,13 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/MeshManager.hpp"
 #include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/Texture.hpp"
 #include "Engine/Resources/TextureManager.hpp"
+#include "Engine/Scene/LightmapManifest.hpp"
+#include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/LightmapComponent.hpp"
+#include "Engine/Scene/components/NameComponent.hpp"
 
 // Filesystem + JSON + EXR utilities for runtime lightmap atlas assembly
 #include <tinyexr.h>
@@ -384,6 +389,87 @@ namespace engine {
       std::cerr << "ResourceManager: failed processing mesh lightmap manifest: " << e.what() << "\n";
     }
 
+    // New: attempt to load a scene-level lightmap manifest (scene_lightmaps.json) next to the scene file
+    try
+    {
+      std::filesystem::path modelPath{path};
+      std::string           baseName    = modelPath.stem().string();
+      std::filesystem::path sceneDir    = modelPath.parent_path();
+      std::filesystem::path sceneLMPath = sceneDir / (baseName + std::string("_lightmaps.json"));
+
+      if (std::filesystem::exists(sceneLMPath))
+      {
+        std::ifstream  in(sceneLMPath);
+        nlohmann::json j;
+        in >> j;
+
+        // Parse lightmaps array
+        if (j.contains("lightmaps") && j["lightmaps"].is_array())
+        {
+          for (const auto& l : j["lightmaps"])
+          {
+            try
+            {
+              LightmapInfo info;
+              info.id     = l.value("id", std::string());
+              info.file   = l.value("file", std::string());
+              info.format = l.value("format", std::string());
+              if (l.contains("resolution") && l["resolution"].is_array() && l["resolution"].size() == 2)
+              {
+                info.resolution[0] = l["resolution"][0].get<int>();
+                info.resolution[1] = l["resolution"][1].get<int>();
+              }
+              info.paddingPx           = l.value("paddingPx", 0);
+              info.usage               = l.value("usage", std::string());
+              sceneLightmaps_[info.id] = info;
+            }
+            catch (const std::exception& e)
+            {
+              std::cerr << "ResourceManager: failed parsing lightmap entry: " << e.what() << "\n";
+            }
+          }
+        }
+
+        // Parse bindings
+        if (j.contains("lightmapBindings") && j["lightmapBindings"].is_object())
+        {
+          for (auto it = j["lightmapBindings"].begin(); it != j["lightmapBindings"].end(); ++it)
+          {
+            const std::string objectId = it.key();
+            const auto&       bind     = it.value();
+            try
+            {
+              LightmapBinding b;
+              b.lightmapId = bind.value("lightmapId", std::string());
+              b.uvChannel  = bind.value("uvChannel", 1);
+              if (bind.contains("uvScale") && bind["uvScale"].is_array())
+              {
+                b.uvScale.x = bind["uvScale"][0].get<float>();
+                b.uvScale.y = bind["uvScale"][1].get<float>();
+              }
+              if (bind.contains("uvOffset") && bind["uvOffset"].is_array())
+              {
+                b.uvOffset.x = bind["uvOffset"][0].get<float>();
+                b.uvOffset.y = bind["uvOffset"][1].get<float>();
+              }
+              sceneLightmapBindings_[objectId] = b;
+            }
+            catch (const std::exception& e)
+            {
+              std::cerr << "ResourceManager: failed parsing binding for object " << objectId << ": " << e.what() << "\n";
+            }
+          }
+        }
+
+        std::cout << "ResourceManager: loaded scene-level lightmap manifest " << sceneLMPath.string() << " (" << sceneLightmaps_.size() << " lightmaps, " << sceneLightmapBindings_.size()
+                  << " bindings)\n";
+      }
+    }
+    catch (const std::exception& e)
+    {
+      std::cerr << "ResourceManager: failed processing scene lightmap manifest: " << e.what() << "\n";
+    }
+
     // Check memory budget and evict if necessary
     if (memoryBudget_ > 0)
     {
@@ -403,6 +489,255 @@ namespace engine {
     model->setMeshId(meshId);
 
     return model;
+  }
+
+  // -----------------------------------------------------------------------
+  // Scene-level manifest helpers
+  // -----------------------------------------------------------------------
+
+  bool ResourceManager::loadSceneLightmapManifest(const std::string& manifestPath)
+  {
+    try
+    {
+      if (!std::filesystem::exists(manifestPath)) return false;
+      std::ifstream  in(manifestPath);
+      nlohmann::json j;
+      in >> j;
+
+      sceneLightmaps_.clear();
+      sceneLightmapBindings_.clear();
+
+      if (j.contains("lightmaps") && j["lightmaps"].is_array())
+      {
+        for (const auto& l : j["lightmaps"])
+        {
+          try
+          {
+            LightmapInfo info;
+            info.id     = l.value("id", std::string());
+            info.file   = l.value("file", std::string());
+            info.format = l.value("format", std::string());
+            if (l.contains("resolution") && l["resolution"].is_array() && l["resolution"].size() == 2)
+            {
+              info.resolution[0] = l["resolution"][0].get<int>();
+              info.resolution[1] = l["resolution"][1].get<int>();
+            }
+            info.paddingPx           = l.value("paddingPx", 0);
+            info.usage               = l.value("usage", std::string());
+            sceneLightmaps_[info.id] = info;
+          }
+          catch (const std::exception& e)
+          {
+            std::cerr << "ResourceManager: failed parsing lightmap entry: " << e.what() << "\n";
+          }
+        }
+      }
+
+      if (j.contains("lightmapBindings") && j["lightmapBindings"].is_object())
+      {
+        for (auto it = j["lightmapBindings"].begin(); it != j["lightmapBindings"].end(); ++it)
+        {
+          const std::string& objectId = it.key();
+          const auto&        bind     = it.value();
+          try
+          {
+            LightmapBinding b;
+            b.lightmapId = bind.value("lightmapId", std::string());
+            b.uvChannel  = bind.value("uvChannel", 1);
+            if (bind.contains("uvScale") && bind["uvScale"].is_array())
+            {
+              b.uvScale.x = bind["uvScale"][0].get<float>();
+              b.uvScale.y = bind["uvScale"][1].get<float>();
+            }
+            if (bind.contains("uvOffset") && bind["uvOffset"].is_array())
+            {
+              b.uvOffset.x = bind["uvOffset"][0].get<float>();
+              b.uvOffset.y = bind["uvOffset"][1].get<float>();
+            }
+            sceneLightmapBindings_[objectId] = b;
+          }
+          catch (const std::exception& e)
+          {
+            std::cerr << "ResourceManager: failed parsing binding for object " << objectId << ": " << e.what() << "\n";
+          }
+        }
+      }
+
+      // Delegate parsing to shared parser
+      std::unordered_map<std::string, engine::scene::LightmapInfo>    parsedLightmaps;
+      std::unordered_map<std::string, engine::scene::LightmapBinding> parsedBindings;
+      if (!engine::scene::parseSceneLightmapManifest(manifestPath, parsedLightmaps, parsedBindings))
+      {
+        std::cerr << "ResourceManager: parser failed for " << manifestPath << "\n";
+        return false;
+      }
+
+      // Convert into ResourceManager's internal types
+      sceneLightmaps_.clear();
+      for (auto& [id, info] : parsedLightmaps)
+      {
+        LightmapInfo li;
+        li.id               = info.id;
+        li.file             = info.file;
+        li.format           = info.format;
+        li.resolution       = info.resolution;
+        li.paddingPx        = info.paddingPx;
+        li.usage            = info.usage;
+        sceneLightmaps_[id] = li;
+      }
+
+      sceneLightmapBindings_.clear();
+      for (auto& [objId, b] : parsedBindings)
+      {
+        LightmapBinding lb;
+        lb.lightmapId                 = b.lightmapId;
+        lb.uvChannel                  = b.uvChannel;
+        lb.uvScale                    = b.uvScale;
+        lb.uvOffset                   = b.uvOffset;
+        sceneLightmapBindings_[objId] = lb;
+      }
+
+      std::cout << "ResourceManager: loaded scene-level lightmap manifest " << manifestPath << " (" << sceneLightmaps_.size() << " lightmaps, " << sceneLightmapBindings_.size() << " bindings)\n";
+      return true;
+    }
+    catch (const std::exception& e)
+    {
+      std::cerr << "ResourceManager: failed loading scene lightmap manifest: " << e.what() << "\n";
+      return false;
+    }
+  }
+
+  std::optional<ResourceManager::LightmapBinding> ResourceManager::getLightmapBindingForObject(const std::string& objectId) const
+  {
+    auto it = sceneLightmapBindings_.find(objectId);
+    if (it == sceneLightmapBindings_.end()) return std::nullopt;
+    return it->second;
+  }
+
+  void ResourceManager::applySceneLightmapBindings(engine::Scene& scene)
+  {
+    auto& reg  = scene.getRegistry();
+    auto  view = reg.view<NameComponent>();
+    for (auto entity : view)
+    {
+      const auto& nameComp = reg.get<NameComponent>(entity);
+      auto        it       = sceneLightmapBindings_.find(nameComp.name);
+      if (it == sceneLightmapBindings_.end()) continue;
+
+      const LightmapBinding& b = it->second;
+      // Emplace or update LightmapComponent
+      if (!reg.all_of<LightmapComponent>(entity))
+      {
+        reg.emplace<LightmapComponent>(entity, LightmapComponent{b.lightmapId, b.uvChannel, b.uvScale, b.uvOffset, -1});
+      }
+      else
+      {
+        auto& lm      = reg.get<LightmapComponent>(entity);
+        lm.lightmapId = b.lightmapId;
+        lm.uvChannel  = b.uvChannel;
+        lm.uvScale    = b.uvScale;
+        lm.uvOffset   = b.uvOffset;
+      }
+
+      // Attempt to set per-material convenience fields (PBRMaterial::uvScale)
+      if (reg.all_of<PBRMaterial>(entity))
+      {
+        auto& mat   = reg.get<PBRMaterial>(entity);
+        mat.uvScale = b.uvScale.x;
+      }
+    }
+  }
+
+  std::optional<ResourceManager::LightmapInfo> ResourceManager::getLightmapInfoById(const std::string& id) const
+  {
+    auto it = sceneLightmaps_.find(id);
+    if (it == sceneLightmaps_.end()) return std::nullopt;
+    return it->second;
+  }
+
+  void ResourceManager::registerLightmapTextureForId(const std::string& id, std::shared_ptr<Texture> texture)
+  {
+    if (!texture) return;
+    std::scoped_lock const lock(textureMutex_);
+    sceneLightmapTextures_[id] = texture;
+
+    // Ensure global registration with TextureManager
+    uint32_t const globalIndex = textureManager_->addTexture(texture);
+    texture->setGlobalIndex(globalIndex);
+
+    // Update access tracking
+    updateTextureAccess(makeTextureKey(id, false), texture->getMemorySize(), ResourcePriority::HIGH);
+  }
+
+  bool ResourceManager::loadSceneLightmapTextures(const std::string& basePath)
+  {
+    // basePath is expected to be project asset root (for tests we pass "assets")
+    for (const auto& [id, info] : sceneLightmaps_)
+    {
+      // Skip if already loaded and alive
+      {
+        std::scoped_lock const lock(textureMutex_);
+        auto                   it = sceneLightmapTextures_.find(id);
+        if (it != sceneLightmapTextures_.end() && !it->second.expired()) continue;
+      }
+
+      std::filesystem::path    candidate = std::filesystem::path(basePath) / info.file;
+      std::shared_ptr<Texture> tex;
+
+      if (std::filesystem::exists(candidate))
+      {
+        std::string ext = candidate.extension().string();
+        for (auto& c : ext)
+          c = (char)std::tolower(c);
+        try
+        {
+          if (ext == ".exr")
+          {
+            // Use EXR loader (linear HDR)
+            tex = Texture::createFromEXR(device_, candidate.string());
+          }
+          else
+          {
+            // Generic file loader (assume non-sRGB for lightmaps)
+            tex = loadTexture(candidate.string(), false);
+          }
+        }
+        catch (const std::exception& e)
+        {
+          std::cerr << "ResourceManager: failed to load lightmap file " << candidate << ": " << e.what() << "\n";
+          tex = nullptr;
+        }
+      }
+
+      if (!tex)
+      {
+        // Fallback to a 1x1 white texture (safe fallback for tests and missing files)
+        tex = Texture::createWhiteTexture(device_);
+      }
+
+      registerLightmapTextureForId(id, tex);
+    }
+    return true;
+  }
+
+  void ResourceManager::applyLoadedLightmapsToScene(engine::Scene& scene)
+  {
+    auto& reg  = scene.getRegistry();
+    auto  view = reg.view<engine::LightmapComponent>();
+    for (auto entity : view)
+    {
+      auto& lmComp = reg.get<engine::LightmapComponent>(entity);
+      auto  it     = sceneLightmapTextures_.find(lmComp.lightmapId);
+      if (it == sceneLightmapTextures_.end()) continue;
+      if (auto tex = it->second.lock())
+      {
+        if (reg.all_of<PBRMaterial>(entity))
+        {
+          auto& mat    = reg.get<PBRMaterial>(entity);
+          mat.lightmap = tex;
+        }
+      }
+    }
   }
 
   std::shared_ptr<Texture> ResourceManager::loadTextureFromMemory(const unsigned char* data, size_t dataSize, const std::string& debugName, bool srgb, ResourcePriority priority)

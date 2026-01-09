@@ -14,6 +14,7 @@
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/ShadowMap.hpp"
 #include "Engine/Resources/Model.hpp"
+#include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
@@ -200,6 +201,7 @@ namespace engine {
                                                             float            cascadeNear,
                                                             float            cascadeFar,
                                                             int              cascadeIndex,
+                                                            uint32_t         shadowMapSize,
                                                             glm::vec3*       outMinLS,
                                                             glm::vec3*       outMaxLS)
   {
@@ -278,9 +280,7 @@ namespace engine {
       up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
-    // Create light view matrix
-    glm::vec3 const lightPos  = frustumCenter - lightDir * 50.0f; // Position light far enough from frustum
-    glm::mat4 const lightView = glm::lookAt(lightPos, frustumCenter, up);
+    glm::mat4 const lightView = glm::lookAt(frustumCenter - lightDir * 50.0f, frustumCenter, up);
 
     // Transform frustum corners to light space and find AABB
     glm::vec3 minLS(std::numeric_limits<float>::infinity());
@@ -359,6 +359,17 @@ namespace engine {
           continue;
         }
 
+        // Skip transparent meshes for directional light shadows
+        const auto& materials = model->getMaterials();
+        if (subMesh.materialId >= 0 && subMesh.materialId < static_cast<int>(materials.size()))
+        {
+          const auto& material = materials[subMesh.materialId];
+          if (material.pbrMaterial.alphaMode != engine::AlphaMode::Opaque)
+          {
+            continue; // Skip transparent meshes
+          }
+        }
+
         ShadowMeshPushConstants push{};
         push.modelMatrix             = transform.modelTransform();
         push.lightSpaceMatrix        = lightSpaceMatrix;
@@ -420,7 +431,7 @@ namespace engine {
 
       float const csmFar = glm::clamp(shadowDistance, nearPlane + 0.5f, farPlane);
 
-      float const lambda = 0.5f;
+      float const lambda = 0.85f; // Balanced logarithmic distribution
       float       splits[DIRECTIONAL_CASCADE_COUNT];
       for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; i++)
       {
@@ -444,7 +455,7 @@ namespace engine {
           break;
         }
 
-        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, nullptr, nullptr);
+        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, shadowMapSize_, nullptr, nullptr);
 
         renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
         shadowLightCount_++;

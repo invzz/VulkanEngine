@@ -50,15 +50,13 @@ namespace {
 } // namespace
 
 namespace nlohmann {
-  template <>
-  struct adl_serializer<glm::vec3>
+  template <> struct adl_serializer<glm::vec3>
   {
     static void to_json(json& j, const glm::vec3& v) { glmVec3ToJson(j, v); }
     static void from_json(const json& j, glm::vec3& v) { glmVec3FromJson(j, v); }
   };
 
-  template <>
-  struct adl_serializer<glm::vec4>
+  template <> struct adl_serializer<glm::vec4>
   {
     static void to_json(json& j, const glm::vec4& v) { glmVec4ToJson(j, v); }
     static void from_json(const json& j, glm::vec4& v) { glmVec4FromJson(j, v); }
@@ -186,10 +184,12 @@ namespace engine {
       for (const auto& objJson : sceneJson["objects"])
       {
         std::string const name = objJson.value("name", "GameObject");
+        // If an explicit id is provided in the authoring file, use it as the NameComponent so it can be targeted by the baker manifest
+        std::string const id = objJson.value("id", name);
 
         auto entity = scene.createEntity();
         scene.getRegistry().emplace<TransformComponent>(entity);
-        scene.getRegistry().emplace<NameComponent>(entity, name);
+        scene.getRegistry().emplace<NameComponent>(entity, id);
 
         // Transform
         if (objJson.contains("transform"))

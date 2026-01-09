@@ -40,6 +40,7 @@ add_defines("GLM_ENABLE_EXPERIMENTAL")
 -- Use Vulkan SDK loader on Windows (do not define VK_NO_PROTOTYPES)
 -- Package dependencies - use Vulkan SDK on Windows
 if is_plat("windows") then
+    add_requires("gtest")
     add_requires("glfw")
     add_requires("glm")
     add_requires("vulkan-headers")
@@ -72,6 +73,7 @@ if is_plat("windows") then
     add_sysincludedirs(vulkan_include, {public = true})
     add_linkdirs(vulkan_lib, {public = true})
 else
+    add_requires("gtest")
     add_requires("glfw")
     add_requires("glm")
     add_requires("vulkan")
@@ -129,6 +131,8 @@ target("Cube")
         else
             add_packages("glfw", "glm", "vulkan", "entt", "nlohmann_json", "tinygltf")
         end
+        -- Linker group flags allow circular static archive resolution (Engine <-> EngineSceneIO)
+        add_ldflags("-Wl,--start-group", "-Wl,--end-group")
         add_deps("Engine")
 
     -- ModelLightBaker: offline baker for per-model directional lightmaps
@@ -178,6 +182,9 @@ target("Engine")
     add_packages("meshoptimizer")
     add_packages("imgui")
     add_packages("entt")
+
+    -- Ensure Engine links against EngineSceneIO so symbols from Scene IO (e.g. parseSceneLightmapManifest) are available when linking executables
+    add_deps("EngineSceneIO")
 
     if has_config("deadcode") then
         if is_plat("windows") then
@@ -231,23 +238,31 @@ target("Engine")
 
     -- Ensure Engine links against EngineImporters so the importers are available at link time
     add_deps("EngineImporters")
+    -- SceneSerializer is part of the runtime Engine so compile it into Engine to avoid circular static dependencies
+    add_files("src/EngineSceneIO/Scene/SceneSerializer.cpp")
 
 -- Scene serialization/deserialization (json). Split from Engine for cleaner boundaries.
 target("EngineSceneIO")
     set_kind("static")
-    add_files("src/EngineSceneIO/Scene/SceneSerializer.cpp")
+    add_files("src/EngineSceneIO/Scene/LightmapManifest.cpp")
     add_includedirs("include", {public = true})
     -- Scene IO includes some core Engine headers that pull in Window.hpp.
     add_packages("glfw", "glm", "vulkan-headers")
     add_packages("nlohmann_json")
     add_packages("entt")
-    add_deps("Engine")
+
+-- Unit tests for scene lightmap manifest parsing
+target("LightmapTests")
+    set_kind("binary")
+    add_files("tests/lightmap_manifest_tests.cpp", "tests/scene_binding_tests.cpp", "tests/lightmap_integration_tests.cpp", "tests/lightmap_exr_tests.cpp")
+    add_packages("gtest", "nlohmann_json", "entt", "glm", "glfw", "vulkan", "tinyexr")
+    add_links("gtest_main")
+    add_deps("EngineSceneIO", "Engine")
 
 -- Utility target to (re)compile shaders on demand.
 target("Shaders")
     set_kind("phony")
     set_group("utility")
-   
     on_build(function (target)
         -- Compile shaders (platform-independent)
         if is_host("windows") then
