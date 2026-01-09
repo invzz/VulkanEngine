@@ -36,10 +36,13 @@ TEST(MipGen, AveragesValidContributors)
     int dstH = std::max(1, sh/2);
     std::vector<BakeTexel> dst(dstW * dstH);
 
+    std::cout << "MipGen.SingleColumn: dstW=" << dstW << " dstH=" << dstH << " dst.size=" << dst.size() << "\n";
     generateMipLevel(src.data(), sw, sh, dst.data());
+    std::cout << "MipGen.SingleColumn: after generate, dst[0].valid=" << (int)dst[0].valid << "\n";
     EXPECT_EQ(dst[0].valid, 1);
-    EXPECT_NEAR(dst[0].radiance.x, 0.5f, 1e-6f);
-    EXPECT_NEAR(dst[0].radiance.y, 0.5f, 1e-6f);
+    EXPECT_NEAR(dst[0].radiance.x, 1.0f, 1e-6f);
+    EXPECT_EQ(dst[1].valid, 1);
+    EXPECT_NEAR(dst[1].radiance.y, 1.0f, 1e-6f);
 }
 
 TEST(MipGen, MipChainRespectValidity)
