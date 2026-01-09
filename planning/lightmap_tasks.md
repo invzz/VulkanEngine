@@ -50,8 +50,9 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 
 ---
 
-## Sprint 3 — Dilation & Mip Generation (MANDATORY) 🧽 (In-Progress)
-- Started: 2026-01-09
+## Sprint 3 — Dilation & Mip Generation (MANDATORY) 🧽 (Completed) ✅
+- Completed: 2026-01-09
+- Summary: Implemented the per-texel `BakeTexel` mask, CPU seam-aware dilation, CPU mip generation that respects validity, added unit & integration tests, and docs. Also added defensive guards to avoid UB under optimization and fixed tests.
 - Goal: Implement mandatory validity mask, seam-aware dilation and correct mip generation (average only valid texels).
 - Estimated effort: 1–2 weeks
 - Deliverables:
@@ -60,18 +61,19 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
   - Mipgen utilities that respect validity masks and propagate invalid flags
   - Tests that detect halos and energy loss
 - Subtasks:
-  1. Modify baker outputs to include validity mask per texel; update internal data structures.
-  2. Implement *seam-aware* dilation (preferred): grow valid texels into padding regions using barycentric adjacency or masked dilation passes.
-  3. Add CPU mipgen that computes each mip by averaging only valid contributors. If all invalid → mark invalid.
+  1. Modify baker outputs to include validity mask per texel; update internal data structures. (Done)
+  2. Implement *seam-aware* dilation (preferred): grow valid texels into padding regions using barycentric adjacency or masked dilation passes. (Done)
+  3. Add CPU mipgen that computes each mip by averaging only valid contributors. If all invalid → mark invalid. (Done)
   4. Optionally add a GPU mipgen path (blit + compute) for speed; result must match CPU reference tests.
-  5. Add automated tests that compare pre/post dilation and ensure no dark halos in mip levels.
+  5. Add automated tests that compare pre/post dilation and ensure no dark halos in mip levels. (Done)
 - Acceptance criteria:
   - Dilation fills padding without introducing visible seams; mips preserve energy (verified by tests).
 - Files: `src/tools/LightMapBaker/dilate.*`, `src/tools/LightMapBaker/mipgen.*`, test fixtures.
 
 ---
 
-## Sprint 4 — VTEX packaging & runtime 📦
+## Sprint 4 — VTEX packaging & runtime 📦 (In-Progress)
+- Started: 2026-01-09
 - Goal: Add packaging step to produce `.vtex` runtime assets (mips, format conversion) and implement runtime loader with usage semantics.
 - Estimated effort: 1–2 weeks
 - Deliverables:

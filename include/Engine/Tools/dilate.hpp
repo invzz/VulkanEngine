@@ -24,7 +24,8 @@ namespace engine::lightmap {
       // When zero iterations, behave like a no-op copy: copy src to dst (if provided and distinct)
       if (dst != nullptr && dst != src)
       {
-        for (int i = 0; i < N; ++i) dst[i] = src[i];
+        for (int i = 0; i < N; ++i)
+          dst[i] = src[i];
       }
       return;
     }

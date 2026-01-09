@@ -13,6 +13,7 @@
 
 #include "BVH.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Resources/Texture.hpp" // for EXR -> VTEX helper (CPU)
 
 // TinyEXR for EXR writing
 #include <tinyexr.h>
@@ -1134,7 +1135,59 @@ namespace ModelLightBaker {
       std::cout << "[ModelLightBaker] Preview enabled (max size=" << opts_.previewMaxSize << ")\n";
     }
 
-    // Write a per-model manifest JSON next to the EXR file
+    // Optionally pack the EXR to a VTEX container (either CLI flag or sentinel file can trigger)
+    std::string outFileName = exrPath.filename().string();
+
+    // Diagnostic: print whether sentinel file exists and current opts flag (helps tests confirm why packing did/didn't run)
+    std::filesystem::path sentinelPath   = std::filesystem::path(outDir_) / "MODEL_LIGHT_BAKER_PACK_TO_VTEX";
+    bool                  sentinelExists = std::filesystem::exists(sentinelPath);
+    std::cerr << "[ModelLightBaker] Sentinel check: '" << sentinelPath.generic_string() << "' exists=" << (sentinelExists ? "yes" : "no") << " opts.packToVTEX=" << (opts_.packToVTEX ? "yes" : "no")
+              << "\n";
+
+    bool shouldPack = opts_.packToVTEX || sentinelExists;
+    if (shouldPack)
+    {
+      std::string           vtexName = baseName + std::string("_lightmap.vtex");
+      std::filesystem::path vtexPath = std::filesystem::path(outDir_) / vtexName;
+      std::cout << "[ModelLightBaker] Packing EXR -> VTEX: " << vtexPath.string() << "\n";
+
+      try
+      {
+        // Use the CPU EXR->VTEX helper (does not load into GPU). This helper returns
+        // nullptr when caller requested only file output (loadIntoGpu == false). Treat
+        // a non-exceptional return as success and validate the written file on disk.
+        auto texPtr = engine::Texture::createFromEXR_CPUOnly(device_, exrPath.string(), vtexPath.string(), false);
+
+        // Write an attempt sentinel to help test harnesses detect the pack path was entered
+        std::filesystem::path attemptSentinel = vtexPath;
+        attemptSentinel += ".pack_attempt";
+        std::ofstream(attemptSentinel).put('1');
+
+        // Confirm VTEX file exists and is non-empty
+        bool vtexExists = std::filesystem::exists(vtexPath);
+        uintmax_t vtexSize = 0;
+        if (vtexExists)
+          vtexSize = std::filesystem::file_size(vtexPath);
+
+        if (!vtexExists || vtexSize == 0)
+        {
+          std::cerr << "[ModelLightBaker] VTEX write check failed (exists=" << (vtexExists ? "yes" : "no") << ", size=" << vtexSize << ") for: " << vtexPath.string() << "\n";
+          return false;
+        }
+
+        // Success: if texPtr is non-null it means we also loaded into GPU; otherwise
+        // the CPU-only write succeeded and we honor the VTEX output.
+        outFileName = vtexName;
+        std::cout << "[ModelLightBaker] Wrote VTEX: " << vtexPath.string() << " (size=" << vtexSize << ")\n";
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "[ModelLightBaker] Failed to pack to VTEX: " << e.what() << "\n";
+        return false;
+      }
+    }
+
+    // Write a per-model manifest JSON next to the EXR/V TEX file
     std::string           manifestName = baseName + std::string("_lightmap.json");
     std::filesystem::path manifest     = std::filesystem::path(outDir_) / manifestName;
     std::ofstream         o(manifest);
@@ -1147,8 +1200,8 @@ namespace ModelLightBaker {
     // Minimal manifest describing this single bake (easier for the app to consume as one file per model)
     o << "{\n";
     o << "  \"model\": \"" << model_.getFilePath() << "\",\n";
-    o << "  \"file\": \"" << exrPath.filename().string() << "\",\n";
-    o << "  \"format\": \"exr\",\n";
+    o << "  \"file\": \"" << outFileName << "\",\n";
+    o << "  \"format\": \"" << (opts_.packToVTEX ? "vtex" : "exr") << "\",\n";
     o << "  \"resolution\": " << imageWidth_ << ",\n";
     o << "  \"samples\": " << opts_.samples << ",\n";
     o << "  \"sun_dir\": [" << opts_.sunDir.x << ", " << opts_.sunDir.y << ", " << opts_.sunDir.z << "],\n";

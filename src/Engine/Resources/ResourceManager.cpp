@@ -12,6 +12,7 @@
 #include <mutex>
 #include <sstream>
 #include <unordered_set>
+#include <utility>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Resources/MeshManager.hpp"

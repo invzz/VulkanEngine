@@ -54,10 +54,11 @@ add_defines(
     "SHADER_PATH=\""  .. normpath(path.join(project_dir, "assets/shaders/compiled")) .. "/\"",
     "MODEL_PATH=\""   .. normpath(path.join(project_dir, "assets/models")) .. "/\"",
     "TEXTURE_PATH=\"" .. normpath(path.join(project_dir, "assets/textures")) .. "/\"",
+    "LIGHTMAP_PATH=\"" .. normpath(path.join(project_dir, "assets/lightmaps")) .. "/\"",
     "TOOL_PATH=\""    .. normpath(path.join(project_dir, "tools")) .. "/\"",
-
     "EXR2VTEX_PATH=\""     .. tool_path("EXR2VTEX")     .. "\"",
-    "UVUNWRAP_CLI_PATH=\"" .. tool_path("UVUnwrapCLI")  .. "\""
+    "UVUNWRAP_CLI_PATH=\"" .. tool_path("UVUnwrapCLI")  .. "\"",
+    "MODEL_LIGHT_BAKER_PATH=\"" .. tool_path("ModelLightBaker") .. "\""
 )
 
 -- GLFW / GLM config
@@ -75,9 +76,8 @@ end
 -- ============================================================================
 -- Dependencies
 -- ============================================================================
-
 add_requires(
-    "glfw",
+    "glfw", 
     "glm",
     "tinyobjloader",
     "tinygltf",
@@ -99,7 +99,6 @@ end
 -- ============================================================================
 -- Common Flags
 -- ============================================================================
-
 if has_config("deadcode") then
     if is_plat("windows") then
         add_cxflags("/W4", "/Gy", "/Gw", {force = true})
@@ -121,15 +120,55 @@ end
 -- ============================================================================
 -- Third Party
 -- ============================================================================
-
 target("xatlas")
     set_kind("static")
     add_files("third_party/xatlas/source/xatlas/xatlas.cpp")
     add_includedirs("third_party/xatlas/source/xatlas", {public = true})
 
 -- ============================================================================
+-- Tests
+-- ============================================================================
+target("Tests")
+    set_group("tests")
+    
+    set_kind("binary")
+    add_files("tests/**.cpp")
+    add_packages("gtest")
+    add_packages( "glm", "nlohmann_json", "entt", "tinyexr")
+    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
+    
+    add_deps("Engine", "EngineImporters", "EngineSceneIO", "UVUnwrap", "xatlas" )
+     -- link main gtest function:
+    add_links("gtest_main")
+
+-- ============================================================================
+-- Demo / UI
+-- ============================================================================
+target("Cube")
+    set_group("demos")
+    set_kind("binary")
+    
+    set_default(true)
+    add_files("src/demos/Cube/**.cpp")
+    add_files("src/EngineSceneIO/Scene/SceneSerializer.cpp")
+    add_includedirs("include", "src/demos/Cube", {public = true})
+    add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
+    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
+    add_deps("Engine", "CubeUI", "EngineImporters")
+
+    if is_plat("windows") then
+        add_syslinks("vulkan-1")
+    end
+-- ============================================================================
 -- Core Libraries
 -- ============================================================================
+target("CubeUI")
+    set_kind("static")
+    add_files("src/demos/CubeUI/**.cpp")
+    add_includedirs("include", {public = true})
+    add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json")
+    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
+    add_deps("Engine")
 
 target("EngineSceneIO")
     set_kind("static")
@@ -165,15 +204,11 @@ target("Engine")
             "PROFILE_OUTPUT_DIR=\"" .. normpath(path.join(project_dir, "profile")) .. "/\""
         )
     end
-
-    if is_plat("windows") then
-        add_syslinks("vulkan-1")
-    end
+    add_deps("EngineSceneIO", "EngineImporters")
 
 -- ============================================================================
--- UV Unwrap
+-- Offline Tools
 -- ============================================================================
-
 target("UVUnwrap")
     set_kind("static")
     add_files("src/tools/UVUnwrap/**.cpp")
@@ -181,37 +216,46 @@ target("UVUnwrap")
     add_deps("xatlas")
 
 target("UVUnwrapCLI")
+    set_default(true )
+    set_group("tools")
+    
     set_kind("binary")
     add_files("src/tools/UVUnwrapCLI/**.cpp")
     add_includedirs("include", {public = true})
     add_packages("nlohmann_json")
     add_deps("UVUnwrap")
-    copy_to_tools(target)
 
--- ============================================================================
--- Offline Tools
--- ============================================================================
 
 target("IBLBaker")
+    set_default(true )
+    set_group("tools")
     set_kind("binary")
+    
     add_files("src/tools/IBLBaker/**.cpp")
     add_includedirs("include", {public = true})
     add_packages("glm", "glfw", "nlohmann_json", "entt", "tinygltf")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("Engine", "EngineSceneIO", "EngineImporters")
-    copy_to_tools(target)
+    add_deps("Engine", "EngineImporters", "EngineSceneIO")
+
 
 target("EXR2VTEX")
+    set_default(true )
+    set_group("tools")
     set_kind("binary")
-    add_files("src/tools/EXR2VTEX/**.cpp")
+    
+    add_files("src/tools/EXR2VTEX/**.cpp")  
     add_includedirs("include", {public = true})
     add_packages("glm", "glfw", "tinyexr")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("Engine", "EngineSceneIO", "EngineImporters")
-    copy_to_tools(target)
+    add_deps("Engine", "EngineImporters", "EngineSceneIO")
+    
+  
 
 target("ModelLightBaker")
+    set_default(true )
+    set_group("tools")
     set_kind("binary")
+    
     add_files("src/tools/ModelLightBaker/**.cpp")
     add_includedirs("include", {public = true})
     add_packages(
@@ -219,57 +263,32 @@ target("ModelLightBaker")
         "tinygltf", "stb", "tinyexr"
     )
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("Engine", "EngineSceneIO", "EngineImporters")
-    copy_to_tools(target)
+    -- Ensure Engine is linked after EngineSceneIO and EngineImporters
+    -- add_ldflags("-Wl,--start-group", {force = true})
+    add_deps("Engine", "EngineImporters", "EngineSceneIO")
+    
+ 
 
--- ============================================================================
--- Demo / UI
--- ============================================================================
-
-target("CubeUI")
-    set_kind("static")
-    add_files("src/demos/CubeUI/**.cpp")
-    add_includedirs("include", {public = true})
-    add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json")
-    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("Engine")
-
-target("Cube")
-    set_kind("binary")
-    set_default(true)
-    add_files("src/demos/Cube/**.cpp")
-    add_includedirs("include", "src/demos/Cube", {public = true})
-    add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
-    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("CubeUI", "Engine", "EngineSceneIO", "EngineImporters")
-
-    if is_plat("windows") then
-        add_syslinks("vulkan-1")
-    end
-
--- ============================================================================
--- Tests
--- ============================================================================
-
-target("LightmapTests")
-    set_kind("binary")
-    add_files("tests/**.cpp")
-    add_packages("gtest", "glm", "nlohmann_json", "entt", "tinyexr")
-    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_links("gtest_main")
-    add_deps("Engine", "EngineSceneIO", "EngineImporters", "UVUnwrap", "xatlas")
-
+   
 -- ============================================================================
 -- Utilities
 -- ============================================================================
-
-target("Shaders")
+target("tools")
     set_kind("phony")
-    set_group("utility")
-    on_build(function ()
-        if is_host("windows") then
-            os.exec("powershell -ExecutionPolicy Bypass -File " .. project_dir .. "/compile_shaders.ps1")
-        else
-            os.exec("bash " .. project_dir .. "/compile_shaders.sh")
-        end
-    end)
+    set_targetdir("tools")
+    add_deps(
+        "UVUnwrapCLI",
+        "IBLBaker",
+        "EXR2VTEX",
+        "ModelLightBaker"
+    )
+-- target("Shaders")
+--     set_kind("phony")
+--     set_group("utility")
+--     on_build(function ()
+--         if is_host("windows") then
+--             os.exec("powershell -ExecutionPolicy Bypass -File " .. project_dir .. "/compile_shaders.ps1")
+--         else
+--             os.exec("bash " .. project_dir .. "/compile_shaders.sh")
+--         end
+--     end)
