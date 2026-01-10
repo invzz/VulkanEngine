@@ -132,6 +132,19 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
   4. Finalize TODOs: logging, error handling, xmake targets, and update project planning docs.
 - Acceptance criteria:
   - CI passes, docs published, and a short QA checklist exists for manual verification.
+
+  ### Golden Image Workflow & Tolerance Rationale ✅
+  - Overview: Golden images are authoritative EXR (linear float RGBA) references used to validate renderer sampling of baked lightmaps. Tests compare a small region (e.g., central 8×8) between a rendered output and the golden with both a per-pixel max-difference and RMS threshold.
+  - How to update a golden:
+    1. Locally run the golden test with the environment flag `UPDATE_GOLDEN=1` to generate the golden EXR into `assets/goldens/` (test will write and skip; re-run without the flag to validate).
+    2. Inspect the generated golden visually and verify baking parameters (resolution, padding, formats). If acceptable, commit the golden EXR and include a short note in the commit message describing why it changed.
+    3. Prefer small, focused goldens (small resolution or region) to keep CI and storage overhead low.
+  - File format & location: store goldens as EXR with linear float RGBA in `assets/goldens/` to ensure deterministic read/write (use `tinyexr` helpers in tests).
+  - Tolerance rationale:
+    - Use a conservative **max-difference <= 2e-3** and **RMS <= 1e-3** for region comparisons. These values account for half-float rounding (R16), minor shader-to-shader numeric differences, and deterministic post-process conversion (we disable tone mapping/vignette during tests).
+    - If tests fail by narrow margins, prefer inspecting the delta image and only update golden after manual verification.
+  - CI behaviour: CI runs the golden comparison test; it fails on mismatches. Updating goldens requires an explicit developer step (generate, verify, commit) and should be recorded in the PR description.
+
 - Files: `xmake.lua`, `scripts/ci/*`, `docs/`, `planning/Lightmap_Baker_Plan.md`
 
 ---
