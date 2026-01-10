@@ -284,6 +284,11 @@ namespace engine {
      */
     std::optional<LightmapInfo> getLightmapInfoById(const std::string& id) const;
 
+    /**
+     * @brief Retrieve a loaded lightmap texture by id, or nullptr if not loaded
+     */
+    std::shared_ptr<Texture> getLightmapTextureById(const std::string& id) const;
+
   private:
     Device&                         device_;
     std::unique_ptr<TextureManager> textureManager_;

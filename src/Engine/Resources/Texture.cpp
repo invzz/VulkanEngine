@@ -284,6 +284,13 @@ namespace engine {
       // Expected CLI: CompressonatorCLI -fd BC6H <in.exr> <out.dds>
       const char* envCli  = std::getenv("COMPRESSONATOR_CLI");
       std::string cliPath = envCli ? envCli : std::string();
+#ifdef COMPRESSONATOR_CLI
+      if (cliPath.empty())
+      {
+        // Prefer the compile-time known location if present
+        cliPath = std::string(COMPRESSONATOR_CLI);
+      }
+#endif
       if (cliPath.empty())
       {
         // check common locations in repo or installed paths

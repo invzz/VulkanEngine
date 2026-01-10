@@ -13,6 +13,28 @@ namespace engine {
   class IBLSystem;
   struct PBRMaterial;
 
+  // Push constants for mesh pipeline draws. Must be kept binary-compatible with GLSL
+  // definition in assets/shaders/includes/mesh_push_constants.glsl
+  struct MeshPushConstantData
+  {
+    glm::mat4 modelMatrix{1.0f};
+    glm::mat4 normalMatrix{1.0f};
+    uint32_t  meshId{0};
+    uint64_t  meshletBufferAddress;
+    uint64_t  meshletVerticesAddress;
+    uint64_t  meshletTrianglesAddress;
+    uint64_t  vertexBufferAddress;
+    uint32_t  meshletOffset;
+    uint32_t  meshletCount;
+    glm::vec2 screenSize;
+    uint32_t  cullingFlags; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
+
+    // Per-instance lightmap transform (UV1 space) and texture index
+    glm::vec2 lightmapUvScale{1.0f, 1.0f};
+    glm::vec2 lightmapUvOffset{0.0f, 0.0f};
+    uint32_t  lightmapIndex{0u};
+  };
+
   class MaterialRenderBindings;
   class LightingRenderBindings;
 

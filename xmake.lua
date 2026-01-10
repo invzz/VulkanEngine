@@ -46,11 +46,6 @@ option("deadcode")
     set_description("Enable unused/dead code warnings and linker GC reporting")
 option_end()
 
-option("with_compressonator")
-    set_showmenu(true)
-    set_default(false)
-    set_description("Enable integration with AMD Compressonator for BC6H encoding (requires submodule and external build)")
-option_end()
 
 -- ============================================================================
 -- Global Defines (paths, config)
@@ -64,7 +59,8 @@ add_defines(
     "TOOL_PATH=\""    .. normpath(path.join(project_dir, "tools")) .. "/\"",
     "EXR2VTEX_PATH=\""     .. tool_path("EXR2VTEX")     .. "\"",
     "UVUNWRAP_CLI_PATH=\"" .. tool_path("UVUnwrapCLI")  .. "\"",
-    "MODEL_LIGHT_BAKER_PATH=\"" .. tool_path("ModelLightBaker") .. "\""
+    "MODEL_LIGHT_BAKER_PATH=\"" .. tool_path("ModelLightBaker") .. "\"",
+    "COMPRESSONATOR_CLI=\"" .. normpath(path.join(project_dir, "tools", "Compressonator", "compressonatorcli")) .. "\""
 )
 
 -- GLFW / GLM config

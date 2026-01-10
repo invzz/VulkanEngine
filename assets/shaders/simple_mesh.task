@@ -28,21 +28,7 @@ layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
     Meshlet meshlets[];
 };
 
-layout(push_constant) uniform Push {
-    mat4 modelMatrix;
-    mat4 normalMatrix;
-    uint meshId;
-
-    uint64_t meshletBufferAddress;
-    uint64_t meshletVerticesAddress;
-    uint64_t meshletTrianglesAddress;
-    uint64_t vertexBufferAddress;
-    uint     meshletOffset;
-    uint     meshletCount;
-    vec2     screenSize;
-    uint     cullingFlags;
-}
-push;
+#include "includes/mesh_push_constants.glsl"
 
 // Include shared UBO definition
 // Use shared scene UBO definition

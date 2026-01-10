@@ -17,6 +17,7 @@
 #include "includes/brdf.glsl"
 #include "includes/common.glsl"
 #include "includes/material_decode.glsl"
+#include "includes/mesh_push_constants.glsl"
 #include "includes/scene_ubo.glsl"
 
 const float kFeatureEps       = 0.01;
@@ -141,7 +142,20 @@ void main()
   AlphaOnly   alphaOnly = material_computeAlphaOnly(uv);
   SurfaceLite surf      = getSurfaceCompositor(alphaOnly);
   vec3        emissive  = material_decodeEmissive(uv);
+  // Sample baked lightmap (if present): prefer per-instance push constant index, fallback to material index
+  vec3 sampleBakedLightIfPresent(vec2 baseUv)
+  {
+    vec2 uv1     = material_getUv1(baseUv, push.lightmapUvScale, push.lightmapUvOffset);
+    uint lmIndex = push.lightmapIndex;
+    if (lmIndex == 0u) lmIndex = material.indices3.z;
+    if (lmIndex != 0u)
+    {
+      return material_sampleBakedLight(uv1, lmIndex);
+    }
+    return vec3(0.0);
+  }
 
+  vec3 bakedLight   = sampleBakedLightIfPresent(fragUV);
   bool isAlphaBlend = (material.flagsAndIndices0.y == 2u);
 
   float effectiveTransmission = 0.0;
@@ -158,7 +172,7 @@ void main()
     vec3 F           = fresnelSchlick(clamp(dot(Nf, surf.V), 0.0, 1.0), surf.F0);
 
     vec3 composite  = mix(transmitted, reflected, F);
-    vec3 finalColor = mix(reflected, composite, effectiveTransmission) + emissive;
+    vec3 finalColor = mix(reflected, composite, effectiveTransmission) + emissive + bakedLight;
     outColor        = vec4(finalColor, 1.0);
     return;
   }
@@ -169,11 +183,11 @@ void main()
   {
     float a           = clamp(surf.alpha, 0.0, 1.0);
     vec3  specularIBL = sampleSpecularIBL(normalize(surf.N), normalize(surf.V), surf.F0, surf.roughness);
-    vec3  rgb         = (surf.albedo * a) + (specularIBL * a) + emissive;
+    vec3  rgb         = (surf.albedo * a) + (specularIBL * a) + emissive + bakedLight;
     outColor          = vec4(rgb, a);
     return;
   }
 
-  // Fallback for non-hybrid forward paths: unlit albedo + emissive.
-  outColor = vec4(surf.albedo + emissive, 1.0);
+  // Fallback for non-hybrid forward paths: unlit albedo + emissive + baked light.
+  outColor = vec4(surf.albedo + emissive + bakedLight, 1.0);
 }

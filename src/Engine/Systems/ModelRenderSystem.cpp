@@ -16,6 +16,8 @@
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Resources/Model.hpp"
 #include "Engine/Resources/PBRMaterial.hpp"
+#include "Engine/Resources/Texture.hpp"
+#include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightingRenderBindings.hpp"
@@ -118,21 +120,6 @@ namespace engine {
     return aabbInFrustum(worldBounds, frustum);
   }
 
-  struct MeshPushConstantData
-  {
-    glm::mat4 modelMatrix{1.0f};
-    glm::mat4 normalMatrix{1.0f};
-    uint32_t  meshId{0};
-    uint64_t  meshletBufferAddress;
-    uint64_t  meshletVerticesAddress;
-    uint64_t  meshletTrianglesAddress;
-    uint64_t  vertexBufferAddress;
-    uint32_t  meshletOffset;
-    uint32_t  meshletCount;
-    glm::vec2 screenSize;
-    uint32_t  cullingFlags; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
-  };
-
   namespace {
     constexpr float kFeatureEpsCpu = 0.01f;
 
@@ -153,9 +140,11 @@ namespace engine {
     }
 
     MeshPushConstantData makeMeshPush(FrameInfo const&      frameInfo,
+                                      entt::entity          entity,
                                       const ModelComponent& modelComp,
                                       const Model::SubMesh& subMesh,
                                       const glm::mat4&      modelMatrix,
+                                      const PBRMaterial*    pMaterial,
                                       bool                  doubleSided,
                                       bool                  isTransparent = false,
                                       bool                  skipHZB       = false)
@@ -175,6 +164,30 @@ namespace engine {
       // Bit 1: transparent (skip cone culling - back faces may be visible)
       // Bit 2: skip HZB occlusion culling (used for depth prepass)
       push.cullingFlags = (doubleSided ? 1u : 0u) | (isTransparent ? 2u : 0u) | (skipHZB ? 4u : 0u);
+
+      // Populate per-instance lightmap transform (if present on the entity)
+      push.lightmapUvScale  = glm::vec2(1.0f, 1.0f);
+      push.lightmapUvOffset = glm::vec2(0.0f, 0.0f);
+      push.lightmapIndex    = 0u;
+
+      auto& reg = frameInfo.scene->getRegistry();
+      if (reg.all_of<engine::LightmapComponent>(entity))
+      {
+        auto& lm              = reg.get<engine::LightmapComponent>(entity);
+        push.lightmapUvScale  = lm.uvScale;
+        push.lightmapUvOffset = lm.uvOffset;
+        if (lm.textureIndex >= 0)
+        {
+          push.lightmapIndex = static_cast<uint32_t>(lm.textureIndex);
+        }
+      }
+
+      // If material has a bound lightmap texture, prefer its global index
+      if (pMaterial != nullptr && pMaterial->lightmap)
+      {
+        push.lightmapIndex = pMaterial->lightmap->getGlobalIndex();
+      }
+
       return push;
     }
 
@@ -425,7 +438,7 @@ namespace engine {
 
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
       auto&                      modelComp = view.get<ModelComponent>(entity);
-      MeshPushConstantData const push      = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided);
+      MeshPushConstantData const push      = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, pMaterial, (pMaterial != nullptr) && pMaterial->doubleSided);
 
       float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
       if (materialBindings_ != nullptr)
@@ -575,7 +588,7 @@ namespace engine {
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
       auto& modelComp = view.get<ModelComponent>(entity);
 
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
+      MeshPushConstantData const push = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, pMaterial, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
 
       float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
       if (materialBindings_ != nullptr)
@@ -669,7 +682,7 @@ namespace engine {
     auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
       auto& modelComp = view.get<ModelComponent>(entity);
 
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
+      MeshPushConstantData const push = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, pMaterial, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
 
       float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
       if (materialBindings_ != nullptr)
@@ -775,7 +788,7 @@ namespace engine {
       auto& modelComp = view.get<ModelComponent>(entity);
 
       // Depth prepass skips HZB culling (bit 2) to ensure complete depth buffer for HZB generation
-      MeshPushConstantData const push = makeMeshPush(frameInfo, modelComp, subMesh, modelMatrix, (pMaterial != nullptr) && pMaterial->doubleSided, false, true);
+      MeshPushConstantData const push = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, nullptr, false, true);
 
       // Populate a default material record so the dynamic UBO binding is always valid.
       if (materialBindings_ != nullptr)

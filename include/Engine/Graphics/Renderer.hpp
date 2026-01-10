@@ -57,6 +57,9 @@ namespace engine {
     [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
     [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
 
+    // Expose offscreen color image handle for readback in tests
+    [[nodiscard]] VkImage getOffscreenColorImage(int index) const { return offscreenFrameBuffer->getColorImage(index); }
+
     [[nodiscard]] bool isFrameInProgress() const { return isFrameStarted; }
     [[nodiscard]] bool wasSwapChainRecreated() const { return swapChainRecreated; }
 

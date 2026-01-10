@@ -1,12 +1,12 @@
 #include <gtest/gtest.h>
 #include <tinyexr.h>
 
-#include <filesystem>
-#include <fstream>
-#include <vector>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <vector>
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Buffer.hpp"
@@ -119,7 +119,7 @@ TEST(LightmapVTEXPixel, EXRToVTEXRoundtrip)
         if (m == 0) return s ? -0.0f : 0.0f;
         // subnormal
         float mant = static_cast<float>(m) / 1024.0f;
-        float val = std::ldexp(mant, -14);
+        float val  = std::ldexp(mant, -14);
         return s ? -val : val;
       }
       else if (e == 31)
@@ -129,17 +129,18 @@ TEST(LightmapVTEXPixel, EXRToVTEXRoundtrip)
       }
       else
       {
-        int32_t exp = static_cast<int32_t>(e) - 15 + 127;
+        int32_t  exp    = static_cast<int32_t>(e) - 15 + 127;
         uint32_t mant32 = m << 13;
-        uint32_t bits = (s << 31) | (static_cast<uint32_t>(exp) << 23) | mant32;
-        float val;
+        uint32_t bits   = (s << 31) | (static_cast<uint32_t>(exp) << 23) | mant32;
+        float    val;
         std::memcpy(&val, &bits, sizeof(val));
         return val;
       }
     };
 
     std::vector<float> readFloats(4);
-    for (size_t i = 0; i < 4; ++i) readFloats[i] = halfToFloat(halfs[i]);
+    for (size_t i = 0; i < 4; ++i)
+      readFloats[i] = halfToFloat(halfs[i]);
 
     EXPECT_NEAR(readFloats[0], 0.25f, 1e-3f);
     EXPECT_NEAR(readFloats[1], 0.5f, 1e-3f);

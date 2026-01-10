@@ -46,6 +46,13 @@ namespace engine::ibl_detail::vtex {
 
   // Write a VTEX container directly from already-compressed payload (e.g., BC6H blocks).
   // The payload is written as-is into the VTEX file after the header. Useful for prototype BC6H integration.
-  bool writeCompressedImageFromRaw(const std::string& filePath, const void* compressedData, size_t compressedSize, VkFormat compressedFormat, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers);
+  bool writeCompressedImageFromRaw(const std::string& filePath,
+                                   const void*        compressedData,
+                                   size_t             compressedSize,
+                                   VkFormat           compressedFormat,
+                                   uint32_t           width,
+                                   uint32_t           height,
+                                   uint32_t           mipLevels,
+                                   uint32_t           layers);
 
 } // namespace engine::ibl_detail::vtex

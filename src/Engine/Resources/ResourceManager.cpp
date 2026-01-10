@@ -656,6 +656,14 @@ namespace engine {
     return it->second;
   }
 
+  std::shared_ptr<Texture> ResourceManager::getLightmapTextureById(const std::string& id) const
+  {
+    std::scoped_lock const lock(textureMutex_);
+    auto                   it = sceneLightmapTextures_.find(id);
+    if (it == sceneLightmapTextures_.end()) return nullptr;
+    return it->second.lock();
+  }
+
   void ResourceManager::registerLightmapTextureForId(const std::string& id, std::shared_ptr<Texture> texture)
   {
     if (!texture) return;

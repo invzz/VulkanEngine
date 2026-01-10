@@ -186,7 +186,14 @@ namespace engine::ibl_detail::vtex {
     return static_cast<bool>(out);
   }
 
-  bool writeCompressedImageFromRaw(const std::string& filePath, const void* compressedData, size_t compressedSize, VkFormat compressedFormat, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers)
+  bool writeCompressedImageFromRaw(const std::string& filePath,
+                                   const void*        compressedData,
+                                   size_t             compressedSize,
+                                   VkFormat           compressedFormat,
+                                   uint32_t           width,
+                                   uint32_t           height,
+                                   uint32_t           mipLevels,
+                                   uint32_t           layers)
   {
     if (compressedData == nullptr) return false;
 

@@ -25,6 +25,10 @@ namespace engine {
 
   Renderer::~Renderer()
   {
+    // Ensure GPU has finished any work that may reference command buffers
+    // before freeing them to avoid validation errors or crashes.
+    vkDeviceWaitIdle(device.device());
+
     freeCommandBuffers();
   }
 
