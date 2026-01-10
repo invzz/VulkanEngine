@@ -1150,10 +1150,28 @@ namespace ModelLightBaker {
 
       try
       {
+        // Map requested VTexFormat to a Vulkan VkFormat and perform any necessary
+        // CPU-side conversions. BC6H is not yet implemented in the CPU encoder, so
+        // gracefully fallback to R16F (with a diagnostic) for now.
+        VkFormat targetVkFmt = VK_FORMAT_R32G32B32A32_SFLOAT;
+        switch (opts_.vtexFormat)
+        {
+        case Options::VTexFormat::R32F:
+          targetVkFmt = VK_FORMAT_R32G32B32A32_SFLOAT;
+          break;
+        case Options::VTexFormat::R16F:
+          targetVkFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
+          break;
+        case Options::VTexFormat::BC6H:
+          std::cerr << "[ModelLightBaker] BC6H requested but encoder not implemented; falling back to R16F" << "\n";
+          targetVkFmt = VK_FORMAT_R16G16B16A16_SFLOAT;
+          break;
+        }
+
         // Use the CPU EXR->VTEX helper (does not load into GPU). This helper returns
         // nullptr when caller requested only file output (loadIntoGpu == false). Treat
         // a non-exceptional return as success and validate the written file on disk.
-        auto texPtr = engine::Texture::createFromEXR_CPUOnly(device_, exrPath.string(), vtexPath.string(), false);
+        auto texPtr = engine::Texture::createFromEXR_CPUOnly(device_, exrPath.string(), vtexPath.string(), false, targetVkFmt);
 
         // Write an attempt sentinel to help test harnesses detect the pack path was entered
         std::filesystem::path attemptSentinel = vtexPath;
@@ -1198,6 +1216,21 @@ namespace ModelLightBaker {
     o << "  \"model\": \"" << model_.getFilePath() << "\",\n";
     o << "  \"file\": \"" << outFileName << "\",\n";
     o << "  \"format\": \"" << (opts_.packToVTEX ? "vtex" : "exr") << "\",\n";
+    // Report requested vtex format for downstream tooling and tests
+    auto vtexFmtStr = "r32f";
+    switch (opts_.vtexFormat)
+    {
+    case Options::VTexFormat::R32F:
+      vtexFmtStr = "r32f";
+      break;
+    case Options::VTexFormat::R16F:
+      vtexFmtStr = "r16f";
+      break;
+    case Options::VTexFormat::BC6H:
+      vtexFmtStr = "bc6h";
+      break;
+    }
+    o << "  \"vtex_format\": \"" << vtexFmtStr << "\",\n";
     o << "  \"resolution\": " << imageWidth_ << ",\n";
     o << "  \"samples\": " << opts_.samples << ",\n";
     o << "  \"sun_dir\": [" << opts_.sunDir.x << ", " << opts_.sunDir.y << ", " << opts_.sunDir.z << "],\n";

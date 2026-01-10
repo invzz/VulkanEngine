@@ -46,6 +46,12 @@ option("deadcode")
     set_description("Enable unused/dead code warnings and linker GC reporting")
 option_end()
 
+option("with_compressonator")
+    set_showmenu(true)
+    set_default(false)
+    set_description("Enable integration with AMD Compressonator for BC6H encoding (requires submodule and external build)")
+option_end()
+
 -- ============================================================================
 -- Global Defines (paths, config)
 -- ============================================================================

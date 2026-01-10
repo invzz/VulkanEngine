@@ -75,6 +75,7 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 ## Sprint 4 — VTEX packaging & runtime 📦 (In-Progress)
 - Started: 2026-01-09 (active: 2026-01-10)
 - Status: **In-Progress** — initial work completed: implemented `--pack-to-vtex` CLI flag, CPU EXR→VTEX helper, diagnostic hardening, and added integration tests that validate VTEX header + CPU-only load. Next: complete format transcodes, metadata, CI smoke job, and docs.
+- PR: changes opened and merged (2026-01-10)
 - Goal: Add packaging step to produce `.vtex` runtime assets (mips, format conversion) and implement runtime loader with usage semantics.
 - Estimated effort: 1–2 weeks
 - Deliverables:

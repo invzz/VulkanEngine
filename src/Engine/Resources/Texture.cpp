@@ -18,6 +18,9 @@
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
+#include <fstream>
+#include <filesystem>
+#include <iterator>
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/Buffer.hpp"
@@ -193,7 +196,39 @@ namespace engine {
   }
 
   // CPU-only helper: load EXR into memory, write VTEX container to disk, and optionally load the VTEX into a Texture.
-  std::shared_ptr<Texture> Texture::createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu)
+  // Helper: convert float32 to IEEE754-16 (half) representation
+  static uint16_t floatToHalf(float f)
+  {
+    uint32_t x    = *reinterpret_cast<uint32_t*>(&f);
+    uint32_t sign = (x >> 16) & 0x8000u;
+    uint32_t mant = x & 0x007fffffu;
+    uint32_t exp  = (x >> 23) & 0xffu;
+    if (exp == 255)
+    {
+      // Inf or NaN
+      if (mant) return static_cast<uint16_t>(sign | 0x7c01u); // NaN
+      return static_cast<uint16_t>(sign | 0x7c00u);           // Inf
+    }
+    int32_t newexp = static_cast<int32_t>(exp) - 127 + 15;
+    if (newexp >= 31)
+    {
+      // Overflow -> Inf
+      return static_cast<uint16_t>(sign | 0x7c00u);
+    }
+    if (newexp <= 0)
+    {
+      // Subnormal or zero
+      if (newexp < -10) return static_cast<uint16_t>(sign);
+      uint32_t mant32    = mant | 0x00800000u; // add implicit leading 1
+      int32_t  shift     = 14 - newexp;
+      uint32_t half_mant = (mant32 + (1u << (shift - 1))) >> shift;
+      return static_cast<uint16_t>(sign | half_mant);
+    }
+    uint16_t res = static_cast<uint16_t>(sign | (static_cast<uint16_t>(newexp) << 10) | static_cast<uint16_t>(mant >> 13));
+    return res;
+  }
+
+  std::shared_ptr<Texture> Texture::createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu, VkFormat targetFormat)
   {
     const char* err    = nullptr;
     int         width  = 0;
@@ -218,9 +253,120 @@ namespace engine {
       throw std::runtime_error("Invalid EXR image data: " + exrPath);
     }
 
-    // Write a VTEX container from the raw float pixels on CPU
-    size_t dataSize = static_cast<size_t>(sizeof(float) * 4 * width * height);
-    bool   ok       = ibl_detail::vtex::writeImageFromRaw(outVtexPath, rgba, dataSize, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1, 1);
+    bool ok = false;
+
+    if (targetFormat == VK_FORMAT_R32G32B32A32_SFLOAT)
+    {
+      // Write a VTEX container from the raw float pixels on CPU (native EXR)
+      size_t dataSize = static_cast<size_t>(sizeof(float) * 4 * width * height);
+      ok              = ibl_detail::vtex::writeImageFromRaw(outVtexPath, rgba, dataSize, VK_FORMAT_R32G32B32A32_SFLOAT, static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1, 1);
+    }
+    else if (targetFormat == VK_FORMAT_R16G16B16A16_SFLOAT)
+    {
+      // Convert float32 RGBA to float16 RGBA and write
+      size_t                count = static_cast<size_t>(4) * static_cast<size_t>(width) * static_cast<size_t>(height);
+      std::vector<uint16_t> halfs;
+      halfs.reserve(count);
+      for (size_t i = 0; i < count; ++i)
+        halfs.push_back(floatToHalf(rgba[i]));
+      ok = ibl_detail::vtex::writeImageFromRaw(outVtexPath,
+                                               halfs.data(),
+                                               halfs.size() * sizeof(uint16_t),
+                                               VK_FORMAT_R16G16B16A16_SFLOAT,
+                                               static_cast<uint32_t>(width),
+                                               static_cast<uint32_t>(height),
+                                               1,
+                                               1);
+    }
+    else if (targetFormat == VK_FORMAT_BC6H_UFLOAT_BLOCK || targetFormat == VK_FORMAT_BC6H_SFLOAT_BLOCK)
+    {
+      // Use external Compressonator CLI if available to produce BC6H compressed DDS from EXR.
+      // Expected CLI: CompressonatorCLI -fd BC6H <in.exr> <out.dds>
+      const char* envCli = std::getenv("COMPRESSONATOR_CLI");
+      std::string cliPath = envCli ? envCli : std::string();
+      if (cliPath.empty())
+      {
+        // check common locations in repo
+        if (std::filesystem::exists("tools/Compressonator/CompressonatorCLI"))
+          cliPath = "tools/Compressonator/CompressonatorCLI";
+        else if (std::filesystem::exists("external/compressonator/CompressonatorCLI"))
+          cliPath = "external/compressonator/CompressonatorCLI";
+      }
+
+      if (cliPath.empty())
+      {
+        // Fall back gracefully to R16F conversion so CI remains deterministic
+        std::cerr << "[Texture] BC6H requested but Compressonator CLI not found; falling back to R16F" << std::endl;
+        size_t                count = static_cast<size_t>(4) * static_cast<size_t>(width) * static_cast<size_t>(height);
+        std::vector<uint16_t> halfs;
+        halfs.reserve(count);
+        for (size_t i = 0; i < count; ++i)
+          halfs.push_back(floatToHalf(rgba[i]));
+        ok = ibl_detail::vtex::writeImageFromRaw(outVtexPath,
+                                                 halfs.data(),
+                                                 halfs.size() * sizeof(uint16_t),
+                                                 VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                 static_cast<uint32_t>(width),
+                                                 static_cast<uint32_t>(height),
+                                                 1,
+                                                 1);
+      }
+      else
+      {
+        // Invoke CLI to produce DDS
+        std::string tmpDds = outVtexPath + std::string(".tmp.dds");
+        std::string cmd;
+        // Quote paths in case of spaces
+        cmd += '"' + cliPath + '"';
+        cmd += " -fd BC6H ";
+        cmd += '"' + exrPath + '"';
+        cmd += ' ';
+        cmd += '"' + tmpDds + '"';
+        int sc = std::system(cmd.c_str());
+        if (sc != 0 || !std::filesystem::exists(tmpDds))
+        {
+          std::cerr << "[Texture] Compressonator CLI failed (rc=" << sc << "); falling back to R16F" << std::endl;
+          // fallback to r16f
+          size_t                count = static_cast<size_t>(4) * static_cast<size_t>(width) * static_cast<size_t>(height);
+          std::vector<uint16_t> halfs;
+          halfs.reserve(count);
+          for (size_t i = 0; i < count; ++i)
+            halfs.push_back(floatToHalf(rgba[i]));
+          ok = ibl_detail::vtex::writeImageFromRaw(outVtexPath,
+                                                   halfs.data(),
+                                                   halfs.size() * sizeof(uint16_t),
+                                                   VK_FORMAT_R16G16B16A16_SFLOAT,
+                                                   static_cast<uint32_t>(width),
+                                                   static_cast<uint32_t>(height),
+                                                   1,
+                                                   1);
+        }
+        else
+        {
+          // Read DDS payload as raw bytes and write compressed VTEX container
+          std::ifstream in(tmpDds, std::ios::binary);
+          if (!in)
+          {
+            free(rgba);
+            throw std::runtime_error("Failed to open temporary DDS from Compressonator: " + tmpDds);
+          }
+          std::vector<char> ddsBytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+          in.close();
+
+          ok = ibl_detail::vtex::writeCompressedImageFromRaw(outVtexPath, ddsBytes.data(), ddsBytes.size(), targetFormat, static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1, 1);
+
+          // cleanup
+          std::error_code ec;
+          std::filesystem::remove(tmpDds, ec);
+        }
+      }
+    }
+    else
+    {
+      // Unsupported target format at this time
+      free(rgba);
+      throw std::runtime_error("Requested VTEX target format not supported in CPU path");
+    }
 
     // Free the EXR memory after writing
     free(rgba);

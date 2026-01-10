@@ -44,4 +44,8 @@ namespace engine::ibl_detail::vtex {
   // using the bytesPerPixelFor(format) size. This is a CPU-only path useful for unit tests and CI.
   bool writeImageFromRaw(const std::string& filePath, const void* data, size_t dataSize, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers);
 
+  // Write a VTEX container directly from already-compressed payload (e.g., BC6H blocks).
+  // The payload is written as-is into the VTEX file after the header. Useful for prototype BC6H integration.
+  bool writeCompressedImageFromRaw(const std::string& filePath, const void* compressedData, size_t compressedSize, VkFormat compressedFormat, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers);
+
 } // namespace engine::ibl_detail::vtex

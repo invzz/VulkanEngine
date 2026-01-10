@@ -31,7 +31,7 @@ TEST(ModelLightBaker, PackToVTEX_CLIProducesVTEX)
   std::ofstream(std::filesystem::path(outDir) / "MODEL_LIGHT_BAKER_PACK_TO_VTEX").close();
 
   // Ensure packing is always triggered in CI by setting the env var for the child process
-  std::string cmd = MODEL_LIGHT_BAKER_BIN + " " + modelFile + " " + outDir + " --res 16 --pack-to-vtex";
+  std::string cmd = MODEL_LIGHT_BAKER_BIN + " " + modelFile + " " + outDir + " --res 16 --pack-to-vtex --vtex-format r32f";
   std::cout << "Invoking: " << cmd << std::endl;
 
   // Set environment variable in this process so std::system child sees it reliably
@@ -63,6 +63,13 @@ TEST(ModelLightBaker, PackToVTEX_CLIProducesVTEX)
   EXPECT_EQ(tex->getWidth(), static_cast<int>(header.width));
   EXPECT_EQ(tex->getHeight(), static_cast<int>(header.height));
   EXPECT_EQ(tex->getMipLevels(), header.mipLevels);
+
+  // Also verify manifest contains the requested vtex format
+  std::filesystem::path manifestPath = std::filesystem::path(outDir) / (std::filesystem::path(modelFile).stem().string() + std::string("_lightmap.json"));
+  ASSERT_TRUE(std::filesystem::exists(manifestPath)) << "Expected manifest: " << manifestPath.generic_string();
+  std::ifstream manifestIn(manifestPath);
+  std::string   manifestStr((std::istreambuf_iterator<char>(manifestIn)), std::istreambuf_iterator<char>());
+  ASSERT_NE(manifestStr.find("\"vtex_format\""), std::string::npos) << "Manifest missing vtex_format field: " << manifestPath.generic_string();
 #else
   GTEST_SKIP() << "MODEL_LIGHT_BAKER_PATH macro not defined by the build system";
 #endif

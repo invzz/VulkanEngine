@@ -11,12 +11,30 @@ int main(int argc, char** argv)
 {
   try
   {
+    auto printHelp = [&]() {
+      std::cout << "Usage: ModelLightBaker <modelFile> <outputDir> [options]\n\n";
+      std::cout << "Options:\n";
+      std::cout << "  --res <px>      : bake resolution (default 512)\n";
+      std::cout << "  --samples <n>   : samples for soft penumbra (default 16)\n";
+      std::cout << "  --sun-dir x y z : sun direction (default 0 -1 0)\n";
+      std::cout << "  --sun-intensity f: sun intensity (default 1.0)\n";
+      std::cout << "  --mode <texel|vertex> : bake granularity (default texel)\n";
+      std::cout << "  --epsilon <exp> : ray epsilon exponent (e.g. -6 means 1e-6)\n";
+      std::cout << "  --padding <f>   : BVH padding fraction of scene extent (default 0.02)\n";
+      std::cout << "  --pack-to-vtex  : package produced EXR into a VTEX container (written as <base>_lightmap.vtex)\n";
+      std::cout << "                    Can also be triggered by creating a sentinel file named 'MODEL_LIGHT_BAKER_PACK_TO_VTEX' in the output directory\n";
+      std::cout << "                    or by setting the environment variable MODEL_LIGHT_BAKER_PACK_TO_VTEX=1 when invoking the tool.\n";
+      std::cout << "                    When packing is attempted the tool writes a '<name>.pack_attempt' file to indicate the pack path was entered.\n";
+      std::cout << "  --vtex-format {r32f|r16f|bc6h} : target VTEX format when packing (default r32f)\n";
+      std::cout << "  --gpu            : run baking on the GPU (default: CPU)\n";
+      std::cout << "  --preview [px]   : write a preview PNG (optional max size)\n";
+      std::cout << "  --help, -h       : show this help and exit\n\n";
+      std::cout << "Examples:\n  ModelLightBaker scene.gltf assets/lightmaps/scene --res 16 --pack-to-vtex\n";
+    };
+
     if (argc < 3)
     {
-      std::cout << "Usage: ModelLightBaker <modelFile> <outputDir> [options]\n";
-      std::cout << "Options:\n  --res <px>      : bake resolution (default 512)\n  --samples <n>   : samples for soft penumbra (default 16)\n  --sun-dir x y z : sun direction (default 0 -1 0)\n  "
-                   "--sun-intensity f: sun intensity (default 1.0)\n  --mode <texel|vertex> : bake granularity (default texel)\n  --epsilon <exp> : ray epsilon exponent (e.g. -6 means 1e-6)\n  "
-                   "--padding <f>   : BVH padding fraction of scene extent (default 0.02)\n";
+      printHelp();
       return 1;
     }
 
@@ -56,6 +74,14 @@ int main(int argc, char** argv)
       cmdline += argv[ai];
       cmdline += ' ';
     }
+
+    // If user requested help anywhere on the command line, show help and exit
+    if (cmdline.find("--help") != std::string::npos || cmdline.find(" -h") != std::string::npos)
+    {
+      printHelp();
+      return 0;
+    }
+
     // Fast-path: if the entire command line contains the pack flag, honor it (robust to wrappers)
     if (cmdline.find("--pack-to-vtex") != std::string::npos || cmdline.find("pack-to-vtex") != std::string::npos || cmdline.find("pack") != std::string::npos)
     {
@@ -133,6 +159,29 @@ int main(int argc, char** argv)
       else if (arg == "--pack-to-vtex")
       {
         opts.packToVTEX = true;
+      }
+      else if (arg.rfind("--vtex-format", 0) == 0)
+      {
+        std::string val;
+        auto        pos = arg.find('=');
+        if (pos != std::string::npos)
+        {
+          val = arg.substr(pos + 1);
+        }
+        else if (i + 1 < argc)
+        {
+          val = argv[++i];
+        }
+        for (auto& c : val)
+          c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (val == "r32f" || val == "r32")
+          opts.vtexFormat = ModelLightBaker::Options::VTexFormat::R32F;
+        else if (val == "r16f" || val == "r16")
+          opts.vtexFormat = ModelLightBaker::Options::VTexFormat::R16F;
+        else if (val == "bc6h")
+          opts.vtexFormat = ModelLightBaker::Options::VTexFormat::BC6H;
+        else
+          std::cerr << "[ModelLightBaker] Unknown vtex format: '" << val << "' (supported: r32f, r16f, bc6h)\n";
       }
       else if (arg.find("pack") != std::string::npos)
       {

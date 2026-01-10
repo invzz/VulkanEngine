@@ -37,7 +37,14 @@ namespace ModelLightBaker {
     bool gpu = false; // use GPU compute shader raycasts
 
     // Packaging options
-    bool packToVTEX = false; // write a VTEX container from the EXR after baking
+    enum class VTexFormat
+    {
+      R32F,
+      R16F,
+      BC6H
+    };
+    bool       packToVTEX = false;            // write a VTEX container from the EXR after baking
+    VTexFormat vtexFormat = VTexFormat::R32F; // default output format for VTEX
 
     // Automatic per-mesh chunking tile size in meters (used when running in MESH mode)
     float meshChunkSize = 8.0f; // default tile size (meters) for automatic chunking

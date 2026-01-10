@@ -47,6 +47,47 @@ TEST(LightmapEXRCPU, EXRToVTEX_WriteOnly)
   EXPECT_EQ(h.height, 2u);
 }
 
+TEST(LightmapEXRCPU, EXRToVTEX_BC6H_WriteOnly)
+{
+  // Skip if Compressonator CLI is not available (set COMPRESSONATOR_CLI env to tool path or place built CLI in tools/Compressonator/CompressonatorCLI)
+  bool haveCli = (std::getenv("COMPRESSONATOR_CLI") != nullptr) || std::filesystem::exists("tools/Compressonator/CompressonatorCLI");
+  if (!haveCli)
+  {
+    GTEST_SKIP() << "Skipping BC6H test (Compressonator CLI not present).";
+  }
+
+  std::filesystem::create_directories("assets/lightmaps");
+  const std::string exrPath  = "assets/lightmaps/cpu_tool_test_bc6h.exr";
+  const std::string vtexPath = "assets/lightmaps/cpu_tool_test_bc6h.vtex";
+
+  // Create small EXR
+  std::vector<float> pixels(2 * 2 * 4, 0.0f);
+  pixels[0] = 0.13f;
+  pixels[1] = 0.24f;
+  pixels[2] = 0.35f;
+  pixels[3] = 1.0f;
+
+  const char* err = nullptr;
+  int         ret = SaveEXR(pixels.data(), 2, 2, 4, 0, exrPath.c_str(), &err);
+  if (ret != 0 && err)
+  {
+    std::cerr << "SaveEXR error: " << err << std::endl;
+    FreeEXRErrorMessage(err);
+  }
+  ASSERT_EQ(ret, 0);
+
+  Window window(1, 1, "exrcpu_bc6h");
+  Device device(window);
+
+  ASSERT_NO_THROW(Texture::createFromEXR_CPUOnly(device, exrPath, vtexPath, false, VK_FORMAT_BC6H_UFLOAT_BLOCK));
+
+  ibl_detail::vtex::Header h{};
+  ASSERT_TRUE(ibl_detail::vtex::readHeader(vtexPath, h));
+  EXPECT_EQ(h.width, 2u);
+  EXPECT_EQ(h.height, 2u);
+  EXPECT_TRUE(h.vkFormat == VK_FORMAT_BC6H_UFLOAT_BLOCK || h.vkFormat == VK_FORMAT_BC6H_SFLOAT_BLOCK);
+}
+
 TEST(LightmapEXRCPU, EXRToVTEX_LoadIntoGPU)
 {
   // Skip unless hardware tests explicitly enabled

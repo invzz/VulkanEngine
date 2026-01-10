@@ -4,6 +4,9 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Buffer.hpp"
@@ -84,6 +87,64 @@ TEST(LightmapVTEXPixel, EXRToVTEXRoundtrip)
     EXPECT_NEAR(readPixels[2], 0.75f, 1e-4f);
     EXPECT_NEAR(readPixels[3], 1.0f, 1e-4f);
     in.close();
+  }
+
+  // Real EXR -> VTEX (R16F) roundtrip via CPU helper (float->half conversion)
+  {
+    std::string outR16 = "assets/lightmaps/pixel_test_r16.vtex";
+    if (std::filesystem::exists(outR16)) std::filesystem::remove(outR16);
+    ASSERT_NO_THROW(Texture::createFromEXR_CPUOnly(device, exrPath, outR16, false, VK_FORMAT_R16G16B16A16_SFLOAT));
+
+    ibl_detail::vtex::Header fileHeader{};
+    ASSERT_TRUE(ibl_detail::vtex::readHeader(outR16, fileHeader));
+    ASSERT_EQ(fileHeader.width, 2u);
+    ASSERT_EQ(fileHeader.height, 2u);
+    ASSERT_EQ(fileHeader.bytesPerPx, ibl_detail::vtex::bytesPerPixelFor(VK_FORMAT_R16G16B16A16_SFLOAT));
+
+    // Read first pixel halfs (RGBA) from file and convert to float for comparison
+    std::ifstream in16(outR16, std::ios::binary);
+    ASSERT_TRUE(in16.good());
+    ibl_detail::vtex::Header hdr16{};
+    in16.read(reinterpret_cast<char*>(&hdr16), sizeof(hdr16));
+    std::vector<uint16_t> halfs(4);
+    in16.read(reinterpret_cast<char*>(halfs.data()), static_cast<std::streamsize>(sizeof(uint16_t) * halfs.size()));
+    in16.close();
+
+    auto halfToFloat = [](uint16_t h) -> float {
+      uint32_t s = (h >> 15) & 0x1u;
+      uint32_t e = (h >> 10) & 0x1Fu;
+      uint32_t m = h & 0x3FFu;
+      if (e == 0)
+      {
+        if (m == 0) return s ? -0.0f : 0.0f;
+        // subnormal
+        float mant = static_cast<float>(m) / 1024.0f;
+        float val = std::ldexp(mant, -14);
+        return s ? -val : val;
+      }
+      else if (e == 31)
+      {
+        // inf or NaN
+        return s ? -INFINITY : INFINITY;
+      }
+      else
+      {
+        int32_t exp = static_cast<int32_t>(e) - 15 + 127;
+        uint32_t mant32 = m << 13;
+        uint32_t bits = (s << 31) | (static_cast<uint32_t>(exp) << 23) | mant32;
+        float val;
+        std::memcpy(&val, &bits, sizeof(val));
+        return val;
+      }
+    };
+
+    std::vector<float> readFloats(4);
+    for (size_t i = 0; i < 4; ++i) readFloats[i] = halfToFloat(halfs[i]);
+
+    EXPECT_NEAR(readFloats[0], 0.25f, 1e-3f);
+    EXPECT_NEAR(readFloats[1], 0.5f, 1e-3f);
+    EXPECT_NEAR(readFloats[2], 0.75f, 1e-3f);
+    EXPECT_NEAR(readFloats[3], 1.0f, 1e-3f);
   }
 
   // Verify R16-like format case using a synthetic VTEX header (CPU-only verification so tests are deterministic)

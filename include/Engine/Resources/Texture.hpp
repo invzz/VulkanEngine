@@ -30,7 +30,8 @@ namespace engine {
 
     // Create a VTEX from an EXR on the CPU (writes VTEX container to disk). If loadIntoGpu is true
     // the resulting VTEX will be loaded into a Texture and returned; otherwise returns nullptr.
-    static std::shared_ptr<Texture> createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu = false);
+    static std::shared_ptr<Texture>
+    createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu = false, VkFormat targetFormat = VK_FORMAT_R32G32B32A32_SFLOAT);
 
     // Load engine VTEX container produced by baking pipeline (fast GPU-ready container)
     static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath);

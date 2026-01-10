@@ -43,10 +43,60 @@ namespace engine::ibl_detail::vtex {
       return 4;
     case VK_FORMAT_R32G32B32A32_SFLOAT:
       return 16;
+    case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+    case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+      // Compressed formats are block-based (4x4 blocks), report block size (bytes per block)
+      return 16;
     default:
       break;
     }
     throw std::runtime_error("Unsupported VTEX format for IBL assets");
+  }
+
+  bool writeImageFromRaw(const std::string& filePath, const void* data, size_t dataSize, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers)
+  {
+    if (data == nullptr) return false;
+
+    uint32_t const bpp = bytesPerPixelFor(format);
+
+    // Validate size roughly matches expectations
+    size_t expected = 0;
+    for (uint32_t mip = 0; mip < mipLevels; ++mip)
+    {
+      uint32_t const w = (std::max)(1u, width >> mip);
+      uint32_t const h = (std::max)(1u, height >> mip);
+      expected += static_cast<size_t>(w) * static_cast<size_t>(h) * bpp * layers;
+    }
+
+    if (dataSize < expected) return false;
+
+    Header header;
+    header.vkFormat   = static_cast<uint32_t>(format);
+    header.width      = width;
+    header.height     = height;
+    header.mipLevels  = mipLevels;
+    header.layers     = layers;
+    header.bytesPerPx = bpp;
+
+    std::filesystem::path outPath(filePath);
+    if (outPath.has_parent_path())
+    {
+      std::error_code ec;
+      std::filesystem::create_directories(outPath.parent_path(), ec);
+      if (ec)
+      {
+        return false;
+      }
+    }
+
+    std::ofstream out(filePath, std::ios::binary);
+    if (!out) return false;
+
+    out.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    out.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(expected));
+    out.close();
+
+    return static_cast<bool>(out);
   }
 
   bool writeImage(Device& device, const std::string& filePath, VkImage image, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers)
@@ -136,25 +186,14 @@ namespace engine::ibl_detail::vtex {
     return static_cast<bool>(out);
   }
 
-  bool writeImageFromRaw(const std::string& filePath, const void* data, size_t dataSize, VkFormat format, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers)
+  bool writeCompressedImageFromRaw(const std::string& filePath, const void* compressedData, size_t compressedSize, VkFormat compressedFormat, uint32_t width, uint32_t height, uint32_t mipLevels, uint32_t layers)
   {
-    if (data == nullptr) return false;
+    if (compressedData == nullptr) return false;
 
-    uint32_t const bpp = bytesPerPixelFor(format);
-
-    // Validate size roughly matches expectations
-    size_t expected = 0;
-    for (uint32_t mip = 0; mip < mipLevels; ++mip)
-    {
-      uint32_t const w = (std::max)(1u, width >> mip);
-      uint32_t const h = (std::max)(1u, height >> mip);
-      expected += static_cast<size_t>(w) * static_cast<size_t>(h) * bpp * layers;
-    }
-
-    if (dataSize < expected) return false;
+    uint32_t const bpp = bytesPerPixelFor(compressedFormat); // interpreted as bytes per block for compressed
 
     Header header;
-    header.vkFormat   = static_cast<uint32_t>(format);
+    header.vkFormat   = static_cast<uint32_t>(compressedFormat);
     header.width      = width;
     header.height     = height;
     header.mipLevels  = mipLevels;
@@ -176,7 +215,8 @@ namespace engine::ibl_detail::vtex {
     if (!out) return false;
 
     out.write(reinterpret_cast<const char*>(&header), sizeof(header));
-    out.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(expected));
+    // Write compressed payload as-is; caller must ensure correct compressed layout (mips/blocks)
+    out.write(reinterpret_cast<const char*>(compressedData), static_cast<std::streamsize>(compressedSize));
     out.close();
 
     return static_cast<bool>(out);
