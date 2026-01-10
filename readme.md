@@ -31,6 +31,7 @@ Engine2 is a modern Vulkan-based 3D rendering engine designed for performance an
   - **ImGui Integration**: Built-in UI for debugging, profiling, and scene inspection.
   - **Scene Serialization**: Save and load scene states.
   - **CLI & Tools documentation**: See `docs/ModelLightBaker_CLI.md` for the `ModelLightBaker` CLI reference (usage, flags, sentinel behavior, and CI notes).
+  - **Baking workflow**: Read `docs/baking_workflow.md` for the high-level bake workflow and CI smoke job notes.
 
 ## Repository Layout
 
