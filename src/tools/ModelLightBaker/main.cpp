@@ -65,35 +65,12 @@ int main(int argc, char** argv)
 
     for (int i = 3; i < argc; ++i)
     {
-      // Print raw argv content for debugging
-      std::cerr << "[ModelLightBaker] raw argv[" << i << "]='" << argv[i] << "' hex:";
-      for (unsigned char ch : std::string(argv[i]))
-      {
-        char buf[8];
-        std::sprintf(buf, "%02x", ch);
-        std::cerr << buf;
-      }
-      std::cerr << "\n";
-
       std::string arg = argv[i];
       // Robustness: trim trailing/leading whitespace and CR/LF that may appear when invoked via shell wrappers
       while (!arg.empty() && (arg.back() == '\r' || arg.back() == '\n' || isspace(static_cast<unsigned char>(arg.back()))))
         arg.pop_back();
       while (!arg.empty() && (arg.front() == '\r' || arg.front() == '\n' || isspace(static_cast<unsigned char>(arg.front()))))
         arg.erase(arg.begin());
-
-      // Debugging: print raw bytes for suspicious args containing 'pack'
-      if (arg.find("pack") != std::string::npos)
-      {
-        std::cerr << "[ModelLightBaker] debug arg raw: '" << arg << "' hex:";
-        for (unsigned char ch : arg)
-        {
-          char buf[8];
-          std::sprintf(buf, "%02x", ch);
-          std::cerr << buf;
-        }
-        std::cerr << "\n";
-      }
 
       if (arg == "--res" && i + 1 < argc)
       {
@@ -166,14 +143,6 @@ int main(int argc, char** argv)
       else
       {
         std::cerr << "[ModelLightBaker] Unknown option: " << arg << "\n";
-        std::cerr << "[ModelLightBaker] Unknown arg hex:";
-        for (unsigned char ch : arg)
-        {
-          char buf[8];
-          std::sprintf(buf, "%02x", ch);
-          std::cerr << buf << " ";
-        }
-        std::cerr << "\n";
       }
     }
 

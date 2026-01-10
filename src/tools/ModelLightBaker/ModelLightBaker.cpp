@@ -1138,11 +1138,8 @@ namespace ModelLightBaker {
     // Optionally pack the EXR to a VTEX container (either CLI flag or sentinel file can trigger)
     std::string outFileName = exrPath.filename().string();
 
-    // Diagnostic: print whether sentinel file exists and current opts flag (helps tests confirm why packing did/didn't run)
     std::filesystem::path sentinelPath   = std::filesystem::path(outDir_) / "MODEL_LIGHT_BAKER_PACK_TO_VTEX";
     bool                  sentinelExists = std::filesystem::exists(sentinelPath);
-    std::cerr << "[ModelLightBaker] Sentinel check: '" << sentinelPath.generic_string() << "' exists=" << (sentinelExists ? "yes" : "no") << " opts.packToVTEX=" << (opts_.packToVTEX ? "yes" : "no")
-              << "\n";
 
     bool shouldPack = opts_.packToVTEX || sentinelExists;
     if (shouldPack)

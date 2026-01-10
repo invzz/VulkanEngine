@@ -73,7 +73,8 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 ---
 
 ## Sprint 4 — VTEX packaging & runtime 📦 (In-Progress)
-- Started: 2026-01-09
+- Started: 2026-01-09 (active: 2026-01-10)
+- Status: **In-Progress** — initial work completed: implemented `--pack-to-vtex` CLI flag, CPU EXR→VTEX helper, diagnostic hardening, and added integration tests that validate VTEX header + CPU-only load. Next: complete format transcodes, metadata, CI smoke job, and docs.
 - Goal: Add packaging step to produce `.vtex` runtime assets (mips, format conversion) and implement runtime loader with usage semantics.
 - Estimated effort: 1–2 weeks
 - Deliverables:
@@ -143,4 +144,4 @@ This file lists the sprint-by-sprint tasks for the Lightmap Baking project. Each
 
 ---
 
-Planned next step: Begin **Sprint 3** — implement the per-texel validity mask, seam-aware dilation, and CPU mip generation (reference implementation + tests). If you'd prefer I switch to Sprint 1 (scene exporter/schema) instead, say so and I'll pivot.
+Planned next step: Continue **Sprint 4** — finalize VTEX packaging, add format transcodes (`r32f`/`r16f`/`bc6h`), write usage metadata, add CI smoke job, and update docs. If you'd prefer I pivot back to another sprint instead, say so and I'll adjust priorities.
