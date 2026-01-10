@@ -1164,10 +1164,9 @@ namespace ModelLightBaker {
         std::ofstream(attemptSentinel).put('1');
 
         // Confirm VTEX file exists and is non-empty
-        bool vtexExists = std::filesystem::exists(vtexPath);
-        uintmax_t vtexSize = 0;
-        if (vtexExists)
-          vtexSize = std::filesystem::file_size(vtexPath);
+        bool      vtexExists = std::filesystem::exists(vtexPath);
+        uintmax_t vtexSize   = 0;
+        if (vtexExists) vtexSize = std::filesystem::file_size(vtexPath);
 
         if (!vtexExists || vtexSize == 0)
         {

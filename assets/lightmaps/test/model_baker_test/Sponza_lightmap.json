@@ -1,0 +1,9 @@
+{
+  "model": "/home/ac/Documents/source/prj/engine2/assets/models//glTF/Sponza/glTF/Sponza.gltf",
+  "file": "Sponza_lightmap.vtex",
+  "format": "vtex",
+  "resolution": 16,
+  "samples": 16,
+  "sun_dir": [0, -1, 0],
+  "sun_intensity": 1
+}
