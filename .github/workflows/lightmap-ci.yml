@@ -89,3 +89,42 @@ jobs:
         with:
           name: lightmap-hw-logs
           path: build/linux/x86_64/release/*.log || true
+
+  model-light-baker-smoke:
+    name: ModelLightBaker VTEX pack smoke test
+    runs-on: [self-hosted, linux, gpu]
+    needs: unit-tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system deps (minimal)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libvulkan-dev vulkan-tools
+
+      - name: Build ModelLightBaker & tests
+        run: xmake build -v ModelLightBaker LightmapTests
+
+      - name: List tools directory
+        run: |
+          ls -la tools || true
+          if [ -f tools/ModelLightBaker ]; then echo "Found tools/ModelLightBaker"; else echo "tools/ModelLightBaker missing"; ls -la build/linux/x86_64/release || true; exit 1; fi
+
+      - name: Smoke-check Vulkan on runner
+        run: |
+          chmod +x .github/scripts/check_vulkan.sh
+          ./.github/scripts/check_vulkan.sh
+
+      - name: Run ModelLightBaker pack integration test
+        env:
+          RUN_HARDWARE_TESTS: "1"
+        run: |
+          ./build/linux/x86_64/release/LightmapTests --gtest_filter=ModelLightBaker.PackToVTEX_CLIProducesVTEX --gtest_color=yes
+
+      - name: Upload ModelLightBaker artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-light-baker-logs
+          path: build/linux/x86_64/release/*.log || true
