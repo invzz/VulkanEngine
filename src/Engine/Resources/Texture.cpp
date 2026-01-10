@@ -16,11 +16,11 @@
 #include <tinyexr.h>
 
 #include <cmath>
-#include <iostream>
-#include <stdexcept>
-#include <fstream>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <iterator>
+#include <stdexcept>
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/Buffer.hpp"
@@ -282,15 +282,21 @@ namespace engine {
     {
       // Use external Compressonator CLI if available to produce BC6H compressed DDS from EXR.
       // Expected CLI: CompressonatorCLI -fd BC6H <in.exr> <out.dds>
-      const char* envCli = std::getenv("COMPRESSONATOR_CLI");
+      const char* envCli  = std::getenv("COMPRESSONATOR_CLI");
       std::string cliPath = envCli ? envCli : std::string();
       if (cliPath.empty())
       {
-        // check common locations in repo
+        // check common locations in repo or installed paths
         if (std::filesystem::exists("tools/Compressonator/CompressonatorCLI"))
           cliPath = "tools/Compressonator/CompressonatorCLI";
+        else if (std::filesystem::exists("tools/Compressonator/compressonatorcli-bin"))
+          cliPath = "tools/Compressonator/compressonatorcli-bin";
+        else if (std::filesystem::exists("tools/Compressonator/compressonatorcli"))
+          cliPath = "tools/Compressonator/compressonatorcli";
         else if (std::filesystem::exists("external/compressonator/CompressonatorCLI"))
           cliPath = "external/compressonator/CompressonatorCLI";
+        else if (std::filesystem::exists("/usr/bin/compressonatorcli"))
+          cliPath = "/usr/bin/compressonatorcli";
       }
 
       if (cliPath.empty())
