@@ -21,7 +21,6 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "ModelLib/Resources/TextureManager.hpp"
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
@@ -31,6 +30,7 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
+#include "ModelLib/Resources/TextureManager.hpp"
 #include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/ext/vector_float4.hpp"
@@ -555,7 +555,7 @@ namespace engine {
       postProcessPush.projection        = camera->getProjection();
 
       // Forward current debug mode so post-process can honor debug-only views (e.g., baked lightmap)
-      postProcessPush.debugMode         = debugMode; 
+      postProcessPush.debugMode = debugMode;
 
       // God Rays Setup
       if (fogSettings.enableGodRays)

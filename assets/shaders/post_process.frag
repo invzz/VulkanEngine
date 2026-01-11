@@ -74,8 +74,7 @@ vec3 applyFXAA(vec2 texCoords)
 
   vec3 rgbA = (1.0 / 2.0) * (texture(sceneColor, texCoords.xy + dir * (1.0 / 3.0 - 0.5)).xyz + texture(sceneColor, texCoords.xy + dir * (2.0 / 3.0 - 0.5)).xyz);
 
-  vec3 rgbB = rgbA * (1.0 / 2.0) +
-              (1.0 / 4.0) * (texture(sceneColor, texCoords.xy + dir * (0.0 / 3.0 - 0.5)).xyz + texture(sceneColor, texCoords.xy + dir * (3.0 / 3.0 - 0.5)).xyz);
+  vec3 rgbB = rgbA * (1.0 / 2.0) + (1.0 / 4.0) * (texture(sceneColor, texCoords.xy + dir * (0.0 / 3.0 - 0.5)).xyz + texture(sceneColor, texCoords.xy + dir * (3.0 / 3.0 - 0.5)).xyz);
 
   float lumaB = dot(rgbB, luma);
 
@@ -209,7 +208,7 @@ void main()
 
     // Saturation
     float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
-    color = mix(vec3(luminance), color, push.saturation);
+    color           = mix(vec3(luminance), color, push.saturation);
 
     // Tone mapping (ACES)
     if (push.toneMappingMode == 1)
@@ -219,12 +218,12 @@ void main()
       float c = 2.43f;
       float d = 0.59f;
       float e = 0.14f;
-      color    = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+      color   = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
     }
 
     // Gamma correction
     const float gamma = 2.2;
-    color = pow(color, vec3(1.0 / gamma));
+    color             = pow(color, vec3(1.0 / gamma));
 
     // Vignette
     float dist = length(inUV - 0.5);

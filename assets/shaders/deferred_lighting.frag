@@ -160,12 +160,10 @@ void main()
     vec3 bakedDbg = texture(gbufferBaked, inUV).rgb;
     // Some bakes are low-intensity (ambient-like); scale for debug visibility.
     const float debugScale = 6.0;
-    vec3       scaled     = bakedDbg * debugScale;
-    outColor = vec4(clamp(scaled, vec3(0.0), vec3(1.0)), 1.0);
+    vec3        scaled     = bakedDbg * debugScale;
+    outColor               = vec4(clamp(scaled, vec3(0.0), vec3(1.0)), 1.0);
     return;
   }
-
-
 
   vec3 worldPos = reconstructWorldPos(inUV, depth);
   vec3 V        = normalize(ubo.cameraPosition.xyz - worldPos);
@@ -254,23 +252,23 @@ void main()
   if (ubo.debugMode == 12)
   {
     vec3 irrDbg = texture(irradianceMap, N).rgb;
-    outColor     = vec4(irrDbg, 1.0);
+    outColor    = vec4(irrDbg, 1.0);
     return;
   }
 
   // Debug mode 13: IBL specular prefilter visualization
   if (ubo.debugMode == 13)
   {
-    vec3  prefilterDbg = textureLod(prefilterMap, R, roughness * kMaxReflectionLod).rgb;
-    outColor       = vec4(prefilterDbg, 1.0);
+    vec3 prefilterDbg = textureLod(prefilterMap, R, roughness * kMaxReflectionLod).rgb;
+    outColor          = vec4(prefilterDbg, 1.0);
     return;
   }
 
   // Debug mode 14: BRDF LUT sample visualization
   if (ubo.debugMode == 14)
   {
-    vec2  brdfDbg = texture(brdfLUT, vec2(NdotV, roughness)).rg;
-    outColor      = vec4(vec3(brdfDbg.x), 1.0);
+    vec2 brdfDbg = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+    outColor     = vec4(vec3(brdfDbg.x), 1.0);
     return;
   }
 
