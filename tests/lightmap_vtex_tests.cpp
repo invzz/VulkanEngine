@@ -5,8 +5,8 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/PBRMaterial.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"

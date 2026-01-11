@@ -5,14 +5,14 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/PBRMaterial.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
-#include "Engine/Resources/Texture.hpp"
 #include "Engine/Scene/LightmapManifest.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 
 using namespace engine;
 
@@ -34,7 +34,7 @@ TEST(LightmapIntegration, ExportLoadApplyAndAssignTexture)
     out << R"({
       "version": 1,
       "lightmapBindings": {
-        "object_01": { "lightmapId": "lm_000", "uvChannel": 1, "uvScale": [0.25, 0.25], "uvOffset": [0.5, 0.0] }
+        "object_01": { "meshes": [ { "primitiveIndex": 0, "lightmap": "lightmaps/lm_000_atlas.vtex", "uvChannel": 1, "uvScale": [0.25, 0.25], "uvOffset": [0.5, 0.0], "resolution": [32, 32] } ] }
       },
       "lightmaps": [ { "id": "lm_000", "file": "lightmaps/lm_000_atlas.vtex", "format": "vtex", "resolution": [32, 32], "usage": "Lightmap" } ]
     })";
@@ -56,24 +56,21 @@ TEST(LightmapIntegration, ExportLoadApplyAndAssignTexture)
   rm.applySceneLightmapBindings(scene);
 
   // Sanity checks: scene should have a NameComponent and a PBRMaterial
-  auto   nameView  = scene.getRegistry().view<engine::NameComponent>();
-  size_t nameCount = 0;
-  for (auto e : nameView)
-    ++nameCount;
-  ASSERT_EQ(nameCount, 1u);
-
-  // Scene doesn't automatically create a PBRMaterial unless a model is present; create one for the test entity
+  auto nameView      = scene.getRegistry().view<engine::NameComponent>();
+  bool foundObject01 = false;
   for (auto e : nameView)
   {
     const auto& nc = scene.getRegistry().get<engine::NameComponent>(e);
     if (nc.name == "object_01")
     {
+      foundObject01 = true;
       if (!scene.getRegistry().all_of<engine::PBRMaterial>(e))
       {
         scene.getRegistry().emplace<engine::PBRMaterial>(e);
       }
     }
   }
+  ASSERT_TRUE(foundObject01);
 
   auto   matView  = scene.getRegistry().view<engine::PBRMaterial>();
   size_t matCount = 0;

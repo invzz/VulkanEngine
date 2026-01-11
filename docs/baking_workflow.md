@@ -13,7 +13,7 @@ Baking a scene or model follows these main steps:
 
 ## Tools
 
-- `UVUnwrapCLI` — generate per-instance UV1 and atlas mappings.
+- `UVUnwrap` (library; in-tree) — generate per-instance UV1 and atlas mappings. Use `LightBaker --auto-uv` or the `LightmapBakerLib` API to compute mappings.
 - `LightBaker` — replacement baker that supports per-model and scene-level baking for tests and production workflows.
   - Full CLI reference: `docs/LightBaker_CLI.md`
 

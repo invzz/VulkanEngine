@@ -21,7 +21,7 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Resources/TextureManager.hpp"
+#include "ModelLib/Resources/TextureManager.hpp"
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
@@ -553,6 +553,9 @@ namespace engine {
 
       postProcessPush.inverseProjection = glm::inverse(camera->getProjection());
       postProcessPush.projection        = camera->getProjection();
+
+      // Forward current debug mode so post-process can honor debug-only views (e.g., baked lightmap)
+      postProcessPush.debugMode         = debugMode; 
 
       // God Rays Setup
       if (fogSettings.enableGodRays)

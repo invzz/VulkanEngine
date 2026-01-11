@@ -8,7 +8,7 @@
 
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
 

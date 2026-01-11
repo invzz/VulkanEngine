@@ -154,11 +154,14 @@ void main()
     return;
   }
 
-  // Debug mode 11: Baked RGB light visualization
+  // Debug mode 11: Baked RGB light visualization (scaled for visibility)
   if (ubo.debugMode == 11)
   {
     vec3 bakedDbg = texture(gbufferBaked, inUV).rgb;
-    outColor      = vec4(bakedDbg, 1.0);
+    // Some bakes are low-intensity (ambient-like); scale for debug visibility.
+    const float debugScale = 6.0;
+    vec3       scaled     = bakedDbg * debugScale;
+    outColor = vec4(clamp(scaled, vec3(0.0), vec3(1.0)), 1.0);
     return;
   }
 

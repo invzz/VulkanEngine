@@ -1,4 +1,4 @@
-#include "Geometry.hpp"
+#include "Tools/LightmapBakerLib/Geometry.hpp"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
@@ -43,6 +43,18 @@ namespace LightmapBaker {
           uint32_t ic = builder.indices[i + 2];
 
           if (ia >= builder.vertices.size() || ib >= builder.vertices.size() || ic >= builder.vertices.size()) continue;
+
+          // If a primitiveIndex filter is provided, only include triangles whose
+          // vertices belong to that primitive's vertex range
+          if (opts.primitiveIndex)
+          {
+            std::string key = std::to_string(meshIndex) + "_" + std::to_string(*opts.primitiveIndex);
+            if (!builder.primitiveVertexOffsets.contains(key)) continue;
+            uint32_t start   = builder.primitiveVertexOffsets.at(key);
+            uint32_t count   = builder.primitiveVertexCounts.at(key);
+            auto     inRange = [&](uint32_t idx) { return idx >= start && idx < (start + count); };
+            if (!(inRange(ia) && inRange(ib) && inRange(ic))) continue;
+          }
 
           const auto& va = builder.vertices[ia];
           const auto& vb = builder.vertices[ib];

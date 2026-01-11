@@ -8,8 +8,8 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Resources/Model.hpp"
-#include "Engine/Resources/MorphTargetManager.hpp"
+#include "ModelLib/Resources/Model.hpp"
+#include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 
 namespace engine {

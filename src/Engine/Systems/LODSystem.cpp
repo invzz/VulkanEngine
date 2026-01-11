@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 #include "Engine/Scene/components/LODComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"

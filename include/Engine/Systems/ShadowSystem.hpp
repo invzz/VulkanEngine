@@ -12,7 +12,7 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/ShadowMap.hpp"
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
 

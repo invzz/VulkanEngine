@@ -9,7 +9,7 @@
 
 #include "CubeUI/ui/UIPanel.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 

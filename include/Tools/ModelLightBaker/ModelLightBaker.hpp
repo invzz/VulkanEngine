@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 #include "Tools/LightmapBakerLib/Geometry.hpp"
 
 namespace ModelLightBaker {

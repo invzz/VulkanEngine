@@ -18,7 +18,7 @@ TEST(LightmapManifest, ParseSimpleManifest)
   out << R"({
     "version": 1,
     "lightmapBindings": {
-      "object_01": { "lightmapId": "lm_000", "uvChannel": 1, "uvScale": [0.25, 0.25], "uvOffset": [0.5, 0.0] }
+      "object_01": { "meshes": [ { "primitiveIndex": 0, "lightmap": "lightmaps/lm_000_atlas.vtex", "uvChannel": 1, "uvScale": [0.25, 0.25], "uvOffset": [0.5, 0.0], "resolution": [2048, 2048] } ] }
     },
     "lightmaps": [ { "id": "lm_000", "file": "lightmaps/lm_000_atlas.vtex", "format": "vtex", "resolution": [2048, 2048], "usage": "Lightmap" } ]
   })";
@@ -39,6 +39,7 @@ TEST(LightmapManifest, ParseSimpleManifest)
 
   auto bt = binds.find("object_01");
   ASSERT_NE(bt, binds.end());
+  // The binding resolves 'lightmap' file -> lightmap id; check id is present (either empty if not resolvable)
   EXPECT_EQ(bt->second.lightmapId, "lm_000");
   EXPECT_FLOAT_EQ(bt->second.uvScale.x, 0.25f);
 

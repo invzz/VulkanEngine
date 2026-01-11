@@ -4,8 +4,8 @@
 #include <entt/entt.hpp>
 #include <string>
 
-#include "Engine/Resources/Model.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/Model.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 
 namespace engine {

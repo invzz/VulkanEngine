@@ -21,6 +21,7 @@ layout(push_constant) uniform PushConstants
   float fxaaReduceMul;
   float fxaaReduceMin;
   int   enableSSAO;
+  int   debugMode;
   float ssaoRadius;
   float ssaoBias;
   int   toneMappingMode; // 0: None, 1: ACES
@@ -190,6 +191,48 @@ void main()
   else
   {
     color = texture(sceneColor, inUV).rgb;
+  }
+
+  // Debug mode 11: show baked lightmap only (skip SSAO, bloom, god-rays)
+  if (push.debugMode == 11)
+  {
+    // Use raw scene color (deferred pass outputs baked debug when debugMode==11)
+    color = texture(sceneColor, inUV).rgb;
+
+    // Apply minimal display transforms (exposure/contrast/saturation/tone/gamma/vignette) so the map is visible
+    // Exposure
+    color *= push.exposure;
+
+    // Contrast
+    color = (color - 0.5) * push.contrast + 0.5;
+    color = max(color, 0.0);
+
+    // Saturation
+    float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    color = mix(vec3(luminance), color, push.saturation);
+
+    // Tone mapping (ACES)
+    if (push.toneMappingMode == 1)
+    {
+      float a = 2.51f;
+      float b = 0.03f;
+      float c = 2.43f;
+      float d = 0.59f;
+      float e = 0.14f;
+      color    = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+    }
+
+    // Gamma correction
+    const float gamma = 2.2;
+    color = pow(color, vec3(1.0 / gamma));
+
+    // Vignette
+    float dist = length(inUV - 0.5);
+    float vig  = 1.0 - smoothstep(0.4, 1.5, dist * push.vignette);
+    color *= vig;
+
+    outColor = vec4(color, 1.0);
+    return;
   }
 
   // SSAO

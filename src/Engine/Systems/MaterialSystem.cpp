@@ -5,8 +5,8 @@
 
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/PBRMaterial.hpp"
-#include "Engine/Resources/Texture.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 #include "vulkan/vulkan_core.h"
 
 namespace engine {

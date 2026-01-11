@@ -12,7 +12,7 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 #include "vulkan/vulkan_core.h"
 
 namespace engine {

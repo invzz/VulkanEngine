@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
 

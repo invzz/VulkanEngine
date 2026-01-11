@@ -16,7 +16,7 @@ namespace engine {
                                 "Roughness",
                                 "Metallic",
                                 "Lighting Only",
-                                "Lightmap Only",
+                                "Emissive Only",
                                 "Meshlets",
                                 "Meshlet Cones",
                                 "Depth",
@@ -49,10 +49,16 @@ namespace engine {
       ImGui::TextWrapped("Shows per-fragment ambient occlusion (AO). Darker = more occluded.");
     }
 
+    // Debug mode 6: Emissive only (not baked lightmaps)
+    if (debugMode_ == 6)
+    {
+      ImGui::TextWrapped("Shows emissive contribution only (material emissive textures/colors). If the scene has no emissive materials this view will be dark.");
+    }
+
     // Debug mode 11: Baked RGB light visualization
     if (debugMode_ == 11)
     {
-      ImGui::TextWrapped("Shows baked RGB light values written into the G-buffer (used multiplicatively as irradiance).");
+      ImGui::TextWrapped("Shows baked RGB light values written into the G-buffer (used multiplicatively as irradiance).\nNote: low-intensity bakes are scaled for visibility in this debug view.");
     }
 
     // Debug mode 12: IBL irradiance visualization

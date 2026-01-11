@@ -7,8 +7,8 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "Engine/Resources/PBRMaterial.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"

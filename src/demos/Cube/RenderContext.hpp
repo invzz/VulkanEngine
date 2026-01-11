@@ -8,7 +8,7 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Resources/MeshManager.hpp"
+#include "ModelLib/Resources/MeshManager.hpp"
 
 namespace engine {
 

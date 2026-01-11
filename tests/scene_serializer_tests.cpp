@@ -5,7 +5,7 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"

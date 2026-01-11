@@ -3,7 +3,7 @@
 
 #include <memory>
 
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
 

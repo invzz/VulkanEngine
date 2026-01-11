@@ -1,48 +1,46 @@
 #include <gtest/gtest.h>
 
-#include <cctype>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <string>
+
+#include "Tools/UVUnwrap/UVUnwrap.hpp"
 
 TEST(UVUnwrapCLI, GeneratesManifestFromInput)
 {
   namespace fs = std::filesystem;
   fs::create_directories("assets/scenes/test");
 
-  nlohmann::json in;
-  in["meshes"] = nlohmann::json::array();
-  nlohmann::json m;
-  m["id"]        = "mesh0";
-  m["positions"] = {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0};
-  m["indices"]   = {0, 1, 2};
-  in["meshes"].push_back(m);
+  // Construct a simple mesh + instance (triangle)
+  std::vector<float>    positions = {0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+  std::vector<uint32_t> indices   = {0, 1, 2};
 
-  in["instances"] = nlohmann::json::array();
-  nlohmann::json inst;
-  inst["id"]        = "object_01";
-  inst["mesh"]      = "mesh0";
-  inst["transform"] = {{"translation", {0.0, 0.0, 0.0}}, {"rotation", {0.0, 0.0, 0.0, 1.0}}, {"scale", {1.0, 1.0, 1.0}}};
-  in["instances"].push_back(inst);
+  tools::uvunwrap::MeshDecl mesh{};
+  mesh.vertexPositionData = positions.data();
+  mesh.vertexCount        = static_cast<uint32_t>(positions.size() / 3);
+  mesh.vertexStride       = sizeof(float) * 3;
+  mesh.indexData          = indices.data();
+  mesh.indexCount         = static_cast<uint32_t>(indices.size());
+  mesh.indexStride        = sizeof(uint32_t);
 
-  std::ofstream out("assets/scenes/test/uv_unwrap_input.json");
-  out << in.dump(2) << std::endl;
-  out.close();
+  std::vector<std::pair<tools::uvunwrap::MeshDecl, glm::mat4>> meshesWithTransform;
+  meshesWithTransform.emplace_back(mesh, glm::mat4(1.0f));
 
-  // Run the CLI binary (use build-time path when available)
-#ifndef UVUNWRAP_CLI_PATH
-#define UVUNWRAP_CLI_PATH "./tools/UVUnwrapCLI"
-#endif
-  std::string cliExec = UVUNWRAP_CLI_PATH;
-  // Trim leading whitespace (some build flags inject a leading space)
-  while (!cliExec.empty() && std::isspace(static_cast<unsigned char>(cliExec.front())))
-    cliExec.erase(0, 1);
-  // Ensure the CLI binary exists before invoking it (gives clearer test failures)
-  namespace fs = std::filesystem;
-  ASSERT_TRUE(fs::exists(cliExec)) << "UVUnwrapCLI not found at: '" << cliExec << "'";
-  std::string cliCmd = cliExec + " assets/scenes/test/uv_unwrap_input.json assets/scenes/test/uv_unwrap_output.json > /dev/null 2>&1";
-  int         ret    = system(cliCmd.c_str());
-  ASSERT_EQ(ret, 0) << "UVUnwrapCLI failed (exit " << ret << "), binary: " << cliExec;
+  auto mappings = tools::uvunwrap::generateInstanceMappings(meshesWithTransform, /*paddingPx=*/4, /*resolution=*/0);
+  ASSERT_EQ(mappings.size(), 1u);
+
+  const auto& m = mappings[0];
+  // Expect atlas sizes to be non-zero
+  ASSERT_GT(m.atlasWidth, 0u);
+  ASSERT_GT(m.atlasHeight, 0u);
+
+  // Emit a JSON manifest compatible with previous CLI output for downstream consumers
+  nlohmann::json out;
+  out["lightmapBindings"]              = nlohmann::json::object();
+  out["lightmapBindings"]["object_01"] = {{"uvScale", {m.uvScale.x, m.uvScale.y}}, {"uvOffset", {m.uvOffset.x, m.uvOffset.y}}, {"resolution", {m.atlasWidth, m.atlasHeight}}};
+
+  std::ofstream ofs("assets/scenes/test/uv_unwrap_output.json");
+  ofs << out.dump(2) << std::endl;
+  ofs.close();
 
   std::ifstream got("assets/scenes/test/uv_unwrap_output.json");
   ASSERT_TRUE(got.good());

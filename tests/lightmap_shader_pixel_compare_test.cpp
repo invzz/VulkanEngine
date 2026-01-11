@@ -9,13 +9,13 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
-#include "Engine/Resources/Texture.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Systems/IBL/VTexIO.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 
 using namespace engine;
 
@@ -39,8 +39,9 @@ TEST(LightmapShaderCompare, PostProcessSamplerMatchesLightmap)
     out << R"({
       "version": 1,
       "lightmapBindings": {
-        "object_01": { "lightmapId": "lm_001", "uvChannel": 1, "uvScale": [1.0, 1.0], "uvOffset": [0.0, 0.0] }
+        "object_01": { "meshes": [ { "primitiveIndex": 0, "lightmap": "lightmaps/lm_001_atlas.vtex", "uvChannel": 1, "uvScale": [1.0, 1.0], "uvOffset": [0.0, 0.0], "resolution": [16, 16] } ] }
       },
+
       "lightmaps": [ { "id": "lm_001", "file": "lightmaps/lm_001_atlas.vtex", "format": "vtex", "resolution": [4, 4], "usage": "Lightmap" } ]
     })";
     out.close();

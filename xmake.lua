@@ -59,7 +59,6 @@ add_defines(
     "SCENE_PATH=\"" .. normpath(path.join(project_dir, "assets/scenes")) .. "/\"",
     "TOOL_PATH=\""    .. normpath(path.join(project_dir, "tools")) .. "/\"",
     "EXR2VTEX_PATH=\""     .. tool_path("EXR2VTEX")     .. "\"",
-    "UVUNWRAP_CLI_PATH=\"" .. tool_path("UVUnwrapCLI")  .. "\"",
     "LIGHT_BAKER_PATH=\"" .. tool_path("LightBaker") .. "\"",
     "COMPRESSONATOR_CLI=\"" .. normpath(path.join(project_dir, "tools", "Compressonator", "compressonatorcli")) .. "\""
 )
@@ -148,7 +147,7 @@ target("Tests")
     add_packages("gtest")
     add_packages( "glm", "nlohmann_json", "entt", "tinyexr")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    
+    add_deps("stb_provider")
     add_deps("Engine", "EngineImporters", "EngineSceneIO", "UVUnwrap", "xatlas", "LightmapBakerLib" )
      -- link main gtest function:
     add_links("gtest_main")
@@ -174,6 +173,13 @@ target("Cube")
 -- ============================================================================
 -- Core Libraries
 -- ============================================================================
+
+target("UVUnwrap")
+    set_kind("static")
+    add_files("src/tools/UVUnwrap/**.cpp")
+    add_includedirs("include", "include/Tools/UVUnwrap", {public = true})
+    add_deps("xatlas")
+
 target("CubeUI")
     set_kind("static")
     add_files("src/demos/CubeUI/**.cpp")
@@ -189,20 +195,37 @@ target("EngineSceneIO")
     add_packages("glm", "glfw", "nlohmann_json", "entt")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
 
+target("ModelLib")
+    set_kind("static")
+    set_group("core")
+    add_files("src/ModelLib/**.cpp")
+    add_includedirs("include", {public = true})
+    add_packages(
+        "glm", "meshoptimizer", "nlohmann_json", "tinygltf", "tinyobjloader", "stb", "tinyexr", "entt"
+    )
+    -- ModelLib depends on EngineSceneIO for scene manifest parsing
+    add_deps("EngineSceneIO")
+    -- Ensure STB implementation is linked after ModelLib to resolve stbi_* symbols
+    add_deps("stb_provider")
+
+
 target("EngineImporters")
     set_kind("static")
-    add_files("src/EngineImporters/**.cpp")
+    -- No source files: resource implementations were moved into `ModelLib`.
+    -- Keep include paths and packages for any header-only helpers or future code.
     add_includedirs("include", {public = true})
     add_packages(
         "glm", "glfw", "tinyobjloader", "tinygltf",
         "stb", "nlohmann_json", "meshoptimizer"
     )
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("stb_provider")
+    add_deps("stb_provider", "ModelLib")
 
 target("Engine")
     set_kind("static")
+    -- Exclude resource implementations moved to ModelLib
     add_files("src/Engine/**.cpp")
+    -- resource implementations moved into ModelLib (see ModelLib target)
     add_includedirs("include", {public = true})
     add_packages(
         "glm", "glfw", "tinyexr", "tinygltf",
@@ -217,29 +240,14 @@ target("Engine")
             "PROFILE_OUTPUT_DIR=\"" .. normpath(path.join(project_dir, "profile")) .. "/\""
         )
     end
-    add_deps("stb_provider", "EngineSceneIO")
+    add_deps("stb_provider", "EngineSceneIO", "EngineImporters")
 
 -- ============================================================================
 -- Offline Tools
 -- ============================================================================
-target("UVUnwrap")
-    set_kind("static")
-    add_files("src/tools/UVUnwrap/**.cpp")
-    add_includedirs("include", "include/Tools/UVUnwrap", {public = true})
-    add_deps("xatlas")
-
-target("UVUnwrapCLI")
-    set_default(true )
-    set_group("tools")
-    set_kind("binary")
-    add_files("src/tools/UVUnwrapCLI/**.cpp")
-    add_includedirs("include", {public = true})
-    add_packages("nlohmann_json")
-    add_deps("UVUnwrap")
 
 target("IBLBaker")
     set_default(true )
-    set_group("tools")
     set_kind("binary")
     add_files("src/tools/IBLBaker/**.cpp")
     add_includedirs("include", {public = true})
@@ -247,20 +255,10 @@ target("IBLBaker")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
     add_deps("Engine", "EngineImporters", "EngineSceneIO")
 
-target("EXR2VTEX")
-    set_default(true )
-    set_group("tools")
-    set_kind("binary")
-    add_files("src/tools/EXR2VTEX/**.cpp")  
-    add_includedirs("include", {public = true})
-    add_packages("glm", "glfw", "tinyexr")
-    add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("Engine", "EngineImporters", "EngineSceneIO")
-  
 
 target("LightBaker")
     set_default(true)
-    set_group("tools")
+    set_targetdir("tools")
     set_kind("binary")
     add_files("src/tools/LightBaker/**.cpp")
     add_includedirs("include", {public = true})
@@ -271,29 +269,16 @@ target("LightBaker")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
     add_deps("stb_provider", "EngineImporters", "Engine", "EngineSceneIO", "LightmapBakerLib", "UVUnwrap")
 
-    -- Copy final tool binary into `tools/` directory for test & CI convenience
-    on_build(function (t)
-        local bin = t:targetfile()
-        if bin and os.isfile(bin) then
-            local outdir = path.join(project_dir, "tools")
-            os.mkdir(outdir)
-            local dst = path.join(outdir, path.filename(bin))
-            os.cp(bin, dst)
-            print("Copied tool -> " .. normpath(dst))
-        end
-    end)
-
-
 -- ----------------------------------------------------------------------------
 -- New: Lightmap baking library (stage 1: scene ingestion)
 -- ----------------------------------------------------------------------------
 target("LightmapBakerLib")
-    set_group("tools")
     set_kind("static")
     add_files("src/tools/LightmapBakerLib/**.cpp")
     add_includedirs("include", {public = true})
     add_packages("glm", "nlohmann_json", "entt")
-    add_deps("EngineSceneIO")
+    -- LightmapBakerLib may pack EXR -> VTEX using Vulkan via Engine helpers
+    add_deps("EngineSceneIO", "Engine", "UVUnwrap")
     
    
 -- ============================================================================
@@ -301,11 +286,8 @@ target("LightmapBakerLib")
 -- ============================================================================
 target("tools")
     set_kind("phony")
-    set_targetdir("tools")
+    
     add_deps(
-        "UVUnwrapCLI",
-        "IBLBaker",
-        "EXR2VTEX",
         "LightBaker"
     )
 

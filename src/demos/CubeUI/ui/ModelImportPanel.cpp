@@ -15,9 +15,9 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Resources/Model.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
-#include "Engine/Resources/Texture.hpp"
+#include "ModelLib/Resources/Model.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneUtils.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"

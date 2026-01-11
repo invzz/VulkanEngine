@@ -5,10 +5,10 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-#include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
 
 namespace engine::scene {
 
@@ -60,24 +60,52 @@ namespace engine::scene {
           const auto&       bind     = it.value();
           try
           {
+            // Require the new 'meshes' array format; legacy flat bindings are no longer supported.
+            if (!bind.contains("meshes") || !bind["meshes"].is_array() || bind["meshes"].empty())
+            {
+              std::cerr << "LightmapManifest: unsupported binding format for object " << objectId << " -- expected 'meshes' array\n";
+              return false; // strict: fail parsing for legacy/invalid formats
+            }
+
+            const auto& mesh = bind["meshes"][0]; // For now, pick the first mesh binding as the primary binding for this object
+
+            if (!mesh.contains("lightmap") || !mesh["lightmap"].is_string())
+            {
+              std::cerr << "LightmapManifest: mesh entry for object " << objectId << " missing required 'lightmap' field\n";
+              return false;
+            }
+
             LightmapBinding b;
-            b.lightmapId = bind.value("lightmapId", std::string());
-            b.uvChannel  = bind.value("uvChannel", 1);
-            if (bind.contains("uvScale") && bind["uvScale"].is_array() && bind["uvScale"].size() == 2)
+            std::string     lightmapFile = mesh.value("lightmap", std::string());
+
+            // Resolve file -> lightmapId by matching the file field in parsed lightmaps
+            for (const auto& kv : outLightmaps)
             {
-              b.uvScale.x = bind["uvScale"][0].get<float>();
-              b.uvScale.y = bind["uvScale"][1].get<float>();
+              if (kv.second.file == lightmapFile)
+              {
+                b.lightmapId = kv.first;
+                break;
+              }
             }
-            if (bind.contains("uvOffset") && bind["uvOffset"].is_array() && bind["uvOffset"].size() == 2)
+
+            b.uvChannel = mesh.value("uvChannel", 1);
+            if (mesh.contains("uvScale") && mesh["uvScale"].is_array() && mesh["uvScale"].size() == 2)
             {
-              b.uvOffset.x = bind["uvOffset"][0].get<float>();
-              b.uvOffset.y = bind["uvOffset"][1].get<float>();
+              b.uvScale.x = mesh["uvScale"][0].get<float>();
+              b.uvScale.y = mesh["uvScale"][1].get<float>();
             }
+            if (mesh.contains("uvOffset") && mesh["uvOffset"].is_array() && mesh["uvOffset"].size() == 2)
+            {
+              b.uvOffset.x = mesh["uvOffset"][0].get<float>();
+              b.uvOffset.y = mesh["uvOffset"][1].get<float>();
+            }
+
             outBindings[objectId] = b;
           }
           catch (const std::exception& e)
           {
             std::cerr << "LightmapManifest: failed parsing binding for object " << objectId << ": " << e.what() << "\n";
+            return false;
           }
         }
       }

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "Engine/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
 #include "Engine/Scene/LightmapManifest.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"

@@ -1,4 +1,4 @@
-#include "Scene.hpp"
+#include "Tools/LightmapBakerLib/Scene.hpp"
 
 #include <fstream>
 #include <glm/gtc/matrix_transform.hpp>

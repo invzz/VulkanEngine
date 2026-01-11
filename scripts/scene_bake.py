@@ -28,18 +28,19 @@ def find_baker(bin_arg):
         if p.exists():
             return str(p)
         else:
-            raise FileNotFoundError(f"Provided ModelLightBaker not found: {bin_arg}")
+            raise FileNotFoundError(f"Provided LightBaker not found: {bin_arg}")
 
-    # Prefer tools/ModelLightBaker (installed copy), fall back to build path
-    candidates = [Path("tools/ModelLightBaker"), Path("build/linux/x86_64/debug/ModelLightBaker"), Path("build/linux/x86_64/release/ModelLightBaker")]
+    # Prefer tools/LightBaker (installed copy), fall back to build path
+    candidates = [Path("tools/LightBaker"), Path("build/linux/x86_64/debug/LightBaker"), Path("build/linux/x86_64/release/LightBaker")]
     for c in candidates:
         if c.exists():
             return str(c)
-    raise FileNotFoundError("ModelLightBaker binary not found; build the project or pass --baker")
+    raise FileNotFoundError("LightBaker binary not found; build the project or pass --baker")
 
 
 def run_baker(baker_bin, model_path, out_dir, scene_file, res, samples, pack, extra_args, dry_run=False):
-    cmd = [baker_bin, model_path, str(out_dir), "--res", str(res), "--samples", str(samples)]
+    # Use LightBaker CLI for per-model baking: --model <path> --out <outdir> --resolution <res>
+    cmd = [baker_bin, "--model", model_path, "--out", str(out_dir), "--resolution", str(res)]
     if scene_file:
         cmd += ["--scene", str(scene_file)]
     if pack:
@@ -54,19 +55,6 @@ def run_baker(baker_bin, model_path, out_dir, scene_file, res, samples, pack, ex
     return r.returncode
 
 
-def find_uvunwrap(bin_arg):
-    if bin_arg:
-        p = Path(bin_arg)
-        if p.exists():
-            return str(p)
-        else:
-            raise FileNotFoundError(f"Provided UVUnwrapCLI not found: {bin_arg}")
-
-    candidates = [Path("tools/UVUnwrapCLI"), Path("build/linux/x86_64/debug/UVUnwrapCLI"), Path("build/linux/x86_64/release/UVUnwrapCLI")]
-    for c in candidates:
-        if c.exists():
-            return str(c)
-    raise FileNotFoundError("UVUnwrapCLI binary not found; build the project or pass --uvunwrap-bin")
 
 
 
@@ -81,8 +69,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Don't actually invoke external tools; print planned actions")
     parser.add_argument("--manifest-out", help="Write scene_lightmaps.json to this path (default: assets/scenes/<scene_stem>_lightmaps.json)")
     parser.add_argument("--extra", nargs=argparse.REMAINDER, help="Extra args to append to ModelLightBaker invocation")
-    parser.add_argument("--auto-uv", action="store_true", help="Automatically run UVUnwrapCLI per-model to compute uvScale/uvOffset for instances")
-    parser.add_argument("--uvunwrap-bin", help="Path to UVUnwrapCLI binary (optional)")
+    parser.add_argument("--auto-uv", action="store_true", help="Automatically compute UV mappings in-tool (LightBaker/LightmapBakerLib)")
     parser.add_argument("--per-instance", action="store_true", help="Run ModelLightBaker once per-scene instance (passes --instance <id> to the baker)")
 
     args = parser.parse_args()
@@ -160,13 +147,19 @@ def main():
             per_model_out = model_out_dir / f"{lm_id}_{model_stem}"
             per_model_out.mkdir(parents=True, exist_ok=True)
 
-            ret = run_baker(baker_bin, str(model_path), per_model_out, scene_file, args.res, args.samples, args.pack_to_vtex, args.extra or [], dry_run=args.dry_run)
+            extra = list(args.extra or [])
+            if args.auto_uv:
+                extra += ["--auto-uv"]
+            ret = run_baker(baker_bin, str(model_path), per_model_out, scene_file, args.res, args.samples, args.pack_to_vtex, extra, dry_run=args.dry_run)
             if ret != 0:
                 print(f"ModelLightBaker failed for {model} (code {ret}), skipping")
                 continue
 
             # Find manifest produced for this model
-            manifest_candidates = list(per_model_out.glob(f"*lightmap.json"))
+            # Accept either the old '*lightmap.json' or the newer '*manifest.json' naming
+            manifest_candidates = list(per_model_out.glob(f"*manifest.json"))
+            if not manifest_candidates:
+                manifest_candidates = list(per_model_out.glob(f"*lightmap.json"))
             if not manifest_candidates:
                 print(f"Warning: manifest not found for {model} in {per_model_out}")
                 continue
@@ -178,10 +171,17 @@ def main():
             resolution = m.get("resolution", 0)
 
             out_file_path = per_model_out / out_file
+            # If packing to VTEX, prefer a produced .vtex file when present
+            if args.pack_to_vtex:
+                vtex_candidates = list(per_model_out.glob("*.vtex"))
+                if vtex_candidates:
+                    out_file_path = vtex_candidates[0]
+                    fmt = "vtex"
+
             if not out_file_path.exists():
                 print(f"Warning: expected lightmap file not found: {out_file_path}")
 
-            rel_path = Path("lightmaps") / scene_stem / f"{lm_id}_{out_file}"
+            rel_path = Path("lightmaps") / scene_stem / f"{lm_id}_{out_file_path.name}"
             scene_lm["lightmaps"].append({
                 "id": lm_id,
                 "file": str(rel_path).replace('\\', '/'),
@@ -192,10 +192,14 @@ def main():
 
             for iid in instances:
                 scene_lm["lightmapBindings"][iid] = {
-                    "lightmapId": lm_id,
-                    "uvChannel": 1,
-                    "uvScale": [1.0, 1.0],
-                    "uvOffset": [0.0, 0.0]
+                    "meshes": [ {
+                        "primitiveIndex": 0,
+                        "lightmap": str(rel_path).replace('\\', '/'),
+                        "uvChannel": 1,
+                        "uvScale": [1.0, 1.0],
+                        "uvOffset": [0.0, 0.0],
+                        "resolution": resolution if isinstance(resolution, list) or isinstance(resolution, int) else resolution
+                    } ]
                 }
 
             # Copy produced file into assets tree under out_base/<lm_id>_<filename>
@@ -230,6 +234,8 @@ def main():
 
                 extra = list(args.extra or [])
                 extra += ["--instance", str(iid)]
+                if args.auto_uv:
+                    extra += ["--auto-uv"]
                 ret = run_baker(baker_bin, str(model_path), inst_out_dir, scene_file, args.res, args.samples, args.pack_to_vtex, extra, dry_run=args.dry_run)
                 if ret != 0:
                     print(f"ModelLightBaker failed for {model} instance {iid} (code {ret}), skipping")
@@ -237,7 +243,10 @@ def main():
                     continue
 
                 # Find manifest produced for this instance
-                manifest_candidates = list(inst_out_dir.glob(f"*lightmap.json"))
+                # Accept either the old '*lightmap.json' or the newer '*manifest.json' naming
+                manifest_candidates = list(inst_out_dir.glob(f"*manifest.json"))
+                if not manifest_candidates:
+                    manifest_candidates = list(inst_out_dir.glob(f"*lightmap.json"))
                 if not manifest_candidates:
                     print(f"Warning: manifest not found for {model} instance {iid} in {inst_out_dir}")
                     lm_counter += 1
@@ -250,10 +259,17 @@ def main():
                 resolution = m.get("resolution", 0)
 
                 out_file_path = inst_out_dir / out_file
+                # If packing to VTEX, prefer a produced .vtex file when present
+                if args.pack_to_vtex:
+                    vtex_candidates = list(inst_out_dir.glob("*.vtex"))
+                    if vtex_candidates:
+                        out_file_path = vtex_candidates[0]
+                        fmt = "vtex"
+
                 if not out_file_path.exists():
                     print(f"Warning: expected lightmap file not found: {out_file_path}")
 
-                rel_path = Path("lightmaps") / scene_stem / f"{lm_id}_{out_file}"
+                rel_path = Path("lightmaps") / scene_stem / f"{lm_id}_{out_file_path.name}"
                 scene_lm["lightmaps"].append({
                     "id": lm_id,
                     "file": str(rel_path).replace('\\', '/'),
@@ -264,10 +280,14 @@ def main():
                 })
 
                 scene_lm["lightmapBindings"][iid] = {
-                    "lightmapId": lm_id,
-                    "uvChannel": 1,
-                    "uvScale": [1.0, 1.0],
-                    "uvOffset": [0.0, 0.0]
+                    "meshes": [ {
+                        "primitiveIndex": 0,
+                        "lightmap": str(rel_path).replace('\\', '/'),
+                        "uvChannel": 1,
+                        "uvScale": [1.0, 1.0],
+                        "uvOffset": [0.0, 0.0],
+                        "resolution": resolution if isinstance(resolution, list) or isinstance(resolution, int) else resolution
+                    } ]
                 }
 
                 # Copy produced file into assets tree under out_base/<lm_id>_<filename>

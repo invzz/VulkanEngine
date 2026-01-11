@@ -6,9 +6,9 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Resources/MaterialUniformData.hpp"
-#include "Engine/Resources/PBRMaterial.hpp"
-#include "Engine/Resources/Texture.hpp"
+#include "ModelLib/Resources/MaterialUniformData.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 
 namespace engine {
   namespace {

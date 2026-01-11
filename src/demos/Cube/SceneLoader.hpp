@@ -2,7 +2,7 @@
 #define CUBE_SCENELOADER_HPP
 
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 
 namespace engine {

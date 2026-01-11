@@ -11,7 +11,7 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Resources/Texture.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 #include "Engine/Systems/IBL/IBLHelpers.hpp"
 #include "Engine/Systems/IBL/VTexIO.hpp"
 #include "Engine/Systems/IBLSystem.hpp"

@@ -11,7 +11,7 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Resources/MeshManager.hpp"
+#include "ModelLib/Resources/MeshManager.hpp"
 #include "Engine/Scene/LightMath.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"

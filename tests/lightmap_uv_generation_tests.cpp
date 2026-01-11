@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "Engine/Resources/Model.hpp"
+#include "ModelLib/Resources/Model.hpp"
 #include "Tools/LightmapBakerLib/Geometry.hpp"
 #include "Tools/UVUnwrap/UVUnwrap.hpp"
 

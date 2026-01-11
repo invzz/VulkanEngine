@@ -5,7 +5,7 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Resources/MorphTargetManager.hpp"
+#include "ModelLib/Resources/MorphTargetManager.hpp"
 
 namespace engine {
 

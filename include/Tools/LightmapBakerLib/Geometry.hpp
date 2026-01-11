@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Engine/Resources/Model.hpp>
+#include <ModelLib/Resources/Model.hpp>
 #include <glm/glm.hpp>
 #include <optional>
 #include <vector>
@@ -25,6 +25,8 @@ namespace LightmapBaker {
     std::optional<int> meshIndex;
     // If set, only collect triangles from nodes with this index
     std::optional<int> nodeIndex;
+    // If set, only collect triangles belonging to this primitive index (glTF primitive index)
+    std::optional<int> primitiveIndex;
   };
 
   // Collect triangles for an object (given model builder and an object transform).
