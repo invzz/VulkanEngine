@@ -7,9 +7,7 @@
 #include "Engine/Resources/Model.hpp"
 
 #define TINYGLTF_IMPLEMENTATION
-// Don't define STB_IMAGE_IMPLEMENTATION - it's already defined in Texture.cpp
-// tinygltf will use the stb functions already linked
-#define STB_IMAGE_WRITE_IMPLEMENTATION
+// STB implementations provided by the dedicated 'stb_provider' target.
 #include <tiny_gltf.h>
 
 #include <filesystem>

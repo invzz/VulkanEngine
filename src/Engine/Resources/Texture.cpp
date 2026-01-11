@@ -9,7 +9,7 @@
 #include "Engine/Graphics/Device.hpp"
 #include "vulkan/vulkan_core.h"
 
-#define STB_IMAGE_IMPLEMENTATION
+// STB implementation provided by the dedicated 'stb_provider' target.
 #include <stb_image.h>
 
 // TinyEXR for EXR loading

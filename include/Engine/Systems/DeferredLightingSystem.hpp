@@ -19,7 +19,7 @@ namespace engine {
     DeferredLightingSystem(const DeferredLightingSystem&)            = delete;
     DeferredLightingSystem& operator=(const DeferredLightingSystem&) = delete;
 
-    void render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet iblSet, VkDescriptorSet shadowSet);
+    void render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet);
 
   private:
     void createPipelineLayout(std::vector<VkDescriptorSetLayout> setLayouts);

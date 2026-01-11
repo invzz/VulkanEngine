@@ -8,7 +8,7 @@
 TEST(UVUnwrapCLI, GeneratesManifestFromInput)
 {
   namespace fs = std::filesystem;
-  fs::create_directories("assets/scenes");
+  fs::create_directories("assets/scenes/test");
 
   nlohmann::json in;
   in["meshes"] = nlohmann::json::array();
@@ -25,7 +25,7 @@ TEST(UVUnwrapCLI, GeneratesManifestFromInput)
   inst["transform"] = {{"translation", {0.0, 0.0, 0.0}}, {"rotation", {0.0, 0.0, 0.0, 1.0}}, {"scale", {1.0, 1.0, 1.0}}};
   in["instances"].push_back(inst);
 
-  std::ofstream out("assets/scenes/uv_unwrap_input.json");
+  std::ofstream out("assets/scenes/test/uv_unwrap_input.json");
   out << in.dump(2) << std::endl;
   out.close();
 
@@ -40,11 +40,11 @@ TEST(UVUnwrapCLI, GeneratesManifestFromInput)
   // Ensure the CLI binary exists before invoking it (gives clearer test failures)
   namespace fs = std::filesystem;
   ASSERT_TRUE(fs::exists(cliExec)) << "UVUnwrapCLI not found at: '" << cliExec << "'";
-  std::string cliCmd = cliExec + " assets/scenes/uv_unwrap_input.json assets/scenes/uv_unwrap_output.json > /dev/null 2>&1";
+  std::string cliCmd = cliExec + " assets/scenes/test/uv_unwrap_input.json assets/scenes/test/uv_unwrap_output.json > /dev/null 2>&1";
   int         ret    = system(cliCmd.c_str());
   ASSERT_EQ(ret, 0) << "UVUnwrapCLI failed (exit " << ret << "), binary: " << cliExec;
 
-  std::ifstream got("assets/scenes/uv_unwrap_output.json");
+  std::ifstream got("assets/scenes/test/uv_unwrap_output.json");
   ASSERT_TRUE(got.good());
   nlohmann::json lm;
   got >> lm;

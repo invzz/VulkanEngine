@@ -91,7 +91,7 @@ jobs:
           path: build/linux/x86_64/release/*.log || true
 
   model-light-baker-smoke:
-    name: ModelLightBaker VTEX pack smoke test
+    name: LightBaker scene smoke test
     runs-on: [self-hosted, linux, gpu]
     needs: unit-tests
     steps:
@@ -103,28 +103,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libvulkan-dev vulkan-tools
 
-      - name: Build ModelLightBaker & tests
-        run: xmake build -v ModelLightBaker LightmapTests
+      - name: Build LightBaker & tests
+        run: xmake build -v LightBaker LightmapTests
 
       - name: List tools directory
         run: |
           ls -la tools || true
-          if [ -f tools/ModelLightBaker ]; then echo "Found tools/ModelLightBaker"; else echo "tools/ModelLightBaker missing"; ls -la build/linux/x86_64/release || true; exit 1; fi
+          if [ -f tools/LightBaker ]; then echo "Found tools/LightBaker"; else echo "tools/LightBaker missing"; ls -la build/linux/x86_64/release || true; exit 1; fi
 
       - name: Smoke-check Vulkan on runner
         run: |
           chmod +x .github/scripts/check_vulkan.sh
           ./.github/scripts/check_vulkan.sh
 
-      - name: Run ModelLightBaker pack integration test
+      - name: Run LightBaker scene integration test
         env:
           RUN_HARDWARE_TESTS: "1"
         run: |
-          ./build/linux/x86_64/release/LightmapTests --gtest_filter=ModelLightBaker.PackToVTEX_CLIProducesVTEX --gtest_color=yes
+          ./build/linux/x86_64/release/LightmapTests --gtest_filter=LightBaker.SceneLights_CLIIncludesBakedLightsInManifest --gtest_color=yes
 
-      - name: Upload ModelLightBaker artifacts
+      - name: Upload LightBaker artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: model-light-baker-logs
+          name: lightbaker-logs
           path: build/linux/x86_64/release/*.log || true

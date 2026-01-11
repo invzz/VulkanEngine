@@ -50,7 +50,7 @@ TEST(LightmapEXR, LoadEXRFile)
   ResourceManager::LightmapInfo info;
   info.id   = "exr_lm";
   info.file = "lightmaps/test_lm.exr";
-  rm.loadSceneLightmapManifest("assets/scenes/does_not_exist.json"); // ensure maps exist (no-op)
+  rm.loadSceneLightmapManifest("assets/scenes/test/does_not_exist.json"); // ensure maps exist (no-op)
   {
     // Inject directly into internal map for test purposes
     // This is a test-only shortcut; in production the manifest parser would fill this
@@ -59,14 +59,14 @@ TEST(LightmapEXR, LoadEXRFile)
   }
   // Emplace into ResourceManager via public API: (hack: call register directly after manual load)
   // Instead, use sceneLightmaps_ by calling loadSceneLightmapManifest with a small manifest file.
-  std::filesystem::create_directories("assets/scenes");
+  std::filesystem::create_directories("assets/scenes/test");
   {
-    std::ofstream out("assets/scenes/exr_manifest.json");
+    std::ofstream out("assets/scenes/test/exr_manifest.json");
     out << R"({ "version": 1, "lightmaps": [ { "id": "exr_lm", "file": "lightmaps/test_lm.exr", "format": "exr", "resolution": [2,2], "usage": "Lightmap" } ], "lightmapBindings": {} })";
     out.close();
   }
 
-  ASSERT_TRUE(rm.loadSceneLightmapManifest("assets/scenes/exr_manifest.json"));
+  ASSERT_TRUE(rm.loadSceneLightmapManifest("assets/scenes/test/exr_manifest.json"));
   // Load textures
   ASSERT_TRUE(rm.loadSceneLightmapTextures("assets"));
 

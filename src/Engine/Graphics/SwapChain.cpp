@@ -55,14 +55,14 @@ namespace engine {
     presentIdState.enabled = deviceRef.supportsPresentId();
     Init();
 
-    if (oldSwapChain != nullptr)
-    {
-      oldSwapChain = nullptr;
-    }
+    // Keep `oldSwapChain` alive until the new swap chain safely takes over.
+    // Do NOT null it here; higher-level code will wait on old fences and release it.
   }
 
   SwapChain::~SwapChain()
   {
+    std::cout << "[SwapChain] Destroying swapchain and associated resources" << '\n';
+
     for (auto imageView : swapChainImageViews)
     {
       vkDestroyImageView(device.device(), imageView, nullptr);
@@ -116,7 +116,15 @@ namespace engine {
   VkResult SwapChain::acquireNextImage(uint32_t* imageIndex)
   {
     device.setCurrentFrameIndex(static_cast<uint32_t>(currentFrame));
-    vkWaitForFences(device.device(), 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+
+    if (inFlightFences[currentFrame] == VK_NULL_HANDLE)
+    {
+      std::cout << "[SwapChain] acquireNextImage: inFlightFences[" << currentFrame << "] is VK_NULL_HANDLE, skipping wait" << '\n';
+    }
+    else
+    {
+      vkWaitForFences(device.device(), 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+    }
 
     // Safe point: the in-flight fence for this frame index has been waited.
     // Destroy any resources deferred for this frame index.
@@ -153,11 +161,32 @@ namespace engine {
     submitInfo.signalSemaphoreCount      = 1;
     submitInfo.pSignalSemaphores         = signalSemaphores;
 
-    vkResetFences(device.device(), 1, &inFlightFences[currentFrame]);
+    VkResult fenceStatus = vkGetFenceStatus(device.device(), inFlightFences[currentFrame]);
+
+    if (fenceStatus == VK_SUCCESS)
+    {
+      // Safe to reset
+      vkResetFences(device.device(), 1, &inFlightFences[currentFrame]);
+    }
+    else
+    {
+      // Wait briefly for fence to signal before attempting to reset to avoid resetting an in-use fence.
+      constexpr uint64_t shortWaitNs = 200ULL * 1000000ULL; // 200ms
+      VkResult const     waitRes     = vkWaitForFences(device.device(), 1, &inFlightFences[currentFrame], VK_TRUE, shortWaitNs);
+      if (waitRes == VK_SUCCESS)
+      {
+        vkResetFences(device.device(), 1, &inFlightFences[currentFrame]);
+      }
+      else
+      {
+        return waitRes; // VK_TIMEOUT or error
+      }
+    }
+
     VkResult const submitResult = device.submitGraphics(&submitInfo, inFlightFences[currentFrame]);
     if (submitResult != VK_SUCCESS)
     {
-      throw CommandBufferSubmissionException("failed to submit draw command buffer! Error: " + std::to_string(submitResult));
+      return submitResult;
     }
 
     VkPresentInfoKHR presentInfo = {};
@@ -199,6 +228,38 @@ namespace engine {
     createDepthResources();
     createFramebuffers();
     createSyncObjects();
+  }
+
+  bool SwapChain::waitForInFlightFences(uint64_t timeoutNs) const
+  {
+    if (inFlightFences.empty()) return true;
+
+    for (auto fence : inFlightFences)
+    {
+      if (fence == VK_NULL_HANDLE) continue;
+      VkResult const r = vkWaitForFences(device.device(), 1, &fence, VK_TRUE, timeoutNs);
+      if (r != VK_SUCCESS)
+      {
+        std::cerr << "[SwapChain] waitForInFlightFences: fence wait failed or timed out (result=" << r << ")" << '\n';
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool SwapChain::waitForOldSwapChainFencesAndRelease(uint64_t timeoutNs)
+  {
+    if (oldSwapChain == nullptr) return true;
+    bool const ok = oldSwapChain->waitForInFlightFences(timeoutNs);
+    if (!ok)
+    {
+      std::cerr << "[SwapChain] waitForOldSwapChainFencesAndRelease: old swapchain fences did not signal in time" << '\n';
+      return false;
+    }
+    // Release reference so destructor will free old resources now that the GPU is done.
+    oldSwapChain = nullptr;
+    std::cout << "[SwapChain] Released old swapchain after fences signaled." << '\n';
+    return true;
   }
 
   void SwapChain::createSwapChain()
@@ -488,28 +549,31 @@ namespace engine {
     fenceInfo.sType             = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags             = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (auto& semaphore : imageAvailableSemaphores)
+    for (size_t i = 0; i < imageAvailableSemaphores.size(); ++i)
     {
-      if (vkCreateSemaphore(device.device(), &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+      if (vkCreateSemaphore(device.device(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS)
       {
         throw SemaphoreCreationException("failed to create image-available semaphore!");
       }
+      std::cout << "[SwapChain] created imageAvailableSemaphore[" << i << "]" << '\n';
     }
 
-    for (auto& semaphore : renderFinishedSemaphores)
+    for (size_t i = 0; i < renderFinishedSemaphores.size(); ++i)
     {
-      if (vkCreateSemaphore(device.device(), &semaphoreInfo, nullptr, &semaphore) != VK_SUCCESS)
+      if (vkCreateSemaphore(device.device(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS)
       {
         throw SemaphoreCreationException("failed to create render-finished semaphore!");
       }
+      std::cout << "[SwapChain] created renderFinishedSemaphore[" << i << "]" << '\n';
     }
 
-    for (auto& fence : inFlightFences)
+    for (size_t i = 0; i < inFlightFences.size(); ++i)
     {
-      if (vkCreateFence(device.device(), &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+      if (vkCreateFence(device.device(), &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
       {
         throw InFlightFenceException("failed to create in-flight fence!");
       }
+      std::cout << "[SwapChain] created inFlightFence[" << i << "]" << '\n';
     }
   }
 

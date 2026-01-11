@@ -55,11 +55,12 @@ add_defines(
     "SHADER_PATH=\""  .. normpath(path.join(project_dir, "assets/shaders/compiled")) .. "/\"",
     "MODEL_PATH=\""   .. normpath(path.join(project_dir, "assets/models")) .. "/\"",
     "TEXTURE_PATH=\"" .. normpath(path.join(project_dir, "assets/textures")) .. "/\"",
-    "LIGHTMAP_PATH=\"" .. normpath(path.join(project_dir, "assets/lightmaps")) .. "/\"",
+    "LIGHTMAP_PATH=\"" .. normpath(path.join(project_dir, "assets/lightmaps")) .. "/\"", 
+    "SCENE_PATH=\"" .. normpath(path.join(project_dir, "assets/scenes")) .. "/\"",
     "TOOL_PATH=\""    .. normpath(path.join(project_dir, "tools")) .. "/\"",
     "EXR2VTEX_PATH=\""     .. tool_path("EXR2VTEX")     .. "\"",
     "UVUNWRAP_CLI_PATH=\"" .. tool_path("UVUnwrapCLI")  .. "\"",
-    "MODEL_LIGHT_BAKER_PATH=\"" .. tool_path("ModelLightBaker") .. "\"",
+    "LIGHT_BAKER_PATH=\"" .. tool_path("LightBaker") .. "\"",
     "COMPRESSONATOR_CLI=\"" .. normpath(path.join(project_dir, "tools", "Compressonator", "compressonatorcli")) .. "\""
 )
 
@@ -127,6 +128,15 @@ target("xatlas")
     add_files("third_party/xatlas/source/xatlas/xatlas.cpp")
     add_includedirs("third_party/xatlas/source/xatlas", {public = true})
 
+-- Single-target provider for STB implementations. This ensures a single
+-- translation unit defines STB symbols so static archive link-order doesn't
+-- cause unresolved stbi_* references.
+target("stb_provider")
+    set_kind("static")
+    add_files("src/third_party/stb/stb_provider.cpp")
+    add_includedirs("include", {public = true})
+    add_packages("stb")
+
 -- ============================================================================
 -- Tests
 -- ============================================================================
@@ -139,7 +149,7 @@ target("Tests")
     add_packages( "glm", "nlohmann_json", "entt", "tinyexr")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
     
-    add_deps("Engine", "EngineImporters", "EngineSceneIO", "UVUnwrap", "xatlas" )
+    add_deps("Engine", "EngineImporters", "EngineSceneIO", "UVUnwrap", "xatlas", "LightmapBakerLib" )
      -- link main gtest function:
     add_links("gtest_main")
 
@@ -188,6 +198,7 @@ target("EngineImporters")
         "stb", "nlohmann_json", "meshoptimizer"
     )
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
+    add_deps("stb_provider")
 
 target("Engine")
     set_kind("static")
@@ -206,7 +217,7 @@ target("Engine")
             "PROFILE_OUTPUT_DIR=\"" .. normpath(path.join(project_dir, "profile")) .. "/\""
         )
     end
-    add_deps("EngineSceneIO", "EngineImporters")
+    add_deps("stb_provider", "EngineSceneIO")
 
 -- ============================================================================
 -- Offline Tools
@@ -220,57 +231,70 @@ target("UVUnwrap")
 target("UVUnwrapCLI")
     set_default(true )
     set_group("tools")
-    
     set_kind("binary")
     add_files("src/tools/UVUnwrapCLI/**.cpp")
     add_includedirs("include", {public = true})
     add_packages("nlohmann_json")
     add_deps("UVUnwrap")
 
-
 target("IBLBaker")
     set_default(true )
     set_group("tools")
     set_kind("binary")
-    
     add_files("src/tools/IBLBaker/**.cpp")
     add_includedirs("include", {public = true})
     add_packages("glm", "glfw", "nlohmann_json", "entt", "tinygltf")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
     add_deps("Engine", "EngineImporters", "EngineSceneIO")
 
-
 target("EXR2VTEX")
     set_default(true )
     set_group("tools")
     set_kind("binary")
-    
     add_files("src/tools/EXR2VTEX/**.cpp")  
     add_includedirs("include", {public = true})
     add_packages("glm", "glfw", "tinyexr")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
     add_deps("Engine", "EngineImporters", "EngineSceneIO")
-    
   
 
-target("ModelLightBaker")
-    set_default(true )
+target("LightBaker")
+    set_default(true)
     set_group("tools")
     set_kind("binary")
-    
-    add_files("src/tools/ModelLightBaker/**.cpp")
+    add_files("src/tools/LightBaker/**.cpp")
     add_includedirs("include", {public = true})
     add_packages(
         "glm", "glfw", "entt", "nlohmann_json",
         "tinygltf", "stb", "tinyexr"
     )
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    -- Ensure Engine is linked after EngineSceneIO and EngineImporters
-    -- add_ldflags("-Wl,--start-group", {force = true})
-    add_deps("Engine", "EngineImporters", "EngineSceneIO")
-    
- 
+    add_deps("stb_provider", "EngineImporters", "Engine", "EngineSceneIO", "LightmapBakerLib", "UVUnwrap")
 
+    -- Copy final tool binary into `tools/` directory for test & CI convenience
+    on_build(function (t)
+        local bin = t:targetfile()
+        if bin and os.isfile(bin) then
+            local outdir = path.join(project_dir, "tools")
+            os.mkdir(outdir)
+            local dst = path.join(outdir, path.filename(bin))
+            os.cp(bin, dst)
+            print("Copied tool -> " .. normpath(dst))
+        end
+    end)
+
+
+-- ----------------------------------------------------------------------------
+-- New: Lightmap baking library (stage 1: scene ingestion)
+-- ----------------------------------------------------------------------------
+target("LightmapBakerLib")
+    set_group("tools")
+    set_kind("static")
+    add_files("src/tools/LightmapBakerLib/**.cpp")
+    add_includedirs("include", {public = true})
+    add_packages("glm", "nlohmann_json", "entt")
+    add_deps("EngineSceneIO")
+    
    
 -- ============================================================================
 -- Utilities
@@ -282,15 +306,17 @@ target("tools")
         "UVUnwrapCLI",
         "IBLBaker",
         "EXR2VTEX",
-        "ModelLightBaker"
+        "LightBaker"
     )
--- target("Shaders")
---     set_kind("phony")
---     set_group("utility")
---     on_build(function ()
---         if is_host("windows") then
---             os.exec("powershell -ExecutionPolicy Bypass -File " .. project_dir .. "/compile_shaders.ps1")
---         else
---             os.exec("bash " .. project_dir .. "/compile_shaders.sh")
---         end
---     end)
+
+
+target("Shaders")
+    set_kind("phony")
+    set_group("utility")
+    on_build(function ()
+        if is_host("windows") then
+            os.exec("powershell -ExecutionPolicy Bypass -File " .. project_dir .. "/compile_shaders.ps1")
+        else
+            os.exec("bash " .. project_dir .. "/compile_shaders.sh")
+        end
+    end)

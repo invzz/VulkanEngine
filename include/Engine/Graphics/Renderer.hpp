@@ -56,6 +56,7 @@ namespace engine {
     [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
     [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
     [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferBakedImageInfo(int index) const;
 
     // Expose offscreen color image handle for readback in tests
     [[nodiscard]] VkImage getOffscreenColorImage(int index) const { return offscreenFrameBuffer->getColorImage(index); }
@@ -98,6 +99,13 @@ namespace engine {
     int  currentFrameIndex{0};
     bool isFrameStarted{false};
     bool swapChainRecreated{false};
+
+    // Timestamp (ns) of a pending resize event that we will debounce before acting.
+    uint64_t pendingResizeTimeNs{0};
+
+  public:
+    // Helper for diagnostics
+    [[nodiscard]] uint64_t getPendingResizeTimeNs() const { return pendingResizeTimeNs; }
   };
 
 } // namespace engine

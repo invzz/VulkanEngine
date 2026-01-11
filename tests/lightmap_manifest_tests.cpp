@@ -9,7 +9,7 @@ using namespace engine::scene;
 
 TEST(LightmapManifest, ParseSimpleManifest)
 {
-  const std::string testPath = "assets/scenes/test_lightmaps.json";
+  const std::string testPath = "assets/scenes/test/test_lightmaps.json";
   // Ensure parent directory exists then write a small manifest
   std::filesystem::path p(testPath);
   std::filesystem::create_directories(p.parent_path());

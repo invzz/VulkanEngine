@@ -174,6 +174,11 @@ namespace engine {
 
     uint32_t     selectedObjectId = 0;
     entt::entity selectedEntity   = entt::null;
+
+    // Deferred scene lightmap application (set when loading a scene from UI)
+    bool        pendingApplySceneLightmaps = false;
+    std::string pendingSceneLightmapManifest;
+    bool        pendingUpdateCameraAfterSceneLoad = false;
   };
 } // namespace engine
 

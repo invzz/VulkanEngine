@@ -617,6 +617,7 @@ namespace engine {
 
   void ResourceManager::applySceneLightmapBindings(engine::Scene& scene)
   {
+    std::cout << "ResourceManager: applying " << sceneLightmapBindings_.size() << " scene lightmap bindings to scene...\n";
     auto& reg  = scene.getRegistry();
     auto  view = reg.view<NameComponent>();
     for (auto entity : view)
@@ -630,6 +631,8 @@ namespace engine {
       if (!reg.all_of<LightmapComponent>(entity))
       {
         reg.emplace<LightmapComponent>(entity, LightmapComponent{b.lightmapId, b.uvChannel, b.uvScale, b.uvOffset, -1});
+        std::cout << "ResourceManager: emplaced LightmapComponent for object '" << nameComp.name << "' -> id='" << b.lightmapId << "' uvChannel=" << b.uvChannel << " uvScale=(" << b.uvScale.x << ","
+                  << b.uvScale.y << ") uvOffset=(" << b.uvOffset.x << "," << b.uvOffset.y << ")\n";
       }
       else
       {
@@ -638,6 +641,8 @@ namespace engine {
         lm.uvChannel  = b.uvChannel;
         lm.uvScale    = b.uvScale;
         lm.uvOffset   = b.uvOffset;
+        std::cout << "ResourceManager: updated LightmapComponent for object '" << nameComp.name << "' -> id='" << b.lightmapId << "' uvChannel=" << b.uvChannel << " uvScale=(" << b.uvScale.x << ","
+                  << b.uvScale.y << ") uvOffset=(" << b.uvOffset.x << "," << b.uvOffset.y << ")\n";
       }
 
       // Attempt to set per-material convenience fields (PBRMaterial::uvScale)
@@ -647,6 +652,7 @@ namespace engine {
         mat.uvScale = b.uvScale.x;
       }
     }
+    std::cout << "ResourceManager: finished applying scene lightmap bindings.\n";
   }
 
   std::optional<ResourceManager::LightmapInfo> ResourceManager::getLightmapInfoById(const std::string& id) const
@@ -676,6 +682,8 @@ namespace engine {
 
     // Update access tracking
     updateTextureAccess(makeTextureKey(id, false), texture->getMemorySize(), ResourcePriority::HIGH);
+
+    std::cout << "ResourceManager: registered lightmap '" << id << "' -> global texture index " << globalIndex << "\n";
   }
 
   bool ResourceManager::loadSceneLightmapTextures(const std::string& basePath)
@@ -695,6 +703,7 @@ namespace engine {
 
       if (std::filesystem::exists(candidate))
       {
+        std::cout << "ResourceManager: loading lightmap '" << id << "' from " << candidate << "\n";
         // Prefer explicit VTEX loader when a .vtex container is provided.
         std::string ext = candidate.extension().string();
         for (auto& c : ext)
@@ -716,6 +725,7 @@ namespace engine {
             // Generic file loader (assume non-sRGB for lightmaps)
             tex = loadTexture(candidate.string(), false);
           }
+          if (tex) std::cout << "ResourceManager: successfully loaded " << candidate << " for lightmap '" << id << "'\n";
         }
         catch (const std::exception& e)
         {
@@ -739,20 +749,38 @@ namespace engine {
   {
     auto& reg  = scene.getRegistry();
     auto  view = reg.view<engine::LightmapComponent>();
+    std::cout << "ResourceManager: applying loaded lightmap textures to " << std::distance(view.begin(), view.end()) << " scene objects...\n";
     for (auto entity : view)
     {
-      auto& lmComp = reg.get<engine::LightmapComponent>(entity);
-      auto  it     = sceneLightmapTextures_.find(lmComp.lightmapId);
-      if (it == sceneLightmapTextures_.end()) continue;
+      auto&       lmComp  = reg.get<engine::LightmapComponent>(entity);
+      std::string objName = "<unknown>";
+      if (reg.all_of<NameComponent>(entity)) objName = reg.get<NameComponent>(entity).name;
+
+      auto it = sceneLightmapTextures_.find(lmComp.lightmapId);
+      if (it == sceneLightmapTextures_.end())
+      {
+        std::cerr << "ResourceManager: no registered texture for lightmap id '" << lmComp.lightmapId << "' referenced by object '" << objName << "'\n";
+        continue;
+      }
       if (auto tex = it->second.lock())
       {
         if (reg.all_of<PBRMaterial>(entity))
         {
           auto& mat    = reg.get<PBRMaterial>(entity);
           mat.lightmap = tex;
+          std::cout << "ResourceManager: assigned lightmap '" << lmComp.lightmapId << "' (global idx " << tex->getGlobalIndex() << ") to object '" << objName << "'\n";
+        }
+        else
+        {
+          std::cout << "ResourceManager: object '" << objName << "' has no PBRMaterial to assign lightmap '" << lmComp.lightmapId << "'\n";
         }
       }
+      else
+      {
+        std::cerr << "ResourceManager: texture for lightmap id '" << lmComp.lightmapId << "' expired before assignment for object '" << objName << "'\n";
+      }
     }
+    std::cout << "ResourceManager: finished assigning loaded lightmaps to scene.\n";
   }
 
   std::shared_ptr<Texture> ResourceManager::loadTextureFromMemory(const unsigned char* data, size_t dataSize, const std::string& debugName, bool srgb, ResourcePriority priority)

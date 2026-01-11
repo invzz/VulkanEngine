@@ -4,8 +4,11 @@
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
+#include <iostream>
 #include <memory>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 
@@ -17,7 +20,7 @@
 
 namespace engine {
 
-  Renderer::Renderer(Window& window, Device& device) : window{window}, device{device}, hzbGenerator{device}
+  Renderer::Renderer(Window& window, Device& device) : window{window}, device{device}, hzbGenerator{device}, pendingResizeTimeNs{0}
   {
     recreateSwapChain();
     createCommandBuffers();
@@ -35,6 +38,9 @@ namespace engine {
   void Renderer::createCommandBuffers()
   {
     commandBuffers.resize(SwapChain::maxFramesInFlight());
+
+    // pendingResizeTimeNs is used to debounce resize events across frames.
+    pendingResizeTimeNs = 0;
 
     if (VkCommandBufferAllocateInfo const allocInfo{
                 .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -63,23 +69,65 @@ namespace engine {
       glfwWaitEvents();
     }
 
-    vkDeviceWaitIdle(device.device());
+    std::cout << "[Renderer] Recreating swapchain for extent " << extent.width << "x" << extent.height << "..." << '\n';
 
+    // Create a new swap chain instance while preserving the previous one via `oldSwapChain`
     if (swapChain == nullptr)
     {
       swapChain = std::make_unique<SwapChain>(device, extent);
     }
     else
     {
-      std::shared_ptr<SwapChain> const oldSwapChain = std::move(swapChain);
-      swapChain                                     = std::make_unique<SwapChain>(device, extent, oldSwapChain);
+      std::shared_ptr<SwapChain> const previous = std::move(swapChain);
+      swapChain                                 = std::make_unique<SwapChain>(device, extent, previous);
 
-      if (!oldSwapChain->compareSwapFormats(*swapChain))
+      if (!previous->compareSwapFormats(*swapChain))
       {
         throw SwapChainCreationException("Swap chain image or depth format has changed!");
       }
+
+      // Ask the new swap chain to wait for and release the old swap chain's fences.
+      const uint64_t fenceWaitTimeoutNs = 1ull * 1000ull * 1000ull * 1000ull; // 1 second
+      std::cout << "[Renderer] Waiting up to 1s for previous swapchain fences to complete..." << '\n';
+      if (!swapChain->waitForOldSwapChainFencesAndRelease(fenceWaitTimeoutNs))
+      {
+        std::cerr << "[Renderer] previous swapchain fences did not signal within timeout; entering watchdog vkDeviceWaitIdle loop" << '\n';
+
+        // Watchdog: try up to `maxWaitMs` total, polling with a short sleep to avoid blocking UI forever.
+        const uint64_t maxWaitMs = 5000;
+        const uint64_t stepMs    = 200;
+        uint64_t       waitedMs  = 0;
+        bool           cleanedUp = false;
+
+        while (waitedMs < maxWaitMs)
+        {
+          std::cerr << "[Renderer] vkDeviceWaitIdle attempt, waited " << waitedMs << "ms so far" << '\n';
+          vkDeviceWaitIdle(device.device());
+
+          // Re-check old swapchain fences non-blockingly by asking with 0 timeout
+          if (swapChain->waitForOldSwapChainFencesAndRelease(0))
+          {
+            cleanedUp = true;
+            break;
+          }
+
+          std::this_thread::sleep_for(std::chrono::milliseconds(stepMs));
+          waitedMs += stepMs;
+        }
+
+        if (!cleanedUp)
+        {
+          std::cerr << "[Renderer] timeout waiting for previous swapchain cleanup after " << maxWaitMs << "ms; aborting swapchain recreation" << '\n';
+          throw SwapChainCreationException("timeout waiting for previous swapchain cleanup");
+        }
+        else
+        {
+          std::cout << "[Renderer] previous swapchain cleaned up after forced waits." << '\n';
+        }
+      }
     }
 
+    std::cout << "[Renderer] Swapchain recreated successfully." << '\n';
     // Recreate offscreen resources to match new swapchain extent
     if (offscreenFrameBuffer)
     {
@@ -187,6 +235,16 @@ namespace engine {
     auto     result = swapChain->acquireNextImage(&imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
+      // If we're in an active resize window, defer the recreation to debounce.
+      uint64_t const nowNs      = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+      uint64_t const lastResize = window.getLastResizeTimeNs();
+      if (lastResize != 0 && (nowNs - lastResize) < (150ULL * 1000000ULL))
+      {
+        pendingResizeTimeNs = lastResize;
+        std::cout << "[Renderer] acquireNextImage returned OUT_OF_DATE during active resize; deferring recreation (ts=" << lastResize << ")" << '\n';
+        return nullptr;
+      }
+
       recreateSwapChain();
       return nullptr;
     }
@@ -224,14 +282,64 @@ namespace engine {
       throw CommandBufferRecordingException("failed to record command buffer!");
     }
 
-    if (auto result = swapChain->submitCommandBuffers(&commandBuffer, &currentImageIndex); result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || window.wasWindowResized())
+    // Debounced resize handling: schedule a resize when a resize event is observed,
+    // then only recreate the swapchain when the resize has stabilized for the debounce interval.
+    constexpr uint64_t kResizeDebounceMs = 150; // milliseconds
+
+    VkResult result = swapChain->submitCommandBuffers(&commandBuffer, &currentImageIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
     {
-      window.resetWindowResizedFlag();
-      recreateSwapChain();
+      uint64_t const nowNs         = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+      uint64_t const lastResize    = window.getLastResizeTimeNs();
+      bool           deferRecreate = false;
+      if (lastResize != 0 && (nowNs - lastResize) < (kResizeDebounceMs * 1000000ULL))
+      {
+        // Active resize in progress; schedule a deferred recreation instead of immediate.
+        pendingResizeTimeNs = lastResize;
+        std::cout << "[Renderer] present returned OUT_OF_DATE/SUBOPTIMAL during active resize; deferring recreation until stable (ts=" << lastResize << ")" << '\n';
+        deferRecreate = true;
+      }
+
+      if (!deferRecreate)
+      {
+        std::cout << "[Renderer] swapchain present/submit indicates recreation is needed (result=" << result << ")" << '\n';
+        recreateSwapChain();
+      }
     }
     else if (result != VK_SUCCESS)
     {
       throw SwapChainCreationException("failed to present swap chain image!");
+    }
+    else
+    {
+      // If the window just reported a resize, schedule a pending resize time
+      if (window.consumeWindowResized())
+      {
+        pendingResizeTimeNs = window.getLastResizeTimeNs();
+        std::cout << "[Renderer] scheduled swapchain recreation at ts=" << pendingResizeTimeNs << '\n';
+      }
+
+      // If we have a pending resize, check if it has stabilized and then recreate.
+      if (pendingResizeTimeNs != 0)
+      {
+        // If another resize occurred meanwhile, refresh the pending timestamp and consume it.
+        if (window.wasWindowResized())
+        {
+          uint64_t const newTs = window.getLastResizeTimeNs();
+          pendingResizeTimeNs  = newTs;
+          // Clear the flag so subsequent resizes will set it again.
+          (void)window.consumeWindowResized();
+          std::cout << "[Renderer] updated pending resize timestamp to " << newTs << '\n';
+        }
+
+        if (window.isResizeStable(kResizeDebounceMs) && window.getLastResizeTimeNs() == pendingResizeTimeNs)
+        {
+          std::cout << "[Renderer] resize stable for " << kResizeDebounceMs << "ms, performing swapchain recreation" << '\n';
+          pendingResizeTimeNs = 0;
+          recreateSwapChain();
+        }
+      }
     }
 
     isFrameStarted    = false;
@@ -456,6 +564,11 @@ namespace engine {
   VkDescriptorImageInfo Renderer::getGbufferMaterialImageInfo(int index) const
   {
     return offscreenFrameBuffer->getGbufferMaterialImageInfo(index);
+  }
+
+  VkDescriptorImageInfo Renderer::getGbufferBakedImageInfo(int index) const
+  {
+    return offscreenFrameBuffer->getGbufferBakedImageInfo(index);
   }
 
   VkDescriptorImageInfo Renderer::getDepthImageInfo(int index) const

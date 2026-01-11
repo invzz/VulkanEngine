@@ -24,8 +24,8 @@ TEST(LightmapShaderCompare, PostProcessSamplerMatchesLightmap)
   std::filesystem::create_directories("assets/lightmaps");
   std::filesystem::create_directories("assets/scenes");
 
-  const std::string scenePath    = "assets/scenes/demo_scene_shader.json";
-  const std::string manifestPath = "assets/scenes/demo_scene_shader_lightmaps.json";
+  const std::string scenePath    = "assets/scenes/test/demo_scene_shader.json";
+  const std::string manifestPath = "assets/scenes/test/demo_scene_shader_lightmaps.json";
   const std::string lightmapPath = "assets/lightmaps/lm_001_atlas.vtex";
 
   // Scene + manifest

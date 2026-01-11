@@ -37,16 +37,17 @@ namespace engine {
     [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
     [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
     [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
+    [[nodiscard]] VkDescriptorImageInfo getGbufferBakedImageInfo(int index) const;
 
-    void beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-    void beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-    void beginRenderPassLoadDepth(VkCommandBuffer commandBuffer, int frameIndex);
-    void beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
-    void beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-    void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginRenderPassLoadDepth(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
     static void endRenderPass(VkCommandBuffer commandBuffer);
-    void generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
-    void generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
+    void        generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
+    void        generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
 
     [[nodiscard]] float getAspectRatio() const { return static_cast<float>(extent.width) / static_cast<float>(extent.height); }
 
@@ -116,6 +117,11 @@ namespace engine {
     std::vector<VkImage>        gbufferMaterialImages;
     std::vector<VkDeviceMemory> gbufferMaterialMemorys;
     std::vector<VkImageView>    gbufferMaterialImageViews;
+
+    // Baked light (RGB) attachment
+    std::vector<VkImage>        gbufferBakedImages;
+    std::vector<VkDeviceMemory> gbufferBakedMemorys;
+    std::vector<VkImageView>    gbufferBakedImageViews;
 
     // Depth attachment
     std::vector<VkImage>        depthImages;

@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "../Component.hpp"
+#include "LightCommon.hpp"
 
 namespace engine {
 
@@ -13,6 +14,10 @@ namespace engine {
     glm::vec3 color{1.0f, 1.0f, 1.0f};
     bool      useTargetPoint{false};
     glm::vec3 targetPoint{0.0f, 0.0f, 0.0f};
+
+    // Light baking metadata
+    bool          bake{false};
+    LightMobility lightType{LightMobility::Static};
   };
 
 } // namespace engine

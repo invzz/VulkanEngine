@@ -19,7 +19,7 @@ TEST(LightmapVTEX, LoadVTEXFileFromDisk)
 {
   // Ensure directories exist
   std::filesystem::create_directories("assets/lightmaps/ibltest");
-  std::filesystem::create_directories("assets/scenes");
+  std::filesystem::create_directories("assets/scenes/test");
 
   // Create a minimal Vulkan device
   Window window(1, 1, "VTEXTestWindow");
@@ -50,7 +50,7 @@ TEST(LightmapVTEX, LoadVTEXFileFromDisk)
   }
 
   // Prepare a manifest that references the generated brdf_lut.vtex file
-  const std::string manifestPath = "assets/scenes/vtex_manifest.json";
+  const std::string manifestPath = "assets/scenes/test/vtex_manifest.json";
   {
     std::ofstream out(manifestPath);
     out << R"({ "version": 1, "lightmaps": [ { "id": "vtex_lm", "file": "lightmaps/ibltest/brdf_lut.vtex", "format": "vtex", "resolution": [1,1], "usage": "Lightmap" } ], "lightmapBindings": {} })";

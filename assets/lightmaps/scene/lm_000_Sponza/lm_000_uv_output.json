@@ -1,0 +1,30 @@
+{
+  "lightmapBindings": {
+    "1": {
+      "lightmapId": "lm_000",
+      "uvChannel": 1,
+      "uvOffset": [
+        0.0,
+        0.0
+      ],
+      "uvScale": [
+        0.9996309876441956,
+        0.9997742772102356
+      ]
+    }
+  },
+  "lightmaps": [
+    {
+      "file": "lightmaps/lm_000_atlas.vtex",
+      "format": "vtex",
+      "id": "lm_000",
+      "paddingPx": 4,
+      "resolution": [
+        1355,
+        2215
+      ],
+      "usage": "Lightmap"
+    }
+  ],
+  "version": 1
+}

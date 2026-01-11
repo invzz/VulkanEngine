@@ -1,1 +1,0 @@
-{ "version": 1, "lightmaps": [ { "id": "vtex_lm", "file": "lightmaps/ibltest/brdf_lut.vtex", "format": "vtex", "resolution": [1,1], "usage": "Lightmap" } ], "lightmapBindings": {} }

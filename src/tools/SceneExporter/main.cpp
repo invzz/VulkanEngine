@@ -6,7 +6,7 @@
 int main(int argc, char** argv)
 {
   namespace fs = std::filesystem;
-  fs::create_directories("assets/scenes");
+  fs::create_directories("assets/scenes/test");
 
   nlohmann::json scene;
   scene["version"]          = 1;
@@ -21,7 +21,27 @@ int main(int argc, char** argv)
   obj["transform"] = {{"translation", {0.0, 0.0, 0.0}}, {"rotation", {0.0, 0.0, 0.0, 1.0}}, {"scale", {1.0, 1.0, 1.0}}};
   obj["lighting"]  = {{"mobility", "Static"}};
   scene["objects"].push_back(obj);
+  // Lights: include bake + lightType fields for exported authoring scenes
+  scene["lights"] = nlohmann::json::array();
+  nlohmann::json sun;
+  sun["id"]        = "sun_01";
+  sun["type"]      = "directional";
+  sun["direction"] = {-0.5, -1.0, -0.3};
+  sun["color"]     = {1.0, 0.98, 0.92};
+  sun["intensity"] = 3.14;
+  sun["bake"]      = true;
+  sun["lightType"] = "static";
+  scene["lights"].push_back(sun);
 
+  nlohmann::json lamp;
+  lamp["id"]        = "lamp_01";
+  lamp["type"]      = "point";
+  lamp["position"]  = {2.0, 1.0, 0.5};
+  lamp["color"]     = {0.4, 0.6, 1.0};
+  lamp["intensity"] = 0.8;
+  lamp["bake"]      = false;
+  lamp["lightType"] = "dynamic";
+  scene["lights"].push_back(lamp);
   // Write scene.json
   std::ofstream out("assets/scenes/demo_scene.json");
   if (!out)

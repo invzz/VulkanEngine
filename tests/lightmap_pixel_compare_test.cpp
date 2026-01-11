@@ -21,10 +21,10 @@ using namespace engine;
 TEST(LightmapRenderPixelCompare, FullscreenSampleMatchesLightmap)
 {
   std::filesystem::create_directories("assets/lightmaps");
-  std::filesystem::create_directories("assets/scenes");
+  std::filesystem::create_directories("assets/scenes/test");
 
-  const std::string scenePath    = "assets/scenes/demo_scene.json";
-  const std::string manifestPath = "assets/scenes/demo_scene_lightmaps.json";
+  const std::string scenePath    = "assets/scenes/test/demo_scene.json";
+  const std::string manifestPath = "assets/scenes/test/demo_scene_lightmaps.json";
   const std::string lightmapPath = "assets/lightmaps/lm_000_atlas.vtex";
 
   // Scene + manifest

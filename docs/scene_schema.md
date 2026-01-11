@@ -28,7 +28,26 @@ Top-level `scene.json` (example)
       "lighting": { "mobility": "Static" }
     }
   ],
-  "lights": []
+  "lights": [
+    {
+      "id": "sun_01",
+      "type": "directional",
+      "direction": [-0.5, -1.0, -0.3],
+      "color": [1.0, 0.98, 0.92],
+      "intensity": 3.14,
+      "bake": true,
+      "lightType": "static"
+    },
+    {
+      "id": "fill_01",
+      "type": "point",
+      "position": [2.0, 1.0, 0.5],
+      "color": [0.4, 0.6, 1.0],
+      "intensity": 0.8,
+      "bake": false,
+      "lightType": "dynamic"
+    }
+  ]
 }
 ```
 
@@ -64,6 +83,12 @@ Notes & rules
 - `usage` is the VTEX usage semantic (see `VTexUsage` in project code).
 - Bakers should write provenance fields (`createdBy`, `hash`) into the generated manifest.
 
+Light baking & lights
+---------------------
+- Use the `bake` boolean on a light to explicitly opt that light into being included in baked lightmaps. This avoids heuristics and gives authors explicit control.
+- `lightType` clarifies whether a light is `static` (does not move/animate and may be baked) or `dynamic` (animated/moving and must be left as a runtime light). Use `lightType` primarily as documentation; the baker's truth of inclusion is `bake: true`.
+- The baker will only include lights with `bake == true`. Lights with `bake == false` are ignored by the baker and remain active at runtime as dynamic lights.
+
 Validation
 ----------
 - Use JSON Schema (draft-07) for schema validation in tools and CI. Keep versioning at top-level (e.g., `version: 1`) for future migrations.
@@ -90,6 +115,23 @@ Appendix: Minimal JSON Schema (starter)
           "mesh": {"type":"string"},
           "material": {"type":"string"},
           "transform": {"type":"object"}
+        }
+      }
+    },
+    "lights": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {"type": "string", "enum": ["directional", "point", "spot"]},
+          "position": {"type": "array", "items": {"type":"number"}, "minItems": 3, "maxItems": 3},
+          "direction": {"type": "array", "items": {"type":"number"}, "minItems": 3, "maxItems": 3},
+          "color": {"type": "array", "items": {"type":"number"}, "minItems": 3, "maxItems": 3},
+          "intensity": {"type": "number"},
+          "bake": {"type": "boolean"},
+          "lightType": {"type": "string", "enum": ["static", "dynamic"]}
         }
       }
     }

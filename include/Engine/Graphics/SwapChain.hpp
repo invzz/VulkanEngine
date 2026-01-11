@@ -44,6 +44,15 @@ namespace engine {
     VkResult acquireNextImage(uint32_t* imageIndex);
     VkResult submitCommandBuffers(const VkCommandBuffer* buffers, const uint32_t* imageIndex);
 
+    // Wait for all in-flight fences associated with this swap chain. Returns
+    // true if all fences signaled within the timeout, false if timed out or failed.
+    [[nodiscard]] bool waitForInFlightFences(uint64_t timeoutNs = UINT64_MAX) const;
+
+    // If this swap chain holds a reference to a previous swap chain, wait for
+    // its in-flight fences and then release it. Returns true if successful,
+    // false on timeout/failure (does not force destruction).
+    [[nodiscard]] bool waitForOldSwapChainFencesAndRelease(uint64_t timeoutNs = UINT64_MAX);
+
   private:
     void Init();
     void createSwapChain();

@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <glm/common.hpp>
 #include <iostream>
 #include <memory>
@@ -187,13 +188,15 @@ namespace engine {
     // G-buffer + Deferred lighting
     modelRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
 
-    gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 4).build();
+    gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 6).build();
 
     gbufferSetLayout = DescriptorSetLayout::Builder(device)
                                .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .build();
 
     deferredIblPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 3).build();
@@ -214,12 +217,13 @@ namespace engine {
                                       .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_CUBE_SHADOW_MAPS)
                                       .build();
 
+    // Note: Shadow set must be placed before IBL set to match LightingRenderBindings kShadowSetIndex/kIBLSetIndex
     deferredLightingSystem = std::make_unique<DeferredLightingSystem>(device,
                                                                       renderer.getDeferredLightingRenderPass(),
                                                                       std::vector<VkDescriptorSetLayout>{renderContext->getGlobalSetLayout(),
                                                                                                          gbufferSetLayout->getDescriptorSetLayout(),
-                                                                                                         deferredIblSetLayout->getDescriptorSetLayout(),
-                                                                                                         deferredShadowSetLayout->getDescriptorSetLayout()});
+                                                                                                         deferredShadowSetLayout->getDescriptorSetLayout(),
+                                                                                                         deferredIblSetLayout->getDescriptorSetLayout()});
 
     gbufferDescriptorSets.resize(SwapChain::maxFramesInFlight());
     for (int i = 0; i < gbufferDescriptorSets.size(); i++)
@@ -228,18 +232,32 @@ namespace engine {
       auto aInfo = renderer.getGbufferAlbedoImageInfo(i);
       auto mInfo = renderer.getGbufferMaterialImageInfo(i);
       auto dInfo = renderer.getDepthImageInfo(i);
+      // Emissive is written into the HDR color attachment during the G-buffer pass.
+      // Use the HDR color image (not the sceneColor copy) as the emissive source for deferred sampling.
+      auto cInfo = renderer.getOffscreenImageInfo(i);
 
-      DescriptorWriter(*gbufferSetLayout, *gbufferPool).writeImage(0, &nInfo).writeImage(1, &aInfo).writeImage(2, &mInfo).writeImage(3, &dInfo).build(gbufferDescriptorSets[i]);
+      auto bakedInfo = renderer.getGbufferBakedImageInfo(i);
+      DescriptorWriter(*gbufferSetLayout, *gbufferPool)
+              .writeImage(0, &nInfo)
+              .writeImage(1, &aInfo)
+              .writeImage(2, &mInfo)
+              .writeImage(3, &dInfo)
+              .writeImage(4, &cInfo)
+              .writeImage(5, &bakedInfo)
+              .build(gbufferDescriptorSets[i]);
     }
 
     deferredIblDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (auto& deferredIblDescriptorSet : deferredIblDescriptorSets)
+    for (int i = 0; i < static_cast<int>(deferredIblDescriptorSets.size()); ++i)
     {
       auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
       auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
       auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
 
-      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSet);
+      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSets[i]);
+
+      std::cout << "[App][IBL] deferredIblDescriptorSet " << i << " => irradiance.view=" << irradianceInfo.imageView << " prefilter.view=" << prefilterInfo.imageView
+                << " brdf.view=" << brdfInfo.imageView << '\n';
     }
 
     deferredShadowDescriptorSets.resize(SwapChain::maxFramesInFlight());
@@ -287,9 +305,54 @@ namespace engine {
     });
     uiManager->setOnLoadScene([this]() {
       std::cout << "Loading scene from scene.json..." << '\n';
-      sceneSerializer.deserialize("scene.json");
-    });
+      if (sceneSerializer.deserialize("scene.json"))
+      {
+        // Reset transient selection state to avoid dangling entt entity references
+        selectedEntity   = entt::null;
+        selectedObjectId = 0;
+        cameraEntity     = entt::null;
 
+        // get the first camera entity in the loaded scene
+        auto const& registry = scene.getRegistry();
+        auto        view     = registry.view<engine::CameraComponent>();
+        for (auto entity : view)
+        {
+          std::cout << "[App] Found camera entity in loaded scene\n";
+          cameraEntity = entity;
+          break;
+        }
+
+        // if there is no camera, create a default one
+        if (cameraEntity == entt::null)
+        {
+          std::cout << "[App] Creating default camera for the scene\n";
+          cameraEntity = scene.createEntity();
+          scene.getRegistry().emplace<TransformComponent>(cameraEntity);
+          scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
+          scene.getRegistry().emplace<CameraComponent>(cameraEntity);
+        }
+
+        // set the cameracomponent as primary
+        {
+          std::cout << "[App] Setting loaded camera as primary camera\n";
+          auto& camComp = scene.getRegistry().get<CameraComponent>(cameraEntity);
+        }
+
+        std::cout << "[App] Successfully deserialized scene.json\n";
+      }
+      else
+      {
+        std::cout << "[App] Failed to deserialize scene.json\n";
+      }
+
+      // Schedule manifest load & apply on the next update() tick to avoid concurrent registry mutation
+      std::string           sceneStem    = std::filesystem::path(std::string("scene.json")).stem().string();
+      std::filesystem::path manifestPath = std::filesystem::path(std::string(SCENE_PATH)) / (sceneStem + std::string("_lightmaps.json"));
+      pendingSceneLightmapManifest       = manifestPath.string();
+      pendingApplySceneLightmaps         = true;
+      pendingUpdateCameraAfterSceneLoad  = true;
+      std::cout << "[App] Scheduled applying scene lightmaps from: " << manifestPath << '\n';
+    });
     uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
@@ -343,16 +406,20 @@ namespace engine {
       // G-buffer descriptors are created once, but the underlying image views/samplers are recreated on window resize.
       // Refresh them every frame to avoid stale handles after swapchain/offscreen resize.
       {
-        auto nInfo = renderer.getGbufferNormalImageInfo(frameInfo.frameIndex);
-        auto aInfo = renderer.getGbufferAlbedoImageInfo(frameInfo.frameIndex);
-        auto mInfo = renderer.getGbufferMaterialImageInfo(frameInfo.frameIndex);
-        auto dInfo = renderer.getDepthImageInfo(frameInfo.frameIndex);
+        auto nInfo     = renderer.getGbufferNormalImageInfo(frameInfo.frameIndex);
+        auto aInfo     = renderer.getGbufferAlbedoImageInfo(frameInfo.frameIndex);
+        auto mInfo     = renderer.getGbufferMaterialImageInfo(frameInfo.frameIndex);
+        auto dInfo     = renderer.getDepthImageInfo(frameInfo.frameIndex);
+        auto cInfo     = renderer.getOffscreenImageInfo(frameInfo.frameIndex);
+        auto bakedInfo = renderer.getGbufferBakedImageInfo(frameInfo.frameIndex);
 
         DescriptorWriter(*gbufferSetLayout, *gbufferPool)
                 .writeImage(0, &nInfo)
                 .writeImage(1, &aInfo)
                 .writeImage(2, &mInfo)
                 .writeImage(3, &dInfo)
+                .writeImage(4, &cInfo)
+                .writeImage(5, &bakedInfo)
                 .overwrite(gbufferDescriptorSets[frameInfo.frameIndex]);
       }
 
@@ -415,11 +482,12 @@ namespace engine {
         vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
       }
 
+      // Pass descriptor sets in pipeline order: global, gbuffer, shadow, ibl
       deferredLightingSystem->render(frameInfo,
                                      frameInfo.globalDescriptorSet,
                                      gbufferDescriptorSets[frameInfo.frameIndex],
-                                     deferredIblDescriptorSets[frameInfo.frameIndex],
-                                     deferredShadowDescriptorSets[frameInfo.frameIndex]);
+                                     deferredShadowDescriptorSets[frameInfo.frameIndex],
+                                     deferredIblDescriptorSets[frameInfo.frameIndex]);
       renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
 
       // Pass 3: Forward overlays: skybox + transmission (no blending) + alpha-blend (regular transparency)
@@ -541,7 +609,8 @@ namespace engine {
 
   void App::run()
   {
-    auto currentTime = std::chrono::high_resolution_clock::now();
+    auto currentTime   = std::chrono::high_resolution_clock::now();
+    auto lastHeartbeat = currentTime;
 
     while (!window.shouldClose())
     {
@@ -554,6 +623,12 @@ namespace engine {
 
       update(frameTime);
       render(frameTime);
+
+      // Heartbeat log to detect freezes (once per second)
+      if (std::chrono::duration<float>(newTime - lastHeartbeat).count() >= 1.0f)
+      {
+        lastHeartbeat = newTime;
+      }
     }
 
     device.WaitIdle();
@@ -561,6 +636,51 @@ namespace engine {
 
   void App::update(float /*frameTime*/)
   {
+    if (pendingUpdateCameraAfterSceneLoad)
+    {
+      pendingUpdateCameraAfterSceneLoad = false;
+
+      // After a scene load, assign to cameraEntity the CameraComponent of the first found camera entity in the loaded scene.
+      cameraEntity         = entt::null;
+      auto const& registry = scene.getRegistry();
+      auto        view     = registry.view<engine::CameraComponent>();
+      for (auto entity : view)
+      {
+        cameraEntity = entity;
+        break;
+      }
+    }
+    // If a scene lightmap manifest was scheduled to be applied by the UI thread, do it now (safe point)
+    if (pendingApplySceneLightmaps)
+    {
+      pendingApplySceneLightmaps = false;
+      try
+      {
+        if (resourceManager.loadSceneLightmapManifest(pendingSceneLightmapManifest))
+        {
+          std::cout << "ResourceManager: loaded scheduled scene-level lightmap manifest " << pendingSceneLightmapManifest << '\n';
+          if (resourceManager.loadSceneLightmapTextures("assets"))
+          {
+            resourceManager.applySceneLightmapBindings(scene);
+            resourceManager.applyLoadedLightmapsToScene(scene);
+            std::cout << "[App] Applied scheduled scene lightmaps\n";
+          }
+          else
+          {
+            std::cerr << "[App] Failed to load scheduled scene lightmap textures" << '\n';
+          }
+        }
+        else
+        {
+          std::cout << "[App] No scheduled scene lightmap manifest found: " << pendingSceneLightmapManifest << '\n';
+        }
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "[App] Exception while applying scheduled scene lightmaps: " << e.what() << '\n';
+      }
+    }
+
     if (auto* scenePanel = uiManager->getPanel<ScenePanel>())
     {
       scenePanel->processDelayedDeletions(selectedEntity, selectedObjectId);
@@ -694,9 +814,16 @@ namespace engine {
     // Render shadow maps for all shadow-casting lights (mesh shader culling - Level 3)
     state.shadowSystem.renderShadowMaps(frameInfo, 100.0f);
 
-    ubo.projection                  = frameInfo.camera.getProjection();
-    ubo.view                        = frameInfo.camera.getView();
-    ubo.cameraPosition              = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
+    ubo.projection = frameInfo.camera.getProjection();
+    ubo.view       = frameInfo.camera.getView();
+    if (frameInfo.scene->getRegistry().valid(frameInfo.cameraEntity) && frameInfo.scene->getRegistry().all_of<TransformComponent>(frameInfo.cameraEntity))
+    {
+      ubo.cameraPosition = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
+    }
+    else
+    {
+      ubo.cameraPosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    }
     ubo.shadowLightCount            = state.shadowSystem.getShadowLightCount();
     ubo.directionalCascadeCount     = state.shadowSystem.getDirectionalCascadeCount();
     ubo.directionalCascadeBaseIndex = state.shadowSystem.getDirectionalCascadeBaseIndex();

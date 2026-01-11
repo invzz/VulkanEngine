@@ -10,8 +10,10 @@
 #include "Engine/Resources/PBRMaterial.hpp"
 #include "Engine/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/LODComponent.hpp"
+#include "Engine/Scene/components/LightCommon.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
@@ -77,7 +79,7 @@ namespace engine {
     for (auto entity : view)
     {
       nlohmann::json objJson;
-      objJson["id"] = (uint32_t)entity;
+      objJson["id"] = std::to_string((uint32_t)entity);
       if (scene.getRegistry().all_of<NameComponent>(entity))
       {
         objJson["name"] = scene.getRegistry().get<NameComponent>(entity).name;
@@ -119,19 +121,20 @@ namespace engine {
       if (scene.getRegistry().all_of<PointLightComponent>(entity))
       {
         auto& pl              = scene.getRegistry().get<PointLightComponent>(entity);
-        objJson["pointLight"] = {{"intensity", pl.intensity}, {"color", pl.color}, {"radius", pl.radius}};
+        objJson["pointLight"] = {{"intensity", pl.intensity}, {"color", pl.color}, {"radius", pl.radius}, {"bake", pl.bake}, {"lightType", to_string(pl.lightType)}};
       }
 
       if (scene.getRegistry().all_of<DirectionalLightComponent>(entity))
       {
         auto& dl                    = scene.getRegistry().get<DirectionalLightComponent>(entity);
-        objJson["directionalLight"] = {{"intensity", dl.intensity}, {"color", dl.color}};
+        objJson["directionalLight"] = {{"intensity", dl.intensity}, {"color", dl.color}, {"bake", dl.bake}, {"lightType", to_string(dl.lightType)}};
       }
 
       if (scene.getRegistry().all_of<SpotLightComponent>(entity))
       {
-        auto& sl             = scene.getRegistry().get<SpotLightComponent>(entity);
-        objJson["spotLight"] = {{"intensity", sl.intensity}, {"color", sl.color}, {"innerAngle", sl.innerCutoffAngle}, {"outerAngle", sl.outerCutoffAngle}};
+        auto& sl = scene.getRegistry().get<SpotLightComponent>(entity);
+        objJson["spotLight"] =
+                {{"intensity", sl.intensity}, {"color", sl.color}, {"innerAngle", sl.innerCutoffAngle}, {"outerAngle", sl.outerCutoffAngle}, {"bake", sl.bake}, {"lightType", to_string(sl.lightType)}};
       }
 
       // LOD Component
@@ -159,6 +162,7 @@ namespace engine {
 
   bool SceneSerializer::deserialize(const std::string& filepath)
   {
+    std::cout << "SceneSerializer: attempting to open scene file: " << filepath << " (abs=" << std::filesystem::absolute(filepath) << ")" << std::endl;
     std::ifstream in(filepath);
     if (!in.is_open())
     {
@@ -179,8 +183,11 @@ namespace engine {
 
     scene.getRegistry().clear(); // Clear existing objects
 
+    bool foundAny = false;
+
     if (sceneJson.contains("objects"))
     {
+      foundAny = true;
       for (const auto& objJson : sceneJson["objects"])
       {
         std::string const name = objJson.value("name", "GameObject");
@@ -227,6 +234,8 @@ namespace engine {
           pointLight.intensity = pl.value("intensity", 1.0f);
           pointLight.color     = pl.value("color", glm::vec3(1.0f));
           pointLight.radius    = pl.value("radius", 15.0f);
+          pointLight.bake      = pl.value("bake", false);
+          pointLight.lightType = mobility_from_string(pl.value("lightType", std::string("static")));
         }
 
         if (objJson.contains("directionalLight"))
@@ -235,6 +244,8 @@ namespace engine {
           auto& dirLight     = scene.getRegistry().emplace<DirectionalLightComponent>(entity);
           dirLight.intensity = dl.value("intensity", 1.0f);
           dirLight.color     = dl.value("color", glm::vec3(1.0f));
+          dirLight.bake      = dl.value("bake", false);
+          dirLight.lightType = mobility_from_string(dl.value("lightType", std::string("static")));
         }
 
         if (objJson.contains("spotLight"))
@@ -245,6 +256,8 @@ namespace engine {
           spotLight.color            = sl.value("color", glm::vec3(1.0f));
           spotLight.innerCutoffAngle = sl.value("innerAngle", 12.5f);
           spotLight.outerCutoffAngle = sl.value("outerAngle", 17.5f);
+          spotLight.bake             = sl.value("bake", false);
+          spotLight.lightType        = mobility_from_string(sl.value("lightType", std::string("static")));
         }
 
         // LOD Component
@@ -263,9 +276,83 @@ namespace engine {
           }
         }
       }
-      return true;
     }
-    return false;
+
+    // Support legacy/new authoring: top-level `lights` array
+    if (sceneJson.contains("lights"))
+    {
+      foundAny              = true;
+      auto const& lightsArr = sceneJson["lights"];
+      std::cout << "SceneSerializer: found top-level lights array, count=" << lightsArr.size() << '\n';
+      for (const auto& lightJson : lightsArr)
+      {
+        std::string const id = lightJson.value("id", std::string("light"));
+        std::cout << "SceneSerializer: parsing light id=" << id << '\n';
+        auto entity = scene.createEntity();
+        scene.getRegistry().emplace<NameComponent>(entity, id);
+
+        std::string const type = lightJson.value("type", std::string("point"));
+        if (type == "point")
+        {
+          auto& pointLight     = scene.getRegistry().emplace<PointLightComponent>(entity);
+          pointLight.intensity = lightJson.value("intensity", 1.0f);
+          pointLight.color     = lightJson.value("color", glm::vec3(1.0f));
+          pointLight.radius    = lightJson.value("radius", 15.0f);
+          pointLight.bake      = lightJson.value("bake", false);
+          pointLight.lightType = mobility_from_string(lightJson.value("lightType", std::string("static")));
+          std::cout << "SceneSerializer: added PointLightComponent id=" << id << " bake=" << pointLight.bake << "\n";
+        }
+        else if (type == "directional")
+        {
+          auto& dirLight     = scene.getRegistry().emplace<DirectionalLightComponent>(entity);
+          dirLight.intensity = lightJson.value("intensity", 1.0f);
+          dirLight.color     = lightJson.value("color", glm::vec3(1.0f));
+          dirLight.bake      = lightJson.value("bake", false);
+          dirLight.lightType = mobility_from_string(lightJson.value("lightType", std::string("static")));
+          std::cout << "SceneSerializer: added DirectionalLightComponent id=" << id << " bake=" << dirLight.bake << "\n";
+        }
+        else if (type == "spot")
+        {
+          auto& spotLight            = scene.getRegistry().emplace<SpotLightComponent>(entity);
+          spotLight.intensity        = lightJson.value("intensity", 1.0f);
+          spotLight.color            = lightJson.value("color", glm::vec3(1.0f));
+          spotLight.innerCutoffAngle = lightJson.value("innerAngle", 12.5f);
+          spotLight.outerCutoffAngle = lightJson.value("outerAngle", 17.5f);
+          spotLight.bake             = lightJson.value("bake", false);
+          spotLight.lightType        = mobility_from_string(lightJson.value("lightType", std::string("static")));
+          std::cout << "SceneSerializer: added SpotLightComponent id=" << id << " bake=" << spotLight.bake << "\n";
+        }
+      }
+    }
+
+    // Ensure there is at least one camera entity in the scene registry so callers
+    // can safely assume a camera exists immediately after deserialization.
+    {
+      auto camViewCT              = scene.getRegistry().view<engine::CameraComponent, engine::TransformComponent>();
+      bool hasCameraWithTransform = (camViewCT.begin() != camViewCT.end());
+      if (!hasCameraWithTransform)
+      {
+        auto camView = scene.getRegistry().view<engine::CameraComponent>();
+        auto it      = camView.begin();
+        if (it != camView.end())
+        {
+          // Add a TransformComponent to the first camera entity that lacks one
+          scene.getRegistry().emplace<engine::TransformComponent>(*it);
+          std::cout << "SceneSerializer: added TransformComponent to existing Camera entity\n";
+        }
+        else
+        {
+          // No camera present: create a default camera entity
+          auto e = scene.createEntity();
+          scene.getRegistry().emplace<engine::TransformComponent>(e);
+          scene.getRegistry().emplace<engine::CameraComponent>(e);
+          scene.getRegistry().emplace<engine::NameComponent>(e, "Camera");
+          std::cout << "SceneSerializer: created default Camera entity\n";
+        }
+      }
+    }
+
+    return foundAny;
   }
 
 } // namespace engine

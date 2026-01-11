@@ -12,6 +12,7 @@ layout(location = 0) out vec4 outNormal;
 layout(location = 1) out vec4 outAlbedo;
 layout(location = 2) out vec4 outMaterial;
 layout(location = 3) out vec4 outEmissive;
+layout(location = 4) out vec4 outBaked;
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragmentWorldPos;
@@ -45,7 +46,7 @@ void main()
   N             = normalize(N);
   vec3 emissive = material_decodeEmissive(uv);
 
-  // Debug views: Meshlets (7) and Meshlet Cones (8)
+  // Debug views: Meshlets (7) and 8 (Meshlet Cones)
   if (ubo.debugMode == 7)
   {
     // Hash meshlet ID to a unique color
@@ -84,9 +85,25 @@ void main()
   // - RG: oct-encoded world normal in [0,1]
   // - B : material IOR
   // - A : iridescence (thin film) IOR
-  vec2 nOct   = octEncode(N);
+  vec2 nOct = octEncode(N);
+
+  // Sample baked light (if present) here while we still have per-material / per-instance state available.
+  vec3 bakedLight = vec3(0.0);
+  {
+    uint lmIndex = push.lightmapIndex;
+    if (lmIndex == 0u) lmIndex = material.indices3.z;
+    if (lmIndex != 0u)
+    {
+      vec2 uv1   = material_getUv1(fragUV, push.lightmapUvScale, push.lightmapUvOffset);
+      bakedLight = material_sampleBakedLight(uv1, lmIndex);
+    }
+  }
+
   outNormal   = vec4(nOct * 0.5 + 0.5, materialIOR, iridescenceIOR);
   outAlbedo   = vec4(alphaOnly.albedo, iridescenceThickness);
   outMaterial = vec4(metallic, roughness, ao, iridescenceFactor);
+  // Write material emissive (rgb) and baked light (RGB) into separate MRTs so the deferred pass
+  // can sample them independently.
   outEmissive = vec4(emissive, 1.0);
+  outBaked    = vec4(bakedLight, 1.0);
 }

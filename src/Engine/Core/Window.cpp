@@ -144,9 +144,15 @@ namespace engine {
   {
     auto win = static_cast<Window*>(glfwGetWindowUserPointer(window));
     if (win == nullptr) return;
-    win->framebufferResized = true;
-    win->width              = width;
-    win->height             = height;
+
+    // Record timestamp first (steady_clock for monotonicity), then mark resized.
+    uint64_t const nowNs = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+    win->lastResizeTimeNs.store(nowNs);
+    win->width.store(static_cast<uint32_t>(width));
+    win->height.store(static_cast<uint32_t>(height));
+    win->framebufferResized.store(true);
+
+    std::cout << "[Window] framebuffer resized to " << width << "x" << height << " (ts=" << nowNs << ")" << '\n';
   }
 
   void Window::initWindow()

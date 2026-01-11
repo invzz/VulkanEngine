@@ -78,11 +78,12 @@ namespace engine {
     pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(post_process.vert.spv)", std::string(SHADER_PATH) + R"(deferred_lighting.frag.spv)", pipelineConfig);
   }
 
-  void DeferredLightingSystem::render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet iblSet, VkDescriptorSet shadowSet)
+  void DeferredLightingSystem::render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet)
   {
     pipeline->bind(frameInfo.commandBuffer);
 
-    std::array<VkDescriptorSet, 4> sets{globalSet, gbufferSet, iblSet, shadowSet};
+    // Bind descriptor sets in pipeline layout order: global (0), gbuffer (1), shadow (2), ibl (3)
+    std::array<VkDescriptorSet, 4> sets{globalSet, gbufferSet, shadowSet, iblSet};
     vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 
     vkCmdDraw(frameInfo.commandBuffer, 3, 1, 0, 0);

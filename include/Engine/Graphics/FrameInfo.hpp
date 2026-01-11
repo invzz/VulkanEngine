@@ -74,7 +74,7 @@ namespace engine {
     int       cubeShadowLightCount        = 0; // Number of cube shadow maps (point lights)
     int       directionalCascadeCount     = 0;
     int       directionalCascadeBaseIndex = 0; // Index into lightSpaceMatrices / shadowMaps
-    int       debugMode                   = 0; // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting
+    int       debugMode                   = 0; // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting, 6: Lightmap Only
     // Note: 8 ints = 32 bytes, already 16-byte aligned - no padding needed before vec4 array
     glm::vec4 frustumPlanes[6]; // Frustum planes for culling (Left, Right,
                                 // Bottom, Top, Near, Far)

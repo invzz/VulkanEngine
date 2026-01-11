@@ -1,0 +1,21 @@
+{
+  "lights": [
+    {
+      "id": "sun_01",
+      "type": "directional",
+      "intensity": 1.0,
+      "color": [1.0, 0.95, 0.9],
+      "bake": true,
+      "lightType": "static"
+    },
+    {
+      "id": "lamp_01",
+      "type": "point",
+      "intensity": 5.0,
+      "color": [1.0, 1.0, 1.0],
+      "position": [0.0, 1.5, 0.0],
+      "bake": false,
+      "lightType": "dynamic"
+    }
+  ]
+}

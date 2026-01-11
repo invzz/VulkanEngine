@@ -14,29 +14,57 @@ namespace fs = std::filesystem;
 static glm::mat4 buildTransformFromJson(const json& t)
 {
   glm::mat4 mat(1.0f);
-  if (t.contains("scale"))
+
+  // scale: expect [sx, sy, sz]
+  if (t.contains("scale") && t["scale"].is_array() && t["scale"].size() >= 3)
   {
-    auto s = t["scale"];
-    mat    = glm::scale(mat, glm::vec3((float)s[0], (float)s[1], (float)s[2]));
+    const auto s  = t["scale"];
+    float      sx = s[0].is_number() ? s[0].get<float>() : 1.0f;
+    float      sy = s[1].is_number() ? s[1].get<float>() : 1.0f;
+    float      sz = s[2].is_number() ? s[2].get<float>() : 1.0f;
+    mat           = glm::scale(mat, glm::vec3(sx, sy, sz));
   }
-  if (t.contains("rotation"))
+
+  // rotation: support either quaternion [x,y,z,w] or Euler angles [x,y,z] (radians)
+  if (t.contains("rotation") && t["rotation"].is_array())
   {
-    auto      r = t["rotation"]; // quaternion [x,y,z,w]
-    glm::quat q((float)r[3], (float)r[0], (float)r[1], (float)r[2]);
-    mat = mat * glm::mat4_cast(q);
+    const auto r = t["rotation"];
+    if (r.size() >= 4 && r[0].is_number() && r[1].is_number() && r[2].is_number() && r[3].is_number())
+    {
+      // Quaternion stored as [x,y,z,w]
+      glm::quat q(r[3].get<float>(), r[0].get<float>(), r[1].get<float>(), r[2].get<float>());
+      mat = mat * glm::mat4_cast(q);
+    }
+    else if (r.size() >= 3 && r[0].is_number() && r[1].is_number() && r[2].is_number())
+    {
+      // Euler angles [x,y,z] (rotation order: X(pitch), Y(yaw), Z(roll) as used elsewhere)
+      glm::vec3 e(r[0].get<float>(), r[1].get<float>(), r[2].get<float>());
+      glm::quat q = glm::quat(e);
+      mat         = mat * glm::mat4_cast(q);
+    }
+    else
+    {
+      // Unexpected rotation format: ignore
+    }
   }
-  if (t.contains("translation"))
+
+  // translation: expect [tx, ty, tz]
+  if (t.contains("translation") && t["translation"].is_array() && t["translation"].size() >= 3)
   {
-    auto tr = t["translation"];
-    mat     = glm::translate(mat, glm::vec3((float)tr[0], (float)tr[1], (float)tr[2]));
+    const auto tr = t["translation"];
+    float      tx = tr[0].is_number() ? tr[0].get<float>() : 0.0f;
+    float      ty = tr[1].is_number() ? tr[1].get<float>() : 0.0f;
+    float      tz = tr[2].is_number() ? tr[2].get<float>() : 0.0f;
+    mat           = glm::translate(mat, glm::vec3(tx, ty, tz));
   }
+
   return mat;
 }
 
 int main(int argc, char** argv)
 {
-  std::string inputPath  = "assets/scenes/uv_unwrap_input.json";
-  std::string outputPath = "assets/scenes/generated_scene_lightmaps.json";
+  std::string inputPath  = "assets/scenes/test/uv_unwrap_input.json";
+  std::string outputPath = "assets/scenes/test/generated_scene_lightmaps.json";
 
   if (argc >= 2) inputPath = argv[1];
   if (argc >= 3) outputPath = argv[2];
@@ -66,12 +94,32 @@ int main(int argc, char** argv)
       std::vector<float> posbuf;
       posbuf.reserve(pos.size());
       for (const auto& v : pos)
-        posbuf.push_back(static_cast<float>(v));
+      {
+        if (!v.is_number())
+        {
+          std::cerr << "UVUnwrapCLI: warning: non-numeric position encountered, substituting 0\n";
+          posbuf.push_back(0.0f);
+        }
+        else
+        {
+          posbuf.push_back(v.get<float>());
+        }
+      }
       // indices
       auto                  idx = m["indices"];
       std::vector<uint32_t> idxbuf;
       for (const auto& v : idx)
-        idxbuf.push_back(static_cast<uint32_t>(v));
+      {
+        if (!v.is_number())
+        {
+          std::cerr << "UVUnwrapCLI: warning: non-numeric index encountered, substituting 0\n";
+          idxbuf.push_back(0u);
+        }
+        else
+        {
+          idxbuf.push_back(v.get<uint32_t>());
+        }
+      }
 
       // store buffers in vectors owned by md via new allocations to remain alive
       float* pptr = new float[posbuf.size()];

@@ -18,7 +18,14 @@ namespace engine {
     bool const toggleKeyPressed = keyboard_.isKeyPressed(keyboard_.mappings.toggleCursor);
     if (toggleKeyPressed && !lastToggleKeyState_)
     {
+      // When toggling cursor visibility, also update Mouse state so we don't
+      // get a large accumulated delta when entering FPS (cursor-hidden) mode.
+      bool wasVisible = window_.isCursorVisible();
       window_.toggleCursor();
+      // Reset mouse internal state so we don't pick up a large delta on the
+      // first frame after toggling visibility. We avoid calling private
+      // lock/unlock helpers from here and just reset the initialized flag.
+      mouse_.reset();
     }
     lastToggleKeyState_ = toggleKeyPressed;
 

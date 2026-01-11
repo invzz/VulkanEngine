@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 #include "../Component.hpp"
+#include "LightCommon.hpp"
 
 namespace engine {
 
@@ -18,6 +19,10 @@ namespace engine {
     float     quadraticAttenuation{0.032f};
     bool      useTargetPoint{false};
     glm::vec3 targetPoint{0.0f, 0.0f, 0.0f};
+
+    // Light baking metadata
+    bool          bake{false};
+    LightMobility lightType{LightMobility::Static};
   };
 
 } // namespace engine

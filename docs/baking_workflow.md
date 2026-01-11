@@ -14,17 +14,16 @@ Baking a scene or model follows these main steps:
 ## Tools
 
 - `UVUnwrapCLI` — generate per-instance UV1 and atlas mappings.
-- `ModelLightBaker` — quick per-model baker used for testing and small bakes.
-  - Full CLI reference: `docs/ModelLightBaker_CLI.md`
+- `LightBaker` — replacement baker that supports per-model and scene-level baking for tests and production workflows.
+  - Full CLI reference: `docs/LightBaker_CLI.md`
 
 ## Packaging & CI
 
-- Use `--pack-to-vtex` or create the sentinel `MODEL_LIGHT_BAKER_PACK_TO_VTEX` in the output folder to request packaging.
-- CI includes a smoke job that builds `ModelLightBaker` and validates that a `.vtex` is produced and loadable by the runtime (`Texture::createFromVTEX(..., true)`). See `.github/workflows/lightmap-ci.yml`.
+- CI includes a smoke job that builds `LightBaker` and validates that scene bakes produce expected manifests. See `.github/workflows/lightmap-ci.yml`.
 
 ### CI smoke job status & how-to
 
-- Job: `model-light-baker-smoke` (added 2026-01-10) — runs on the self-hosted GPU runner and executes the test `ModelLightBaker.PackToVTEX_CLIProducesVTEX`.
+- Job: `model-light-baker-smoke` (renamed to run LightBaker scene checks) — runs on the self-hosted GPU runner and executes the test `LightBaker.SceneLights_CLIIncludesBakedLightsInManifest`.  (Previously used ModelLightBaker.)
 - Where to inspect runs:
   - GitHub UI: Actions → *Lightmap CI* → select the run and the `model-light-baker-smoke` job.
   - GH CLI examples:

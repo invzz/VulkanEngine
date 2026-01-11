@@ -67,6 +67,15 @@ namespace engine {
           ImGui::ColorEdit3("Color##point", &pointLight.color.x);
           ImGui::DragFloat("Radius##point", &pointLight.radius, 0.01f, 0.0f, 100.0f);
 
+          // Baking controls
+          ImGui::Checkbox("Bake for Lightmap", &pointLight.bake);
+          int         pointMob     = static_cast<int>(pointLight.lightType);
+          const char* pointItems[] = {"Static", "Dynamic"};
+          if (ImGui::Combo("Light Type", &pointMob, pointItems, IM_ARRAYSIZE(pointItems)))
+          {
+            pointLight.lightType = static_cast<LightMobility>(pointMob);
+          }
+
           ImGui::Spacing();
         }
 
@@ -79,6 +88,15 @@ namespace engine {
 
           ImGui::DragFloat("Intensity##directional", &dirLight.intensity, 0.01f, 0.0f, 10.0f);
           ImGui::ColorEdit3("Color##directional", &dirLight.color.x);
+
+          // Baking controls
+          ImGui::Checkbox("Bake for Lightmap", &dirLight.bake);
+          int         dirMob     = static_cast<int>(dirLight.lightType);
+          const char* dirItems[] = {"Static", "Dynamic"};
+          if (ImGui::Combo("Light Type", &dirMob, dirItems, IM_ARRAYSIZE(dirItems)))
+          {
+            dirLight.lightType = static_cast<LightMobility>(dirMob);
+          }
 
           ImGui::Spacing();
           ImGui::Text("Direction Control:");
@@ -117,6 +135,15 @@ namespace engine {
 
           ImGui::DragFloat("Intensity##spot", &spotLight.intensity, 0.1f, 0.0f, 100.0f);
           ImGui::ColorEdit3("Color##spot", &spotLight.color.x);
+
+          // Baking controls
+          ImGui::Checkbox("Bake for Lightmap", &spotLight.bake);
+          int         spotMob     = static_cast<int>(spotLight.lightType);
+          const char* spotItems[] = {"Static", "Dynamic"};
+          if (ImGui::Combo("Light Type", &spotMob, spotItems, IM_ARRAYSIZE(spotItems)))
+          {
+            spotLight.lightType = static_cast<LightMobility>(spotMob);
+          }
 
           ImGui::Spacing();
           ImGui::Text("Direction Control:");

@@ -19,9 +19,9 @@ using namespace engine;
 TEST(LightmapIntegration, ExportLoadApplyAndAssignTexture)
 {
   // Create a small authoring scene and manifest on disk
-  std::filesystem::create_directories("assets/scenes");
-  const std::string scenePath    = "assets/scenes/demo_scene.json";
-  const std::string manifestPath = "assets/scenes/demo_scene_lightmaps.json";
+  std::filesystem::create_directories("assets/scenes/test");
+  const std::string scenePath    = "assets/scenes/test/demo_scene.json";
+  const std::string manifestPath = "assets/scenes/test/demo_scene_lightmaps.json";
 
   {
     std::ofstream out(scenePath);

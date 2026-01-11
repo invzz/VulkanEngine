@@ -136,6 +136,19 @@ namespace engine {
       vkFreeMemory(device.device(), memory, nullptr);
     }
 
+    for (auto imageView : gbufferBakedImageViews)
+    {
+      vkDestroyImageView(device.device(), imageView, nullptr);
+    }
+    for (auto image : gbufferBakedImages)
+    {
+      vkDestroyImage(device.device(), image, nullptr);
+    }
+    for (auto memory : gbufferBakedMemorys)
+    {
+      vkFreeMemory(device.device(), memory, nullptr);
+    }
+
     for (auto imageView : depthImageViews)
     {
       vkDestroyImageView(device.device(), imageView, nullptr);
@@ -499,6 +512,13 @@ namespace engine {
     gHdr.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
     gHdr.finalLayout             = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+    // Baked light RGB (separate MRT). Use same color format as gbuffer color attachments.
+    VkAttachmentDescription gBaked = gN;
+    gBaked.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    gBaked.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+    gBaked.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+    gBaked.finalLayout             = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
     VkAttachmentDescription gDepth{};
     gDepth.format  = depthFormat;
     gDepth.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -510,13 +530,15 @@ namespace engine {
     gDepth.initialLayout  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     gDepth.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    std::array<VkAttachmentReference, 4> gbufferColorRefs{};
+    std::array<VkAttachmentReference, 5> gbufferColorRefs{};
     gbufferColorRefs[0] = VkAttachmentReference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     gbufferColorRefs[1] = VkAttachmentReference{1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     gbufferColorRefs[2] = VkAttachmentReference{2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     gbufferColorRefs[3] = VkAttachmentReference{3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    gbufferColorRefs[4] = VkAttachmentReference{4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-    VkAttachmentReference const gbufferDepthRef{4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    // Depth is now attachment index 5
+    VkAttachmentReference const gbufferDepthRef{5, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
     VkSubpassDescription gbufferSubpass{};
     gbufferSubpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -543,7 +565,7 @@ namespace engine {
     gbufferDeps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
     gbufferDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-    std::array<VkAttachmentDescription, 5> gbufferAttachments = {gN, gA, gM, gHdr, gDepth};
+    std::array<VkAttachmentDescription, 6> gbufferAttachments = {gN, gA, gM, gHdr, gBaked, gDepth};
 
     VkRenderPassCreateInfo gbufferInfo{};
     gbufferInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -637,6 +659,11 @@ namespace engine {
     gbufferMaterialImages.resize(frameCount);
     gbufferMaterialMemorys.resize(frameCount);
     gbufferMaterialImageViews.resize(frameCount);
+
+    // Baked light
+    gbufferBakedImages.resize(frameCount);
+    gbufferBakedMemorys.resize(frameCount);
+    gbufferBakedImageViews.resize(frameCount);
     depthImages.resize(frameCount);
     depthImageMemorys.resize(frameCount);
     depthImageViews.resize(frameCount);
@@ -888,6 +915,9 @@ namespace engine {
       createGbufferImage(gbufferNormalImages[i], gbufferNormalMemorys[i], gbufferNormalImageViews[i]);
       createGbufferImage(gbufferAlbedoImages[i], gbufferAlbedoMemorys[i], gbufferAlbedoImageViews[i]);
       createGbufferImage(gbufferMaterialImages[i], gbufferMaterialMemorys[i], gbufferMaterialImageViews[i]);
+
+      // Create Baked Light Image (RGB HDR)
+      createGbufferImage(gbufferBakedImages[i], gbufferBakedMemorys[i], gbufferBakedImageViews[i]);
     }
 
     // Create Sampler
@@ -985,9 +1015,10 @@ namespace engine {
         throw std::runtime_error("failed to create load-color-depth framebuffer!");
       }
 
-      // G-buffer framebuffer: N, Albedo, Material, HDR (emissive), Depth
-      std::array<VkImageView, 5> gbufferAttachments = {gbufferNormalImageViews[i], gbufferAlbedoImageViews[i], gbufferMaterialImageViews[i], colorAttachmentImageViews[i], depthImageViews[i]};
-      VkFramebufferCreateInfo    gbufferFbInfo{};
+      // G-buffer framebuffer: N, Albedo, Material, HDR (emissive), Baked (RGB), Depth
+      std::array<VkImageView, 6> gbufferAttachments =
+              {gbufferNormalImageViews[i], gbufferAlbedoImageViews[i], gbufferMaterialImageViews[i], colorAttachmentImageViews[i], gbufferBakedImageViews[i], depthImageViews[i]};
+      VkFramebufferCreateInfo gbufferFbInfo{};
       gbufferFbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
       gbufferFbInfo.renderPass      = gbufferRenderPass;
       gbufferFbInfo.attachmentCount = static_cast<uint32_t>(gbufferAttachments.size());
@@ -1060,6 +1091,15 @@ namespace engine {
     return VkDescriptorImageInfo{
             .sampler     = sampler,
             .imageView   = gbufferMaterialImageViews[index],
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+  }
+
+  VkDescriptorImageInfo FrameBuffer::getGbufferBakedImageInfo(int index) const
+  {
+    return VkDescriptorImageInfo{
+            .sampler     = sampler,
+            .imageView   = gbufferBakedImageViews[index],
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     };
   }

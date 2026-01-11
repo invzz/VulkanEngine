@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "lightmapBindings": {
+    "1": {
+      "lightmapId": "lm_000",
+      "uvChannel": 1,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "uvOffset": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "lightmaps": [
+    {
+      "id": "lm_000",
+      "file": "lightmaps/scene/lm_000_Sponza_1_lightmap.vtex",
+      "format": "vtex",
+      "resolution": 512,
+      "usage": "Lightmap",
+      "instanceId": "1"
+    }
+  ]
+}
