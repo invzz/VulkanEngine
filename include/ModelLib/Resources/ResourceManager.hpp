@@ -279,6 +279,9 @@ namespace engine {
      */
     void applyLoadedLightmapsToScene(engine::Scene& scene);
 
+    // Debug helper: dump a registered lightmap (by global index) to a VTEX file
+    bool dumpLightmapByGlobalIndex(uint32_t globalIndex, const std::string& outPath);
+
     /**
      * @brief Retrieve lightmap info by id if present
      */

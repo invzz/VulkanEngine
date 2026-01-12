@@ -36,10 +36,10 @@ namespace LightBaker {
     key << "model=" << modelPath << "|node=" << nodeIndex << "|prim=" << primitiveIndex << "|res=" << resolution;
 
     // Quantize UV params deterministically to avoid floating point variability
-    long long qUvScaleX  = static_cast<long long>(std::llround(uvScaleX * 1000000.0));
-    long long qUvScaleY  = static_cast<long long>(std::llround(uvScaleY * 1000000.0));
-    long long qUvOffsetX = static_cast<long long>(std::llround(uvOffsetX * 1000000.0));
-    long long qUvOffsetY = static_cast<long long>(std::llround(uvOffsetY * 1000000.0));
+    auto qUvScaleX  = std::llround(uvScaleX * 1000000.0);
+    auto qUvScaleY  = std::llround(uvScaleY * 1000000.0);
+    auto qUvOffsetX = std::llround(uvOffsetX * 1000000.0);
+    auto qUvOffsetY = std::llround(uvOffsetY * 1000000.0);
 
     key << "|uvc=" << uvChannel << "|uvs=" << qUvScaleX << "," << qUvScaleY << "|uvo=" << qUvOffsetX << "," << qUvOffsetY;
 
@@ -53,9 +53,9 @@ namespace LightBaker {
       for (uint32_t vi = start; vi < start + count; ++vi)
       {
         auto p = builder.vertices[vi].position;
-        checksum += static_cast<long long>(std::llround(p.x * 1000000.0));
-        checksum += static_cast<long long>(std::llround(p.y * 1000000.0)) * 7;
-        checksum += static_cast<long long>(std::llround(p.z * 1000000.0)) * 13;
+        checksum += std::llround(p.x * 1000000.0);
+        checksum += std::llround(p.y * 1000000.0) * 7;
+        checksum += std::llround(p.z * 1000000.0) * 13;
       }
       key << "|psum=" << checksum;
     }

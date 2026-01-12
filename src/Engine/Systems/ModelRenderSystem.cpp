@@ -4,6 +4,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -14,14 +15,15 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "ModelLib/Resources/Model.hpp"
-#include "ModelLib/Resources/PBRMaterial.hpp"
-#include "ModelLib/Resources/Texture.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightingRenderBindings.hpp"
 #include "Engine/Systems/MaterialRenderBindings.hpp"
+#include "ModelLib/Resources/Model.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
+#include "ModelLib/Resources/Texture.hpp"
 #include "entt/entity/fwd.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/vector_float2.hpp"

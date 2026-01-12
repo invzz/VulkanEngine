@@ -19,6 +19,7 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Systems/IBL/VTexIO.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/PBRMaterial.hpp"
@@ -654,6 +655,37 @@ namespace engine {
     updateTextureAccess(makeTextureKey(id, false), texture->getMemorySize(), ResourcePriority::HIGH);
 
     std::cout << "ResourceManager: registered lightmap '" << id << "' -> global texture index " << globalIndex << "\n";
+
+    // DEBUG HOOK: if the DUMP_LIGHTMAP_INDEX env var is set to this global
+    // index, write out the backing image to disk for quick validation.
+    const char* env = std::getenv("DUMP_LIGHTMAP_INDEX");
+    if (env)
+    {
+      try
+      {
+        uint32_t desired = static_cast<uint32_t>(std::stoul(env));
+        if (desired == globalIndex)
+        {
+          std::string outPath = "/tmp/dump_lightmap_" + std::to_string(globalIndex) + ".vtex";
+          bool        ok      = ibl_detail::vtex::writeImage(device_,
+                                                 outPath,
+                                                 texture->getImage(),
+                                                 texture->getFormat(),
+                                                 static_cast<uint32_t>(texture->getWidth()),
+                                                 static_cast<uint32_t>(texture->getHeight()),
+                                                 texture->getMipLevels(),
+                                                 1);
+          if (ok)
+            std::cout << "ResourceManager: dumped lightmap " << id << " to " << outPath << "\n";
+          else
+            std::cerr << "ResourceManager: failed to dump lightmap " << id << " to " << outPath << "\n";
+        }
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "ResourceManager: DUMP_LIGHTMAP_INDEX environment variable invalid: " << e.what() << "\n";
+      }
+    }
   }
 
   bool ResourceManager::loadSceneLightmapTextures(const std::string& basePath)
@@ -702,6 +734,10 @@ namespace engine {
           std::cerr << "ResourceManager: failed to load lightmap file " << candidate << ": " << e.what() << "\n";
           tex = nullptr;
         }
+      }
+      else
+      {
+        std::cerr << "ResourceManager: lightmap file not found: " << candidate << " — using 1x1 white fallback.\n";
       }
 
       if (!tex)
@@ -755,6 +791,39 @@ namespace engine {
       }
     }
     std::cout << "ResourceManager: finished assigning loaded lightmaps to scene.\n";
+  }
+
+  bool ResourceManager::dumpLightmapByGlobalIndex(uint32_t globalIndex, const std::string& outPath)
+  {
+    std::scoped_lock const lock(textureMutex_);
+    for (auto& [id, weakTex] : sceneLightmapTextures_)
+    {
+      if (auto tex = weakTex.lock())
+      {
+        if (tex->getGlobalIndex() == globalIndex)
+        {
+          bool ok = ibl_detail::vtex::writeImage(device_,
+                                                 outPath,
+                                                 tex->getImage(),
+                                                 tex->getFormat(),
+                                                 static_cast<uint32_t>(tex->getWidth()),
+                                                 static_cast<uint32_t>(tex->getHeight()),
+                                                 tex->getMipLevels(),
+                                                 1);
+          if (!ok)
+          {
+            std::cerr << "ResourceManager: failed to dump lightmap " << id << " to " << outPath << "\n";
+          }
+          else
+          {
+            std::cout << "ResourceManager: dumped lightmap " << id << " to " << outPath << "\n";
+          }
+          return ok;
+        }
+      }
+    }
+    std::cerr << "ResourceManager: no registered lightmap texture found with global index " << globalIndex << "\n";
+    return false;
   }
 
   std::shared_ptr<Texture> ResourceManager::loadTextureFromMemory(const unsigned char* data, size_t dataSize, const std::string& debugName, bool srgb, ResourcePriority priority)

@@ -749,7 +749,7 @@ namespace engine {
 
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-    std::cerr << "[Device] beginSingleTimeCommands - created cmdBuffer=" << commandBuffer << " pool=" << tempPool << " thread=" << std::this_thread::get_id() << std::endl;
+    // std::cerr << "[Device] beginSingleTimeCommands - created cmdBuffer=" << commandBuffer << " pool=" << tempPool << " thread=" << std::this_thread::get_id() << std::endl;
 
     return commandBuffer;
   }
@@ -765,16 +765,58 @@ namespace engine {
 
     // Submit serialized to avoid simultaneous use of the VkQueue object from
     // different threads (fixes validation threading warnings).
-    std::cerr << "[Device] endSingleTimeCommands - ending cmdBuffer=" << commandBuffer << " thread=" << std::this_thread::get_id() << "\n";
+    std::cerr << "[Device] endSingleTimeCommands - vkEndCommandBuffer cmd=" << commandBuffer << "\n";
 
     VkResult const submitRes = submitGraphics(&submitInfo, VK_NULL_HANDLE);
+    std::cerr << "[Device] endSingleTimeCommands - submit result=" << submitRes << "\n";
     if (submitRes != VK_SUCCESS)
     {
       std::cerr << "[Device] endSingleTimeCommands - submit failed for cmdBuffer=" << commandBuffer << " VkResult=" << submitRes << " thread=" << std::this_thread::get_id() << "\n";
       throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
     }
 
-    vkQueueWaitIdle(graphicsQueue_);
+    std::cerr << "[Device] endSingleTimeCommands - creating fence for submit\n";
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    VkFence fence = VK_NULL_HANDLE;
+    if (vkCreateFence(device_, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+    {
+      std::cerr << "[Device] endSingleTimeCommands - failed to create fence\n";
+      throw engine::RuntimeException("failed to create fence for single-time commands");
+    }
+
+    // Resubmit with a fence so we can wait with a timeout and avoid indefinite blocking.
+    VkResult const submitWithFenceRes = submitGraphics(&submitInfo, fence);
+    std::cerr << "[Device] endSingleTimeCommands - submit (with fence) result=" << submitWithFenceRes << "\n";
+    if (submitWithFenceRes != VK_SUCCESS)
+    {
+      vkDestroyFence(device_, fence, nullptr);
+      std::cerr << "[Device] endSingleTimeCommands - submit failed for cmdBuffer=" << commandBuffer << " VkResult=" << submitWithFenceRes << " thread=" << std::this_thread::get_id() << "\n";
+      throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitWithFenceRes));
+    }
+
+    std::cerr << "[Device] endSingleTimeCommands - waiting for fence (10s timeout)\n";
+    const uint64_t timeoutNs    = 10ull * 1000ull * 1000ull * 1000ull; // 10 seconds
+    VkResult       fenceWaitRes = vkWaitForFences(device_, 1, &fence, VK_TRUE, timeoutNs);
+    if (fenceWaitRes == VK_SUCCESS)
+    {
+      std::cerr << "[Device] endSingleTimeCommands - fence wait succeeded\n";
+    }
+    else if (fenceWaitRes == VK_TIMEOUT)
+    {
+      std::cerr << "[Device] endSingleTimeCommands - fence wait timed out\n";
+      vkDestroyFence(device_, fence, nullptr);
+      throw engine::RuntimeException("vkWaitForFences timed out waiting for single-time command buffer to complete");
+    }
+    else
+    {
+      std::cerr << "[Device] endSingleTimeCommands - fence wait failed: VkResult=" << fenceWaitRes << "\n";
+      vkDestroyFence(device_, fence, nullptr);
+      throw engine::RuntimeException("vkWaitForFences failed: " + std::to_string(fenceWaitRes));
+    }
+
+    vkDestroyFence(device_, fence, nullptr);
 
     std::cerr << "[Device] endSingleTimeCommands - submit OK for cmdBuffer=" << commandBuffer << "\n";
 

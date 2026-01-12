@@ -165,7 +165,7 @@ target("Cube")
     add_includedirs("include", "src/demos/Cube", {public = true})
     add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("Engine", "CubeUI", "EngineImporters")
+    add_deps("Engine", "CubeUI", "EngineImporters", "Shaders")
 
     if is_plat("windows") then
         add_syslinks("vulkan-1")
@@ -267,7 +267,14 @@ target("LightBaker")
         "tinygltf", "stb", "tinyexr"
     )
     add_packages(is_plat("windows") and "vulkan-headers" or "vulkan")
-    add_deps("stb_provider", "EngineImporters", "Engine", "EngineSceneIO", "LightmapBakerLib", "UVUnwrap")
+    add_deps("stb_provider", "EngineImporters", "Engine", "EngineSceneIO", "LightmapBakerLib", "UVUnwrap", "Shaders")
+
+-- Simple EXR inspection utility (reads RGB floats using tinyexr)
+target("InspectEXR")
+    set_kind("binary")
+    set_targetdir("tools")
+    add_files("src/tools/InspectEXR/**.cpp")
+    add_packages("tinyexr")
 
 -- ----------------------------------------------------------------------------
 -- New: Lightmap baking library (stage 1: scene ingestion)

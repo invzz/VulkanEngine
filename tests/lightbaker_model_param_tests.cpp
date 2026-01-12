@@ -79,4 +79,4 @@ TEST_P(LightBakerParamTest, ModelParameterizedResolutions)
 #endif
 }
 
-INSTANTIATE_TEST_SUITE_P(TriangleVariants, LightBakerParamTest, ::testing::Values(ModelParam{"glTF/Triangle/glTF/Triangle.gltf", 4}, ModelParam{"glTF/SimpleMeshes/glTF/SimpleMeshes.gltf", 2}));
+INSTANTIATE_TEST_SUITE_P(CubeVariants, LightBakerParamTest, ::testing::Values(ModelParam{"glTF/Cube/glTF/Cube.gltf", 4}, ModelParam{"glTF/SimpleMeshes/glTF/SimpleMeshes.gltf", 2}));

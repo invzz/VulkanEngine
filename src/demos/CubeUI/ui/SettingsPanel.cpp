@@ -30,13 +30,15 @@ namespace engine {
                                FogSettings&              fogSettings,
                                HZBSettings&              hzbSettings,
                                PostProcessPushConstants& pushConstants,
-                               int&                      debugMode)
-      : skybox_(skybox), showSkybox_(showSkybox), showGrid_(showGrid), skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings), hzbSettings_(hzbSettings)
+                               int&                      debugMode,
+                               bool&                     showBakedRaw)
+      : skybox_(skybox), showSkybox_(showSkybox), showGrid_(showGrid), skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings), hzbSettings_(hzbSettings),
+        showBakedRaw_(showBakedRaw)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
     postProcessPanel_ = std::make_unique<PostProcessPanel>(pushConstants);
-    debugPanel_       = std::make_unique<DebugPanel>(debugMode);
+    debugPanel_       = std::make_unique<DebugPanel>(debugMode, showBakedRaw);
   }
 
   void SettingsPanel::render(FrameInfo& frameInfo)

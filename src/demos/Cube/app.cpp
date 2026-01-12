@@ -142,6 +142,53 @@ namespace engine {
     // 4. Setup UI
     setupUI();
 
+    // If a scene file exists in the working directory, load it at startup and schedule applying its lightmaps
+    if (std::filesystem::exists("scene.json"))
+    {
+      std::cout << "[App] Found scene.json, loading at startup..." << '\n';
+      if (sceneSerializer.deserialize("scene.json"))
+      {
+        std::cout << "[App] Loaded scene.json at startup" << '\n';
+
+        // Reset transient selection state to avoid dangling entt entity references
+        selectedEntity   = entt::null;
+        selectedObjectId = 0;
+        cameraEntity     = entt::null;
+
+        // Find the first camera entity in the loaded scene
+        auto const& registry = scene.getRegistry();
+        auto        view     = registry.view<engine::CameraComponent>();
+        for (auto entity : view)
+        {
+          std::cout << "[App] Found camera entity in loaded scene" << '\n';
+          cameraEntity = entity;
+          break;
+        }
+
+        // If there is no camera, create a default one
+        if (cameraEntity == entt::null)
+        {
+          std::cout << "[App] Creating default camera for the scene" << '\n';
+          cameraEntity = scene.createEntity();
+          scene.getRegistry().emplace<TransformComponent>(cameraEntity);
+          scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
+          scene.getRegistry().emplace<CameraComponent>(cameraEntity);
+        }
+
+        // Schedule manifest load & apply on the next update() tick to avoid concurrent registry mutation
+        std::string           sceneStem    = std::filesystem::path(std::string("scene.json")).stem().string();
+        std::filesystem::path manifestPath = std::filesystem::path(std::string(SCENE_PATH)) / (sceneStem + std::string("_lightmaps.json"));
+        pendingSceneLightmapManifest       = manifestPath.string();
+        pendingApplySceneLightmaps         = true;
+        pendingUpdateCameraAfterSceneLoad  = true;
+        std::cout << "[App] Scheduled applying scene lightmaps from: " << manifestPath << '\n';
+      }
+      else
+      {
+        std::cout << "[App] Failed to deserialize scene.json at startup" << '\n';
+      }
+    }
+
     // 5. Setup Render Graph
     setupRenderGraph();
   }
@@ -357,8 +404,19 @@ namespace engine {
     uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem, resourceManager));
     uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
     uiManager->addPanel(std::make_unique<LightsPanel>(scene));
-    uiManager->addPanel(
-            std::make_unique<SettingsPanel>(cameraEntity, &scene, *iblSystem, &skybox, showSkybox, showGrid, skySettings, dustSettings, fogSettings, hzbSettings, postProcessPush, debugMode));
+    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity,
+                                                        &scene,
+                                                        *iblSystem,
+                                                        &skybox,
+                                                        showSkybox,
+                                                        showGrid,
+                                                        skySettings,
+                                                        dustSettings,
+                                                        fogSettings,
+                                                        hzbSettings,
+                                                        postProcessPush,
+                                                        debugMode,
+                                                        showBakedDebugRaw));
   }
 
   void App::setupRenderGraph()
@@ -832,6 +890,7 @@ namespace engine {
     ubo.directionalCascadeBaseIndex = state.shadowSystem.getDirectionalCascadeBaseIndex();
     ubo.directionalCascadeSplits    = state.shadowSystem.getDirectionalCascadeSplits();
     ubo.debugMode                   = debugMode;
+    ubo.bakedDebugRaw               = showBakedDebugRaw ? 1 : 0;
 
     // Fog Logic
     glm::vec3 horizonColor   = fogSettings.color;

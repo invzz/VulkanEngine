@@ -3,6 +3,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <cstddef>
+
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 
@@ -75,7 +77,11 @@ namespace engine {
     int       directionalCascadeCount     = 0;
     int       directionalCascadeBaseIndex = 0; // Index into lightSpaceMatrices / shadowMaps
     int       debugMode                   = 0; // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting, 6: Lightmap Only
-    // Note: 8 ints = 32 bytes, already 16-byte aligned - no padding needed before vec4 array
+    int       bakedDebugRaw               = 0; // When set, baked-light debug (11) displays raw linear values
+    // std140 requires vec4-aligned data after arrays of ints; add padding to match std140 layout
+    int       _padDebug0 = 0;
+    int       _padDebug1 = 0;
+    int       _padDebug2 = 0;
     glm::vec4 frustumPlanes[6]; // Frustum planes for culling (Left, Right,
                                 // Bottom, Top, Near, Far)
     glm::vec4 fogColor;         // xyz = Horizon Color, w = density
@@ -91,6 +97,9 @@ namespace engine {
     float hzbScreenSizeScale = 1.0f; // Mip selection bias
     int   hzbEnabled         = 1;    // 0 = disabled, 1 = enabled
   };
+
+  static_assert(offsetof(GlobalUbo, frustumPlanes) % 16 == 0, "GlobalUbo::frustumPlanes must be 16-byte aligned for std140");
+  static_assert(sizeof(GlobalUbo) % 16 == 0, "GlobalUbo size must be a multiple of 16 bytes for std140");
 
   struct FrameInfo
   {

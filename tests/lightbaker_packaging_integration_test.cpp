@@ -24,7 +24,7 @@ TEST(LightBaker, EndToEnd_EXR_To_VTEX_Packaging)
 {
 #ifdef LIGHT_BAKER_PATH
 #ifdef MODEL_PATH
-  const std::string modelPath = std::string(MODEL_PATH) + "glTF/Triangle/glTF/Triangle.gltf";
+  const std::string modelPath = std::string(MODEL_PATH) + "glTF/Cube/glTF/Cube.gltf";
 #else
   GTEST_SKIP() << "MODEL_PATH macro not defined";
 #endif

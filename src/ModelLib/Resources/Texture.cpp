@@ -67,6 +67,7 @@ namespace engine {
     // Choose format based on whether this is an sRGB texture (color) or linear
     // (data)
     VkFormat const format = srgb ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
+    format_               = format;
 
     // Create Vulkan image
     createImage(width_,
@@ -121,6 +122,7 @@ namespace engine {
   // Private constructor for creating textures from memory
   Texture::Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format) : device_{device}, width_{width}, height_{height}
   {
+    format_                      = format;
     VkDeviceSize const imageSize = width_ * height_ * 4; // RGBA
     mipLevels_                   = 1;                    // No mipmaps for default textures
 
@@ -186,7 +188,7 @@ namespace engine {
 
     if (rgba == nullptr || width <= 0 || height <= 0)
     {
-      if (rgba) free(rgba);
+      if (rgba != nullptr) free(rgba);
       throw std::runtime_error("Invalid EXR image data: " + filepath);
     }
 
@@ -212,8 +214,8 @@ namespace engine {
     if (exp == 255)
     {
       // Inf or NaN
-      if (mant) return static_cast<uint16_t>(sign | 0x7c01u); // NaN
-      return static_cast<uint16_t>(sign | 0x7c00u);           // Inf
+      if (mant != 0u) return static_cast<uint16_t>(sign | 0x7c01u); // NaN
+      return static_cast<uint16_t>(sign | 0x7c00u);                 // Inf
     }
     int32_t newexp = static_cast<int32_t>(exp) - 127 + 15;
     if (newexp >= 31)
@@ -255,7 +257,7 @@ namespace engine {
 
     if (rgba == nullptr || width <= 0 || height <= 0)
     {
-      if (rgba) free(rgba);
+      if (rgba != nullptr) free(rgba);
       throw std::runtime_error("Invalid EXR image data: " + exrPath);
     }
 
@@ -274,7 +276,9 @@ namespace engine {
       std::vector<uint16_t> halfs;
       halfs.reserve(count);
       for (size_t i = 0; i < count; ++i)
+      {
         halfs.push_back(floatToHalf(rgba[i]));
+      }
       ok = ibl_detail::vtex::writeImageFromRaw(outVtexPath,
                                                halfs.data(),
                                                halfs.size() * sizeof(uint16_t),
@@ -289,7 +293,7 @@ namespace engine {
       // Use external Compressonator CLI if available to produce BC6H compressed DDS from EXR.
       // Expected CLI: CompressonatorCLI -fd BC6H <in.exr> <out.dds>
       const char* envCli  = std::getenv("COMPRESSONATOR_CLI");
-      std::string cliPath = envCli ? envCli : std::string();
+      std::string cliPath = (envCli != nullptr) ? envCli : std::string();
 #ifdef COMPRESSONATOR_CLI
       if (cliPath.empty())
       {
@@ -301,26 +305,38 @@ namespace engine {
       {
         // check common locations in repo or installed paths
         if (std::filesystem::exists("tools/Compressonator/CompressonatorCLI"))
+        {
           cliPath = "tools/Compressonator/CompressonatorCLI";
+        }
         else if (std::filesystem::exists("tools/Compressonator/compressonatorcli-bin"))
+        {
           cliPath = "tools/Compressonator/compressonatorcli-bin";
+        }
         else if (std::filesystem::exists("tools/Compressonator/compressonatorcli"))
+        {
           cliPath = "tools/Compressonator/compressonatorcli";
+        }
         else if (std::filesystem::exists("external/compressonator/CompressonatorCLI"))
+        {
           cliPath = "external/compressonator/CompressonatorCLI";
+        }
         else if (std::filesystem::exists("/usr/bin/compressonatorcli"))
+        {
           cliPath = "/usr/bin/compressonatorcli";
+        }
       }
 
       if (cliPath.empty())
       {
         // Fall back gracefully to R16F conversion so CI remains deterministic
-        std::cerr << "[Texture] BC6H requested but Compressonator CLI not found; falling back to R16F" << std::endl;
+        std::cerr << "[Texture] BC6H requested but Compressonator CLI not found; falling back to R16F" << '\n';
         size_t                count = static_cast<size_t>(4) * static_cast<size_t>(width) * static_cast<size_t>(height);
         std::vector<uint16_t> halfs;
         halfs.reserve(count);
         for (size_t i = 0; i < count; ++i)
+        {
           halfs.push_back(floatToHalf(rgba[i]));
+        }
         ok = ibl_detail::vtex::writeImageFromRaw(outVtexPath,
                                                  halfs.data(),
                                                  halfs.size() * sizeof(uint16_t),
@@ -344,13 +360,15 @@ namespace engine {
         int sc = std::system(cmd.c_str());
         if (sc != 0 || !std::filesystem::exists(tmpDds))
         {
-          std::cerr << "[Texture] Compressonator CLI failed (rc=" << sc << "); falling back to R16F" << std::endl;
+          std::cerr << "[Texture] Compressonator CLI failed (rc=" << sc << "); falling back to R16F" << '\n';
           // fallback to r16f
           size_t                count = static_cast<size_t>(4) * static_cast<size_t>(width) * static_cast<size_t>(height);
           std::vector<uint16_t> halfs;
           halfs.reserve(count);
           for (size_t i = 0; i < count; ++i)
+          {
             halfs.push_back(floatToHalf(rgba[i]));
+          }
           ok = ibl_detail::vtex::writeImageFromRaw(outVtexPath,
                                                    halfs.data(),
                                                    halfs.size() * sizeof(uint16_t),
@@ -448,16 +466,15 @@ namespace engine {
   }
 
   Texture::Texture(Device& device, VkImage image, VkDeviceMemory memory, VkImageView view, VkSampler sampler, int width, int height, uint32_t mipLevels, VkFormat format)
-      : device_{device}, image_{image}, imageMemory_{memory}, imageView_{view}, sampler_{sampler}, width_{width}, height_{height}, mipLevels_{mipLevels}
+      : device_{device}, image_{image}, imageMemory_{memory}, imageView_{view}, sampler_{sampler}, width_{width}, height_{height}, mipLevels_{mipLevels}, format_{format}
   {
     // Constructor adopts externally-created Vulkan handles; nothing else to do
-    (void)format; // format is metadata here; image/view already created with correct format
   }
 
   // CPU-only constructor: does not create GPU resources, used for test-only metadata verification
   Texture::Texture(Device& device, int width, int height, uint32_t mipLevels, VkFormat format, bool cpuOnly) : device_{device}, width_{width}, height_{height}, mipLevels_{mipLevels}, cpuOnly_{cpuOnly}
   {
-    (void)format;
+    format_      = format;
     image_       = VK_NULL_HANDLE;
     imageMemory_ = VK_NULL_HANDLE;
     imageView_   = VK_NULL_HANDLE;
@@ -731,7 +748,7 @@ namespace engine {
 
     for (uint32_t level = 0; level < mipLevels_; ++level)
     {
-      totalSize += w * h * 4; // 4 bytes per pixel (RGBA8)
+      totalSize += static_cast<size_t>(w * h * 4); // 4 bytes per pixel (RGBA8)
       w = std::max(1, w / 2);
       h = std::max(1, h / 2);
     }

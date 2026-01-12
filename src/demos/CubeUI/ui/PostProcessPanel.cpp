@@ -60,6 +60,13 @@ namespace engine {
       ImGui::DragFloat("SSAO Bias", &pushConstants.ssaoBias, 0.001f, 0.0f, 0.5f);
     }
 
+    // Baked map debug display: raw linear vs display-scaled
+    bool bakedRaw = pushConstants.bakedRaw == 1;
+    if (ImGui::Checkbox("Baked Light: Raw Linear (no tone/gamma)", &bakedRaw))
+    {
+      pushConstants.bakedRaw = bakedRaw ? 1 : 0;
+    }
+
     if (ImGui::Button("Reset"))
     {
       pushConstants.exposure        = 1.0f;

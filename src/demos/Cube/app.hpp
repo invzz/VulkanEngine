@@ -12,7 +12,6 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
@@ -20,6 +19,7 @@
 #include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine {
 
@@ -105,7 +105,8 @@ namespace engine {
     ResourceManager resourceManager{device};
     Scene           scene;
     SceneSerializer sceneSerializer{scene, resourceManager};
-    int             debugMode = 0;
+    int             debugMode         = 0;
+    bool            showBakedDebugRaw = false;
 
     // Core Systems
     std::unique_ptr<RenderContext> renderContext;

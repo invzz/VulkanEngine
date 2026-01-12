@@ -7,11 +7,12 @@ namespace engine {
   class DebugPanel : public UIPanel
   {
   public:
-    explicit DebugPanel(int& debugMode);
+    explicit DebugPanel(int& debugMode, bool& showBakedRaw);
     void render(FrameInfo& frameInfo) override;
 
   private:
-    int& debugMode_;
+    int&  debugMode_;
+    bool& showBakedRaw_;
   };
 } // namespace engine
 

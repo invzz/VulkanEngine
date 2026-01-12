@@ -154,14 +154,35 @@ void main()
     return;
   }
 
-  // Debug mode 11: Baked RGB light visualization (scaled for visibility)
+  // Debug mode 11: Baked RGB light visualization
   if (ubo.debugMode == 11)
   {
     vec3 bakedDbg = texture(gbufferBaked, inUV).rgb;
+    // Some bakes are stored as a single (red) channel. Replicate to avoid tinting.
+    if (bakedDbg.g < 1e-6 && bakedDbg.b < 1e-6)
+    {
+      bakedDbg = vec3(bakedDbg.r);
+    }
+
+    // Raw display option: show linear values without tone/gamma
+    if (ubo.bakedDebugRaw == 1)
+    {
+      // Show raw linear RGB (clamped to non-negative)
+      outColor = vec4(max(bakedDbg, vec3(0.0)), 1.0);
+      return;
+    }
+
     // Some bakes are low-intensity (ambient-like); scale for debug visibility.
     const float debugScale = 6.0;
-    vec3        scaled     = bakedDbg * debugScale;
-    outColor               = vec4(clamp(scaled, vec3(0.0), vec3(1.0)), 1.0);
+    vec3        scaled     = clamp(bakedDbg * debugScale, vec3(0.0), vec3(1.0));
+
+    // Avoid showing nothing (black) on completely zero maps
+    if (scaled == vec3(0.0))
+    {
+      scaled = vec3(0.0);
+    }
+
+    outColor = vec4(scaled, 1.0);
     return;
   }
 

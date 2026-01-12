@@ -1,0 +1,2894 @@
+{
+  "lightmapBindings": {
+    "1": {
+      "meshes": [
+        {
+          "lightmap": "lightmaps/scene/lm_b03cf832_Sponza_n0_p0.vtex",
+          "lightmapId": "lm_b03cf832",
+          "primitiveIndex": 0,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_7e7133cc_Sponza_n0_p1.vtex",
+          "lightmapId": "lm_7e7133cc",
+          "primitiveIndex": 1,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_41d5811c_Sponza_n0_p2.vtex",
+          "lightmapId": "lm_41d5811c",
+          "primitiveIndex": 2,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_373964da_Sponza_n0_p3.vtex",
+          "lightmapId": "lm_373964da",
+          "primitiveIndex": 3,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b69b69f6_Sponza_n0_p4.vtex",
+          "lightmapId": "lm_b69b69f6",
+          "primitiveIndex": 4,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_6060ea2f_Sponza_n0_p5.vtex",
+          "lightmapId": "lm_6060ea2f",
+          "primitiveIndex": 5,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_c694dfa7_Sponza_n0_p6.vtex",
+          "lightmapId": "lm_c694dfa7",
+          "primitiveIndex": 6,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_d4d9b2ba_Sponza_n0_p7.vtex",
+          "lightmapId": "lm_d4d9b2ba",
+          "primitiveIndex": 7,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_5462ff6b_Sponza_n0_p8.vtex",
+          "lightmapId": "lm_5462ff6b",
+          "primitiveIndex": 8,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_9a1f3ff4_Sponza_n0_p9.vtex",
+          "lightmapId": "lm_9a1f3ff4",
+          "primitiveIndex": 9,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_7325fc32_Sponza_n0_p10.vtex",
+          "lightmapId": "lm_7325fc32",
+          "primitiveIndex": 10,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_dbd92d96_Sponza_n0_p11.vtex",
+          "lightmapId": "lm_dbd92d96",
+          "primitiveIndex": 11,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_2f61571e_Sponza_n0_p12.vtex",
+          "lightmapId": "lm_2f61571e",
+          "primitiveIndex": 12,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_ad2c2eaa_Sponza_n0_p13.vtex",
+          "lightmapId": "lm_ad2c2eaa",
+          "primitiveIndex": 13,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_cce3e372_Sponza_n0_p14.vtex",
+          "lightmapId": "lm_cce3e372",
+          "primitiveIndex": 14,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_a379bb64_Sponza_n0_p15.vtex",
+          "lightmapId": "lm_a379bb64",
+          "primitiveIndex": 15,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_06b8a0e4_Sponza_n0_p16.vtex",
+          "lightmapId": "lm_06b8a0e4",
+          "primitiveIndex": 16,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_9a2c3988_Sponza_n0_p17.vtex",
+          "lightmapId": "lm_9a2c3988",
+          "primitiveIndex": 17,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_3feaf5fe_Sponza_n0_p18.vtex",
+          "lightmapId": "lm_3feaf5fe",
+          "primitiveIndex": 18,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_ff9092a2_Sponza_n0_p19.vtex",
+          "lightmapId": "lm_ff9092a2",
+          "primitiveIndex": 19,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_2f6af7a3_Sponza_n0_p20.vtex",
+          "lightmapId": "lm_2f6af7a3",
+          "primitiveIndex": 20,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_f570cbf9_Sponza_n0_p21.vtex",
+          "lightmapId": "lm_f570cbf9",
+          "primitiveIndex": 21,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_6e114b97_Sponza_n0_p22.vtex",
+          "lightmapId": "lm_6e114b97",
+          "primitiveIndex": 22,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_27ee12da_Sponza_n0_p23.vtex",
+          "lightmapId": "lm_27ee12da",
+          "primitiveIndex": 23,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b50c10a8_Sponza_n0_p24.vtex",
+          "lightmapId": "lm_b50c10a8",
+          "primitiveIndex": 24,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_863a5cb6_Sponza_n0_p25.vtex",
+          "lightmapId": "lm_863a5cb6",
+          "primitiveIndex": 25,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b0ff16ec_Sponza_n0_p26.vtex",
+          "lightmapId": "lm_b0ff16ec",
+          "primitiveIndex": 26,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_df7aa28d_Sponza_n0_p27.vtex",
+          "lightmapId": "lm_df7aa28d",
+          "primitiveIndex": 27,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_ae135c22_Sponza_n0_p28.vtex",
+          "lightmapId": "lm_ae135c22",
+          "primitiveIndex": 28,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b4bf0b75_Sponza_n0_p29.vtex",
+          "lightmapId": "lm_b4bf0b75",
+          "primitiveIndex": 29,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_3e8b96fc_Sponza_n0_p30.vtex",
+          "lightmapId": "lm_3e8b96fc",
+          "primitiveIndex": 30,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_d88e5921_Sponza_n0_p31.vtex",
+          "lightmapId": "lm_d88e5921",
+          "primitiveIndex": 31,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_32156f58_Sponza_n0_p32.vtex",
+          "lightmapId": "lm_32156f58",
+          "primitiveIndex": 32,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_30e06638_Sponza_n0_p33.vtex",
+          "lightmapId": "lm_30e06638",
+          "primitiveIndex": 33,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_2601f538_Sponza_n0_p34.vtex",
+          "lightmapId": "lm_2601f538",
+          "primitiveIndex": 34,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_cf0b8eaf_Sponza_n0_p35.vtex",
+          "lightmapId": "lm_cf0b8eaf",
+          "primitiveIndex": 35,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_5d4c7786_Sponza_n0_p36.vtex",
+          "lightmapId": "lm_5d4c7786",
+          "primitiveIndex": 36,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_a6069db7_Sponza_n0_p37.vtex",
+          "lightmapId": "lm_a6069db7",
+          "primitiveIndex": 37,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_d8047455_Sponza_n0_p38.vtex",
+          "lightmapId": "lm_d8047455",
+          "primitiveIndex": 38,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_044b509f_Sponza_n0_p39.vtex",
+          "lightmapId": "lm_044b509f",
+          "primitiveIndex": 39,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_55faf845_Sponza_n0_p40.vtex",
+          "lightmapId": "lm_55faf845",
+          "primitiveIndex": 40,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_11771986_Sponza_n0_p41.vtex",
+          "lightmapId": "lm_11771986",
+          "primitiveIndex": 41,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_78e1dbdb_Sponza_n0_p42.vtex",
+          "lightmapId": "lm_78e1dbdb",
+          "primitiveIndex": 42,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_e39a2c39_Sponza_n0_p43.vtex",
+          "lightmapId": "lm_e39a2c39",
+          "primitiveIndex": 43,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_e19776a2_Sponza_n0_p44.vtex",
+          "lightmapId": "lm_e19776a2",
+          "primitiveIndex": 44,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_67534edf_Sponza_n0_p45.vtex",
+          "lightmapId": "lm_67534edf",
+          "primitiveIndex": 45,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_910d8ba0_Sponza_n0_p46.vtex",
+          "lightmapId": "lm_910d8ba0",
+          "primitiveIndex": 46,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_92865cb4_Sponza_n0_p47.vtex",
+          "lightmapId": "lm_92865cb4",
+          "primitiveIndex": 47,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_c799e2e3_Sponza_n0_p48.vtex",
+          "lightmapId": "lm_c799e2e3",
+          "primitiveIndex": 48,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_47865099_Sponza_n0_p49.vtex",
+          "lightmapId": "lm_47865099",
+          "primitiveIndex": 49,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b2de945d_Sponza_n0_p50.vtex",
+          "lightmapId": "lm_b2de945d",
+          "primitiveIndex": 50,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_34c3e86e_Sponza_n0_p51.vtex",
+          "lightmapId": "lm_34c3e86e",
+          "primitiveIndex": 51,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_574e01f1_Sponza_n0_p52.vtex",
+          "lightmapId": "lm_574e01f1",
+          "primitiveIndex": 52,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_62178d88_Sponza_n0_p53.vtex",
+          "lightmapId": "lm_62178d88",
+          "primitiveIndex": 53,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_29cc86f1_Sponza_n0_p54.vtex",
+          "lightmapId": "lm_29cc86f1",
+          "primitiveIndex": 54,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_f17998c9_Sponza_n0_p55.vtex",
+          "lightmapId": "lm_f17998c9",
+          "primitiveIndex": 55,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b8facb26_Sponza_n0_p56.vtex",
+          "lightmapId": "lm_b8facb26",
+          "primitiveIndex": 56,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_d44731fa_Sponza_n0_p57.vtex",
+          "lightmapId": "lm_d44731fa",
+          "primitiveIndex": 57,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_5f495ba2_Sponza_n0_p58.vtex",
+          "lightmapId": "lm_5f495ba2",
+          "primitiveIndex": 58,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_ab9dbccf_Sponza_n0_p59.vtex",
+          "lightmapId": "lm_ab9dbccf",
+          "primitiveIndex": 59,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_e68cecde_Sponza_n0_p60.vtex",
+          "lightmapId": "lm_e68cecde",
+          "primitiveIndex": 60,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_18185834_Sponza_n0_p61.vtex",
+          "lightmapId": "lm_18185834",
+          "primitiveIndex": 61,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_2e2bb0be_Sponza_n0_p62.vtex",
+          "lightmapId": "lm_2e2bb0be",
+          "primitiveIndex": 62,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_4234ba64_Sponza_n0_p63.vtex",
+          "lightmapId": "lm_4234ba64",
+          "primitiveIndex": 63,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_df1f13bb_Sponza_n0_p64.vtex",
+          "lightmapId": "lm_df1f13bb",
+          "primitiveIndex": 64,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_95dd01c2_Sponza_n0_p65.vtex",
+          "lightmapId": "lm_95dd01c2",
+          "primitiveIndex": 65,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_1ef5e86d_Sponza_n0_p66.vtex",
+          "lightmapId": "lm_1ef5e86d",
+          "primitiveIndex": 66,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_75b477bd_Sponza_n0_p67.vtex",
+          "lightmapId": "lm_75b477bd",
+          "primitiveIndex": 67,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_96d7886f_Sponza_n0_p68.vtex",
+          "lightmapId": "lm_96d7886f",
+          "primitiveIndex": 68,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_2e575338_Sponza_n0_p69.vtex",
+          "lightmapId": "lm_2e575338",
+          "primitiveIndex": 69,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_c5b76e91_Sponza_n0_p70.vtex",
+          "lightmapId": "lm_c5b76e91",
+          "primitiveIndex": 70,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_3418ac46_Sponza_n0_p71.vtex",
+          "lightmapId": "lm_3418ac46",
+          "primitiveIndex": 71,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_58d72e3f_Sponza_n0_p72.vtex",
+          "lightmapId": "lm_58d72e3f",
+          "primitiveIndex": 72,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_0aeb712c_Sponza_n0_p73.vtex",
+          "lightmapId": "lm_0aeb712c",
+          "primitiveIndex": 73,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_c12260cc_Sponza_n0_p74.vtex",
+          "lightmapId": "lm_c12260cc",
+          "primitiveIndex": 74,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_ed28b2c9_Sponza_n0_p75.vtex",
+          "lightmapId": "lm_ed28b2c9",
+          "primitiveIndex": 75,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_09b512b9_Sponza_n0_p76.vtex",
+          "lightmapId": "lm_09b512b9",
+          "primitiveIndex": 76,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_c99fa79d_Sponza_n0_p77.vtex",
+          "lightmapId": "lm_c99fa79d",
+          "primitiveIndex": 77,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b1b518e9_Sponza_n0_p78.vtex",
+          "lightmapId": "lm_b1b518e9",
+          "primitiveIndex": 78,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_bd4cfa7c_Sponza_n0_p79.vtex",
+          "lightmapId": "lm_bd4cfa7c",
+          "primitiveIndex": 79,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_7f97fae8_Sponza_n0_p80.vtex",
+          "lightmapId": "lm_7f97fae8",
+          "primitiveIndex": 80,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_cdb1fd22_Sponza_n0_p81.vtex",
+          "lightmapId": "lm_cdb1fd22",
+          "primitiveIndex": 81,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_89f2ab44_Sponza_n0_p82.vtex",
+          "lightmapId": "lm_89f2ab44",
+          "primitiveIndex": 82,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_1da6192f_Sponza_n0_p83.vtex",
+          "lightmapId": "lm_1da6192f",
+          "primitiveIndex": 83,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_37526ced_Sponza_n0_p84.vtex",
+          "lightmapId": "lm_37526ced",
+          "primitiveIndex": 84,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_ede3ffde_Sponza_n0_p85.vtex",
+          "lightmapId": "lm_ede3ffde",
+          "primitiveIndex": 85,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_c11358af_Sponza_n0_p86.vtex",
+          "lightmapId": "lm_c11358af",
+          "primitiveIndex": 86,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b90cf39e_Sponza_n0_p87.vtex",
+          "lightmapId": "lm_b90cf39e",
+          "primitiveIndex": 87,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_1040ace3_Sponza_n0_p88.vtex",
+          "lightmapId": "lm_1040ace3",
+          "primitiveIndex": 88,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_b72e0453_Sponza_n0_p89.vtex",
+          "lightmapId": "lm_b72e0453",
+          "primitiveIndex": 89,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_09c2720b_Sponza_n0_p90.vtex",
+          "lightmapId": "lm_09c2720b",
+          "primitiveIndex": 90,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_af63c408_Sponza_n0_p91.vtex",
+          "lightmapId": "lm_af63c408",
+          "primitiveIndex": 91,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_1072dcb7_Sponza_n0_p92.vtex",
+          "lightmapId": "lm_1072dcb7",
+          "primitiveIndex": 92,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_bbd872e1_Sponza_n0_p93.vtex",
+          "lightmapId": "lm_bbd872e1",
+          "primitiveIndex": 93,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_4e05e61b_Sponza_n0_p94.vtex",
+          "lightmapId": "lm_4e05e61b",
+          "primitiveIndex": 94,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_529e5621_Sponza_n0_p95.vtex",
+          "lightmapId": "lm_529e5621",
+          "primitiveIndex": 95,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_f90a5b8f_Sponza_n0_p96.vtex",
+          "lightmapId": "lm_f90a5b8f",
+          "primitiveIndex": 96,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_4fce63e0_Sponza_n0_p97.vtex",
+          "lightmapId": "lm_4fce63e0",
+          "primitiveIndex": 97,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_d01c3e3b_Sponza_n0_p98.vtex",
+          "lightmapId": "lm_d01c3e3b",
+          "primitiveIndex": 98,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_790018e8_Sponza_n0_p99.vtex",
+          "lightmapId": "lm_790018e8",
+          "primitiveIndex": 99,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_7e1837e1_Sponza_n0_p100.vtex",
+          "lightmapId": "lm_7e1837e1",
+          "primitiveIndex": 100,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_84b90737_Sponza_n0_p101.vtex",
+          "lightmapId": "lm_84b90737",
+          "primitiveIndex": 101,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        },
+        {
+          "lightmap": "lightmaps/scene/lm_6106c2a9_Sponza_n0_p102.vtex",
+          "lightmapId": "lm_6106c2a9",
+          "primitiveIndex": 102,
+          "resolution": [
+            256,
+            256
+          ],
+          "uvChannel": 1,
+          "uvOffset": [
+            0.0,
+            0.0
+          ],
+          "uvScale": [
+            0.9995412826538086,
+            0.9995421171188354
+          ]
+        }
+      ]
+    }
+  },
+  "lightmaps": [
+    {
+      "file": "lightmaps/scene/lm_6106c2a9_Sponza_n0_p102.vtex",
+      "format": "vtex",
+      "id": "lm_6106c2a9",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_84b90737_Sponza_n0_p101.vtex",
+      "format": "vtex",
+      "id": "lm_84b90737",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_7e1837e1_Sponza_n0_p100.vtex",
+      "format": "vtex",
+      "id": "lm_7e1837e1",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_d01c3e3b_Sponza_n0_p98.vtex",
+      "format": "vtex",
+      "id": "lm_d01c3e3b",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_4fce63e0_Sponza_n0_p97.vtex",
+      "format": "vtex",
+      "id": "lm_4fce63e0",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_529e5621_Sponza_n0_p95.vtex",
+      "format": "vtex",
+      "id": "lm_529e5621",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_bbd872e1_Sponza_n0_p93.vtex",
+      "format": "vtex",
+      "id": "lm_bbd872e1",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_af63c408_Sponza_n0_p91.vtex",
+      "format": "vtex",
+      "id": "lm_af63c408",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_09c2720b_Sponza_n0_p90.vtex",
+      "format": "vtex",
+      "id": "lm_09c2720b",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b90cf39e_Sponza_n0_p87.vtex",
+      "format": "vtex",
+      "id": "lm_b90cf39e",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_37526ced_Sponza_n0_p84.vtex",
+      "format": "vtex",
+      "id": "lm_37526ced",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_89f2ab44_Sponza_n0_p82.vtex",
+      "format": "vtex",
+      "id": "lm_89f2ab44",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_cdb1fd22_Sponza_n0_p81.vtex",
+      "format": "vtex",
+      "id": "lm_cdb1fd22",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_7f97fae8_Sponza_n0_p80.vtex",
+      "format": "vtex",
+      "id": "lm_7f97fae8",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b1b518e9_Sponza_n0_p78.vtex",
+      "format": "vtex",
+      "id": "lm_b1b518e9",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_790018e8_Sponza_n0_p99.vtex",
+      "format": "vtex",
+      "id": "lm_790018e8",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_1040ace3_Sponza_n0_p88.vtex",
+      "format": "vtex",
+      "id": "lm_1040ace3",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_c99fa79d_Sponza_n0_p77.vtex",
+      "format": "vtex",
+      "id": "lm_c99fa79d",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_09b512b9_Sponza_n0_p76.vtex",
+      "format": "vtex",
+      "id": "lm_09b512b9",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_c12260cc_Sponza_n0_p74.vtex",
+      "format": "vtex",
+      "id": "lm_c12260cc",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_1072dcb7_Sponza_n0_p92.vtex",
+      "format": "vtex",
+      "id": "lm_1072dcb7",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_0aeb712c_Sponza_n0_p73.vtex",
+      "format": "vtex",
+      "id": "lm_0aeb712c",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_58d72e3f_Sponza_n0_p72.vtex",
+      "format": "vtex",
+      "id": "lm_58d72e3f",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_3418ac46_Sponza_n0_p71.vtex",
+      "format": "vtex",
+      "id": "lm_3418ac46",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_1ef5e86d_Sponza_n0_p66.vtex",
+      "format": "vtex",
+      "id": "lm_1ef5e86d",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_df1f13bb_Sponza_n0_p64.vtex",
+      "format": "vtex",
+      "id": "lm_df1f13bb",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_ede3ffde_Sponza_n0_p85.vtex",
+      "format": "vtex",
+      "id": "lm_ede3ffde",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_e68cecde_Sponza_n0_p60.vtex",
+      "format": "vtex",
+      "id": "lm_e68cecde",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_2e2bb0be_Sponza_n0_p62.vtex",
+      "format": "vtex",
+      "id": "lm_2e2bb0be",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_ab9dbccf_Sponza_n0_p59.vtex",
+      "format": "vtex",
+      "id": "lm_ab9dbccf",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b0ff16ec_Sponza_n0_p26.vtex",
+      "format": "vtex",
+      "id": "lm_b0ff16ec",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_bd4cfa7c_Sponza_n0_p79.vtex",
+      "format": "vtex",
+      "id": "lm_bd4cfa7c",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_ed28b2c9_Sponza_n0_p75.vtex",
+      "format": "vtex",
+      "id": "lm_ed28b2c9",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_2e575338_Sponza_n0_p69.vtex",
+      "format": "vtex",
+      "id": "lm_2e575338",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_92865cb4_Sponza_n0_p47.vtex",
+      "format": "vtex",
+      "id": "lm_92865cb4",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_75b477bd_Sponza_n0_p67.vtex",
+      "format": "vtex",
+      "id": "lm_75b477bd",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_6e114b97_Sponza_n0_p22.vtex",
+      "format": "vtex",
+      "id": "lm_6e114b97",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_06b8a0e4_Sponza_n0_p16.vtex",
+      "format": "vtex",
+      "id": "lm_06b8a0e4",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_ff9092a2_Sponza_n0_p19.vtex",
+      "format": "vtex",
+      "id": "lm_ff9092a2",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_78e1dbdb_Sponza_n0_p42.vtex",
+      "format": "vtex",
+      "id": "lm_78e1dbdb",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_cce3e372_Sponza_n0_p14.vtex",
+      "format": "vtex",
+      "id": "lm_cce3e372",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_ae135c22_Sponza_n0_p28.vtex",
+      "format": "vtex",
+      "id": "lm_ae135c22",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_96d7886f_Sponza_n0_p68.vtex",
+      "format": "vtex",
+      "id": "lm_96d7886f",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_47865099_Sponza_n0_p49.vtex",
+      "format": "vtex",
+      "id": "lm_47865099",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_dbd92d96_Sponza_n0_p11.vtex",
+      "format": "vtex",
+      "id": "lm_dbd92d96",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b03cf832_Sponza_n0_p0.vtex",
+      "format": "vtex",
+      "id": "lm_b03cf832",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_a379bb64_Sponza_n0_p15.vtex",
+      "format": "vtex",
+      "id": "lm_a379bb64",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b50c10a8_Sponza_n0_p24.vtex",
+      "format": "vtex",
+      "id": "lm_b50c10a8",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_29cc86f1_Sponza_n0_p54.vtex",
+      "format": "vtex",
+      "id": "lm_29cc86f1",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_4e05e61b_Sponza_n0_p94.vtex",
+      "format": "vtex",
+      "id": "lm_4e05e61b",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_f570cbf9_Sponza_n0_p21.vtex",
+      "format": "vtex",
+      "id": "lm_f570cbf9",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_7e7133cc_Sponza_n0_p1.vtex",
+      "format": "vtex",
+      "id": "lm_7e7133cc",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_95dd01c2_Sponza_n0_p65.vtex",
+      "format": "vtex",
+      "id": "lm_95dd01c2",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_5462ff6b_Sponza_n0_p8.vtex",
+      "format": "vtex",
+      "id": "lm_5462ff6b",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_41d5811c_Sponza_n0_p2.vtex",
+      "format": "vtex",
+      "id": "lm_41d5811c",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_18185834_Sponza_n0_p61.vtex",
+      "format": "vtex",
+      "id": "lm_18185834",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_d4d9b2ba_Sponza_n0_p7.vtex",
+      "format": "vtex",
+      "id": "lm_d4d9b2ba",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_df7aa28d_Sponza_n0_p27.vtex",
+      "format": "vtex",
+      "id": "lm_df7aa28d",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_27ee12da_Sponza_n0_p23.vtex",
+      "format": "vtex",
+      "id": "lm_27ee12da",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b69b69f6_Sponza_n0_p4.vtex",
+      "format": "vtex",
+      "id": "lm_b69b69f6",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_f90a5b8f_Sponza_n0_p96.vtex",
+      "format": "vtex",
+      "id": "lm_f90a5b8f",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_e19776a2_Sponza_n0_p44.vtex",
+      "format": "vtex",
+      "id": "lm_e19776a2",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_863a5cb6_Sponza_n0_p25.vtex",
+      "format": "vtex",
+      "id": "lm_863a5cb6",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_6060ea2f_Sponza_n0_p5.vtex",
+      "format": "vtex",
+      "id": "lm_6060ea2f",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_4234ba64_Sponza_n0_p63.vtex",
+      "format": "vtex",
+      "id": "lm_4234ba64",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_c694dfa7_Sponza_n0_p6.vtex",
+      "format": "vtex",
+      "id": "lm_c694dfa7",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_67534edf_Sponza_n0_p45.vtex",
+      "format": "vtex",
+      "id": "lm_67534edf",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_30e06638_Sponza_n0_p33.vtex",
+      "format": "vtex",
+      "id": "lm_30e06638",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_ad2c2eaa_Sponza_n0_p13.vtex",
+      "format": "vtex",
+      "id": "lm_ad2c2eaa",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_7325fc32_Sponza_n0_p10.vtex",
+      "format": "vtex",
+      "id": "lm_7325fc32",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_9a1f3ff4_Sponza_n0_p9.vtex",
+      "format": "vtex",
+      "id": "lm_9a1f3ff4",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_32156f58_Sponza_n0_p32.vtex",
+      "format": "vtex",
+      "id": "lm_32156f58",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_2f61571e_Sponza_n0_p12.vtex",
+      "format": "vtex",
+      "id": "lm_2f61571e",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_3feaf5fe_Sponza_n0_p18.vtex",
+      "format": "vtex",
+      "id": "lm_3feaf5fe",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_34c3e86e_Sponza_n0_p51.vtex",
+      "format": "vtex",
+      "id": "lm_34c3e86e",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b4bf0b75_Sponza_n0_p29.vtex",
+      "format": "vtex",
+      "id": "lm_b4bf0b75",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_1da6192f_Sponza_n0_p83.vtex",
+      "format": "vtex",
+      "id": "lm_1da6192f",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_f17998c9_Sponza_n0_p55.vtex",
+      "format": "vtex",
+      "id": "lm_f17998c9",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_d88e5921_Sponza_n0_p31.vtex",
+      "format": "vtex",
+      "id": "lm_d88e5921",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_2601f538_Sponza_n0_p34.vtex",
+      "format": "vtex",
+      "id": "lm_2601f538",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_cf0b8eaf_Sponza_n0_p35.vtex",
+      "format": "vtex",
+      "id": "lm_cf0b8eaf",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_5d4c7786_Sponza_n0_p36.vtex",
+      "format": "vtex",
+      "id": "lm_5d4c7786",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_3e8b96fc_Sponza_n0_p30.vtex",
+      "format": "vtex",
+      "id": "lm_3e8b96fc",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_a6069db7_Sponza_n0_p37.vtex",
+      "format": "vtex",
+      "id": "lm_a6069db7",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_d8047455_Sponza_n0_p38.vtex",
+      "format": "vtex",
+      "id": "lm_d8047455",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_044b509f_Sponza_n0_p39.vtex",
+      "format": "vtex",
+      "id": "lm_044b509f",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_c11358af_Sponza_n0_p86.vtex",
+      "format": "vtex",
+      "id": "lm_c11358af",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_55faf845_Sponza_n0_p40.vtex",
+      "format": "vtex",
+      "id": "lm_55faf845",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_11771986_Sponza_n0_p41.vtex",
+      "format": "vtex",
+      "id": "lm_11771986",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_373964da_Sponza_n0_p3.vtex",
+      "format": "vtex",
+      "id": "lm_373964da",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_e39a2c39_Sponza_n0_p43.vtex",
+      "format": "vtex",
+      "id": "lm_e39a2c39",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_62178d88_Sponza_n0_p53.vtex",
+      "format": "vtex",
+      "id": "lm_62178d88",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_910d8ba0_Sponza_n0_p46.vtex",
+      "format": "vtex",
+      "id": "lm_910d8ba0",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b72e0453_Sponza_n0_p89.vtex",
+      "format": "vtex",
+      "id": "lm_b72e0453",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_c5b76e91_Sponza_n0_p70.vtex",
+      "format": "vtex",
+      "id": "lm_c5b76e91",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_574e01f1_Sponza_n0_p52.vtex",
+      "format": "vtex",
+      "id": "lm_574e01f1",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_c799e2e3_Sponza_n0_p48.vtex",
+      "format": "vtex",
+      "id": "lm_c799e2e3",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_9a2c3988_Sponza_n0_p17.vtex",
+      "format": "vtex",
+      "id": "lm_9a2c3988",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b2de945d_Sponza_n0_p50.vtex",
+      "format": "vtex",
+      "id": "lm_b2de945d",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_b8facb26_Sponza_n0_p56.vtex",
+      "format": "vtex",
+      "id": "lm_b8facb26",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_2f6af7a3_Sponza_n0_p20.vtex",
+      "format": "vtex",
+      "id": "lm_2f6af7a3",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_d44731fa_Sponza_n0_p57.vtex",
+      "format": "vtex",
+      "id": "lm_d44731fa",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    },
+    {
+      "file": "lightmaps/scene/lm_5f495ba2_Sponza_n0_p58.vtex",
+      "format": "vtex",
+      "id": "lm_5f495ba2",
+      "resolution": [
+        256,
+        256
+      ],
+      "usage": "Lightmap"
+    }
+  ]
+}

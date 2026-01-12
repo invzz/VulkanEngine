@@ -19,6 +19,8 @@ LightBaker --scene <scene.json> --out <outdir> [options]
   - Force bake resolution (use small values like `16` for CI smoke tests).
 - `--sun-intensity <float>`
   - Sun intensity (default: `1.0`).
+- `--keep-exr`
+  - Keep temporary EXR files created during baking (useful for debugging and inspection).
 - `--model` / `--scene` may be combined with `--instance <id>` to bake a specific instance when supported by the scene descriptor.
 - `--help`, `-h`
   - Show help and exit.

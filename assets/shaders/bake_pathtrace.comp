@@ -1,0 +1,213 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba32f) writeonly uniform image2D outImage;    // final HDR
+layout(binding = 3, rgba32f) writeonly uniform image2D normalImage; // world-space normal (xyz)
+
+layout(std430, binding = 1) buffer Params
+{
+  float sunIntensity;
+  int   numSamples;
+  int   maxBounces;
+  int   denoiseIters;
+  uint  randomSeed;
+  uint  frameIndex;
+  vec3  sunDir; // std430 layout allows tight packing; use .xyz
+  float pad0;
+};
+
+struct Tri
+{
+  vec3 p0;
+  vec3 p1;
+  vec3 p2;
+  vec3 n0;
+  vec3 n1;
+  vec3 n2;
+  vec2 uv0;
+  vec2 uv1;
+  vec2 uv2;
+};
+layout(std430, binding = 2) buffer Triangles
+{
+  Tri tris[];
+};
+
+struct BVHNode
+{
+  vec4 bboxMin;  // xyz = min, w unused
+  vec4 bboxMax;  // xyz = max, w unused
+  int  left;     // child index or -1
+  int  right;    // child index or -1
+  int  triStart; // start index into tris[] for leaf
+  int  triCount; // number of triangles in leaf
+  int  pad0;
+};
+layout(std430, binding = 4) buffer BVHNodes
+{
+  BVHNode nodes[];
+};
+
+// forward-declare triangle intersection with optional backface culling
+bool intersectTri(in vec3 ro, in vec3 rd, in Tri tri, out float t, out vec3 n, out vec3 hitPos, bool cullBackface);
+
+bool intersectAABB(vec3 ro, vec3 rd, vec3 bmin, vec3 bmax)
+{
+  float tmin = 0.0;
+  float tmax = 1e20;
+  for (int i = 0; i < 3; ++i)
+  {
+    float invD = 1.0 / rd[i];
+    float t0   = (bmin[i] - ro[i]) * invD;
+    float t1   = (bmax[i] - ro[i]) * invD;
+    float ta   = min(t0, t1);
+    float tb   = max(t0, t1);
+    tmin       = max(tmin, ta);
+    tmax       = min(tmax, tb);
+    if (tmax <= tmin) return false;
+  }
+  return true;
+}
+
+bool traverseBVH(vec3 ro, vec3 rd, out float outT, out vec3 outN, out vec3 outHitPos, bool cullBackface)
+{
+  int stack[64];
+  int sp         = 0;
+  stack[sp++]    = 0; // root
+  bool  hit      = false;
+  float closestT = 1e20;
+  vec3  closestN = vec3(0.0);
+  vec3  closestP = vec3(0.0);
+
+  while (sp > 0)
+  {
+    int     nodeIdx = stack[--sp];
+    BVHNode node    = nodes[nodeIdx];
+    if (!intersectAABB(ro, rd, node.bboxMin.xyz, node.bboxMax.xyz)) continue;
+    if (node.triCount > 0)
+    {
+      for (int i = node.triStart; i < node.triStart + node.triCount; ++i)
+      {
+        float t;
+        vec3  n;
+        vec3  hp;
+        if (intersectTri(ro, rd, tris[i], t, n, hp, cullBackface))
+        {
+          if (t < closestT)
+          {
+            closestT = t;
+            closestN = n;
+            closestP = hp;
+            hit      = true;
+          }
+        }
+      }
+    }
+    else
+    {
+      if (node.left >= 0) stack[sp++] = node.left;
+      if (node.right >= 0) stack[sp++] = node.right;
+    }
+  }
+
+  if (hit)
+  {
+    outT      = closestT;
+    outN      = closestN;
+    outHitPos = closestP;
+    return true;
+  }
+  return false;
+}
+
+// Simple Wang hash RNG
+uint wang_hash(uint seed)
+{
+  seed = (seed ^ 61u) ^ (seed >> 16);
+  seed *= 9u;
+  seed = seed ^ (seed >> 4);
+  seed *= 0x27d4eb2du;
+  seed = seed ^ (seed >> 15);
+  return seed;
+}
+
+float rand(inout uint state)
+{
+  state = wang_hash(state);
+  return float(state) / 4294967296.0;
+}
+
+bool uvBarycentric(in vec2 p, in vec2 a, in vec2 b, in vec2 c, out vec3 bary)
+{
+  vec2  v0    = b - a;
+  vec2  v1    = c - a;
+  vec2  v2    = p - a;
+  float d00   = dot(v0, v0);
+  float d01   = dot(v0, v1);
+  float d11   = dot(v1, v1);
+  float d20   = dot(v2, v0);
+  float d21   = dot(v2, v1);
+  float denom = d00 * d11 - d01 * d01;
+  if (abs(denom) < 1e-8) return false;
+  float v = (d11 * d20 - d01 * d21) / denom;
+  float w = (d00 * d21 - d01 * d20) / denom;
+  float u = 1.0 - v - w;
+  bary    = vec3(u, v, w);
+  return (u >= 0.0 && v >= 0.0 && w >= 0.0);
+}
+
+bool intersectTri(in vec3 ro, in vec3 rd, in Tri tri, out float t, out vec3 n, out vec3 hitPos, bool cullBackface)
+{
+  const float EPS = 1e-5;
+  vec3        v0  = tri.p0;
+  vec3        v1  = tri.p1;
+  vec3        v2  = tri.p2;
+  vec3        e1  = v1 - v0;
+  vec3        e2  = v2 - v0;
+
+  // Face normal for optional backface culling (useful for shadow rays)
+  vec3 faceN = normalize(cross(e1, e2));
+  if (cullBackface && dot(faceN, rd) >= 0.0) return false;
+
+  vec3  p   = cross(rd, e2);
+  float det = dot(e1, p);
+  if (abs(det) < EPS) return false;
+  float invDet = 1.0 / det;
+  vec3  tvec   = ro - v0;
+  float u      = dot(tvec, p) * invDet;
+  if (u < 0.0 || u > 1.0) return false;
+  vec3  q = cross(tvec, e1);
+  float v = dot(rd, q) * invDet;
+  if (v < 0.0 || u + v > 1.0) return false;
+  float tt = dot(e2, q) * invDet;
+  if (tt <= EPS) return false;
+  t      = tt;
+  n      = normalize((1.0 - u - v) * tri.n0 + u * tri.n1 + v * tri.n2);
+  hitPos = ro + rd * t;
+  return true;
+}
+
+vec3 cosineHemisphereSample(vec2 xi, vec3 n)
+{
+  float r         = sqrt(max(0.0, xi.x));
+  float phi       = 2.0 * 3.14159265358979323846 * xi.y;
+  vec3  local     = vec3(r * cos(phi), r * sin(phi), sqrt(max(0.0, 1.0 - xi.x)));
+  vec3  up        = abs(n.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+  vec3  tangent   = normalize(cross(up, n));
+  vec3  bitangent = cross(n, tangent);
+  return normalize(tangent * local.x + bitangent * local.y + n * local.z);
+}
+
+void main()
+{
+  ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 size  = imageSize(outImage);
+  if (coord.x >= size.x || coord.y >= size.y) return;
+
+  // Trivial test: write a constant color to detect whether dispatch completes
+  imageStore(outImage, coord, vec4(0.5, 0.0, 0.0, 1.0));
+  imageStore(normalImage, coord, vec4(0.0, 0.0, 1.0, 0.0));
+  return;
+}

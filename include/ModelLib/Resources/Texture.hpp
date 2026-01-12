@@ -96,9 +96,14 @@ namespace engine {
     int      height_      = 0;
     uint32_t mipLevels_   = 1;
     uint32_t globalIndex_ = 0;
+    VkFormat format_      = VK_FORMAT_UNDEFINED;
 
     // True when this Texture instance was created in CPU-only mode and does not own Vulkan resources
     bool cpuOnly_ = false;
+
+  public:
+    // Expose the texture's Vulkan format
+    [[nodiscard]] VkFormat getFormat() const { return format_; }
   };
 
 } // namespace engine

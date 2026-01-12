@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Tools/LightBaker/GpuPathTracer.hpp"
 #include "Tools/LightBaker/LightBaker.hpp"
 #include "Tools/LightmapBakerLib/Geometry.hpp"
 #include "Tools/LightmapBakerLib/Pack.hpp"
@@ -26,6 +27,7 @@ namespace {
     std::cout << "  --out <outdir>             Output directory (default: ./lightbake_out)\n";
     std::cout << "  --resolution <int>         Force resolution (optional)\n";
     std::cout << "  --sun-intensity <float>    Sun intensity (default: 1.0)\n";
+    std::cout << "  --keep-exr                 Keep temporary EXR files created during baking (useful for debugging)\n";
   }
 } // namespace
 
@@ -35,9 +37,15 @@ int main(int argc, char** argv)
   std::string scenePath;
   std::string outDir       = "lightbake_out";
   int         resolution   = 0;
+  int         samples      = 64;
   float       sunIntensity = 1.0f;
+  float       sunDirX      = 0.0f;
+  float       sunDirY      = 0.0f;
+  float       sunDirZ      = 1.0f; // default upwards
   bool        packToVtex   = false;
   bool        autoUV       = false; // generate UV1 mappings automatically using UVUnwrap
+  bool        gpu          = false; // use GPU compute-based baker if available
+  bool        keepExr      = false; // keep temporary EXR files (do not delete)
 
   for (int i = 1; i < argc; ++i)
   {
@@ -58,9 +66,27 @@ int main(int argc, char** argv)
     {
       resolution = std::stoi(argv[++i]);
     }
+    else if (a == "--samples" && i + 1 < argc)
+    {
+      samples = std::stoi(argv[++i]);
+    }
     else if (a == "--sun-intensity" && i + 1 < argc)
     {
       sunIntensity = std::stof(argv[++i]);
+    }
+    else if (a == "--sun-dir" && i + 1 < argc)
+    {
+      std::string s = argv[++i];
+      std::replace(s.begin(), s.end(), ',', ' ');
+      std::istringstream iss(s);
+      float              x, y, z;
+      iss >> x >> y >> z;
+      if (!iss.fail())
+      {
+        sunDirX = x;
+        sunDirY = y;
+        sunDirZ = z;
+      }
     }
     else if (a == "--pack-to-vtex")
     {
@@ -69,6 +95,14 @@ int main(int argc, char** argv)
     else if (a == "--auto-uv")
     {
       autoUV = true;
+    }
+    else if (a == "--gpu")
+    {
+      gpu = true;
+    }
+    else if (a == "--keep-exr")
+    {
+      keepExr = true;
     }
     else if (a == "--help" || a == "-h")
     {
@@ -84,6 +118,29 @@ int main(int argc, char** argv)
   }
 
   std::filesystem::create_directories(outDir);
+  std::cerr << "[LightBaker] Parsed flags: gpu=" << (gpu ? "true" : "false") << " samples=" << samples << " resolution=" << resolution << " out=" << outDir << "\n";
+
+  // Initialize GPU baker early so both --model and --scene paths can use it
+  std::unique_ptr<engine::Window>            windowGPU;
+  std::unique_ptr<engine::Device>            deviceGPU;
+  std::unique_ptr<LightBaker::GpuPathTracer> tracer;
+  if (gpu)
+  {
+    std::cerr << "[LightBaker] Initializing GPU baker..." << std::endl;
+    try
+    {
+      windowGPU = std::make_unique<engine::Window>(16, 16, "LightBaker-GPU");
+      deviceGPU = std::make_unique<engine::Device>(*windowGPU);
+      tracer    = std::make_unique<LightBaker::GpuPathTracer>(*deviceGPU);
+      std::cerr << "[LightBaker] GPU baker initialized OK\n";
+      if (tracer) std::cerr << "[LightBaker] tracer ready=" << (tracer->isReady() ? "true" : "false") << "\n";
+    }
+    catch (const std::exception& e)
+    {
+      std::cerr << "[LightBaker] GPU baker initialization failed: " << e.what() << "\n";
+      tracer.reset();
+    }
+  }
 
   try
   {
@@ -163,7 +220,9 @@ int main(int argc, char** argv)
         // Collect unique model paths
         std::unordered_set<std::string> uniqueModels;
         for (const auto& obj : scene.objects)
+        {
           if (obj.modelPath) uniqueModels.insert(*obj.modelPath);
+        }
 
         for (const auto& modelPath : uniqueModels)
         {
@@ -227,8 +286,12 @@ int main(int argc, char** argv)
           else
           {
             for (auto& kv : it->second)
+            {
               for (const auto& me : kv.second)
+              {
                 sceneLightmapBindings[obj.id]["meshes"].push_back(me);
+              }
+            }
           }
         }
 
@@ -273,8 +336,12 @@ int main(int argc, char** argv)
 
         // Attempt to include UV atlas params (if precomputed) so different UV layouts don't collide
         int    uvChannel = 1;
-        double uvScaleX = 1.0, uvScaleY = 1.0, uvOffsetX = 0.0, uvOffsetY = 0.0;
-        auto   itUV = precomputedPerModelUVs.find(modelPathStr);
+        double uvScaleX  = 1.0;
+        double uvScaleY  = 1.0;
+        double uvOffsetX = 0.0;
+        double uvOffsetY = 0.0;
+
+        auto itUV = precomputedPerModelUVs.find(modelPathStr);
         if (itUV != precomputedPerModelUVs.end())
         {
           const auto& perNode = itUV->second;
@@ -288,10 +355,10 @@ int main(int argc, char** argv)
         }
 
         // Quantize UVs into the key deterministically
-        long long qUvScaleX  = static_cast<long long>(std::llround(uvScaleX * 1000000.0));
-        long long qUvScaleY  = static_cast<long long>(std::llround(uvScaleY * 1000000.0));
-        long long qUvOffsetX = static_cast<long long>(std::llround(uvOffsetX * 1000000.0));
-        long long qUvOffsetY = static_cast<long long>(std::llround(uvOffsetY * 1000000.0));
+        auto qUvScaleX  = std::llround(uvScaleX * 1000000.0);
+        auto qUvScaleY  = std::llround(uvScaleY * 1000000.0);
+        auto qUvOffsetX = std::llround(uvOffsetX * 1000000.0);
+        auto qUvOffsetY = std::llround(uvOffsetY * 1000000.0);
 
         key << "|uvc=" << uvChannel << "|uvs=" << qUvScaleX << "," << qUvScaleY << "|uvo=" << qUvOffsetX << "," << qUvOffsetY;
 
@@ -307,9 +374,9 @@ int main(int argc, char** argv)
           for (uint32_t vi = start; vi < start + count; ++vi)
           {
             auto p = builder.vertices[vi].position;
-            checksum += static_cast<long long>(std::llround(p.x * 1000000.0));
-            checksum += static_cast<long long>(std::llround(p.y * 1000000.0)) * 7;
-            checksum += static_cast<long long>(std::llround(p.z * 1000000.0)) * 13;
+            checksum += std::llround(p.x * 1000000.0);
+            checksum += std::llround(p.y * 1000000.0) * 7;
+            checksum += std::llround(p.z * 1000000.0) * 13;
           }
           key << "|psum=" << checksum;
         }
@@ -320,6 +387,8 @@ int main(int argc, char** argv)
       std::unordered_set<std::string> uniqueModels;
       for (const auto& obj : scene.objects)
         if (obj.modelPath) uniqueModels.insert(*obj.modelPath);
+
+      // GPU baker already initialized earlier (shared for model and scene baking)
 
       for (const auto& modelPathStr : uniqueModels)
       {
@@ -354,7 +423,24 @@ int main(int argc, char** argv)
               auto trisPrim = LightmapBaker::collectTrianglesFromBuilder(builder, glm::mat4(1.0f), opts);
               if (trisPrim.empty()) continue;
 
-              auto resPrim = LightBaker::bakeTriangles(trisPrim, bakeRes, sunIntensity);
+              LightBaker::Result resPrim;
+              if (gpu && tracer)
+              {
+                std::cerr << "[LightBaker] Using GPU baker for model " << modelPathStr << " node=" << ni << " prim=" << primIdx << "\n";
+                LightBaker::GpuPathTracer::Config cfg;
+                cfg.width        = bakeRes;
+                cfg.height       = bakeRes;
+                cfg.sunIntensity = sunIntensity;
+                cfg.numSamples   = samples;
+                cfg.sunDirection = glm::vec3(sunDirX, sunDirY, sunDirZ);
+                cfg.sunIntensity = sunIntensity;
+                resPrim          = tracer->bakeTrianglesGPU(trisPrim, cfg);
+                std::cerr << "[LightBaker] GPU bake returned: " << resPrim.width << "x" << resPrim.height << "\n";
+              }
+              else
+              {
+                throw std::runtime_error("CPU baker path not implemented");
+              }
 
               // Save EXR and pack to VTEX
               std::filesystem::path lmOutDir = std::filesystem::path(outDir) / "lightmaps" / std::filesystem::path(scenePath).stem();
@@ -389,8 +475,15 @@ int main(int argc, char** argv)
               producedLightmaps[canonical] = info;
               std::cout << "Wrote VTEX: " << vtexPath << " -> id=" << lmId << "\n";
 
-              // Cleanup temporary EXR
-              std::filesystem::remove(exrPath);
+              // Cleanup temporary EXR (optional: keep for debugging)
+              if (!keepExr)
+              {
+                std::filesystem::remove(exrPath);
+              }
+              else
+              {
+                std::cout << "[LightBaker] Keeping EXR: " << exrPath << "\n";
+              }
             }
 
             // Assign binding for every instance of this model in the scene
@@ -506,6 +599,21 @@ int main(int argc, char** argv)
         return 1;
       }
 
+      // Optionally generate per-vertex UV1 mappings (local-space) when requested
+      if (autoUV)
+      {
+        for (int ni = 0; ni < static_cast<int>(builder.nodes.size()); ++ni)
+        {
+          auto res = LightmapBaker::generatePerVertexUVsForNode(builder, ni, glm::mat4(1.0f), /*paddingPx=*/4, /*resolution=*/0);
+          // apply UVs to vertices for used vertices
+          size_t vertexCount = builder.vertices.size();
+          for (size_t vi = 0; vi < vertexCount && vi < res.used.size(); ++vi)
+          {
+            if (res.used[vi]) builder.vertices[vi].uv = res.uvPerVertex[vi];
+          }
+        }
+      }
+
       auto tris = LightmapBaker::collectTrianglesFromBuilder(builder, glm::mat4(1.0f));
       if (tris.empty())
       {
@@ -513,7 +621,24 @@ int main(int argc, char** argv)
         return 1;
       }
 
-      auto                  res     = LightBaker::bakeTriangles(tris, resolution, sunIntensity);
+      LightBaker::Result res;
+      if (gpu && tracer && tracer->isReady())
+      {
+        std::cerr << "[LightBaker] Using GPU baker for single model " << modelPath << "\n";
+        LightBaker::GpuPathTracer::Config cfg;
+        cfg.width        = resolution;
+        cfg.height       = resolution;
+        cfg.numSamples   = samples;
+        cfg.sunDirection = glm::vec3(sunDirX, sunDirY, sunDirZ);
+        cfg.sunIntensity = sunIntensity;
+        res              = tracer->bakeTrianglesGPU(tris, cfg);
+        std::cerr << "[LightBaker] GPU bake returned: " << res.width << "x" << res.height << "\n";
+      }
+      else
+      {
+        throw std::runtime_error("CPU baking models is not implemented in this tool. Please use --gpu flag.");
+      }
+
       std::filesystem::path exrPath = std::filesystem::path(outDir) / (std::filesystem::path(modelPath).stem().string() + std::string(".exr"));
       const char*           err     = nullptr;
       int                   r       = SaveEXR(res.hdrPixels.data(), res.width, res.height, 3, 0, exrPath.string().c_str(), &err);

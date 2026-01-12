@@ -25,8 +25,8 @@ layout(push_constant) uniform PushConstants
   float ssaoRadius;
   float ssaoBias;
   int   toneMappingMode; // 0: None, 1: ACES
-  float _padding;
-  vec4  sunScreenPos; // xy = screen pos [0,1], z = isVisible (1.0/0.0), w = padding
+  vec4  sunScreenPos;    // xy = screen pos [0,1], z = isVisible (1.0/0.0), w = padding
+  int   bakedRaw;        // 0 = display scaled, 1 = raw linear baked display
   float godRayDensity;
   float godRayWeight;
   float godRayDecay;
@@ -197,6 +197,13 @@ void main()
   {
     // Use raw scene color (deferred pass outputs baked debug when debugMode==11)
     color = texture(sceneColor, inUV).rgb;
+
+    // If user requested raw baked display, skip all display transforms and show linear values
+    if (push.bakedRaw == 1)
+    {
+      outColor = vec4(color, 1.0);
+      return;
+    }
 
     // Apply minimal display transforms (exposure/contrast/saturation/tone/gamma/vignette) so the map is visible
     // Exposure

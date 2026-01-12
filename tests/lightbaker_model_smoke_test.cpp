@@ -15,7 +15,7 @@ TEST(LightBaker, ModelCLI_Smoke_CPU)
 #ifdef LIGHT_BAKER_PATH
 #ifdef MODEL_PATH
   // Use a small glTF asset from the repo for a deterministic smoke test (CPU-only path)
-  const std::string modelPath = std::string(MODEL_PATH) + "glTF/Triangle/glTF/Triangle.gltf";
+  const std::string modelPath = std::string(MODEL_PATH) + "glTF/Cube/glTF/Cube.gltf";
 #else
   GTEST_SKIP() << "MODEL_PATH macro not defined";
 #endif

@@ -26,7 +26,7 @@ TEST(LightBaker, Scene_Dedup_RepeatedInstances)
 
   const std::string           sceneStem = "dedup_scene";
   const std::filesystem::path scenePath = tmp / (sceneStem + std::string(".json"));
-  const std::string           modelRel  = std::string(MODEL_PATH) + std::string("/glTF/Triangle/glTF/Triangle.gltf");
+  const std::string           modelRel  = std::string(MODEL_PATH) + std::string("/glTF/Cube/glTF/Cube.gltf");
 
   // Two objects referencing the same model but different transforms
   std::ofstream out(scenePath);

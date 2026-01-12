@@ -5,7 +5,7 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 
 namespace engine {
-  DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}
+  DebugPanel::DebugPanel(int& debugMode, bool& showBakedRaw) : debugMode_{debugMode}, showBakedRaw_{showBakedRaw} {}
 
   void DebugPanel::render(FrameInfo& /*frameInfo*/)
   {
@@ -59,6 +59,7 @@ namespace engine {
     if (debugMode_ == 11)
     {
       ImGui::TextWrapped("Shows baked RGB light values written into the G-buffer (used multiplicatively as irradiance).\nNote: low-intensity bakes are scaled for visibility in this debug view.");
+      ImGui::Checkbox("Show raw baked map (no tone/gamma)", &showBakedRaw_);
     }
 
     // Debug mode 12: IBL irradiance visualization

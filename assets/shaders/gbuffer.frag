@@ -90,6 +90,10 @@ void main()
   // Sample baked light (if present) here while we still have per-material / per-instance state available.
   vec3 bakedLight = vec3(0.0);
   {
+#ifdef DEBUG_FORCE_LIGHTMAP_INDEX
+    // DEBUG OVERRIDE: sample globalTextures[177] at center to verify descriptor content.
+    bakedLight = texture(globalTextures[nonuniformEXT(177)], vec2(0.5, 0.5)).rgb;
+#else
     uint lmIndex = push.lightmapIndex;
     if (lmIndex == 0u) lmIndex = material.indices3.z;
     if (lmIndex != 0u)
@@ -97,6 +101,7 @@ void main()
       vec2 uv1   = material_getUv1(fragUV, push.lightmapUvScale, push.lightmapUvOffset);
       bakedLight = material_sampleBakedLight(uv1, lmIndex);
     }
+#endif
   }
 
   outNormal   = vec4(nOct * 0.5 + 0.5, materialIOR, iridescenceIOR);

@@ -19,7 +19,7 @@ TEST(LightBakerScene, SceneCLI_Smoke_CPU)
   std::filesystem::create_directories(tmp);
 
   const std::string scenePath = (tmp / "triangle_scene.json").generic_string();
-  const std::string modelAbs  = std::string(MODEL_PATH) + std::string("glTF/Triangle/glTF/Triangle.gltf");
+  const std::string modelAbs  = std::string(MODEL_PATH) + std::string("glTF/Cube/glTF/Cube.gltf");
 
   std::ofstream out(scenePath);
   out << "{\n";
@@ -70,7 +70,7 @@ TEST(LightBakerScene, SceneInstance_CLI_Smoke_CPU)
   std::filesystem::create_directories(tmp);
 
   const std::string scenePath = (tmp / "triangle_scene_inst.json").generic_string();
-  const std::string modelAbs  = std::string(MODEL_PATH) + std::string("glTF/Triangle/glTF/Triangle.gltf");
+  const std::string modelAbs  = std::string(MODEL_PATH) + std::string("glTF/Cube/glTF/Cube.gltf");
 
   std::ofstream out(scenePath);
   out << "{\n";

@@ -28,16 +28,9 @@ namespace engine {
                   FogSettings&              fogSettings,
                   HZBSettings&              hzbSettings,
                   PostProcessPushConstants& pushConstants,
-                  int&                      debugMode);
-
-    void               render(FrameInfo& frameInfo) override;
-    [[nodiscard]] bool isSeparateWindow() const override { return true; }
-
-  private:
-    std::unique_ptr<CameraPanel>      cameraPanel_;
-    std::unique_ptr<IBLPanel>         iblPanel_;
-    std::unique_ptr<PostProcessPanel> postProcessPanel_;
-    std::unique_ptr<DebugPanel>       debugPanel_;
+                  int&                      debugMode,
+                  bool&                     showBakedRaw);
+    void render(FrameInfo& frameInfo) override;
 
     std::unique_ptr<Skybox>* skybox_;
     bool&                    showSkybox_;
@@ -47,6 +40,12 @@ namespace engine {
     DustSettings&   dustSettings_;
     FogSettings&    fogSettings_;
     HZBSettings&    hzbSettings_;
+
+    std::unique_ptr<CameraPanel>      cameraPanel_;
+    std::unique_ptr<IBLPanel>         iblPanel_;
+    std::unique_ptr<PostProcessPanel> postProcessPanel_;
+    std::unique_ptr<DebugPanel>       debugPanel_;
+    bool&                             showBakedRaw_;
   };
 
 } // namespace engine
