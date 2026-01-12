@@ -206,8 +206,47 @@ void main()
   ivec2 size  = imageSize(outImage);
   if (coord.x >= size.x || coord.y >= size.y) return;
 
-  // Trivial test: write a constant color to detect whether dispatch completes
-  imageStore(outImage, coord, vec4(0.5, 0.0, 0.0, 1.0));
-  imageStore(normalImage, coord, vec4(0.0, 0.0, 1.0, 0.0));
-  return;
+  // Heavier work: perform multiple random samples that call BVH traversal to
+  // emulate the pathtrace workload and exercise the GPU/driver.
+  const int SAMPLES = 32;
+  uint      state   = uint(123456u) + uint(coord.x) + uint(coord.y) * uint(size.x);
+
+  vec3 accumCol = vec3(0.0);
+  vec3 accumN   = vec3(0.0);
+
+  // Simple camera-ish origin above the scene and a per-pixel jitter
+  vec3 ro = vec3(float(coord.x) / float(size.x) - 0.5, float(coord.y) / float(size.y) - 0.5, 2.0);
+
+  for (int s = 0; s < SAMPLES; ++s)
+  {
+    // generate a random direction in hemisphere and perturb by pixel location
+    vec2 xi  = vec2(rand(state), rand(state));
+    vec3 dir = cosineHemisphereSample(xi, vec3(0.0, 0.0, 1.0));
+    dir      = normalize(dir + vec3((float(coord.x) / float(size.x) - 0.5) * 0.1, (float(coord.y) / float(size.y) - 0.5) * 0.1, 0.0));
+
+    float t;
+    vec3  n;
+    vec3  hp;
+    bool  hit = traverseBVH(ro, dir, t, n, hp, false);
+    if (hit)
+    {
+      // simple lighting: lambert with sun direction fallback
+      vec3  sun = normalize(vec3(0.577, 0.577, -0.577));
+      float lam = max(dot(n, -sun), 0.0);
+      accumCol += vec3(lam);
+      accumN += n;
+    }
+    else
+    {
+      // sky color fade based on direction
+      float tsky = 0.5 * (dir.z + 1.0);
+      accumCol += mix(vec3(0.2, 0.3, 0.6), vec3(0.6, 0.7, 1.0), tsky);
+    }
+  }
+
+  accumCol /= float(SAMPLES);
+  accumN = normalize(accumN / float(max(1, SAMPLES)));
+
+  imageStore(outImage, coord, vec4(accumCol, 1.0));
+  imageStore(normalImage, coord, vec4(accumN, 0.0));
 }

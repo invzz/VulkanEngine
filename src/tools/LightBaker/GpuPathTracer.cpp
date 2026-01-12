@@ -424,7 +424,7 @@ namespace LightBaker {
     std::vector<BVHNodeCPU>         nodesCPU;
     std::vector<LightmapBaker::Tri> orderedTris;
     buildBVHRecursive(tris, centroids, indices, 0, static_cast<int>(indices.size()), nodesCPU, orderedTris, 4);
-    std::cerr << "[GpuPathTracer] BVH built: nodes=" << nodesCPU.size() << " orderedTris=" << orderedTris.size() << "\n"; 
+    std::cerr << "[GpuPathTracer] BVH built: nodes=" << nodesCPU.size() << " orderedTris=" << orderedTris.size() << "\n";
 
     // Create an offscreen image
     VkFormat   format = VK_FORMAT_R32G32B32A32_SFLOAT;

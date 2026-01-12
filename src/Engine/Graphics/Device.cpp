@@ -779,7 +779,7 @@ namespace engine {
 
     VkFenceCreateInfo fenceInfo{};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    VkFence fence = VK_NULL_HANDLE;
+    VkFence fence   = VK_NULL_HANDLE;
     if (vkCreateFence(device_, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
     {
       std::cerr << "[Device] endSingleTimeCommands - failed to create fence\n";

@@ -33,11 +33,8 @@ namespace engine {
   {
   public:
     static constexpr uint32_t kMaxFramesInFlight = 2;
-#ifdef NDEBUG
-    const bool enableValidationLayers = false;
-#else
+    // For debugging GPU hangs we enable validation layers unconditionally here.
     const bool enableValidationLayers = true;
-#endif
 
     void WaitIdle() { vkDeviceWaitIdle(device_); }
 
