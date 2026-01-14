@@ -7,9 +7,9 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/DebugMessenger.hpp"
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/ExtensionHelpers.hpp"
-#include "Engine/Graphics/DebugMessenger.hpp"
 #include "GLFW/glfw3.h"
 #include "vulkan/vk_platform.h"
 #include "vulkan/vulkan_core.h"
@@ -72,7 +72,6 @@ namespace {
     }
     return VK_FALSE;
   }
-
 
 } // namespace
 
