@@ -99,20 +99,24 @@ namespace engine {
     bool                    isDeviceSuitable(VkPhysicalDevice device);
     QueueFamilyIndices      findQueueFamilies(VkPhysicalDevice device);
     static void             populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-    static void             hasGflwRequiredInstanceExtensions();
+    static bool             hasGlfwRequiredInstanceExtensions();
     bool                    checkDeviceExtensionSupport(VkPhysicalDevice device) const;
     SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
 
-    VkInstance                                                                 instance;
-    VkPhysicalDeviceProperties                                                 properties;
-    VkDebugUtilsMessengerEXT                                                   debugMessenger;
+    VkInstance                 instance = VK_NULL_HANDLE;
+    VkPhysicalDeviceProperties properties;
+    // Debug messenger is created explicitly via `setupDebugMessenger()` so the
+    // Device retains an owning handle and can destroy it deterministically in
+    // shutdown. Do NOT attach a DebugUtils create info to the instance `pNext` —
+    // that pattern hides ownership and makes safe teardown ordering harder.
+    std::unique_ptr<class DebugMessenger>                                      debugMessenger;
     VkPhysicalDevice                                                           physicalDevice = VK_NULL_HANDLE;
     Window&                                                                    window;
-    VkCommandPool                                                              commandPool;
-    VkDevice                                                                   device_;
-    VkSurfaceKHR                                                               surface_;
-    VkQueue                                                                    graphicsQueue_;
-    VkQueue                                                                    presentQueue_;
+    VkCommandPool                                                              commandPool         = VK_NULL_HANDLE;
+    VkDevice                                                                   device_             = VK_NULL_HANDLE;
+    VkSurfaceKHR                                                               surface_            = VK_NULL_HANDLE;
+    VkQueue                                                                    graphicsQueue_      = VK_NULL_HANDLE;
+    VkQueue                                                                    presentQueue_       = VK_NULL_HANDLE;
     const std::vector<const char*>                                             validationLayers    = {"VK_LAYER_KHRONOS_validation"};
     const std::vector<const char*>                                             deviceExtensions    = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     bool                                                                       presentIdSupported_ = false;

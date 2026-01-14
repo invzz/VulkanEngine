@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Engine/Graphics/Buffer.hpp"
+#include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "vulkan/vulkan_core.h"
 
@@ -47,9 +48,9 @@ namespace engine {
 
     Device& device_;
 
-    VkDescriptorSetLayout        descriptorSetLayout_{VK_NULL_HANDLE};
-    VkDescriptorPool             descriptorPool_{VK_NULL_HANDLE};
-    std::vector<VkDescriptorSet> descriptorSets_;
+    VkDescriptorSetLayout                   descriptorSetLayout_{VK_NULL_HANDLE};
+    std::unique_ptr<engine::DescriptorPool> descriptorPool_;
+    std::vector<VkDescriptorSet>            descriptorSets_;
 
     std::vector<std::unique_ptr<Buffer>> buffers_;
     std::vector<uint32_t>                dynamicOffsetIndexByFrame_;

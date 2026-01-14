@@ -19,10 +19,6 @@ namespace engine {
 
   MaterialRenderBindings::~MaterialRenderBindings()
   {
-    if (descriptorPool_ != VK_NULL_HANDLE)
-    {
-      vkDestroyDescriptorPool(device_.device(), descriptorPool_, nullptr);
-    }
     if (descriptorSetLayout_ != VK_NULL_HANDLE)
     {
       vkDestroyDescriptorSetLayout(device_.device(), descriptorSetLayout_, nullptr);
@@ -99,33 +95,17 @@ namespace engine {
 
   void MaterialRenderBindings::createPoolAndSets()
   {
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-    poolSize.descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    const uint32_t count = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
 
-    VkDescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes    = &poolSize;
-    poolInfo.maxSets       = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    descriptorPool_ = engine::DescriptorPool::Builder(device_).setMaxSets(count).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, count).build();
 
-    if (vkCreateDescriptorPool(device_.device(), &poolInfo, nullptr, &descriptorPool_) != VK_SUCCESS)
+    descriptorSets_.resize(count);
+    for (uint32_t i = 0; i < count; ++i)
     {
-      throw std::runtime_error("Failed to create material descriptor pool");
-    }
-
-    std::vector<VkDescriptorSetLayout> layouts(SwapChain::maxFramesInFlight(), descriptorSetLayout_);
-
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool     = descriptorPool_;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
-    allocInfo.pSetLayouts        = layouts.data();
-
-    descriptorSets_.resize(SwapChain::maxFramesInFlight());
-    if (vkAllocateDescriptorSets(device_.device(), &allocInfo, descriptorSets_.data()) != VK_SUCCESS)
-    {
-      throw std::runtime_error("Failed to allocate material descriptor sets");
+      if (!descriptorPool_->allocateDescriptor(descriptorSetLayout_, descriptorSets_[i]))
+      {
+        throw std::runtime_error("Failed to allocate material descriptor sets");
+      }
     }
   }
 

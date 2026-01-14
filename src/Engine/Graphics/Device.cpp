@@ -8,6 +8,8 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/DeviceMemory.hpp"
+#include "Engine/Graphics/ExtensionHelpers.hpp"
+#include "Engine/Graphics/DebugMessenger.hpp"
 #include "GLFW/glfw3.h"
 #include "vulkan/vk_platform.h"
 #include "vulkan/vulkan_core.h"
@@ -17,7 +19,6 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -72,24 +73,7 @@ namespace {
     return VK_FALSE;
   }
 
-  VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
-  {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr)
-    {
-      return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-    return VK_ERROR_EXTENSION_NOT_PRESENT;
-  }
 
-  void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-  {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr)
-    {
-      func(instance, debugMessenger, pAllocator);
-    }
-  }
 } // namespace
 
 /**
@@ -150,24 +134,95 @@ namespace engine {
    */
   Device::~Device()
   {
-    // Ensure GPU is idle so deferred destructions are safe.
-    vkDeviceWaitIdle(device_);
-
-    // Run any deferred destroys queued by subsystems.
-    flushAllDeferred();
-
-    // ensure helper is destroyed before device/command pool teardown
-    memory_.reset();
-    vkDestroyCommandPool(device_, commandPool, nullptr);
-    vkDestroyDevice(device_, nullptr);
-
-    if (enableValidationLayers)
+    // Make destructor safe in partial-construction and avoid throwing.
+    try
     {
-      DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-    }
+      if (device_ != VK_NULL_HANDLE)
+      {
+        vkDeviceWaitIdle(device_);
+      }
 
-    vkDestroySurfaceKHR(instance, surface_, nullptr);
-    vkDestroyInstance(instance, nullptr);
+      // Run any deferred destroys queued by subsystems. Protect against
+      // user-provided callbacks throwing.
+      try
+      {
+        if (device_ != VK_NULL_HANDLE)
+        {
+          flushAllDeferred();
+        }
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "[Device::~Device] flushAllDeferred threw: " << e.what() << "\n";
+      }
+      catch (...)
+      {
+        std::cerr << "[Device::~Device] flushAllDeferred threw unknown exception\n";
+      }
+
+      // ensure helper is destroyed before device/command pool teardown
+      try
+      {
+        memory_.reset();
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "[Device::~Device] DeviceMemory destructor threw: " << e.what() << "\n";
+      }
+      catch (...)
+      {
+        std::cerr << "[Device::~Device] DeviceMemory destructor threw unknown exception\n";
+      }
+
+      if (device_ != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE)
+      {
+        vkDestroyCommandPool(device_, commandPool, nullptr);
+        commandPool = VK_NULL_HANDLE;
+      }
+
+      if (device_ != VK_NULL_HANDLE)
+      {
+        vkDestroyDevice(device_, nullptr);
+        device_ = VK_NULL_HANDLE;
+      }
+
+      if (instance != VK_NULL_HANDLE)
+      {
+        if (enableValidationLayers && debugMessenger)
+        {
+          // Destroy via RAII guard.
+          try
+          {
+            debugMessenger.reset();
+          }
+          catch (const std::exception& e)
+          {
+            std::cerr << "[Device::~Device] DebugMessenger destructor threw: " << e.what() << "\n";
+          }
+          catch (...)
+          {
+            std::cerr << "[Device::~Device] DebugMessenger destructor threw unknown exception\n";
+          }
+        }
+
+        if (surface_ != VK_NULL_HANDLE)
+        {
+          vkDestroySurfaceKHR(instance, surface_, nullptr);
+          surface_ = VK_NULL_HANDLE;
+        }
+
+        vkDestroyInstance(instance, nullptr);
+        instance = VK_NULL_HANDLE;
+      }
+    }
+    catch (const std::exception& e)
+    {
+      std::cerr << "[Device::~Device] Exception during shutdown: " << e.what() << "\n";
+    }
+    catch (...)
+    {
+      std::cerr << "[Device::~Device] Unknown exception during shutdown\n";
+    }
   }
 
   /**
@@ -200,14 +255,16 @@ namespace engine {
     createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+    // When validation layers are enabled we set the layer list on the
+    // instance create info. We do NOT attach the DebugUtils create info to
+    // `pNext` here because we create the debug messenger explicitly in
+    // `setupDebugMessenger()` — this gives us an explicit handle that we can
+    // destroy during shutdown.
     if (enableValidationLayers)
     {
       createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
       createInfo.ppEnabledLayerNames = validationLayers.data();
-
-      populateDebugMessengerCreateInfo(debugCreateInfo);
-      createInfo.pNext = &debugCreateInfo;
+      createInfo.pNext               = nullptr;
     }
     else
     {
@@ -222,7 +279,10 @@ namespace engine {
 
     // Using Vulkan SDK loader (vulkan-1) - no explicit loader init required
 
-    hasGflwRequiredInstanceExtensions();
+    if (!hasGlfwRequiredInstanceExtensions())
+    {
+      throw engine::RuntimeException("missing required GLFW instance extensions");
+    }
   }
 
   /**
@@ -293,13 +353,9 @@ namespace engine {
     std::vector<const char*> enabledExtensions(deviceExtensions.begin(), deviceExtensions.end());
     enabledExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
-    uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
+    const auto availableExtensions = engine::enumerateDeviceExtensions(physicalDevice);
 
-    const bool presentIdExtensionAvailable =
-            std::ranges::any_of(availableExtensions, [](const VkExtensionProperties& extension) { return std::strcmp(extension.extensionName, VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0; });
+    const bool presentIdExtensionAvailable = engine::ensureExtensionsPresent(std::vector<const char*>{VK_KHR_PRESENT_ID_EXTENSION_NAME}, availableExtensions);
 
     static_assert(sizeof(PFN_vkGetPhysicalDeviceFeatures2KHR) == sizeof(PFN_vkVoidFunction), "Vulkan function pointer sizes must match");
     PFN_vkGetPhysicalDeviceFeatures2KHR getFeatures2 = nullptr;
@@ -456,7 +512,7 @@ namespace engine {
         return lastRes;
       }
 
-      uint32_t cbCount = submitInfo ? submitInfo->commandBufferCount : 0u;
+      uint32_t cbCount = (submitInfo != nullptr) ? submitInfo->commandBufferCount : 0u;
       std::cerr << "[Device] submitGraphics failed: VkResult=" << lastRes << " commandBuffers=" << cbCount << " attempt=" << attempt << " thread=" << std::this_thread::get_id() << "\n";
 
       if (lastRes == VK_ERROR_DEVICE_LOST)
@@ -567,13 +623,9 @@ namespace engine {
       return;
     }
 
-    VkDebugUtilsMessengerCreateInfoEXT createInfo;
-    populateDebugMessengerCreateInfo(createInfo);
-
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-    {
-      throw engine::RuntimeException("failed to set up debug messenger!");
-    }
+    // Use the RAII pilot DebugMessenger to manage creation and destruction.
+    debugMessenger = std::make_unique<DebugMessenger>();
+    debugMessenger->create(instance);
   }
 
   QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device)
@@ -624,45 +676,23 @@ namespace engine {
     createInfo.pUserData       = nullptr;
   }
 
-  void Device::hasGflwRequiredInstanceExtensions()
+  bool Device::hasGlfwRequiredInstanceExtensions()
   {
     uint32_t     glfwExtensionCount = 0;
     const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    std::unordered_set<std::string> requiredExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> required(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+    const auto available = engine::enumerateInstanceExtensions();
 
-    for (const auto& extension : availableExtensions)
-    {
-      requiredExtensions.erase(extension.extensionName);
-    }
-
-    if (!requiredExtensions.empty())
-    {
-      throw engine::RuntimeException("missing required GLFW instance extensions");
-    }
+    return engine::ensureExtensionsPresent(required, available);
   }
 
   bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device) const
   {
-    uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
-
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
-
-    std::unordered_set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
-
-    for (const auto& extension : availableExtensions)
-    {
-      requiredExtensions.erase(extension.extensionName);
-    }
-
-    return requiredExtensions.empty();
+    const auto               availableExtensions = engine::enumerateDeviceExtensions(device);
+    std::vector<const char*> required(deviceExtensions.begin(), deviceExtensions.end());
+    return engine::ensureExtensionsPresent(required, availableExtensions);
   }
 
   SwapChainSupportDetails Device::querySwapChainSupport(VkPhysicalDevice device)
@@ -765,16 +795,6 @@ namespace engine {
 
     // Submit serialized to avoid simultaneous use of the VkQueue object from
     // different threads (fixes validation threading warnings).
-    std::cerr << "[Device] endSingleTimeCommands - vkEndCommandBuffer cmd=" << commandBuffer << "\n";
-
-    VkResult const submitRes = submitGraphics(&submitInfo, VK_NULL_HANDLE);
-    std::cerr << "[Device] endSingleTimeCommands - submit result=" << submitRes << "\n";
-    if (submitRes != VK_SUCCESS)
-    {
-      std::cerr << "[Device] endSingleTimeCommands - submit failed for cmdBuffer=" << commandBuffer << " VkResult=" << submitRes << " thread=" << std::this_thread::get_id() << "\n";
-      throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
-    }
-
     std::cerr << "[Device] endSingleTimeCommands - creating fence for submit\n";
 
     VkFenceCreateInfo fenceInfo{};
@@ -786,7 +806,7 @@ namespace engine {
       throw engine::RuntimeException("failed to create fence for single-time commands");
     }
 
-    // Resubmit with a fence so we can wait with a timeout and avoid indefinite blocking.
+    // Submit with a fence so we can wait with a timeout and avoid indefinite blocking.
     VkResult const submitWithFenceRes = submitGraphics(&submitInfo, fence);
     std::cerr << "[Device] endSingleTimeCommands - submit (with fence) result=" << submitWithFenceRes << "\n";
     if (submitWithFenceRes != VK_SUCCESS)

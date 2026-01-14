@@ -230,10 +230,25 @@ void main()
     bool  hit = traverseBVH(ro, dir, t, n, hp, false);
     if (hit)
     {
-      // simple lighting: lambert with sun direction fallback
-      vec3  sun = normalize(vec3(0.577, 0.577, -0.577));
-      float lam = max(dot(n, -sun), 0.0);
-      accumCol += vec3(lam);
+      // simple lighting: lambert with sun direction and shadow visibility test
+      vec3  sun    = normalize(sunDir);
+      float lam    = max(dot(n, sun), 0.0);
+      float direct = 0.0;
+      if (lam > 0.0)
+      {
+        // offset ray origin a little to avoid self-intersection
+        float eps = 1e-4;
+        float st;
+        vec3  sn;
+        vec3  spos;
+        // trace a shadow ray toward the sun; if any hit occurs, the surface is occluded
+        bool occluded = traverseBVH(hp + n * eps, sun, st, sn, spos, false);
+        if (!occluded)
+        {
+          direct = sunIntensity * lam;
+        }
+      }
+      accumCol += vec3(direct);
       accumN += n;
     }
     else

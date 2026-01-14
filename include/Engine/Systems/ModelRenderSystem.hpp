@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
@@ -113,9 +114,9 @@ namespace engine {
 
     std::unique_ptr<LightingRenderBindings> lightingBindings_;
 
-    VkDescriptorSetLayout        sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
-    VkDescriptorPool             sceneColorDescriptorPool_{VK_NULL_HANDLE};
-    std::vector<VkDescriptorSet> sceneColorDescriptorSets_;
+    VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
+    std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;
+    std::vector<VkDescriptorSet>            sceneColorDescriptorSets_;
   };
 } // namespace engine
 

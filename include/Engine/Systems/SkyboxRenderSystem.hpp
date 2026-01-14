@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
@@ -68,9 +69,9 @@ namespace engine {
 
     std::unique_ptr<Pipeline> pipeline_;
 
-    VkPipelineLayout      pipelineLayout_      = VK_NULL_HANDLE;
-    VkDescriptorSetLayout descriptorSetLayout_ = VK_NULL_HANDLE;
-    VkDescriptorPool      descriptorPool_      = VK_NULL_HANDLE;
+    VkPipelineLayout                        pipelineLayout_      = VK_NULL_HANDLE;
+    VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
+    std::unique_ptr<engine::DescriptorPool> descriptorPool_;
 
     // Pre-allocated descriptor sets per frame
     std::vector<VkDescriptorSet> descriptorSets_;

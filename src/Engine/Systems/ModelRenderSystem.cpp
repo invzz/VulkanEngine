@@ -223,10 +223,6 @@ namespace engine {
   {
     vkDestroyPipelineLayout(device.device(), pipelineLayout, nullptr);
 
-    if (sceneColorDescriptorPool_ != VK_NULL_HANDLE)
-    {
-      vkDestroyDescriptorPool(device.device(), sceneColorDescriptorPool_, nullptr);
-    }
     if (sceneColorDescriptorSetLayout_ != VK_NULL_HANDLE)
     {
       vkDestroyDescriptorSetLayout(device.device(), sceneColorDescriptorSetLayout_, nullptr);
@@ -252,33 +248,17 @@ namespace engine {
       throw std::runtime_error("Failed to create scene color descriptor set layout");
     }
 
-    VkDescriptorPoolSize poolSize{};
-    poolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize.descriptorCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    const uint32_t count = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
 
-    VkDescriptorPoolCreateInfo poolInfo{};
-    poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes    = &poolSize;
-    poolInfo.maxSets       = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
+    sceneColorDescriptorPool_ = engine::DescriptorPool::Builder(device).setMaxSets(count).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, count).build();
 
-    if (vkCreateDescriptorPool(device.device(), &poolInfo, nullptr, &sceneColorDescriptorPool_) != VK_SUCCESS)
+    sceneColorDescriptorSets_.resize(count);
+    for (uint32_t i = 0; i < count; ++i)
     {
-      throw std::runtime_error("Failed to create scene color descriptor pool");
-    }
-
-    std::vector<VkDescriptorSetLayout> layouts(SwapChain::maxFramesInFlight(), sceneColorDescriptorSetLayout_);
-
-    VkDescriptorSetAllocateInfo allocInfo{};
-    allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool     = sceneColorDescriptorPool_;
-    allocInfo.descriptorSetCount = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
-    allocInfo.pSetLayouts        = layouts.data();
-
-    sceneColorDescriptorSets_.resize(SwapChain::maxFramesInFlight());
-    if (vkAllocateDescriptorSets(device.device(), &allocInfo, sceneColorDescriptorSets_.data()) != VK_SUCCESS)
-    {
-      throw std::runtime_error("Failed to allocate scene color descriptor sets");
+      if (!sceneColorDescriptorPool_->allocateDescriptor(sceneColorDescriptorSetLayout_, sceneColorDescriptorSets_[i]))
+      {
+        throw std::runtime_error("Failed to allocate scene color descriptor sets");
+      }
     }
   }
 

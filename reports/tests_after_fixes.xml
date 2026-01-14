@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="65" failures="2" disabled="0" errors="0" time="3.546" timestamp="2026-01-12T18:08:33.537" name="AllTests">
+  <testsuite name="BakeTexel" tests="2" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:33.537">
+    <testcase name="DefaultValues" file="tests/bake_texel_tests.cpp" line="6" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="BakeTexel" />
+    <testcase name="SetAndGet" file="tests/bake_texel_tests.cpp" line="15" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="BakeTexel" />
+  </testsuite>
+  <testsuite name="Dilate" tests="5" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:33.537">
+    <testcase name="ZeroIterationsNoChange" file="tests/dilate_mip_integration_tests.cpp" line="19" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="Dilate" />
+    <testcase name="OddDimensionsHandleBounds" file="tests/dilate_mip_integration_tests.cpp" line="35" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="Dilate" />
+    <testcase name="OnePixelFill1D" file="tests/dilate_tests.cpp" line="17" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="Dilate" />
+    <testcase name="AverageFromMultipleNeighbors" file="tests/dilate_tests.cpp" line="36" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="Dilate" />
+    <testcase name="2DPropagation" file="tests/dilate_tests.cpp" line="52" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="Dilate" />
+  </testsuite>
+  <testsuite name="MipGenIntegration" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:33.537">
+    <testcase name="SingleColumn" file="tests/dilate_mip_integration_tests.cpp" line="48" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="MipGenIntegration" />
+  </testsuite>
+  <testsuite name="Integration" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:33.537">
+    <testcase name="DilateThenMip" file="tests/dilate_mip_integration_tests.cpp" line="65" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="Integration" />
+  </testsuite>
+  <testsuite name="LightmapManifest" tests="2" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:33.537">
+    <testcase name="RejectLegacyBindings" file="tests/lightmap_manifest_legacy_tests.cpp" line="10" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="LightmapManifest" />
+    <testcase name="ParseSimpleManifest" file="tests/lightmap_manifest_tests.cpp" line="10" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="LightmapManifest" />
+  </testsuite>
+  <testsuite name="LightmapVTEX" tests="3" failures="0" disabled="0" skipped="0" errors="0" time="0.456" timestamp="2026-01-12T18:08:33.537">
+    <testcase name="WriteCompressedImageFromRaw_Roundtrip" file="tests/lightmap_exrcpu_tests.cpp" line="103" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.537" classname="LightmapVTEX" />
+    <testcase name="PrefilterHasMipsAndLayers" file="tests/lightmap_vtex_mip_layer_tests.cpp" line="13" status="run" result="completed" time="0.252" timestamp="2026-01-12T18:08:33.537" classname="LightmapVTEX" />
+    <testcase name="LoadVTEXFileFromDisk" file="tests/lightmap_vtex_tests.cpp" line="18" status="run" result="completed" time="0.204" timestamp="2026-01-12T18:08:33.790" classname="LightmapVTEX" />
+  </testsuite>
+  <testsuite name="MipGen" tests="4" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:33.994">
+    <testcase name="AllInvalidProducesInvalid" file="tests/mipgen_tests.cpp" line="17" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.994" classname="MipGen" />
+    <testcase name="AveragesValidContributors" file="tests/mipgen_tests.cpp" line="29" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.994" classname="MipGen" />
+    <testcase name="SingleColumn" file="tests/mipgen_tests.cpp" line="46" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.994" classname="MipGen" />
+    <testcase name="MipChainRespectValidity" file="tests/mipgen_tests.cpp" line="64" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:33.994" classname="MipGen" />
+  </testsuite>
+  <testsuite name="LightmapToolsCopy" tests="1" failures="0" disabled="0" skipped="1" errors="0" time="0." timestamp="2026-01-12T18:08:33.994">
+    <testcase name="EXR2VTEX_IsPresentInToolsDir" file="tests/tools_copy_tests.cpp" line="10" status="run" result="skipped" time="0." timestamp="2026-01-12T18:08:33.994" classname="LightmapToolsCopy">
+      <skipped message="tests/tools_copy_tests.cpp:18&#x0A;EXR2VTEX tool not found at: /home/ac/Documents/source/prj/engine2/tools/EXR2VTEX. Build it with: xmake EXR2VTEX&#x0A;"><![CDATA[tests/tools_copy_tests.cpp:18
+EXR2VTEX tool not found at: /home/ac/Documents/source/prj/engine2/tools/EXR2VTEX. Build it with: xmake EXR2VTEX
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="UVUnwrapCLI" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.028" timestamp="2026-01-12T18:08:33.994">
+    <testcase name="GeneratesManifestFromInput" file="tests/uvunwrap_cli_integration_tests.cpp" line="8" status="run" result="completed" time="0.028" timestamp="2026-01-12T18:08:33.994" classname="UVUnwrapCLI" />
+  </testsuite>
+  <testsuite name="UVUnwrap" tests="4" failures="0" disabled="0" skipped="0" errors="0" time="0.005" timestamp="2026-01-12T18:08:34.022">
+    <testcase name="GenerateInstanceUVs_Stub" file="tests/uvunwrap_generate_tests.cpp" line="7" status="run" result="completed" time="0.001" timestamp="2026-01-12T18:08:34.022" classname="UVUnwrap" />
+    <testcase name="InstanceMappingsEmitUVScaleOffset" file="tests/uvunwrap_instance_mapping_tests.cpp" line="9" status="run" result="completed" time="0.001" timestamp="2026-01-12T18:08:34.023" classname="UVUnwrap" />
+    <testcase name="MultiMeshNoOverlapAndPadding" file="tests/uvunwrap_multimesh_tests.cpp" line="21" status="run" result="completed" time="0.001" timestamp="2026-01-12T18:08:34.025" classname="UVUnwrap" />
+    <testcase name="ScaleAffectsAtlasSize" file="tests/uvunwrap_scale_tests.cpp" line="9" status="run" result="completed" time="0.001" timestamp="2026-01-12T18:08:34.026" classname="UVUnwrap" />
+  </testsuite>
+  <testsuite name="UVUnwrapXAtlas" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:34.027">
+    <testcase name="CreateDestroy" file="tests/uvunwrap_xatlas_tests.cpp" line="5" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.027" classname="UVUnwrapXAtlas" />
+  </testsuite>
+  <testsuite name="Guards" tests="2" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:34.027">
+    <testcase name="DilateHandlesNullSrcOrZeroSize" file="tests/guards_tests.cpp" line="11" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.027" classname="Guards" />
+    <testcase name="MipgenHandlesNullDstOrZeroSize" file="tests/guards_tests.cpp" line="22" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.027" classname="Guards" />
+  </testsuite>
+  <testsuite name="ModelLightBaker" tests="1" failures="0" disabled="0" skipped="1" errors="0" time="0." timestamp="2026-01-12T18:08:34.027">
+    <testcase name="PackToVTEX_CLIProducesVTEX" file="tests/lightmap_model_baker_pack_integration_test.cpp" line="3" status="run" result="skipped" time="0." timestamp="2026-01-12T18:08:34.027" classname="ModelLightBaker">
+      <skipped message="tests/lightmap_model_baker_pack_integration_test.cpp:5&#x0A;Removed: ModelLightBaker deprecated; pack test removed in favor of LightBaker scene tests.&#x0A;"><![CDATA[tests/lightmap_model_baker_pack_integration_test.cpp:5
+Removed: ModelLightBaker deprecated; pack test removed in favor of LightBaker scene tests.
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="MeshPushConstants" tests="3" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:34.027">
+    <testcase name="DefaultValues" file="tests/mesh_push_constants_tests.cpp" line="7" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.027" classname="MeshPushConstants" />
+    <testcase name="SetValues" file="tests/mesh_push_constants_tests.cpp" line="17" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.027" classname="MeshPushConstants" />
+    <testcase name="BinaryLayout" file="tests/mesh_push_constants_tests.cpp" line="31" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.027" classname="MeshPushConstants" />
+  </testsuite>
+  <testsuite name="LightBaker" tests="5" failures="0" disabled="0" skipped="4" errors="0" time="0.234" timestamp="2026-01-12T18:08:34.027">
+    <testcase name="Scene_Dedup_RepeatedInstances" file="tests/lightbaker_dedup_integration_test.cpp" line="15" status="run" result="skipped" time="0." timestamp="2026-01-12T18:08:34.027" classname="LightBaker">
+      <skipped message="tests/lightbaker_dedup_integration_test.cpp:20&#x0A;Skipping hardware-dependent LightBaker dedup test; set RUN_HARDWARE_TESTS=1 to enable&#x0A;"><![CDATA[tests/lightbaker_dedup_integration_test.cpp:20
+Skipping hardware-dependent LightBaker dedup test; set RUN_HARDWARE_TESTS=1 to enable
+]]></skipped>
+    </testcase>
+    <testcase name="ModelCLI_Smoke_GPU" file="tests/lightbaker_model_gpu_smoke_test.cpp" line="11" status="run" result="completed" time="0.207" timestamp="2026-01-12T18:08:34.027" classname="LightBaker" />
+    <testcase name="ModelCLI_Smoke_CPU" file="tests/lightbaker_model_smoke_test.cpp" line="13" status="run" result="skipped" time="0.013" timestamp="2026-01-12T18:08:34.235" classname="LightBaker">
+      <skipped message="tests/lightbaker_model_smoke_test.cpp:39&#x0A;CPU baking not implemented in LightBaker; skipping test.&#x0A;"><![CDATA[tests/lightbaker_model_smoke_test.cpp:39
+CPU baking not implemented in LightBaker; skipping test.
+]]></skipped>
+    </testcase>
+    <testcase name="EndToEnd_EXR_To_VTEX_Packaging" file="tests/lightbaker_packaging_integration_test.cpp" line="23" status="run" result="skipped" time="0.012" timestamp="2026-01-12T18:08:34.249" classname="LightBaker">
+      <skipped message="tests/lightbaker_packaging_integration_test.cpp:48&#x0A;CPU baking not implemented in LightBaker; skipping test.&#x0A;"><![CDATA[tests/lightbaker_packaging_integration_test.cpp:48
+CPU baking not implemented in LightBaker; skipping test.
+]]></skipped>
+    </testcase>
+    <testcase name="SceneLights_CLIIncludesBakedLightsInManifest" file="tests/lightmap_model_baker_scene_integration_test.cpp" line="13" status="run" result="skipped" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightBaker">
+      <skipped message="tests/lightmap_model_baker_scene_integration_test.cpp:18&#x0A;Skipping hardware-dependent LightBaker scene test; set RUN_HARDWARE_TESTS=1 to enable&#x0A;"><![CDATA[tests/lightmap_model_baker_scene_integration_test.cpp:18
+Skipping hardware-dependent LightBaker scene test; set RUN_HARDWARE_TESTS=1 to enable
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="LightmapSceneIngestion" tests="3" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:34.262">
+    <testcase name="ParsesSimpleScene" file="tests/lightmap_scene_ingestion_tests.cpp" line="9" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightmapSceneIngestion" />
+    <testcase name="NumericIdAndMeshKey" file="tests/lightmap_scene_ingestion_tests.cpp" line="42" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightmapSceneIngestion" />
+    <testcase name="DirectionalLightDirectionFromRotation" file="tests/lightmap_scene_ingestion_tests.cpp" line="64" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightmapSceneIngestion" />
+  </testsuite>
+  <testsuite name="LightmapGeometry" tests="3" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:34.262">
+    <testcase name="AppliesNodeTransforms" file="tests/lightmap_geometry_tests.cpp" line="57" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightmapGeometry" />
+    <testcase name="CollectsTrianglesFromScene_MultiSubmesh" file="tests/lightmap_geometry_tests.cpp" line="69" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightmapGeometry" />
+    <testcase name="SceneInstancesApplyTransforms" file="tests/lightmap_geometry_tests.cpp" line="119" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:34.262" classname="LightmapGeometry" />
+  </testsuite>
+  <testsuite name="LightBakerScene" tests="2" failures="2" disabled="0" skipped="0" errors="0" time="0.037" timestamp="2026-01-12T18:08:34.262">
+    <testcase name="SceneCLI_Smoke_CPU" file="tests/lightbaker_scene_cpu_tests.cpp" line="13" status="run" result="completed" time="0.019" timestamp="2026-01-12T18:08:34.262" classname="LightBakerScene">
+      <failure message="tests/lightbaker_scene_cpu_tests.cpp:48&#x0A;Expected equality of these values:&#x0A;  ret&#x0A;    Which is: 256&#x0A;  0&#x0A;LightBaker scene bake failed (exit code 256) cmd: /home/ac/Documents/source/prj/engine2/tools/LightBaker --scene /tmp/lightbaker_scene_cpu_test/triangle_scene.json --out /tmp/lightbaker_scene_cpu_test/out --resolution 4&#x0A;" type=""><![CDATA[tests/lightbaker_scene_cpu_tests.cpp:48
+Expected equality of these values:
+  ret
+    Which is: 256
+  0
+LightBaker scene bake failed (exit code 256) cmd: /home/ac/Documents/source/prj/engine2/tools/LightBaker --scene /tmp/lightbaker_scene_cpu_test/triangle_scene.json --out /tmp/lightbaker_scene_cpu_test/out --resolution 4
+]]></failure>
+    </testcase>
+    <testcase name="SceneInstance_CLI_Smoke_CPU" file="tests/lightbaker_scene_cpu_tests.cpp" line="72" status="run" result="completed" time="0.018" timestamp="2026-01-12T18:08:34.281" classname="LightBakerScene">
+      <failure message="tests/lightbaker_scene_cpu_tests.cpp:117&#x0A;Expected equality of these values:&#x0A;  ret&#x0A;    Which is: 256&#x0A;  0&#x0A;LightBaker scene instance bake failed (exit code 256) cmd: /home/ac/Documents/source/prj/engine2/tools/LightBaker --scene /tmp/lightbaker_scene_cpu_test_inst/triangle_scene_inst.json --out /tmp/lightbaker_scene_cpu_test_inst/out --resolution 4&#x0A;" type=""><![CDATA[tests/lightbaker_scene_cpu_tests.cpp:117
+Expected equality of these values:
+  ret
+    Which is: 256
+  0
+LightBaker scene instance bake failed (exit code 256) cmd: /home/ac/Documents/source/prj/engine2/tools/LightBaker --scene /tmp/lightbaker_scene_cpu_test_inst/triangle_scene_inst.json --out /tmp/lightbaker_scene_cpu_test_inst/out --resolution 4
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="LightmapEXR2VTEX" tests="1" failures="0" disabled="0" skipped="1" errors="0" time="0." timestamp="2026-01-12T18:08:34.300">
+    <testcase name="ToolConvertsEXRToVTEX" file="tests/lightmap_exr2vtex_integration_tests.cpp" line="16" status="run" result="skipped" time="0." timestamp="2026-01-12T18:08:34.300" classname="LightmapEXR2VTEX">
+      <skipped message="tests/lightmap_exr2vtex_integration_tests.cpp:53&#x0A;Skipping hardware-dependent test (set RUN_HARDWARE_TESTS=1 or provide EXR2VTEX_PATH)&#x0A;"><![CDATA[tests/lightmap_exr2vtex_integration_tests.cpp:53
+Skipping hardware-dependent test (set RUN_HARDWARE_TESTS=1 or provide EXR2VTEX_PATH)
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="LightmapEXR" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.204" timestamp="2026-01-12T18:08:34.300">
+    <testcase name="LoadEXRFile" file="tests/lightmap_exr_tests.cpp" line="18" status="run" result="completed" time="0.204" timestamp="2026-01-12T18:08:34.300" classname="LightmapEXR" />
+  </testsuite>
+  <testsuite name="LightmapEXRCPU" tests="3" failures="0" disabled="0" skipped="0" errors="0" time="0.609" timestamp="2026-01-12T18:08:34.504">
+    <testcase name="EXRToVTEX_WriteOnly" file="tests/lightmap_exrcpu_tests.cpp" line="16" status="run" result="completed" time="0.203" timestamp="2026-01-12T18:08:34.504" classname="LightmapEXRCPU" />
+    <testcase name="EXRToVTEX_BC6H_WriteOnly" file="tests/lightmap_exrcpu_tests.cpp" line="51" status="run" result="completed" time="0.2" timestamp="2026-01-12T18:08:34.708" classname="LightmapEXRCPU" />
+    <testcase name="EXRToVTEX_LoadIntoGPU" file="tests/lightmap_exrcpu_tests.cpp" line="133" status="run" result="completed" time="0.205" timestamp="2026-01-12T18:08:34.908" classname="LightmapEXRCPU" />
+  </testsuite>
+  <testsuite name="LightmapGolden" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.26" timestamp="2026-01-12T18:08:35.114">
+    <testcase name="FullscreenRegionCompare" file="tests/lightmap_fullscreen_golden_test.cpp" line="71" status="run" result="completed" time="0.26" timestamp="2026-01-12T18:08:35.114" classname="LightmapGolden" />
+  </testsuite>
+  <testsuite name="LightmapIntegration" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.234" timestamp="2026-01-12T18:08:35.374">
+    <testcase name="ExportLoadApplyAndAssignTexture" file="tests/lightmap_integration_tests.cpp" line="19" status="run" result="completed" time="0.234" timestamp="2026-01-12T18:08:35.374" classname="LightmapIntegration" />
+  </testsuite>
+  <testsuite name="LightmapRenderPixelCompare" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.262" timestamp="2026-01-12T18:08:35.609">
+    <testcase name="FullscreenSampleMatchesLightmap" file="tests/lightmap_pixel_compare_test.cpp" line="21" status="run" result="completed" time="0.262" timestamp="2026-01-12T18:08:35.609" classname="LightmapRenderPixelCompare" />
+  </testsuite>
+  <testsuite name="LightmapRenderSmoke" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.264" timestamp="2026-01-12T18:08:35.871">
+    <testcase name="BuildSceneLoadLightmapAndRunRendererFrame" file="tests/lightmap_render_smoke_test.cpp" line="19" status="run" result="completed" time="0.264" timestamp="2026-01-12T18:08:35.871" classname="LightmapRenderSmoke" />
+  </testsuite>
+  <testsuite name="LightmapShaderCompare" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.264" timestamp="2026-01-12T18:08:36.136">
+    <testcase name="PostProcessSamplerMatchesLightmap" file="tests/lightmap_shader_pixel_compare_test.cpp" line="22" status="run" result="completed" time="0.264" timestamp="2026-01-12T18:08:36.136" classname="LightmapShaderCompare" />
+  </testsuite>
+  <testsuite name="LightmapBaker_UV" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.001" timestamp="2026-01-12T18:08:36.401">
+    <testcase name="GenerateInstanceUVsForNode_SimpleTriangle" file="tests/lightmap_uv_generation_tests.cpp" line="10" status="run" result="completed" time="0.001" timestamp="2026-01-12T18:08:36.401" classname="LightmapBaker_UV" />
+  </testsuite>
+  <testsuite name="LightmapVTEXCPUTexture" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.211" timestamp="2026-01-12T18:08:36.402">
+    <testcase name="ReadHeaderAsCPUOnlyTexture" file="tests/lightmap_vtex_cpu_texture_tests.cpp" line="12" status="run" result="completed" time="0.211" timestamp="2026-01-12T18:08:36.402" classname="LightmapVTEXCPUTexture" />
+  </testsuite>
+  <testsuite name="LightmapVTEXPixel" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.243" timestamp="2026-01-12T18:08:36.614">
+    <testcase name="EXRToVTEXRoundtrip" file="tests/lightmap_vtex_pixel_tests.cpp" line="21" status="run" result="completed" time="0.243" timestamp="2026-01-12T18:08:36.614" classname="LightmapVTEXPixel" />
+  </testsuite>
+  <testsuite name="SceneBindings" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:36.857">
+    <testcase name="ApplyBindingsToScene" file="tests/scene_binding_tests.cpp" line="9" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:36.857" classname="SceneBindings" />
+  </testsuite>
+  <testsuite name="SceneSerializer" tests="2" failures="0" disabled="0" skipped="1" errors="0" time="0.199" timestamp="2026-01-12T18:08:36.857">
+    <testcase name="LightBakeFieldsRoundtrip" file="tests/scene_serializer_tests.cpp" line="17" status="run" result="completed" time="0.199" timestamp="2026-01-12T18:08:36.857" classname="SceneSerializer" />
+    <testcase name="DeserializeDemoBakeScene" file="tests/scene_serializer_tests.cpp" line="57" status="run" result="skipped" time="0." timestamp="2026-01-12T18:08:37.057" classname="SceneSerializer">
+      <skipped message="tests/scene_serializer_tests.cpp:61&#x0A;Missing demo scene file: assets/scenes/test/demo_scene_bake.json&#x0A;"><![CDATA[tests/scene_serializer_tests.cpp:61
+Missing demo scene file: assets/scenes/test/demo_scene_bake.json
+]]></skipped>
+    </testcase>
+  </testsuite>
+  <testsuite name="LightBakerCanonicalKey" tests="3" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-01-12T18:08:37.057">
+    <testcase name="DeterministicAcrossCalls" file="tests/lightbaker_canonical_key_tests.cpp" line="8" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:37.057" classname="LightBakerCanonicalKey" />
+    <testcase name="ChangesWithGeometryOrResolution" file="tests/lightbaker_canonical_key_tests.cpp" line="36" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:37.057" classname="LightBakerCanonicalKey" />
+    <testcase name="ChangesWithUVParameters" file="tests/lightbaker_canonical_key_tests.cpp" line="70" status="run" result="completed" time="0." timestamp="2026-01-12T18:08:37.057" classname="LightBakerCanonicalKey" />
+  </testsuite>
+  <testsuite name="CubeVariants/LightBakerParamTest" tests="2" failures="0" disabled="0" skipped="2" errors="0" time="0.026" timestamp="2026-01-12T18:08:37.057">
+    <testcase name="ModelParameterizedResolutions/0" value_param="(0x564c7d1d4dec pointing to &quot;glTF/Cube/glTF/Cube.gltf&quot;, 4)" file="tests/lightbaker_model_param_tests.cpp" line="19" status="run" result="skipped" time="0.018" timestamp="2026-01-12T18:08:37.057" classname="CubeVariants/LightBakerParamTest">
+      <skipped message="tests/lightbaker_model_param_tests.cpp:57&#x0A;Skipping model due to unsupported primitive type, empty mesh, or CPU bake not implemented: /home/ac/Documents/source/prj/engine2/assets/models/glTF/Cube/glTF/Cube.gltf&#x0A;[LightBaker] Parsed flags: gpu=false samples=64 resolution=4 out=/tmp/lightbaker_param_test/out_4&#x0A;[[32mGLTFImporter[0m]: File loaded successfully&#x0A;[[32m Material [0m] [34mCube[0m -&gt; PBR(albedo=1,1,1, metallic=1, roughness=1, alphaMode=OPAQUE)&#x0A;[GLTFImporter] Mesh 0 prim 0 added 26 vertices&#x0A;[32m[GLTFImporter] Meshes processed[0m&#x0A;[32m[GLTFImporter] Loaded 1 materials, 1 sub-meshes[0m&#x0A;Unhandled exception: CPU baking models is not implemented in this tool. Please use --gpu flag.&#x0A;&#x0A;"><![CDATA[tests/lightbaker_model_param_tests.cpp:57
+Skipping model due to unsupported primitive type, empty mesh, or CPU bake not implemented: /home/ac/Documents/source/prj/engine2/assets/models/glTF/Cube/glTF/Cube.gltf
+[LightBaker] Parsed flags: gpu=false samples=64 resolution=4 out=/tmp/lightbaker_param_test/out_4
+[[32mGLTFImporter[0m]: File loaded successfully
+[[32m Material [0m] [34mCube[0m -> PBR(albedo=1,1,1, metallic=1, roughness=1, alphaMode=OPAQUE)
+[GLTFImporter] Mesh 0 prim 0 added 26 vertices
+[32m[GLTFImporter] Meshes processed[0m
+[32m[GLTFImporter] Loaded 1 materials, 1 sub-meshes[0m
+Unhandled exception: CPU baking models is not implemented in this tool. Please use --gpu flag.
+
+]]></skipped>
+    </testcase>
+    <testcase name="ModelParameterizedResolutions/1" value_param="(0x564c7d1af1d8 pointing to &quot;glTF/SimpleMeshes/glTF/SimpleMeshes.gltf&quot;, 2)" file="tests/lightbaker_model_param_tests.cpp" line="19" status="run" result="skipped" time="0.007" timestamp="2026-01-12T18:08:37.076" classname="CubeVariants/LightBakerParamTest">
+      <skipped message="tests/lightbaker_model_param_tests.cpp:57&#x0A;Skipping model due to unsupported primitive type, empty mesh, or CPU bake not implemented: /home/ac/Documents/source/prj/engine2/assets/models/glTF/SimpleMeshes/glTF/SimpleMeshes.gltf&#x0A;[LightBaker] Parsed flags: gpu=false samples=64 resolution=2 out=/tmp/lightbaker_param_test/out_2&#x0A;[[32mGLTFImporter[0m]: File loaded successfully&#x0A;[GLTFImporter] Mesh 0 prim 0 added 3 vertices&#x0A;[GLTFImporter] Mesh 0 prim 0 added 2 vertices&#x0A;[32m[GLTFImporter] Meshes processed[0m&#x0A;[32m[GLTFImporter] Loaded 0 materials, 1 sub-meshes[0m&#x0A;Unhandled exception: CPU baking models is not implemented in this tool. Please use --gpu flag.&#x0A;&#x0A;"><![CDATA[tests/lightbaker_model_param_tests.cpp:57
+Skipping model due to unsupported primitive type, empty mesh, or CPU bake not implemented: /home/ac/Documents/source/prj/engine2/assets/models/glTF/SimpleMeshes/glTF/SimpleMeshes.gltf
+[LightBaker] Parsed flags: gpu=false samples=64 resolution=2 out=/tmp/lightbaker_param_test/out_2
+[[32mGLTFImporter[0m]: File loaded successfully
+[GLTFImporter] Mesh 0 prim 0 added 3 vertices
+[GLTFImporter] Mesh 0 prim 0 added 2 vertices
+[32m[GLTFImporter] Meshes processed[0m
+[32m[GLTFImporter] Loaded 0 materials, 1 sub-meshes[0m
+Unhandled exception: CPU baking models is not implemented in this tool. Please use --gpu flag.
+
+]]></skipped>
+    </testcase>
+  </testsuite>
+</testsuites>

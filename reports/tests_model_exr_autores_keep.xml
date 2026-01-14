@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="1" failures="0" disabled="0" errors="0" time="0.293" timestamp="2026-01-12T18:28:32.296" name="AllTests">
+  <testsuite name="LightBaker" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.293" timestamp="2026-01-12T18:28:32.296">
+    <testcase name="ModelEXR_AutoRes_Keep" file="tests/lightbaker_model_exr_autores_keep_test.cpp" line="14" status="run" result="completed" time="0.293" timestamp="2026-01-12T18:28:32.296" classname="LightBaker" />
+  </testsuite>
+</testsuites>

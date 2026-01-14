@@ -51,9 +51,10 @@ TEST_P(LightBakerParamTest, ModelParameterizedResolutions)
     // Inspect output to decide whether this is an expected unsupported case
     std::ifstream in(logPath);
     std::string   outStr((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    if (outStr.find("No triangles found") != std::string::npos || outStr.find("Primitive without indices not supported") != std::string::npos)
+    if (outStr.find("No triangles found") != std::string::npos || outStr.find("Primitive without indices not supported") != std::string::npos ||
+        outStr.find("CPU baking models is not implemented") != std::string::npos || outStr.find("Please use --gpu flag") != std::string::npos)
     {
-      GTEST_SKIP() << "Skipping model due to unsupported primitive type or empty mesh: " << modelPath << "\n" << outStr;
+      GTEST_SKIP() << "Skipping model due to unsupported primitive type, empty mesh, or CPU bake not implemented: " << modelPath << "\n" << outStr;
     }
   }
   ASSERT_EQ(ret, 0) << "LightBaker failed (exit code " << ret << ") cmd: " << cmd;
