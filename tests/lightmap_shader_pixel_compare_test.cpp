@@ -97,8 +97,9 @@ TEST(LightmapShaderCompare, PostProcessSamplerMatchesLightmap)
   ASSERT_NE(lmInfo.imageView, VK_NULL_HANDLE);
   ASSERT_NE(lmInfo.sampler, VK_NULL_HANDLE);
 
-  // Build descriptor set with only binding 0 written
-  engine::DescriptorWriter(*layout, *pool).writeImage(0, &lmInfo).build(ds);
+  // Build descriptor set with both bindings written (defensive check prevents missing bindings)
+  bool ok = engine::DescriptorWriter(*layout, *pool).writeImage(0, &lmInfo).writeImage(1, &lmInfo).build(ds);
+  ASSERT_TRUE(ok);
   ASSERT_NE(ds, VK_NULL_HANDLE);
 
   // Sanity-check GPU-resident lightmap contents before sampling
@@ -120,7 +121,8 @@ TEST(LightmapShaderCompare, PostProcessSamplerMatchesLightmap)
   lmRegion.imageSubresource.layerCount     = 1;
   lmRegion.imageOffset                     = {0, 0, 0};
   lmRegion.imageExtent                     = {static_cast<uint32_t>(lightmapTex->getWidth()), static_cast<uint32_t>(lightmapTex->getHeight()), 1};
-  device.getMemory().copyImageToBuffer(lmImage, lmStaging, {lmRegion}, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  // Copy lightmap to staging and restore to SHADER_READ_ONLY (pre/post transitions handled by helper)
+  device.getMemory().copyImageToBuffer(lmImage, lmStaging, {lmRegion}, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
   void* lmData = nullptr;
   vkMapMemory(device.device(), lmStagingMem, 0, VK_WHOLE_SIZE, 0, &lmData);
   float* lmPixels = reinterpret_cast<float*>(lmData);
@@ -188,7 +190,8 @@ TEST(LightmapShaderCompare, PostProcessSamplerMatchesLightmap)
   region.imageOffset                     = {0, 0, 0};
   region.imageExtent                     = {4, 4, 1};
 
-  device.getMemory().copyImageToBuffer(offscreen, hostBuf, {region}, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  // Copy offscreen color image to buffer and restore to SHADER_READ_ONLY (pre/post transitions handled by helper)
+  device.getMemory().copyImageToBuffer(offscreen, hostBuf, {region}, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   void* data = nullptr;
   vkMapMemory(device.device(), hostMem, 0, VK_WHOLE_SIZE, 0, &data);

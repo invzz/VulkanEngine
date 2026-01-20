@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
@@ -205,7 +206,8 @@ namespace engine {
     }
   } // namespace
 
-  ModelRenderSystem::ModelRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout) : device(device)
+  ModelRenderSystem::ModelRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout)
+      : device(device), renderPass_(renderPass)
   {
     createSceneColorDescriptorResources();
 
@@ -217,6 +219,10 @@ namespace engine {
 
     createPipelineLayout(globalSetLayout, bindlessSetLayout);
     createPipeline(renderPass);
+
+    // Default: use a single recording thread (serial). Caller may opt-in.
+    multithreadedRecordingEnabled_ = false;
+    multithreadedRecordingThreads_ = 0;
   }
 
   ModelRenderSystem::~ModelRenderSystem()
@@ -414,22 +420,21 @@ namespace engine {
       }
     };
 
-    // Bind pipeline + common descriptor sets once.
+    // Bind pipeline + common descriptor sets once on the primary command buffer.
     bindPipelineIfNeeded(gbufferPipeline.get());
     bindBaseDescriptorSets(frameInfo, true);
 
-    auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
-      auto&                      modelComp = view.get<ModelComponent>(entity);
-      MeshPushConstantData const push      = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, pMaterial, (pMaterial != nullptr) && pMaterial->doubleSided);
-
-      float const isSelected = ((uint32_t)entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
-      if (materialBindings_ != nullptr)
-      {
-        materialBindings_->bindMaterial(frameInfo, pipelineLayout, pMaterial, isSelected);
-      }
-
-      pushConstantsAndDraw(device, frameInfo.commandBuffer, pipelineLayout, push, subMesh.meshletCount);
+    // Collect work items (entity + submesh) after culling so we can partition them.
+    struct RenderWorkItem
+    {
+      entt::entity          entity;
+      const Model::SubMesh* subMesh;
+      const PBRMaterial*    material;
+      glm::mat4             modelMatrix;
     };
+
+    std::vector<RenderWorkItem> workItems;
+    workItems.reserve(256);
 
     for (auto entity : view)
     {
@@ -470,10 +475,173 @@ namespace engine {
           continue;
         }
 
-        bindPipelineIfNeeded(gbufferPipeline.get());
-        renderItem(entity, subMesh, pMaterial, transform.modelTransform());
+        // Add to work list for potential parallel recording
+        workItems.push_back({entity, &subMesh, pMaterial, modelMatrix});
       }
     }
+
+    // If multithreaded recording not enabled or trivial work, fall back to serial path.
+    if (!multithreadedRecordingEnabled_ || workItems.size() < 32 || multithreadedRecordingThreads_ <= 1)
+    {
+      // Serial replay of collected items
+      for (const auto& item : workItems)
+      {
+        auto&                      modelComp = view.get<ModelComponent>(item.entity);
+        MeshPushConstantData const push = makeMeshPush(frameInfo, item.entity, modelComp, *item.subMesh, item.modelMatrix, item.material, (item.material != nullptr) && item.material->doubleSided);
+
+        float const isSelected = ((uint32_t)item.entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
+        if (materialBindings_ != nullptr)
+        {
+          // Diagnostic: log descriptor-set handles for serial path so we can compare
+          // against the multithreaded recording path in failing CI/hardware runs.
+          std::cerr << "[MRS][serial] tid=" << std::this_thread::get_id() << " frame=" << frameInfo.frameIndex << " entity=" << static_cast<uint32_t>(item.entity)
+                    << " globalSet=" << frameInfo.globalDescriptorSet << " globalTexSet=" << frameInfo.globalTextureSet
+                    << " materialFrameSet=" << materialBindings_->getFrameDescriptorSet(frameInfo.frameIndex) << "\n";
+
+          materialBindings_->bindMaterial(frameInfo, pipelineLayout, item.material, isSelected);
+        }
+
+        pushConstantsAndDraw(device, frameInfo.commandBuffer, pipelineLayout, push, item.subMesh->meshletCount);
+      }
+      return;
+    }
+
+    // --- Multithreaded recording path (opt-in pilot) ---
+    const uint32_t threadCount = std::min<uint32_t>(multithreadedRecordingThreads_, std::max<uint32_t>(1u, std::thread::hardware_concurrency() - 1));
+    const size_t   chunkSize   = (workItems.size() + threadCount - 1) / threadCount;
+
+    std::vector<VkCommandBuffer> secondaryBuffers;
+    secondaryBuffers.reserve(threadCount);
+
+    std::vector<std::thread> workers;
+    std::atomic<size_t>      nextIndex{0};
+
+    // Worker lambda: allocate a secondary CB, record assigned items, then return the CB.
+    auto workerFn = [&](uint32_t workerId) {
+      VkCommandBuffer sec = VK_NULL_HANDLE;
+      if (device.allocateSecondaryCommandBuffer(&sec) != VK_SUCCESS)
+      {
+        // Allocation failed for this worker; bail out by leaving sec == VK_NULL_HANDLE
+        return;
+      }
+
+      // Secondary CB must be recorded with inheritance info for the active render pass/subpass.
+      VkCommandBufferInheritanceInfo inherit{};
+      inherit.sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+      inherit.renderPass  = renderPass_;
+      inherit.subpass     = 0;
+      inherit.framebuffer = VK_NULL_HANDLE; // allow compatibility with the active framebuffer
+
+      VkCommandBufferBeginInfo beginInfo{};
+      beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+      beginInfo.flags            = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+      beginInfo.pInheritanceInfo = &inherit;
+
+      if (vkBeginCommandBuffer(sec, &beginInfo) != VK_SUCCESS)
+      {
+        device.freeSecondaryCommandBuffer(sec);
+        return;
+      }
+
+      // Set dynamic state locally in the secondary CB to be independent of primary.
+      // Viewport/scissor depend on frame extent.
+      VkViewport vp{
+              .x        = 0.0f,
+              .y        = 0.0f,
+              .width    = static_cast<float>(frameInfo.extent.width),
+              .height   = static_cast<float>(frameInfo.extent.height),
+              .minDepth = 0.0f,
+              .maxDepth = 1.0f,
+      };
+      VkRect2D scissor{{0, 0}, frameInfo.extent};
+      vkCmdSetViewport(sec, 0, 1, &vp);
+      vkCmdSetScissor(sec, 0, 1, &scissor);
+
+      // Local FrameInfo to pass into binding helpers (uses the secondary CB)
+      FrameInfo localFrame     = frameInfo;
+      localFrame.commandBuffer = sec;
+
+      size_t start = nextIndex.fetch_add(chunkSize);
+      while (start < workItems.size())
+      {
+        const size_t end = std::min(workItems.size(), start + chunkSize);
+        for (size_t i = start; i < end; ++i)
+        {
+          const auto& item = workItems[i];
+
+          // Short critical section around material binding to avoid races in
+          // MaterialRenderBindings (allocation of dynamic offsets).
+          if (materialBindings_ != nullptr)
+          {
+            // Diagnostic: log before and after the material bind in worker-recorded CBs.
+            std::cerr << "[MRS][worker] tid=" << std::this_thread::get_id() << " wid=" << workerId << " frame=" << localFrame.frameIndex << " entity=" << static_cast<uint32_t>(item.entity)
+                      << " globalSet=" << localFrame.globalDescriptorSet << " globalTexSet=" << localFrame.globalTextureSet
+                      << " materialFrameSet=" << materialBindings_->getFrameDescriptorSet(localFrame.frameIndex) << "\n";
+
+            std::lock_guard<std::mutex> lk(multithreadBindMutex_);
+            materialBindings_->bindMaterial(localFrame, pipelineLayout, item.material, ((uint32_t)item.entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f);
+
+            std::cerr << "[MRS][worker] bind-done tid=" << std::this_thread::get_id() << " wid=" << workerId << " frame=" << localFrame.frameIndex << "\n";
+          }
+
+          // Compute push constants and draw (pushConstantsAndDraw is thread-safe for recording)
+          auto&                      modelComp = view.get<ModelComponent>(item.entity);
+          MeshPushConstantData const push = makeMeshPush(frameInfo, item.entity, modelComp, *item.subMesh, item.modelMatrix, item.material, (item.material != nullptr) && item.material->doubleSided);
+          pushConstantsAndDraw(device, sec, pipelineLayout, push, item.subMesh->meshletCount);
+        }
+
+        start = nextIndex.fetch_add(chunkSize);
+      }
+
+      if (vkEndCommandBuffer(sec) != VK_SUCCESS)
+      {
+        device.freeSecondaryCommandBuffer(sec);
+        return;
+      }
+
+      // Push recorded secondary buffer into the shared vector (synchronized by mutex)
+      {
+        std::lock_guard<std::mutex> lk(multithreadBindMutex_);
+        secondaryBuffers.push_back(sec);
+      }
+    };
+
+    // --- Pre-worker fast-fail validation: ensure per-frame material descriptor set is valid for workers.
+    if (materialBindings_ != nullptr)
+    {
+      if (!materialBindings_->frameDescriptorSetValid(frameInfo.frameIndex))
+      {
+        // Defensive: fail early and fall back to serial path in non-release builds so the test fails with a clear message.
+        std::cerr << "[ModelRenderSystem] ERROR: material descriptor set for frame " << frameInfo.frameIndex << " is VK_NULL_HANDLE before multithreaded recording\n";
+        assert(false && "material descriptor set invalid before multithreaded recording");
+      }
+    }
+
+    // Launch workers
+    for (uint32_t t = 0; t < threadCount; ++t)
+    {
+      workers.emplace_back(workerFn, t);
+    }
+
+    // Join workers
+    for (auto& w : workers)
+    {
+      if (w.joinable()) w.join();
+    }
+
+    // Execute recorded secondary command buffers on the primary command buffer
+    if (!secondaryBuffers.empty())
+    {
+      vkCmdExecuteCommands(frameInfo.commandBuffer, static_cast<uint32_t>(secondaryBuffers.size()), secondaryBuffers.data());
+    }
+
+    // Free secondary command buffers
+    for (auto cb : secondaryBuffers)
+    {
+      device.freeSecondaryCommandBuffer(cb);
+    }
+
+    return;
   }
 
   void ModelRenderSystem::beginFrame(int frameIndex)
@@ -481,6 +649,26 @@ namespace engine {
     if (materialBindings_ != nullptr)
     {
       materialBindings_->beginFrame(frameIndex);
+    }
+  }
+
+  void ModelRenderSystem::enableMultiThreadedRecording(bool enable, uint32_t threadCount)
+  {
+    multithreadedRecordingEnabled_ = enable;
+    if (!enable)
+    {
+      multithreadedRecordingThreads_ = 0;
+      return;
+    }
+
+    if (threadCount == 0)
+    {
+      uint32_t hw                    = std::thread::hardware_concurrency();
+      multithreadedRecordingThreads_ = (hw > 1) ? (hw - 1) : 1;
+    }
+    else
+    {
+      multithreadedRecordingThreads_ = threadCount;
     }
   }
 

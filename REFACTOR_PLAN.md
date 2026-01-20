@@ -71,7 +71,7 @@ Each PR should:
 
 ---
 
-## Risk Matrix & Mitigations
+## Risk Matrix & Mitigationsw
 - **Leak/regression risk**: do small PRs with tests simulating partial failures and run CI.
 - **Performance risk (pool changes)**: keep old behavior behind a flag and benchmark pilot implementation before switchover.
 - **Ordering bugs after split**: maintain API compatibility during transition; add integration tests covering lifecycle.

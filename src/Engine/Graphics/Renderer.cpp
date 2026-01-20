@@ -231,6 +231,11 @@ namespace engine {
     assert(!isFrameStarted && "Can't call beginFrame while already in progress");
     swapChainRecreated = false;
 
+    // Track whether we render to the swapchain for this frame; if not, we'll
+    // emit an explicit transition to PRESENT_SRC before presenting so the
+    // image isn't left in VK_IMAGE_LAYOUT_UNDEFINED.
+    usedSwapchainThisFrame = false;
+
     uint32_t imageIndex;
     auto     result = swapChain->acquireNextImage(&imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
@@ -276,6 +281,30 @@ namespace engine {
     assert(isFrameStarted && "Can't call endFrame while frame not in progress");
 
     auto commandBuffer = getCurrentCommandBuffer();
+
+    // If we did not render to the swapchain this frame, ensure the acquired
+    // swapchain image is in PRESENT_SRC before presenting. Some tests render
+    // only to offscreen targets and still go through the present path.
+    if (!usedSwapchainThisFrame)
+    {
+      VkImage              srcImage = swapChain->getImage(static_cast<int>(currentImageIndex));
+      VkImageMemoryBarrier presentBarrier{};
+      presentBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      presentBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+      presentBarrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+      presentBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      presentBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+      presentBarrier.image                           = srcImage;
+      presentBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+      presentBarrier.subresourceRange.baseMipLevel   = 0;
+      presentBarrier.subresourceRange.levelCount     = 1;
+      presentBarrier.subresourceRange.baseArrayLayer = 0;
+      presentBarrier.subresourceRange.layerCount     = 1;
+      presentBarrier.srcAccessMask                   = 0;
+      presentBarrier.dstAccessMask                   = 0;
+
+      vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentBarrier);
+    }
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
     {
@@ -351,6 +380,11 @@ namespace engine {
     assert(isFrameStarted && "Can't begin render pass when frame not in progress");
     assert(commandBuffer == getCurrentCommandBuffer() && "Can't begin render pass on a command buffer from a different "
                                                          "frame");
+
+    // Note: we rendered to the swapchain this frame so the swapchain image will
+    // be transitioned by the render pass itself; this avoids emitting an extra
+    // present transition in endFrame.
+    usedSwapchainThisFrame = true;
 
     VkClearValue clearValues[] = {
             {.color = {0.0f, 0.0f, 0.0f, 1.0f}},

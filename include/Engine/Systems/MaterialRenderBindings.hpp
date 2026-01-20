@@ -31,6 +31,16 @@ namespace engine {
 
     [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout_; }
 
+    // Quick validation: returns true if the per-frame material descriptor set for `frameIndex` is valid.
+    [[nodiscard]] bool frameDescriptorSetValid(int frameIndex) const;
+
+    // Test helpers: enable capture of descriptor handles observed during bind, and query captured values.
+    void                                       enableBindCapture(bool enable);
+    [[nodiscard]] std::vector<VkDescriptorSet> getCapturedBinds() const;
+
+    // Query the raw per-frame descriptor set handle (test-only).
+    [[nodiscard]] VkDescriptorSet getFrameDescriptorSet(int frameIndex) const;
+
     // Writes a material record into the current frame's material buffer and binds the descriptor set
     // (including the dynamic offset) at the expected set index.
     void bindMaterial(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, const PBRMaterial* material, float isSelected);
@@ -56,6 +66,16 @@ namespace engine {
     std::vector<uint32_t>                dynamicOffsetIndexByFrame_;
 
     VkDeviceSize atomSize_{0};
+
+    // --- Test / diagnostic helpers ---
+    // Protects access to the capture buffer used by unit tests.
+    mutable std::mutex           captureMutex_;
+    bool                         captureEnabled_ = false;
+    std::vector<VkDescriptorSet> capturedBinds_;
+
+    // Protects allocation/write of dynamic offsets into the per-frame mapped
+    // buffer when bindMaterial is invoked concurrently (defensive).
+    mutable std::mutex allocMutex_;
 
     static constexpr uint32_t kMaterialSetIndex           = 4;
     static constexpr uint32_t kMaxMaterialRecordsPerFrame = 10000;

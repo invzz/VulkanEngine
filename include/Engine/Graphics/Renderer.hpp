@@ -100,6 +100,11 @@ namespace engine {
     bool isFrameStarted{false};
     bool swapChainRecreated{false};
 
+    // Tracks whether the swapchain image was rendered to this frame. If false,
+    // we'll insert a no-op transition to PRESENT_SRC prior to presenting to
+    // avoid leaving swapchain images in VK_IMAGE_LAYOUT_UNDEFINED.
+    bool usedSwapchainThisFrame{false};
+
     // Timestamp (ns) of a pending resize event that we will debounce before acting.
     uint64_t pendingResizeTimeNs{0};
 

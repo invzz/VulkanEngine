@@ -2,7 +2,9 @@
 
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
+#include <thread>
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
@@ -49,6 +51,36 @@ namespace engine {
     {
       dynamicOffsetIndexByFrame_[frameIndex] = 0u;
     }
+  }
+
+  // Return true if the per-frame descriptor set (used for material binding) is present and non-null.
+  bool MaterialRenderBindings::frameDescriptorSetValid(int frameIndex) const
+  {
+    if (frameIndex < 0) return false;
+    if (frameIndex >= static_cast<int>(descriptorSets_.size())) return false;
+    return descriptorSets_[frameIndex] != VK_NULL_HANDLE;
+  }
+
+  void MaterialRenderBindings::enableBindCapture(bool enable)
+  {
+    std::lock_guard<std::mutex> lk(captureMutex_);
+    captureEnabled_ = enable;
+    if (!enable)
+    {
+      capturedBinds_.clear();
+    }
+  }
+
+  std::vector<VkDescriptorSet> MaterialRenderBindings::getCapturedBinds() const
+  {
+    std::lock_guard<std::mutex> lk(captureMutex_);
+    return capturedBinds_;
+  }
+
+  VkDescriptorSet MaterialRenderBindings::getFrameDescriptorSet(int frameIndex) const
+  {
+    if (frameIndex < 0 || frameIndex >= static_cast<int>(descriptorSets_.size())) return VK_NULL_HANDLE;
+    return descriptorSets_[frameIndex];
   }
 
   VkDeviceSize MaterialRenderBindings::materialAtomSize() const
@@ -308,24 +340,50 @@ namespace engine {
 
   void MaterialRenderBindings::writeAndBind(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, const void* data, VkDeviceSize dataSize)
   {
+    // Diagnostic entry log: helps identify which thread/frame invoked the bind and
+    // whether the early-return conditions are hit under MT recording.
+    std::cerr << "[MRB][enter] tid=" << std::this_thread::get_id() << " frameIndex=" << frameInfo.frameIndex << " buffers_count=" << buffers_.size() << "\n";
+
     if (frameInfo.frameIndex < 0 || frameInfo.frameIndex >= static_cast<int>(buffers_.size()))
     {
+      std::cerr << "[MRB][enter] early-return: frameIndex out-of-range=" << frameInfo.frameIndex << "\n";
       return;
     }
 
     uint32_t& dynamicOffsetIndex = dynamicOffsetIndexByFrame_[frameInfo.frameIndex];
     if (dynamicOffsetIndex >= kMaxMaterialRecordsPerFrame)
     {
+      std::cerr << "[MRB][enter] early-return: dynamicOffsetIndex >= max (" << dynamicOffsetIndex << ")\n";
       return;
     }
 
-    char* mappedData = reinterpret_cast<char*>(buffers_[frameInfo.frameIndex]->getMappedMemory());
-    std::memcpy(mappedData + (dynamicOffsetIndex * atomSize_), data, static_cast<size_t>(dataSize));
+    {
+      std::lock_guard<std::mutex> allocLk(allocMutex_);
 
-    uint32_t const dynamicOffset = static_cast<uint32_t>(dynamicOffsetIndex * atomSize_);
-    vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kMaterialSetIndex, 1, &descriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
+      // Defensive: ensure the per-frame descriptor set is valid before binding.
+      if (descriptorSets_[frameInfo.frameIndex] == VK_NULL_HANDLE)
+      {
+        std::cerr << "[MRB][ERROR] frameDescriptorSet is VK_NULL_HANDLE frame=" << frameInfo.frameIndex << " tid=" << std::this_thread::get_id() << "\n";
+        return;
+      }
 
-    dynamicOffsetIndex++;
+      char* mappedData = reinterpret_cast<char*>(buffers_[frameInfo.frameIndex]->getMappedMemory());
+      std::memcpy(mappedData + (dynamicOffsetIndex * atomSize_), data, static_cast<size_t>(dataSize));
+
+      uint32_t const dynamicOffset = static_cast<uint32_t>(dynamicOffsetIndex * atomSize_);
+      vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kMaterialSetIndex, 1, &descriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
+
+      // Capture bind for diagnostic/tests (thread-safe)
+      {
+        std::lock_guard<std::mutex> lk(captureMutex_);
+        if (captureEnabled_)
+        {
+          capturedBinds_.push_back(descriptorSets_[frameInfo.frameIndex]);
+        }
+      }
+
+      dynamicOffsetIndex++;
+    }
   }
 
   void MaterialRenderBindings::bindMaterial(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, const PBRMaterial* material, float isSelected)

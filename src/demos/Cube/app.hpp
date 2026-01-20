@@ -146,6 +146,11 @@ namespace engine {
     bool showSkybox = false;
     bool showGrid   = true;
 
+    // Demo control: multithreaded secondary-command-buffer recording (opt-in pilot).
+    // Default: enabled in the Cube demo; threadCount==0 => auto (HW threads - 1).
+    bool     multithreadedRecordingEnabled = true;
+    uint32_t multithreadedRecordingThreads = 0;
+
     uint64_t iblGenerationCounter = 0;
 
     // UI

@@ -7,9 +7,10 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/DebugMessenger.hpp"
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/ExtensionHelpers.hpp"
-#include "Engine/Graphics/DebugMessenger.hpp"
+#include "Engine/Graphics/ThreadLocalCommandPool.hpp"
 #include "GLFW/glfw3.h"
 #include "vulkan/vk_platform.h"
 #include "vulkan/vulkan_core.h"
@@ -72,7 +73,6 @@ namespace {
     }
     return VK_FALSE;
   }
-
 
 } // namespace
 
@@ -172,6 +172,25 @@ namespace engine {
       catch (...)
       {
         std::cerr << "[Device::~Device] DeviceMemory destructor threw unknown exception\n";
+      }
+
+      // Destroy any thread-local command pools before destroying the device
+      // to ensure pool destruction happens while the device is still valid.
+      try
+      {
+        if (threadLocalCommandPools_)
+        {
+          threadLocalCommandPools_->destroyAll();
+          threadLocalCommandPools_.reset();
+        }
+      }
+      catch (const std::exception& e)
+      {
+        std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw: " << e.what() << "\n";
+      }
+      catch (...)
+      {
+        std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw unknown exception\n";
       }
 
       if (device_ != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE)
@@ -499,6 +518,13 @@ namespace engine {
     }
   }
 
+  void Device::enableThreadLocalCommandPools()
+  {
+    if (threadLocalCommandPools_) return; // already enabled
+    threadLocalCommandPools_ = std::make_unique<ThreadLocalCommandPool>();
+    threadLocalCommandPools_->init(device_, findPhysicalQueueFamilies().graphicsFamily);
+  }
+
   VkResult Device::submitGraphics(const VkSubmitInfo* submitInfo, VkFence fence)
   {
     std::scoped_lock const lock(queueSubmitMutex_);
@@ -743,34 +769,45 @@ namespace engine {
 
   VkCommandBuffer Device::beginSingleTimeCommands()
   {
-    // Create a temporary command pool for this single-time command buffer so worker
-    // threads can allocate/record independently without contending on a shared
-    // command pool (avoids threading validation errors).
-    VkCommandPoolCreateInfo poolInfo{};
-    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = findPhysicalQueueFamilies().graphicsFamily;
-
-    VkCommandPool tempPool = VK_NULL_HANDLE;
-    if (vkCreateCommandPool(device_, &poolInfo, nullptr, &tempPool) != VK_SUCCESS)
+    VkCommandPool pool = VK_NULL_HANDLE;
+    // If an opt-in thread-local manager is enabled, use it. Otherwise create a
+    // temporary pool per call (current behavior).
+    if (threadLocalCommandPools_)
     {
-      throw engine::RuntimeException("failed to create temporary command pool for single-time commands");
+      pool = threadLocalCommandPools_->getForCurrentThread();
+    }
+    else
+    {
+      // Create a temporary command pool for this single-time command buffer so worker
+      // threads can allocate/record independently without contending on a shared
+      // command pool (avoids threading validation errors).
+      VkCommandPoolCreateInfo poolInfo{};
+      poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+      poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+      poolInfo.queueFamilyIndex = findPhysicalQueueFamilies().graphicsFamily;
+
+      VkCommandPool tempPool = VK_NULL_HANDLE;
+      if (vkCreateCommandPool(device_, &poolInfo, nullptr, &tempPool) != VK_SUCCESS)
+      {
+        throw engine::RuntimeException("failed to create temporary command pool for single-time commands");
+      }
+      pool = tempPool;
     }
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool        = tempPool;
+    allocInfo.commandPool        = pool;
     allocInfo.commandBufferCount = 1;
 
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
 
     // Remember which pool owns this command buffer so endSingleTimeCommands can
-    // free and destroy the pool when done.
+    // free (and possibly destroy) the pool when done.
     {
       std::scoped_lock const lock(singleCmdMutex);
-      cmdBufferToPoolMap_[commandBuffer] = tempPool;
+      cmdBufferToPoolMap_[commandBuffer] = pool;
     }
 
     VkCommandBufferBeginInfo beginInfo{};
@@ -778,8 +815,6 @@ namespace engine {
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    // std::cerr << "[Device] beginSingleTimeCommands - created cmdBuffer=" << commandBuffer << " pool=" << tempPool << " thread=" << std::this_thread::get_id() << std::endl;
 
     return commandBuffer;
   }
@@ -853,8 +888,17 @@ namespace engine {
 
     if (pool != VK_NULL_HANDLE)
     {
-      vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
-      vkDestroyCommandPool(device_, pool, nullptr);
+      // If the pool is managed by the ThreadLocalCommandPool, only free the
+      // command buffer — do not destroy the pool.
+      if (threadLocalCommandPools_ && threadLocalCommandPools_->ownsPool(pool))
+      {
+        vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+      }
+      else
+      {
+        vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+        vkDestroyCommandPool(device_, pool, nullptr);
+      }
     }
     else
     {
@@ -862,6 +906,50 @@ namespace engine {
       // an associated temporary pool (shouldn't happen normally).
       vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
     }
+  }
+
+  // Allocate a secondary command buffer. Prefer thread-local pools when enabled
+  // to avoid contention; remember the owning pool so the CB can be freed later.
+  VkResult Device::allocateSecondaryCommandBuffer(VkCommandBuffer* outCommandBuffer)
+  {
+    if (!outCommandBuffer) return VK_ERROR_INITIALIZATION_FAILED;
+
+    VkCommandPool pool = commandPool;
+    if (threadLocalCommandPools_)
+    {
+      pool = threadLocalCommandPools_->getForCurrentThread();
+    }
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool        = pool;
+    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+    allocInfo.commandBufferCount = 1;
+
+    VkResult res = vkAllocateCommandBuffers(device_, &allocInfo, outCommandBuffer);
+    if (res == VK_SUCCESS)
+    {
+      std::scoped_lock const lock(singleCmdMutex);
+      cmdBufferToPoolMap_.emplace(*outCommandBuffer, pool);
+    }
+    return res;
+  }
+
+  // Free a secondary command buffer previously allocated with allocateSecondaryCommandBuffer.
+  void Device::freeSecondaryCommandBuffer(VkCommandBuffer commandBuffer)
+  {
+    VkCommandPool pool = VK_NULL_HANDLE;
+    {
+      std::scoped_lock const lock(singleCmdMutex);
+      auto                   it = cmdBufferToPoolMap_.find(commandBuffer);
+      if (it != cmdBufferToPoolMap_.end())
+      {
+        pool = it->second;
+        cmdBufferToPoolMap_.erase(it);
+      }
+    }
+    if (pool == VK_NULL_HANDLE) pool = commandPool;
+    vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
   }
 
 } // namespace engine

@@ -74,6 +74,10 @@ namespace engine {
     // Reset per-frame transient state (material dynamic offsets, etc.).
     void beginFrame(int frameIndex);
 
+    // Opt-in: enable multithreaded secondary-command-buffer recording (pilot).
+    // threadCount==0 -> choose (HW threads - 1) by default.
+    void enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
+
     // Multi-pass rendering entry points.
     void renderGbuffer(FrameInfo& frameInfo);
     void renderTransmission(FrameInfo& frameInfo);
@@ -113,6 +117,15 @@ namespace engine {
     std::unique_ptr<MaterialRenderBindings> materialBindings_;
 
     std::unique_ptr<LightingRenderBindings> lightingBindings_;
+
+    // Stored render-pass used to record secondary command buffers' inheritance.
+    VkRenderPass renderPass_ = VK_NULL_HANDLE;
+
+    // Multithreading configuration (opt-in). When enabled, draw-recording is
+    // partitioned and recorded to secondary command buffers on worker threads.
+    bool               multithreadedRecordingEnabled_ = false;
+    uint32_t           multithreadedRecordingThreads_ = 0;
+    mutable std::mutex multithreadBindMutex_; // short critical section around bindMaterial calls
 
     VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
     std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;

@@ -59,7 +59,7 @@ namespace engine {
     void createGlobalSetLayout();
     void createUBOBuffers();
     void createLightBuffers(size_t pointCapacity, size_t directionalCapacity, size_t spotCapacity);
-    void createGlobalDescriptorSets();
+    void createGlobalDescriptorSets(VkDescriptorImageInfo hzbImageInfo);
     void updateLightDescriptorSets(int frameIndex);
   };
 
