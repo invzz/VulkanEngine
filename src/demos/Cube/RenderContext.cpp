@@ -11,13 +11,13 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "ModelLib/Resources/MeshManager.hpp"
 #include "Engine/Scene/LightMath.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "ModelLib/Resources/MeshManager.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
@@ -33,7 +33,7 @@ namespace engine {
     createUBOBuffers();
     // Start with a conservative capacity and grow on demand.
     createLightBuffers(64, 16, 64);
-    createGlobalDescriptorSets();
+    createGlobalDescriptorSets(hzbImageInfo);
 
     for (int i = 0; i < SwapChain::maxFramesInFlight(); i++)
     {
@@ -125,7 +125,7 @@ namespace engine {
     }
   }
 
-  void RenderContext::createGlobalDescriptorSets()
+  void RenderContext::createGlobalDescriptorSets(VkDescriptorImageInfo hzbImageInfo)
   {
     globalDescriptorSetsCurrentHzb_.resize(globalDescriptorSets_.size());
 
@@ -133,23 +133,34 @@ namespace engine {
     {
       auto bufferInfo = uboBuffers_[i]->descriptorInfo();
       auto meshInfo   = meshManager_.getDescriptorInfo();
+      auto pointInfo  = pointLightBuffers_[i]->descriptorInfo();
+      auto dirInfo    = directionalLightBuffers_[i]->descriptorInfo();
+      auto spotInfo   = spotLightBuffers_[i]->descriptorInfo();
 
-      // Binding 2 (HZB) will be updated later, but we need to write something or use updateHZBDescriptor
-      // DescriptorWriter requires all bindings? No, it builds what is added.
-      // But if we don't write binding 2, validation might complain if we use it.
-      // We will update it immediately in constructor.
-
+      // Write all bindings required by the layout (including light buffers) so
+      // DescriptorWriter's defensive check succeeds. We still update light
+      // counts later as needed via updateLightDescriptorSets.
       DescriptorWriter(*globalSetLayout_, *globalPool_)
-              .writeBuffer(0, &bufferInfo)
-              .writeBuffer(1, &meshInfo)
-              //.writeImage(2, ...) // We don't have image info here yet
-              .build(globalDescriptorSets_[i]);
+          .writeBuffer(0, &bufferInfo)
+          .writeBuffer(1, &meshInfo)
+          .writeImage(2, &hzbImageInfo)
+          .writeBuffer(3, &pointInfo)
+          .writeBuffer(4, &dirInfo)
+          .writeBuffer(5, &spotInfo)
+          .build(globalDescriptorSets_[i]);
       if (globalDescriptorSets_[i] == VK_NULL_HANDLE)
       {
         throw std::runtime_error("failed to allocate global descriptor set (prev HZB)");
       }
 
-      DescriptorWriter(*globalSetLayout_, *globalPool_).writeBuffer(0, &bufferInfo).writeBuffer(1, &meshInfo).build(globalDescriptorSetsCurrentHzb_[i]);
+      DescriptorWriter(*globalSetLayout_, *globalPool_)
+          .writeBuffer(0, &bufferInfo)
+          .writeBuffer(1, &meshInfo)
+          .writeImage(2, &hzbImageInfo)
+          .writeBuffer(3, &pointInfo)
+          .writeBuffer(4, &dirInfo)
+          .writeBuffer(5, &spotInfo)
+          .build(globalDescriptorSetsCurrentHzb_[i]);
       if (globalDescriptorSetsCurrentHzb_[i] == VK_NULL_HANDLE)
       {
         throw std::runtime_error("failed to allocate global descriptor set (current HZB)");

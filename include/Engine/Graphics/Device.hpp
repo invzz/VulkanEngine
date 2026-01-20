@@ -71,6 +71,12 @@ namespace engine {
     VkCommandBuffer beginSingleTimeCommands();
     void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
+    // Opt-in thread-local command pools for single-time commands. When enabled
+    // a per-thread VkCommandPool is used to avoid creating/destroying pools
+    // per-call which can reduce contention and allocation churn on multithreaded workloads.
+    void enableThreadLocalCommandPools();
+    bool threadLocalCommandPoolsEnabled() const { return threadLocalCommandPools_ != nullptr; }
+
     // Serialize queue submissions from multiple threads to avoid simultaneous
     // use of a VkQueue object which triggers validation errors.
     VkResult submitGraphics(const VkSubmitInfo* submitInfo, VkFence fence);
@@ -109,7 +115,9 @@ namespace engine {
     // Device retains an owning handle and can destroy it deterministically in
     // shutdown. Do NOT attach a DebugUtils create info to the instance `pNext` —
     // that pattern hides ownership and makes safe teardown ordering harder.
-    std::unique_ptr<class DebugMessenger>                                      debugMessenger;
+    std::unique_ptr<class DebugMessenger> debugMessenger;
+    // Optional thread-local command pool manager for single-time command paths.
+    std::unique_ptr<class ThreadLocalCommandPool>                              threadLocalCommandPools_;
     VkPhysicalDevice                                                           physicalDevice = VK_NULL_HANDLE;
     Window&                                                                    window;
     VkCommandPool                                                              commandPool         = VK_NULL_HANDLE;

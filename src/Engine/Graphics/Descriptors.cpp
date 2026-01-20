@@ -5,11 +5,13 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "vulkan/vulkan_core.h"
+#include <iostream>
 
 namespace engine {
   DescriptorSetLayout::Builder&
@@ -111,12 +113,19 @@ namespace engine {
     return *this;
   }
 
-  std::unique_ptr<DescriptorPool> DescriptorPool::Builder::build() const
+  DescriptorPool::Builder& DescriptorPool::Builder::setAllowOverflow(bool allow)
   {
-    return std::make_unique<DescriptorPool>(device, maxSets, poolFlags, poolSizes);
+    allowOverflow = allow;
+    return *this;
   }
 
-  DescriptorPool::DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes) : device{device}
+  std::unique_ptr<DescriptorPool> DescriptorPool::Builder::build() const
+  {
+    return std::make_unique<DescriptorPool>(device, maxSets, poolFlags, poolSizes, allowOverflow);
+  }
+
+  DescriptorPool::DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes, bool allowOverflow)
+      : device{device}, poolSizes{poolSizes}, maxSets{maxSets}, poolFlags{poolFlags}, allowOverflow{allowOverflow}
   {
     VkDescriptorPoolCreateInfo descriptorPoolInfo{};
     descriptorPoolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -132,17 +141,108 @@ namespace engine {
 
   DescriptorPool::~DescriptorPool()
   {
+    // Destroy any overflow/fallback pools we created so they don't leak at device teardown.
+    {
+      std::lock_guard<std::mutex> lk(overflowMutex);
+      for (auto p : overflowPools)
+      {
+        if (p != VK_NULL_HANDLE)
+          vkDestroyDescriptorPool(device.device(), p, nullptr);
+      }
+      overflowPools.clear();
+    }
+
     vkDestroyDescriptorPool(device.device(), descriptorPool, nullptr);
   }
 
-  bool DescriptorPool::allocateDescriptor(const VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor) const
+  bool DescriptorPool::allocateDescriptor(const VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor, const std::vector<VkDescriptorPoolSize>* requestedPoolSizes)
   {
+    // Try primary pool first
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool     = descriptorPool;
     allocInfo.pSetLayouts        = &descriptorSetLayout;
     allocInfo.descriptorSetCount = 1;
-    return vkAllocateDescriptorSets(device.device(), &allocInfo, &descriptor) == VK_SUCCESS;
+    VkResult result = vkAllocateDescriptorSets(device.device(), &allocInfo, &descriptor);
+    if (result == VK_SUCCESS)
+    {
+      return true;
+    }
+
+    // Primary allocation failed — emit diagnostics
+    std::cerr << "vkAllocateDescriptorSets failed (result=" << result << ") on primary pool\n";
+    std::cerr << "  pool.maxSets=" << maxSets << ", pool.flags=" << poolFlags << "\n";
+    for (const auto& ps : poolSizes)
+    {
+      std::cerr << "  poolSize: type=" << ps.type << " count=" << ps.descriptorCount << "\n";
+    }
+
+    if (!allowOverflow)
+    {
+      if (result == VK_ERROR_FRAGMENTED_POOL)
+        std::cerr << "  Suggestion: pool is fragmented; consider using resetPool() or creating a larger pool.\n";
+      else if (result == VK_ERROR_OUT_OF_POOL_MEMORY)
+        std::cerr << "  Suggestion: increase pool size for the descriptor type(s) in use.\n";
+      return false;
+    }
+
+    // Overflow/fallback path (prototype): create a small transient pool sized
+    // for the requested bindings and allocate from it. Store the pool so its
+    // lifetime is tied to this DescriptorPool.
+    std::vector<VkDescriptorPoolSize> fallbackSizes;
+    if (requestedPoolSizes && !requestedPoolSizes->empty())
+    {
+      fallbackSizes = *requestedPoolSizes;
+    }
+    else
+    {
+      // Fallback to a conservative copy of the original poolSizes (at least 1)
+      fallbackSizes = poolSizes;
+      for (auto& ps : fallbackSizes)
+        ps.descriptorCount = std::max<uint32_t>(1u, ps.descriptorCount);
+      if (fallbackSizes.empty())
+        fallbackSizes.push_back({VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1});
+    }
+
+    VkDescriptorPoolCreateInfo fallbackInfo{};
+    fallbackInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    fallbackInfo.poolSizeCount = static_cast<uint32_t>(fallbackSizes.size());
+    fallbackInfo.pPoolSizes    = fallbackSizes.data();
+    fallbackInfo.maxSets       = 1;
+    fallbackInfo.flags         = poolFlags; // inherit flags
+
+    VkDescriptorPool fallbackPool = VK_NULL_HANDLE;
+    if (vkCreateDescriptorPool(device.device(), &fallbackInfo, nullptr, &fallbackPool) != VK_SUCCESS)
+    {
+      std::cerr << "DescriptorPool: fallback pool creation failed\n";
+      return false;
+    }
+
+    // Try allocation from fallback pool
+    VkDescriptorSetAllocateInfo fallbackAlloc{};
+    fallbackAlloc.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    fallbackAlloc.descriptorPool     = fallbackPool;
+    fallbackAlloc.pSetLayouts        = &descriptorSetLayout;
+    fallbackAlloc.descriptorSetCount = 1;
+
+    VkDescriptorSet fallbackSet = VK_NULL_HANDLE;
+    VkResult fallbackResult     = vkAllocateDescriptorSets(device.device(), &fallbackAlloc, &fallbackSet);
+    if (fallbackResult != VK_SUCCESS)
+    {
+      std::cerr << "DescriptorPool: allocation from fallback pool failed (result=" << fallbackResult << ")\n";
+      vkDestroyDescriptorPool(device.device(), fallbackPool, nullptr);
+      return false;
+    }
+
+    // Record fallback pool ownership so it isn't destroyed while its sets are live
+    {
+      std::lock_guard<std::mutex> lk(overflowMutex);
+      overflowPools.push_back(fallbackPool);
+    }
+
+    descriptor = fallbackSet;
+    std::cerr << "DescriptorPool: allocation succeeded from overflow pool (fallback).\n";
+    return true;
   }
 
   void DescriptorPool::freeDescriptors(std::vector<VkDescriptorSet>& descriptors) const
@@ -152,7 +252,16 @@ namespace engine {
 
   void DescriptorPool::resetPool()
   {
+    // Reset primary pool and destroy any transient overflow pools to avoid
+    // leaking descriptor pools when callers expect a clean reset.
     vkResetDescriptorPool(device.device(), descriptorPool, 0);
+    std::lock_guard<std::mutex> lk(overflowMutex);
+    for (auto p : overflowPools)
+    {
+      if (p != VK_NULL_HANDLE)
+        vkDestroyDescriptorPool(device.device(), p, nullptr);
+    }
+    overflowPools.clear();
   }
 
   DescriptorWriter::DescriptorWriter(DescriptorSetLayout& setLayout, DescriptorPool& pool) : setLayout{setLayout}, pool{pool} {}
@@ -187,13 +296,50 @@ namespace engine {
     return *this;
   }
 
-  bool DescriptorWriter::build(VkDescriptorSet& set)
+  bool DescriptorWriter::build(VkDescriptorSet& set, VkResult* outResult)
   {
+    // Defensive check BEFORE allocation: ensure that all bindings declared in
+    // the layout have corresponding writes. Doing this check prior to
+    // allocation avoids needing to free descriptor sets (which requires the
+    // pool to be created with FREE_DESCRIPTOR_SET_BIT and would otherwise
+    // trigger validation warnings).
+    {
+      std::unordered_set<uint32_t> writtenBindings;
+      writtenBindings.reserve(writes.size());
+      for (auto const& w : writes)
+      {
+        writtenBindings.insert(w.dstBinding);
+      }
+
+      for (const auto& [binding, _] : setLayout.bindings)
+      {
+        if (writtenBindings.count(binding) == 0)
+        {
+          // Missing a binding — don't allocate and signal failure. Provide a
+          // clear diagnostic via outResult when caller requested it.
+          set = VK_NULL_HANDLE;
+          if (outResult) *outResult = VK_ERROR_INITIALIZATION_FAILED;
+          std::cerr << "DescriptorWriter::build(): missing write for binding " << binding << "\n";
+          return false;
+        }
+      }
+    }
+
     if (bool const success = pool.allocateDescriptor(setLayout.getDescriptorSetLayout(), set); !success)
     {
+      // allocateDescriptor already logged the VkResult; surface it to caller.
+      if (outResult)
+      {
+        // Try to query the last VkResult by attempting a no-op allocation
+        // is not possible here — allocateDescriptor logged the concrete
+        // VkResult already. Set a generic non-success if caller asked.
+        *outResult = VK_ERROR_OUT_OF_POOL_MEMORY;
+      }
       return false;
     }
+
     overwrite(set);
+    if (outResult) *outResult = VK_SUCCESS;
     return true;
   }
 

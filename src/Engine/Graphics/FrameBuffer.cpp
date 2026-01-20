@@ -1251,14 +1251,14 @@ namespace engine {
 
     for (uint32_t i = 1; i < mipLevels; i++)
     {
-      // Transition Mip i to TRANSFER_DST
+      // Transition Mip i from UNDEFINED to TRANSFER_DST (mips are initially uninitialized)
       barrier.subresourceRange.baseMipLevel = i;
-      barrier.oldLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      barrier.oldLayout                     = VK_IMAGE_LAYOUT_UNDEFINED;
       barrier.newLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-      barrier.srcAccessMask                 = VK_ACCESS_SHADER_READ_BIT;
+      barrier.srcAccessMask                 = 0;
       barrier.dstAccessMask                 = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-      vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+      vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
       VkImageBlit blit{};
       blit.srcOffsets[0]                 = {0, 0, 0};

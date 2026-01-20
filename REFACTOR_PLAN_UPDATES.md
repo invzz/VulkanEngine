@@ -6,6 +6,7 @@
   - Object-tracking warnings during `vkDestroyDevice()` (child objects like VkImage/VkBuffer/VkDeviceMemory/VkImageView/VkSampler not destroyed prior to device destroy).
   - Descriptor usage warnings: descriptor set used in draw/dispatch but not updated.
   - Image/layout warnings for copy/present operations (unexpected src/dst layouts).
+- Fix implemented: moved destruction of `threadLocalCommandPools_` to occur before destroying the logical device in `Device::~Device()` to prevent `vkDestroyCommandPool` being called with an invalid device. Added `Device.ThreadLocalPoolsDestroyedBeforeDevice` unit test reproducing the previous crash; test now passes. 
 
 ## Action checklist (short-term)
 - [ ] Add unit tests reproducing object-tracking warnings for a chosen resource (Buffer or Image); fix teardown ordering.

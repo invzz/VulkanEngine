@@ -68,4 +68,14 @@ namespace engine {
     pools_.clear();
   }
 
+  bool ThreadLocalCommandPool::ownsPool(VkCommandPool pool) const
+  {
+    std::lock_guard<std::mutex> lk(mutex_);
+    for (auto const& kv : pools_)
+    {
+      if (kv.second == pool) return true;
+    }
+    return false;
+  }
+
 } // namespace engine

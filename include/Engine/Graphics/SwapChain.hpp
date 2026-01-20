@@ -26,9 +26,10 @@ namespace engine {
     SwapChain(const SwapChain&)            = delete;
     SwapChain& operator=(const SwapChain&) = delete;
 
-    VkFramebuffer            getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
-    VkRenderPass             getRenderPass() { return renderPass; }
-    VkImageView              getImageView(int index) { return swapChainImageViews[index]; }
+    VkFramebuffer getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
+    VkRenderPass  getRenderPass() { return renderPass; }
+    VkImageView   getImageView(int index) { return swapChainImageViews[index]; }
+    VkImage       getImage(int index) { return swapChainImages[index]; }
     [[nodiscard]] size_t     imageCount() const { return swapChainImages.size(); }
     [[nodiscard]] VkFormat   getSwapChainImageFormat() const { return swapChainImageFormat; }
     [[nodiscard]] VkExtent2D getSwapChainExtent() const { return swapChainExtent; }

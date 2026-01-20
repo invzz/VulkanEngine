@@ -27,11 +27,14 @@ namespace engine {
     // Destroy all pools created by this manager. Safe to call from any thread.
     void destroyAll() noexcept;
 
+    // Returns true if the given pool is managed by this manager. Thread-safe.
+    bool ownsPool(VkCommandPool pool) const;
+
   private:
     VkDevice device_           = VK_NULL_HANDLE;
     uint32_t queueFamilyIndex_ = 0;
 
-    std::mutex                                         mutex_;
+    mutable std::mutex                                 mutex_;
     std::unordered_map<std::thread::id, VkCommandPool> pools_;
   };
 
