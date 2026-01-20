@@ -28,15 +28,15 @@ TEST(DescriptorWriter, AllocationFallbackWhenPoolFull)
   VkDescriptorSet ds0 = VK_NULL_HANDLE;
   VkDescriptorSet ds1 = VK_NULL_HANDLE;
 
-  VkResult r0 = VK_SUCCESS;
-  bool ok0 = DescriptorWriter(*layout, *pool).writeBuffer(0, &bufInfo).build(ds0, &r0);
+  VkResult r0  = VK_SUCCESS;
+  bool     ok0 = DescriptorWriter(*layout, *pool).writeBuffer(0, &bufInfo).build(ds0, &r0);
   ASSERT_TRUE(ok0);
   ASSERT_EQ(r0, VK_SUCCESS);
   ASSERT_NE(ds0, VK_NULL_HANDLE);
 
   // Second allocation should succeed via overflow fallback
-  VkResult r1 = VK_SUCCESS;
-  bool ok1 = DescriptorWriter(*layout, *pool).writeBuffer(0, &bufInfo).build(ds1, &r1);
+  VkResult r1  = VK_SUCCESS;
+  bool     ok1 = DescriptorWriter(*layout, *pool).writeBuffer(0, &bufInfo).build(ds1, &r1);
   EXPECT_TRUE(ok1);
   EXPECT_EQ(r1, VK_SUCCESS);
   EXPECT_NE(ds1, VK_NULL_HANDLE);

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -11,7 +12,6 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "vulkan/vulkan_core.h"
-#include <iostream>
 
 namespace engine {
   DescriptorSetLayout::Builder&
@@ -146,8 +146,7 @@ namespace engine {
       std::lock_guard<std::mutex> lk(overflowMutex);
       for (auto p : overflowPools)
       {
-        if (p != VK_NULL_HANDLE)
-          vkDestroyDescriptorPool(device.device(), p, nullptr);
+        if (p != VK_NULL_HANDLE) vkDestroyDescriptorPool(device.device(), p, nullptr);
       }
       overflowPools.clear();
     }
@@ -163,7 +162,7 @@ namespace engine {
     allocInfo.descriptorPool     = descriptorPool;
     allocInfo.pSetLayouts        = &descriptorSetLayout;
     allocInfo.descriptorSetCount = 1;
-    VkResult result = vkAllocateDescriptorSets(device.device(), &allocInfo, &descriptor);
+    VkResult result              = vkAllocateDescriptorSets(device.device(), &allocInfo, &descriptor);
     if (result == VK_SUCCESS)
     {
       return true;
@@ -200,8 +199,7 @@ namespace engine {
       fallbackSizes = poolSizes;
       for (auto& ps : fallbackSizes)
         ps.descriptorCount = std::max<uint32_t>(1u, ps.descriptorCount);
-      if (fallbackSizes.empty())
-        fallbackSizes.push_back({VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1});
+      if (fallbackSizes.empty()) fallbackSizes.push_back({VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1});
     }
 
     VkDescriptorPoolCreateInfo fallbackInfo{};
@@ -225,8 +223,8 @@ namespace engine {
     fallbackAlloc.pSetLayouts        = &descriptorSetLayout;
     fallbackAlloc.descriptorSetCount = 1;
 
-    VkDescriptorSet fallbackSet = VK_NULL_HANDLE;
-    VkResult fallbackResult     = vkAllocateDescriptorSets(device.device(), &fallbackAlloc, &fallbackSet);
+    VkDescriptorSet fallbackSet    = VK_NULL_HANDLE;
+    VkResult        fallbackResult = vkAllocateDescriptorSets(device.device(), &fallbackAlloc, &fallbackSet);
     if (fallbackResult != VK_SUCCESS)
     {
       std::cerr << "DescriptorPool: allocation from fallback pool failed (result=" << fallbackResult << ")\n";
@@ -258,8 +256,7 @@ namespace engine {
     std::lock_guard<std::mutex> lk(overflowMutex);
     for (auto p : overflowPools)
     {
-      if (p != VK_NULL_HANDLE)
-        vkDestroyDescriptorPool(device.device(), p, nullptr);
+      if (p != VK_NULL_HANDLE) vkDestroyDescriptorPool(device.device(), p, nullptr);
     }
     overflowPools.clear();
   }

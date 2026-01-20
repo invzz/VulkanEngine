@@ -22,8 +22,8 @@ TEST(DescriptorWriter, BuildFailsIfMissingBindings)
 
   // Only write binding 0, leave binding 1 missing — build() must fail and
   // return a helpful VkResult when requested.
-  VkResult result = VK_SUCCESS;
-  bool const ok   = DescriptorWriter(*layout, *pool).writeImage(0, &dummy).build(ds, &result);
+  VkResult   result = VK_SUCCESS;
+  bool const ok     = DescriptorWriter(*layout, *pool).writeImage(0, &dummy).build(ds, &result);
   EXPECT_FALSE(ok);
   EXPECT_EQ(ds, VK_NULL_HANDLE);
   EXPECT_EQ(result, VK_ERROR_INITIALIZATION_FAILED);

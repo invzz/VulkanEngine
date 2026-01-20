@@ -141,26 +141,26 @@ namespace engine {
       // DescriptorWriter's defensive check succeeds. We still update light
       // counts later as needed via updateLightDescriptorSets.
       DescriptorWriter(*globalSetLayout_, *globalPool_)
-          .writeBuffer(0, &bufferInfo)
-          .writeBuffer(1, &meshInfo)
-          .writeImage(2, &hzbImageInfo)
-          .writeBuffer(3, &pointInfo)
-          .writeBuffer(4, &dirInfo)
-          .writeBuffer(5, &spotInfo)
-          .build(globalDescriptorSets_[i]);
+              .writeBuffer(0, &bufferInfo)
+              .writeBuffer(1, &meshInfo)
+              .writeImage(2, &hzbImageInfo)
+              .writeBuffer(3, &pointInfo)
+              .writeBuffer(4, &dirInfo)
+              .writeBuffer(5, &spotInfo)
+              .build(globalDescriptorSets_[i]);
       if (globalDescriptorSets_[i] == VK_NULL_HANDLE)
       {
         throw std::runtime_error("failed to allocate global descriptor set (prev HZB)");
       }
 
       DescriptorWriter(*globalSetLayout_, *globalPool_)
-          .writeBuffer(0, &bufferInfo)
-          .writeBuffer(1, &meshInfo)
-          .writeImage(2, &hzbImageInfo)
-          .writeBuffer(3, &pointInfo)
-          .writeBuffer(4, &dirInfo)
-          .writeBuffer(5, &spotInfo)
-          .build(globalDescriptorSetsCurrentHzb_[i]);
+              .writeBuffer(0, &bufferInfo)
+              .writeBuffer(1, &meshInfo)
+              .writeImage(2, &hzbImageInfo)
+              .writeBuffer(3, &pointInfo)
+              .writeBuffer(4, &dirInfo)
+              .writeBuffer(5, &spotInfo)
+              .build(globalDescriptorSetsCurrentHzb_[i]);
       if (globalDescriptorSetsCurrentHzb_[i] == VK_NULL_HANDLE)
       {
         throw std::runtime_error("failed to allocate global descriptor set (current HZB)");

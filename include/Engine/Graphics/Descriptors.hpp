@@ -49,9 +49,9 @@ namespace engine {
     public:
       Builder(Device& device) : device{device} {}
 
-        Builder&                                      addPoolSize(VkDescriptorType descriptorType, uint32_t count);
-      Builder&                                      setPoolFlags(VkDescriptorPoolCreateFlags flags);
-      Builder&                                      setMaxSets(uint32_t count);
+      Builder& addPoolSize(VkDescriptorType descriptorType, uint32_t count);
+      Builder& setPoolFlags(VkDescriptorPoolCreateFlags flags);
+      Builder& setMaxSets(uint32_t count);
       // Opt-in: allow the pool to create overflow pools when allocation
       // requests cannot be satisfied due to fragmentation or size limits.
       Builder&                                      setAllowOverflow(bool allow);
@@ -60,9 +60,9 @@ namespace engine {
     private:
       Device&                           device;
       std::vector<VkDescriptorPoolSize> poolSizes;
-      uint32_t                          maxSets     = 1000;
-      VkDescriptorPoolCreateFlags       poolFlags    = 0;
-      bool                               allowOverflow = false;
+      uint32_t                          maxSets       = 1000;
+      VkDescriptorPoolCreateFlags       poolFlags     = 0;
+      bool                              allowOverflow = false;
     };
 
     DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes, bool allowOverflow = false);
@@ -78,7 +78,7 @@ namespace engine {
     void resetPool();
 
     // Diagnostic helpers (read-only)
-    [[nodiscard]] uint32_t getMaxSets() const { return maxSets; }
+    [[nodiscard]] uint32_t                                 getMaxSets() const { return maxSets; }
     [[nodiscard]] const std::vector<VkDescriptorPoolSize>& getPoolSizes() const { return poolSizes; }
 
   private:
@@ -92,7 +92,7 @@ namespace engine {
 
     // Overflow/fallback pools owned by this DescriptorPool (prototype)
     mutable std::vector<VkDescriptorPool> overflowPools;
-    mutable std::mutex                   overflowMutex;
+    mutable std::mutex                    overflowMutex;
     bool                                  allowOverflow = false;
 
     friend class DescriptorWriter;

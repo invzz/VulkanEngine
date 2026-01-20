@@ -21,7 +21,7 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
   VkCommandBuffer cmd = device.beginSingleTimeCommands();
 
   // Clear mip0 of the offscreen color image to a known value.
-  VkImage offscreen = renderer.getOffscreenColorImage(0);
+  VkImage                 offscreen = renderer.getOffscreenColorImage(0);
   VkImageSubresourceRange range{};
   range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
   range.baseMipLevel   = 0;
@@ -74,7 +74,8 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
   VkExtent2D winExtent = win.getExtent();
   uint32_t   maxDim    = std::max(winExtent.width, winExtent.height);
   uint32_t   mipLevels = 1;
-  while ((1u << mipLevels) <= maxDim) mipLevels++;
+  while ((1u << mipLevels) <= maxDim)
+    mipLevels++;
   // We must have at least 2 mips for this test to be meaningful
   ASSERT_GT(mipLevels, 1u);
 
@@ -85,7 +86,11 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
 
   VkBuffer       hostBuf;
   VkDeviceMemory hostMem;
-  device.getMemory().createBuffer(static_cast<VkDeviceSize>(readW * readH * 4 * sizeof(float)), VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, hostBuf, hostMem);
+  device.getMemory().createBuffer(static_cast<VkDeviceSize>(readW * readH * 4 * sizeof(float)),
+                                  VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                  hostBuf,
+                                  hostMem);
 
   VkBufferImageCopy region{};
   region.bufferOffset                    = 0;
@@ -103,11 +108,15 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
 
   void* data = nullptr;
   vkMapMemory(device.device(), hostMem, 0, VK_WHOLE_SIZE, 0, &data);
-  float* f = reinterpret_cast<float*>(data);
-  bool  anyNonZero = false;
+  float* f          = reinterpret_cast<float*>(data);
+  bool   anyNonZero = false;
   for (uint32_t i = 0; i < readW * readH * 4; ++i)
   {
-    if (f[i] != 0.0f) { anyNonZero = true; break; }
+    if (f[i] != 0.0f)
+    {
+      anyNonZero = true;
+      break;
+    }
   }
   vkUnmapMemory(device.device(), hostMem);
 
