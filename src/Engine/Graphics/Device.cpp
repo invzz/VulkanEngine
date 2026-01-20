@@ -908,4 +908,48 @@ namespace engine {
     }
   }
 
+  // Allocate a secondary command buffer. Prefer thread-local pools when enabled
+  // to avoid contention; remember the owning pool so the CB can be freed later.
+  VkResult Device::allocateSecondaryCommandBuffer(VkCommandBuffer* outCommandBuffer)
+  {
+    if (!outCommandBuffer) return VK_ERROR_INITIALIZATION_FAILED;
+
+    VkCommandPool pool = commandPool;
+    if (threadLocalCommandPools_)
+    {
+      pool = threadLocalCommandPools_->getForCurrentThread();
+    }
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool        = pool;
+    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+    allocInfo.commandBufferCount = 1;
+
+    VkResult res = vkAllocateCommandBuffers(device_, &allocInfo, outCommandBuffer);
+    if (res == VK_SUCCESS)
+    {
+      std::scoped_lock const lock(singleCmdMutex);
+      cmdBufferToPoolMap_.emplace(*outCommandBuffer, pool);
+    }
+    return res;
+  }
+
+  // Free a secondary command buffer previously allocated with allocateSecondaryCommandBuffer.
+  void Device::freeSecondaryCommandBuffer(VkCommandBuffer commandBuffer)
+  {
+    VkCommandPool pool = VK_NULL_HANDLE;
+    {
+      std::scoped_lock const lock(singleCmdMutex);
+      auto                   it = cmdBufferToPoolMap_.find(commandBuffer);
+      if (it != cmdBufferToPoolMap_.end())
+      {
+        pool = it->second;
+        cmdBufferToPoolMap_.erase(it);
+      }
+    }
+    if (pool == VK_NULL_HANDLE) pool = commandPool;
+    vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+  }
+
 } // namespace engine

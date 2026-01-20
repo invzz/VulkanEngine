@@ -30,10 +30,12 @@ namespace engine {
                                FogSettings&              fogSettings,
                                HZBSettings&              hzbSettings,
                                PostProcessPushConstants& pushConstants,
+                               bool&                     multithreadedRecordingEnabled,
+                               uint32_t&                 multithreadedRecordingThreads,
                                int&                      debugMode,
                                bool&                     showBakedRaw)
       : skybox_(skybox), showSkybox_(showSkybox), showGrid_(showGrid), skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings), hzbSettings_(hzbSettings),
-        showBakedRaw_(showBakedRaw)
+        multithreadedRecordingEnabled_(multithreadedRecordingEnabled), multithreadedRecordingThreads_(multithreadedRecordingThreads), showBakedRaw_(showBakedRaw)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
@@ -129,6 +131,23 @@ namespace engine {
       if (ImGui::CollapsingHeader("Debug"))
       {
         debugPanel_->render(frameInfo);
+      }
+
+      if (ImGui::CollapsingHeader("Performance"))
+      {
+        // Multithreaded recording control (opt-in pilot)
+        if (ImGui::Checkbox("Multithreaded recording (secondary CB)", &multithreadedRecordingEnabled_))
+        {
+          ImGui::SetItemTooltip("When enabled, draw-recording is partitioned across worker threads into secondary command buffers.");
+        }
+
+        int tmpThreads = static_cast<int>(multithreadedRecordingThreads_);
+        if (ImGui::InputInt("Recording threads (0 = auto)", &tmpThreads))
+        {
+          if (tmpThreads < 0) tmpThreads = 0;
+          multithreadedRecordingThreads_ = static_cast<uint32_t>(tmpThreads);
+        }
+        ImGui::SetItemTooltip("0 = auto (HW threads - 1); set to 1 to force single-threaded serial recording.");
       }
     }
     ImGui::End();

@@ -230,6 +230,9 @@ namespace engine {
     dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth());
     modelRenderSystem =
             std::make_unique<ModelRenderSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout(), resourceManager.getTextureManager().getDescriptorSetLayout());
+    // Demo default: enable the multithreaded secondary-CB recording pilot (opt-in in library).
+    modelRenderSystem->enableMultiThreadedRecording(multithreadedRecordingEnabled, multithreadedRecordingThreads);
+
     lightSystem = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadDepth(), renderContext->getGlobalSetLayout());
 
     // G-buffer + Deferred lighting
@@ -415,6 +418,8 @@ namespace engine {
                                                         fogSettings,
                                                         hzbSettings,
                                                         postProcessPush,
+                                                        multithreadedRecordingEnabled,
+                                                        multithreadedRecordingThreads,
                                                         debugMode,
                                                         showBakedDebugRaw));
   }
@@ -456,6 +461,9 @@ namespace engine {
     // 6. Offscreen Pass (Main Scene - Load depth from prepass)
     renderGraph->addPass(std::make_unique<LambdaRenderPass>("Offscreen", [&](FrameInfo& frameInfo) {
       auto state = makeGameLoopState();
+
+      // Respect runtime multithreaded-recording toggle (idempotent).
+      state.modelRenderSystem.enableMultiThreadedRecording(multithreadedRecordingEnabled, multithreadedRecordingThreads);
 
       // Reset per-frame dynamic offsets before any mesh passes.
       state.modelRenderSystem.beginFrame(frameInfo.frameIndex);

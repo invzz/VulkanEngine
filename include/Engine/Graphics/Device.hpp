@@ -71,6 +71,13 @@ namespace engine {
     VkCommandBuffer beginSingleTimeCommands();
     void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
+    // Allocate / free helpers for secondary command buffers.
+    // If thread-local command pools are enabled, allocation is done from the
+    // calling thread's pool to avoid cross-thread contention. The underlying
+    // pool used is tracked so the command buffer can be freed correctly later.
+    VkResult allocateSecondaryCommandBuffer(VkCommandBuffer* outCommandBuffer);
+    void     freeSecondaryCommandBuffer(VkCommandBuffer commandBuffer);
+
     // Opt-in thread-local command pools for single-time commands. When enabled
     // a per-thread VkCommandPool is used to avoid creating/destroying pools
     // per-call which can reduce contention and allocation churn on multithreaded workloads.

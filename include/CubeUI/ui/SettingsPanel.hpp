@@ -28,6 +28,8 @@ namespace engine {
                   FogSettings&              fogSettings,
                   HZBSettings&              hzbSettings,
                   PostProcessPushConstants& pushConstants,
+                  bool&                     multithreadedRecordingEnabled,
+                  uint32_t&                 multithreadedRecordingThreads,
                   int&                      debugMode,
                   bool&                     showBakedRaw);
     void render(FrameInfo& frameInfo) override;
@@ -45,7 +47,12 @@ namespace engine {
     std::unique_ptr<IBLPanel>         iblPanel_;
     std::unique_ptr<PostProcessPanel> postProcessPanel_;
     std::unique_ptr<DebugPanel>       debugPanel_;
-    bool&                             showBakedRaw_;
+
+    // Demo UI control for multithreaded recording (references owned by App)
+    bool&     multithreadedRecordingEnabled_;
+    uint32_t& multithreadedRecordingThreads_;
+
+    bool& showBakedRaw_;
   };
 
 } // namespace engine
