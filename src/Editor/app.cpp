@@ -129,6 +129,12 @@ namespace engine {
 
   void App::init()
   {
+    // Enable thread-local command pools BEFORE any system uses multithreaded
+    // command buffer recording. This avoids VkCommandPool threading validation
+    // errors when worker threads allocate secondary command buffers while the
+    // main thread performs single-time commands (e.g., texture uploads).
+    device.enableThreadLocalCommandPools();
+
     // 1. Setup Render Context
     VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(0);
     renderContext                       = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
@@ -486,7 +492,7 @@ namespace engine {
       frameInfo.globalDescriptorSet = renderContext->getGlobalDescriptorSetCurrentHzb(frameInfo.frameIndex);
 
       // Pass 1: Opaque scene (writes color+depth)
-      renderer.beginGbufferRenderPass(frameInfo.commandBuffer);
+      renderer.beginGbufferRenderPass(frameInfo.commandBuffer, multithreadedRecordingEnabled);
       state.modelRenderSystem.renderGbuffer(frameInfo);
       renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
 

@@ -43,7 +43,7 @@ namespace engine {
     void        beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
     void        beginRenderPassLoadDepth(VkCommandBuffer commandBuffer, int frameIndex);
     void        beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
-    void        beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+    void        beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex, bool allowSecondaryCommandBuffers = false);
     void        beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
     static void endRenderPass(VkCommandBuffer commandBuffer);
     void        generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);

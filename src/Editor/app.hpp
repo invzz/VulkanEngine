@@ -146,7 +146,7 @@ namespace engine {
     bool showGrid   = true;
 
     // Demo control: multithreaded secondary-command-buffer recording (opt-in pilot).
-    // Default: enabled in the Cube demo; threadCount==0 => auto (HW threads - 1).
+    // Uses thread-local command pools and secondary command buffers for G-buffer recording.
     bool     multithreadedRecordingEnabled = true;
     uint32_t multithreadedRecordingThreads = 0;
 

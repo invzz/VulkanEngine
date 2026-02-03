@@ -33,7 +33,7 @@ namespace engine {
     void beginOffscreenDepthPrepassRenderPass(VkCommandBuffer commandBuffer);
     void beginOffscreenRenderPassLoadDepth(VkCommandBuffer commandBuffer);
     void beginOffscreenRenderPassLoadColorDepth(VkCommandBuffer commandBuffer);
-    void beginGbufferRenderPass(VkCommandBuffer commandBuffer);
+    void beginGbufferRenderPass(VkCommandBuffer commandBuffer, bool allowSecondaryCommandBuffers = false);
     void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer);
     void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
     void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);

@@ -347,6 +347,9 @@ namespace engine {
   {
     assert(pipelineLayout != VK_NULL_HANDLE && "Pipeline layout must be created before pipeline.");
 
+    // Store for use in secondary command buffer inheritance info
+    gbufferRenderPass_ = renderPass;
+
     PipelineConfigInfo pipelineConfig{};
     Pipeline::defaultMeshPipelineConfigInfo(pipelineConfig);
 
@@ -396,9 +399,15 @@ namespace engine {
       }
     };
 
-    // Bind pipeline + common descriptor sets once on the primary command buffer.
-    bindPipelineIfNeeded(gbufferPipeline.get());
-    bindBaseDescriptorSets(frameInfo, true);
+    // When multithreading is enabled, we use VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
+    // which means we cannot record any commands (including pipeline/descriptor binds) to the
+    // primary command buffer within the render pass. All binding is done in secondary CBs.
+    if (!multithreadedRecordingEnabled_)
+    {
+      // Bind pipeline + common descriptor sets once on the primary command buffer.
+      bindPipelineIfNeeded(gbufferPipeline.get());
+      bindBaseDescriptorSets(frameInfo, true);
+    }
 
     // Collect work items (entity + submesh) after culling so we can partition them.
     struct RenderWorkItem
@@ -456,10 +465,10 @@ namespace engine {
       }
     }
 
-    // If multithreaded recording not enabled or trivial work, fall back to serial path.
-    if (!multithreadedRecordingEnabled_ || workItems.size() < 32 || multithreadedRecordingThreads_ <= 1)
+    // If multithreaded recording not enabled, fall back to serial inline path.
+    if (!multithreadedRecordingEnabled_)
     {
-      // Serial replay of collected items
+      // Serial replay of collected items - record directly to primary command buffer
       for (const auto& item : workItems)
       {
         auto&                      modelComp = view.get<ModelComponent>(item.entity);
@@ -476,9 +485,19 @@ namespace engine {
       return;
     }
 
-    // --- Multithreaded recording path (opt-in pilot) ---
-    const uint32_t threadCount = std::min<uint32_t>(multithreadedRecordingThreads_, std::max<uint32_t>(1u, std::thread::hardware_concurrency() - 1));
-    const size_t   chunkSize   = (workItems.size() + threadCount - 1) / threadCount;
+    // --- Secondary command buffer path (multithreaded recording enabled) ---
+    // When multithreading is enabled, we MUST use secondary command buffers because the render pass
+    // was begun with VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS.
+    // If there's no work, we're done (no secondary CBs to execute is valid).
+    if (workItems.empty())
+    {
+      return;
+    }
+
+    // If the workload is too small for parallelism, use a single secondary CB for serial recording.
+    const uint32_t threadCount =
+            (workItems.size() < 32 || multithreadedRecordingThreads_ <= 1) ? 1 : std::min<uint32_t>(multithreadedRecordingThreads_, std::max<uint32_t>(1u, std::thread::hardware_concurrency() - 1));
+    const size_t chunkSize = (workItems.size() + threadCount - 1) / threadCount;
 
     std::vector<VkCommandBuffer> secondaryBuffers;
     secondaryBuffers.reserve(threadCount);
@@ -496,9 +515,10 @@ namespace engine {
       }
 
       // Secondary CB must be recorded with inheritance info for the active render pass/subpass.
+      // Use gbufferRenderPass_ since we're recording commands for the G-buffer pass.
       VkCommandBufferInheritanceInfo inherit{};
       inherit.sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-      inherit.renderPass  = renderPass_;
+      inherit.renderPass  = gbufferRenderPass_;
       inherit.subpass     = 0;
       inherit.framebuffer = VK_NULL_HANDLE; // allow compatibility with the active framebuffer
 
@@ -527,9 +547,16 @@ namespace engine {
       vkCmdSetViewport(sec, 0, 1, &vp);
       vkCmdSetScissor(sec, 0, 1, &scissor);
 
+      // Secondary command buffers do NOT inherit pipeline state from the primary buffer.
+      // We must bind the pipeline in each secondary command buffer.
+      gbufferPipeline->bind(sec);
+
       // Local FrameInfo to pass into binding helpers (uses the secondary CB)
       FrameInfo localFrame     = frameInfo;
       localFrame.commandBuffer = sec;
+
+      // Bind base descriptor sets in the secondary command buffer as well
+      bindBaseDescriptorSets(localFrame, true);
 
       size_t start = nextIndex.fetch_add(chunkSize);
       while (start < workItems.size())
@@ -599,10 +626,12 @@ namespace engine {
       vkCmdExecuteCommands(frameInfo.commandBuffer, static_cast<uint32_t>(secondaryBuffers.size()), secondaryBuffers.data());
     }
 
-    // Free secondary command buffers
+    // Defer freeing secondary command buffers until the frame is complete.
+    // Freeing them immediately invalidates the primary command buffer's recording.
+    Device* devicePtr = &device;
     for (auto cb : secondaryBuffers)
     {
-      device.freeSecondaryCommandBuffer(cb);
+      device.deferDestroy([devicePtr, cb](VkDevice) { devicePtr->freeSecondaryCommandBuffer(cb); });
     }
   }
 

@@ -107,6 +107,8 @@ namespace engine {
 
     // Stored render-pass used to record secondary command buffers' inheritance.
     VkRenderPass renderPass_ = VK_NULL_HANDLE;
+    // Separate G-buffer render pass for G-buffer secondary command buffers.
+    VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
 
     // Multithreading configuration (opt-in). When enabled, draw-recording is
     // partitioned and recorded to secondary command buffers on worker threads.
