@@ -13,13 +13,13 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/ShadowMap.hpp"
-#include "ModelLib/Resources/Model.hpp"
-#include "ModelLib/Resources/PBRMaterial.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "ModelLib/Resources/Model.hpp"
+#include "ModelLib/Resources/PBRMaterial.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
@@ -28,6 +28,7 @@
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
 #include "vulkan/vulkan_core.h"
+
 
 namespace engine {
 
@@ -294,7 +295,7 @@ namespace engine {
     }
 
     // Add some padding to prevent artifacts at edges
-    float const paddingScale = 0.1f;  // 10% padding
+    float const paddingScale = 0.1f; // 10% padding
     float const rangeX       = maxLS.x - minLS.x;
     float const rangeY       = maxLS.y - minLS.y;
     float const paddingX     = rangeX * paddingScale;
@@ -470,12 +471,12 @@ namespace engine {
         // This ensures geometry is rendered in both cascades at boundaries for smooth blending
         if (cascade < DIRECTIONAL_CASCADE_COUNT - 1)
         {
-          float const nextFar  = splits[cascade + 1];
-          float const overlap  = (nextFar - sliceFar) * 0.3f;
-          sliceFar            += overlap;
+          float const nextFar = splits[cascade + 1];
+          float const overlap = (nextFar - sliceFar) * 0.3f;
+          sliceFar += overlap;
         }
 
-        directionalCascadeSplits_[cascade] = splits[cascade];  // Store original split for shader
+        directionalCascadeSplits_[cascade] = splits[cascade]; // Store original split for shader
 
         if (shadowLightCount_ >= MAX_SHADOW_MAPS)
         {

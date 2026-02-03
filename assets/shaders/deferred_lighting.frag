@@ -268,15 +268,14 @@ void main()
   // Debug mode 15: CSM cascade visualization (Red=0, Green=1, Blue=2, Yellow=3)
   if (ubo.debugMode == 15)
   {
-    int cascade = getCSMCascadeIndex(worldPos);
-    vec3 cascadeColors[4] = vec3[4](
-      vec3(1.0, 0.0, 0.0),  // Cascade 0: Red
-      vec3(0.0, 1.0, 0.0),  // Cascade 1: Green
-      vec3(0.0, 0.0, 1.0),  // Cascade 2: Blue
-      vec3(1.0, 1.0, 0.0)   // Cascade 3: Yellow
+    int  cascade          = getCSMCascadeIndex(worldPos);
+    vec3 cascadeColors[4] = vec3[4](vec3(1.0, 0.0, 0.0), // Cascade 0: Red
+                                    vec3(0.0, 1.0, 0.0), // Cascade 1: Green
+                                    vec3(0.0, 0.0, 1.0), // Cascade 2: Blue
+                                    vec3(1.0, 1.0, 0.0)  // Cascade 3: Yellow
     );
-    vec3 color = (cascade >= 0 && cascade < 4) ? cascadeColors[cascade] : vec3(1.0);
-    outColor = vec4(color, 1.0);
+    vec3 color            = (cascade >= 0 && cascade < 4) ? cascadeColors[cascade] : vec3(1.0);
+    outColor              = vec4(color, 1.0);
     return;
   }
 
@@ -285,9 +284,9 @@ void main()
   {
     float depth = getCSMViewDepth(worldPos);
     // Normalize to [0,1] range using splits.w (last cascade split) as max
-    float maxDist = max(ubo.directionalCascadeSplits.w, 1.0);
+    float maxDist    = max(ubo.directionalCascadeSplits.w, 1.0);
     float normalized = clamp(depth / maxDist, 0.0, 1.0);
-    outColor = vec4(vec3(normalized), 1.0);
+    outColor         = vec4(vec3(normalized), 1.0);
     return;
   }
 

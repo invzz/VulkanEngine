@@ -105,7 +105,7 @@ namespace engine {
     ResourceManager resourceManager{device};
     Scene           scene;
     SceneSerializer sceneSerializer{scene, resourceManager};
-    int             debugMode         = 0;
+    int             debugMode = 0;
 
     // Core Systems
     std::unique_ptr<RenderContext> renderContext;
