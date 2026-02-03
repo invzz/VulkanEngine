@@ -143,6 +143,7 @@ namespace engine {
     // for single-time commands when executed concurrently on worker threads.
     mutable std::mutex                                         singleCmdMutex;
     mutable std::unordered_map<VkCommandBuffer, VkCommandPool> cmdBufferToPoolMap_;
+    VkFence                                                    singleTimeFence_ = VK_NULL_HANDLE; // Reusable fence for single-time commands
 
     // Serialize queue submissions
     mutable std::mutex queueSubmitMutex_;

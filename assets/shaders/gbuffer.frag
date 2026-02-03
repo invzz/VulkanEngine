@@ -12,7 +12,7 @@ layout(location = 0) out vec4 outNormal;
 layout(location = 1) out vec4 outAlbedo;
 layout(location = 2) out vec4 outMaterial;
 layout(location = 3) out vec4 outEmissive;
-layout(location = 4) out vec4 outBaked;
+// location 4 reserved for compatibility (baked attachment removed)
 
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragmentWorldPos;
@@ -87,28 +87,8 @@ void main()
   // - A : iridescence (thin film) IOR
   vec2 nOct = octEncode(N);
 
-  // Sample baked light (if present) here while we still have per-material / per-instance state available.
-  vec3 bakedLight = vec3(0.0);
-  {
-#ifdef DEBUG_FORCE_LIGHTMAP_INDEX
-    // DEBUG OVERRIDE: sample globalTextures[177] at center to verify descriptor content.
-    bakedLight = texture(globalTextures[nonuniformEXT(177)], vec2(0.5, 0.5)).rgb;
-#else
-    uint lmIndex = push.lightmapIndex;
-    if (lmIndex == 0u) lmIndex = material.indices3.z;
-    if (lmIndex != 0u)
-    {
-      vec2 uv1   = material_getUv1(fragUV, push.lightmapUvScale, push.lightmapUvOffset);
-      bakedLight = material_sampleBakedLight(uv1, lmIndex);
-    }
-#endif
-  }
-
   outNormal   = vec4(nOct * 0.5 + 0.5, materialIOR, iridescenceIOR);
   outAlbedo   = vec4(alphaOnly.albedo, iridescenceThickness);
   outMaterial = vec4(metallic, roughness, ao, iridescenceFactor);
-  // Write material emissive (rgb) and baked light (RGB) into separate MRTs so the deferred pass
-  // can sample them independently.
   outEmissive = vec4(emissive, 1.0);
-  outBaked    = vec4(bakedLight, 1.0);
 }

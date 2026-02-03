@@ -193,6 +193,12 @@ namespace engine {
         std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw unknown exception\n";
       }
 
+      if (device_ != VK_NULL_HANDLE && singleTimeFence_ != VK_NULL_HANDLE)
+      {
+        vkDestroyFence(device_, singleTimeFence_, nullptr);
+        singleTimeFence_ = VK_NULL_HANDLE;
+      }
+
       if (device_ != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE)
       {
         vkDestroyCommandPool(device_, commandPool, nullptr);
@@ -392,15 +398,18 @@ namespace engine {
 
     // Enable Vulkan 1.2 features for Bindless Rendering
     VkPhysicalDeviceVulkan12Features vulkan12Features = {
-            .sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-            .pNext                                     = nullptr,
-            .descriptorIndexing                        = VK_TRUE,
-            .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-            .descriptorBindingPartiallyBound           = VK_TRUE,
-            .descriptorBindingVariableDescriptorCount  = VK_TRUE,
-            .runtimeDescriptorArray                    = VK_TRUE,
-            .scalarBlockLayout                         = VK_TRUE,
-            .bufferDeviceAddress                       = VK_TRUE,
+            .sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext                                        = nullptr,
+            .storageBuffer8BitAccess                      = VK_TRUE, // Required for shaders using uint8_t storage buffers
+            .shaderInt8                                   = VK_TRUE, // Required for shaders using int8/uint8 types
+            .descriptorIndexing                           = VK_TRUE,
+            .shaderSampledImageArrayNonUniformIndexing    = VK_TRUE,
+            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE, // Required for TextureManager UPDATE_AFTER_BIND
+            .descriptorBindingPartiallyBound              = VK_TRUE,
+            .descriptorBindingVariableDescriptorCount     = VK_TRUE,
+            .runtimeDescriptorArray                       = VK_TRUE,
+            .scalarBlockLayout                            = VK_TRUE,
+            .bufferDeviceAddress                          = VK_TRUE,
     };
 
     VkPhysicalDeviceMaintenance4Features maintenance4Features = {
@@ -515,6 +524,13 @@ namespace engine {
     if (vkCreateCommandPool(device_, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
     {
       throw engine::RuntimeException("failed to create command pool!");
+    }
+
+    // Create reusable fence for single-time commands
+    VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    if (vkCreateFence(device_, &fenceInfo, nullptr, &singleTimeFence_) != VK_SUCCESS)
+    {
+      throw engine::RuntimeException("failed to create single-time commands fence!");
     }
   }
 
@@ -748,6 +764,11 @@ namespace engine {
 
   VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
   {
+    if (candidates.empty())
+    {
+      throw engine::RuntimeException("findSupportedFormat: candidates list is empty!");
+    }
+
     for (VkFormat const format : candidates)
     {
       VkFormatProperties formatProperties;
@@ -764,7 +785,30 @@ namespace engine {
       }
     }
 
-    throw engine::RuntimeException("failed to find supported format!");
+    // If we get here, no suitable format was found. Log details for debugging.
+    std::string tilingStr = (tiling == VK_IMAGE_TILING_LINEAR) ? "LINEAR" : "OPTIMAL";
+    std::cerr << "[ " << RED "ERROR" RESET " ] findSupportedFormat failed:\n"
+              << "  Tiling: " << tilingStr << "\n"
+              << "  Required features: 0x" << std::hex << features << std::dec << "\n"
+              << "  Tested " << candidates.size() << " candidate formats:\n";
+
+    for (size_t i = 0; i < candidates.size(); ++i)
+    {
+      VkFormatProperties formatProperties;
+      vkGetPhysicalDeviceFormatProperties(physicalDevice, candidates[i], &formatProperties);
+      std::cerr << "    [" << i << "] Format " << candidates[i] << ": ";
+      if (tiling == VK_IMAGE_TILING_LINEAR)
+      {
+        std::cerr << "linear=0x" << std::hex << formatProperties.linearTilingFeatures << std::dec;
+      }
+      else
+      {
+        std::cerr << "optimal=0x" << std::hex << formatProperties.optimalTilingFeatures << std::dec;
+      }
+      std::cerr << "\n";
+    }
+
+    throw engine::RuntimeException("failed to find supported format! See error output above for details.");
   }
 
   VkCommandBuffer Device::beginSingleTimeCommands()
@@ -828,57 +872,29 @@ namespace engine {
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers    = &commandBuffer;
 
-    // Submit serialized to avoid simultaneous use of the VkQueue object from
-    // different threads (fixes validation threading warnings).
-    std::cerr << "[Device] endSingleTimeCommands - creating fence for submit\n";
+    // Use the reusable fence (protected by singleCmdMutex for thread safety)
+    std::scoped_lock const fenceLock(singleCmdMutex);
+    vkResetFences(device_, 1, &singleTimeFence_);
 
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    VkFence fence   = VK_NULL_HANDLE;
-    if (vkCreateFence(device_, &fenceInfo, nullptr, &fence) != VK_SUCCESS)
+    VkResult const submitRes = submitGraphics(&submitInfo, singleTimeFence_);
+    if (submitRes != VK_SUCCESS)
     {
-      std::cerr << "[Device] endSingleTimeCommands - failed to create fence\n";
-      throw engine::RuntimeException("failed to create fence for single-time commands");
+      throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
     }
 
-    // Submit with a fence so we can wait with a timeout and avoid indefinite blocking.
-    VkResult const submitWithFenceRes = submitGraphics(&submitInfo, fence);
-    std::cerr << "[Device] endSingleTimeCommands - submit (with fence) result=" << submitWithFenceRes << "\n";
-    if (submitWithFenceRes != VK_SUCCESS)
+    constexpr uint64_t timeoutNs = 10ull * 1000ull * 1000ull * 1000ull; // 10 seconds
+    VkResult const     waitRes   = vkWaitForFences(device_, 1, &singleTimeFence_, VK_TRUE, timeoutNs);
+    if (waitRes != VK_SUCCESS)
     {
-      vkDestroyFence(device_, fence, nullptr);
-      std::cerr << "[Device] endSingleTimeCommands - submit failed for cmdBuffer=" << commandBuffer << " VkResult=" << submitWithFenceRes << " thread=" << std::this_thread::get_id() << "\n";
-      throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitWithFenceRes));
+      throw engine::RuntimeException("vkWaitForFences failed: " + std::to_string(waitRes));
     }
 
-    std::cerr << "[Device] endSingleTimeCommands - waiting for fence (10s timeout)\n";
-    const uint64_t timeoutNs    = 10ull * 1000ull * 1000ull * 1000ull; // 10 seconds
-    VkResult       fenceWaitRes = vkWaitForFences(device_, 1, &fence, VK_TRUE, timeoutNs);
-    if (fenceWaitRes == VK_SUCCESS)
-    {
-      std::cerr << "[Device] endSingleTimeCommands - fence wait succeeded\n";
-    }
-    else if (fenceWaitRes == VK_TIMEOUT)
-    {
-      std::cerr << "[Device] endSingleTimeCommands - fence wait timed out\n";
-      vkDestroyFence(device_, fence, nullptr);
-      throw engine::RuntimeException("vkWaitForFences timed out waiting for single-time command buffer to complete");
-    }
-    else
-    {
-      std::cerr << "[Device] endSingleTimeCommands - fence wait failed: VkResult=" << fenceWaitRes << "\n";
-      vkDestroyFence(device_, fence, nullptr);
-      throw engine::RuntimeException("vkWaitForFences failed: " + std::to_string(fenceWaitRes));
-    }
-
-    vkDestroyFence(device_, fence, nullptr);
-
-    std::cerr << "[Device] endSingleTimeCommands - submit OK for cmdBuffer=" << commandBuffer << "\n";
+    // std::cerr << "[Device] endSingleTimeCommands - submit OK for cmdBuffer=" << commandBuffer << "\n";
 
     VkCommandPool pool = VK_NULL_HANDLE;
     {
-      std::scoped_lock const lock(singleCmdMutex);
-      auto                   it = cmdBufferToPoolMap_.find(commandBuffer);
+      // Already holding fenceLock on singleCmdMutex - access map directly
+      auto it = cmdBufferToPoolMap_.find(commandBuffer);
       if (it != cmdBufferToPoolMap_.end())
       {
         pool = it->second;

@@ -181,7 +181,6 @@ namespace engine {
         uint32_t clearcoatIndex          = 0;
         uint32_t clearcoatRoughnessIndex = 0;
         uint32_t clearcoatNormalIndex    = 0;
-        uint32_t lightmapIndex           = 0;
 
         if (material.hasAlbedoMap())
         {
@@ -241,12 +240,6 @@ namespace engine {
           clearcoatNormalIndex = material.clearcoatNormalMap->getGlobalIndex();
         }
 
-        if (material.hasLightmap())
-        {
-          textureFlags |= (1 << 13);
-          lightmapIndex = material.lightmap->getGlobalIndex();
-        }
-
         if (material.useMetallicRoughnessTexture)
         {
           textureFlags |= (1 << 6);
@@ -299,7 +292,7 @@ namespace engine {
 
         matData.indices3.x = clearcoatRoughnessIndex;
         matData.indices3.y = clearcoatNormalIndex;
-        matData.indices3.z = lightmapIndex;
+        matData.indices3.z = 0; // Reserved (was lightmapIndex)
       }
       else
       {
@@ -340,20 +333,14 @@ namespace engine {
 
   void MaterialRenderBindings::writeAndBind(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, const void* data, VkDeviceSize dataSize)
   {
-    // Diagnostic entry log: helps identify which thread/frame invoked the bind and
-    // whether the early-return conditions are hit under MT recording.
-    std::cerr << "[MRB][enter] tid=" << std::this_thread::get_id() << " frameIndex=" << frameInfo.frameIndex << " buffers_count=" << buffers_.size() << "\n";
-
     if (frameInfo.frameIndex < 0 || frameInfo.frameIndex >= static_cast<int>(buffers_.size()))
     {
-      std::cerr << "[MRB][enter] early-return: frameIndex out-of-range=" << frameInfo.frameIndex << "\n";
       return;
     }
 
     uint32_t& dynamicOffsetIndex = dynamicOffsetIndexByFrame_[frameInfo.frameIndex];
     if (dynamicOffsetIndex >= kMaxMaterialRecordsPerFrame)
     {
-      std::cerr << "[MRB][enter] early-return: dynamicOffsetIndex >= max (" << dynamicOffsetIndex << ")\n";
       return;
     }
 
@@ -363,7 +350,6 @@ namespace engine {
       // Defensive: ensure the per-frame descriptor set is valid before binding.
       if (descriptorSets_[frameInfo.frameIndex] == VK_NULL_HANDLE)
       {
-        std::cerr << "[MRB][ERROR] frameDescriptorSet is VK_NULL_HANDLE frame=" << frameInfo.frameIndex << " tid=" << std::this_thread::get_id() << "\n";
         return;
       }
 

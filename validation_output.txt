@@ -1,0 +1,6 @@
+ImGui init: Instance=0000023AE5218F30 PhysicalDevice=0000023AE5253B40 Device=0000023AF29886B0 DescriptorPool=0002270000000227 RenderPass=00000B000000000B QueueFamily=0 QueueHandle=0000023AF29C0F50 GraphicsQueue=0000023AF29C0F50 PresentQueue=0000023AF29C0F50 ImageCount=2 MinImageCount=2
+vkCreateSampler returned: 0 sampler=0002280000000228
+vkCreateDescriptorSetLayout returned: 0 layout=0002290000000229
+vkCreatePipelineLayout returned: 0 pipelineLayout=00022A000000022A
+ImGui_ImplVulkan_LoadFunctions returned: 1
+ImGui Vulkan backend initialized successfully.

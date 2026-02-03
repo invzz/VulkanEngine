@@ -294,9 +294,27 @@ namespace engine {
     }
 
     // Add some padding to prevent artifacts at edges
-    glm::vec3 const padding(5.0f, 5.0f, 5.0f);
-    minLS -= padding;
-    maxLS += padding;
+    float const paddingScale = 0.1f;  // 10% padding
+    float const rangeX       = maxLS.x - minLS.x;
+    float const rangeY       = maxLS.y - minLS.y;
+    float const paddingX     = rangeX * paddingScale;
+    float const paddingY     = rangeY * paddingScale;
+    minLS.x -= paddingX;
+    maxLS.x += paddingX;
+    minLS.y -= paddingY;
+    maxLS.y += paddingY;
+    minLS.z -= 10.0f;
+    maxLS.z += 10.0f;
+
+    // Texel snapping: Round the projection bounds to shadow map texel boundaries
+    // This prevents shadow swimming/shimmering when the camera moves
+    float const worldUnitsPerTexelX = (maxLS.x - minLS.x) / static_cast<float>(shadowMapSize);
+    float const worldUnitsPerTexelY = (maxLS.y - minLS.y) / static_cast<float>(shadowMapSize);
+
+    minLS.x = glm::floor(minLS.x / worldUnitsPerTexelX) * worldUnitsPerTexelX;
+    maxLS.x = glm::floor(maxLS.x / worldUnitsPerTexelX) * worldUnitsPerTexelX;
+    minLS.y = glm::floor(minLS.y / worldUnitsPerTexelY) * worldUnitsPerTexelY;
+    maxLS.y = glm::floor(maxLS.y / worldUnitsPerTexelY) * worldUnitsPerTexelY;
 
     // Create orthographic projection matrix
     float const orthoNear = -maxLS.z - 10.0f; // Extend near plane
@@ -446,9 +464,18 @@ namespace engine {
       for (int cascade = 0; cascade < DIRECTIONAL_CASCADE_COUNT; cascade++)
       {
         float const sliceNear = (cascade == 0) ? nearPlane : splits[cascade - 1];
-        float const sliceFar  = splits[cascade];
+        float       sliceFar  = splits[cascade];
 
-        directionalCascadeSplits_[cascade] = sliceFar;
+        // Add cascade overlap: extend each cascade's far plane by 30% into the next cascade
+        // This ensures geometry is rendered in both cascades at boundaries for smooth blending
+        if (cascade < DIRECTIONAL_CASCADE_COUNT - 1)
+        {
+          float const nextFar  = splits[cascade + 1];
+          float const overlap  = (nextFar - sliceFar) * 0.3f;
+          sliceFar            += overlap;
+        }
+
+        directionalCascadeSplits_[cascade] = splits[cascade];  // Store original split for shader
 
         if (shadowLightCount_ >= MAX_SHADOW_MAPS)
         {

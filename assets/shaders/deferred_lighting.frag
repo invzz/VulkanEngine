@@ -13,8 +13,10 @@ layout(set = 1, binding = 0) uniform sampler2D gbufferNormal;
 layout(set = 1, binding = 1) uniform sampler2D gbufferAlbedo;
 layout(set = 1, binding = 2) uniform sampler2D gbufferMaterial;
 layout(set = 1, binding = 3) uniform sampler2D depthMap;
-layout(set = 1, binding = 4) uniform sampler2D gbufferEmissive;
-layout(set = 1, binding = 5) uniform sampler2D gbufferBaked;
+// Note: Emissive is written directly to the HDR color buffer during the G-buffer pass.
+// The deferred lighting pass loads the HDR color (LOAD_OP_LOAD) and uses additive blending,
+// so emissive is already in the framebuffer. No need to sample it separately.
+// Bindings 4-5 unused (kept for descriptor layout compatibility).
 
 vec3 octDecode(vec2 e)
 {
@@ -147,42 +149,12 @@ void main()
   }
 
   // Debug mode 6: Emissive only
+  // Note: Emissive is in the framebuffer (loaded via LOAD_OP_LOAD), not a separate sampler.
+  // This debug mode cannot display emissive since we don't sample it anymore.
+  // Kept for compatibility; shows black.
   if (ubo.debugMode == 6)
   {
-    vec3 emissiveDbg = texture(gbufferEmissive, inUV).rgb;
-    outColor         = vec4(emissiveDbg, 1.0);
-    return;
-  }
-
-  // Debug mode 11: Baked RGB light visualization
-  if (ubo.debugMode == 11)
-  {
-    vec3 bakedDbg = texture(gbufferBaked, inUV).rgb;
-    // Some bakes are stored as a single (red) channel. Replicate to avoid tinting.
-    if (bakedDbg.g < 1e-6 && bakedDbg.b < 1e-6)
-    {
-      bakedDbg = vec3(bakedDbg.r);
-    }
-
-    // Raw display option: show linear values without tone/gamma
-    if (ubo.bakedDebugRaw == 1)
-    {
-      // Show raw linear RGB (clamped to non-negative)
-      outColor = vec4(max(bakedDbg, vec3(0.0)), 1.0);
-      return;
-    }
-
-    // Some bakes are low-intensity (ambient-like); scale for debug visibility.
-    const float debugScale = 6.0;
-    vec3        scaled     = clamp(bakedDbg * debugScale, vec3(0.0), vec3(1.0));
-
-    // Avoid showing nothing (black) on completely zero maps
-    if (scaled == vec3(0.0))
-    {
-      scaled = vec3(0.0);
-    }
-
-    outColor = vec4(scaled, 1.0);
+    outColor = vec4(0.0, 0.0, 0.0, 1.0);
     return;
   }
 
@@ -293,6 +265,32 @@ void main()
     return;
   }
 
+  // Debug mode 15: CSM cascade visualization (Red=0, Green=1, Blue=2, Yellow=3)
+  if (ubo.debugMode == 15)
+  {
+    int cascade = getCSMCascadeIndex(worldPos);
+    vec3 cascadeColors[4] = vec3[4](
+      vec3(1.0, 0.0, 0.0),  // Cascade 0: Red
+      vec3(0.0, 1.0, 0.0),  // Cascade 1: Green
+      vec3(0.0, 0.0, 1.0),  // Cascade 2: Blue
+      vec3(1.0, 1.0, 0.0)   // Cascade 3: Yellow
+    );
+    vec3 color = (cascade >= 0 && cascade < 4) ? cascadeColors[cascade] : vec3(1.0);
+    outColor = vec4(color, 1.0);
+    return;
+  }
+
+  // Debug mode 16: View-space depth visualization
+  if (ubo.debugMode == 16)
+  {
+    float depth = getCSMViewDepth(worldPos);
+    // Normalize to [0,1] range using splits.w (last cascade split) as max
+    float maxDist = max(ubo.directionalCascadeSplits.w, 1.0);
+    float normalized = clamp(depth / maxDist, 0.0, 1.0);
+    outColor = vec4(vec3(normalized), 1.0);
+    return;
+  }
+
   // Ambient fallback boost (kept small; matches forward path behavior)
   diffuseIBL += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * albedo * ao * 0.05;
 
@@ -304,19 +302,6 @@ void main()
     outColor = vec4(outLit, 1.0);
     return;
   }
-
-  // Read emissive rgb and baked RGB separately and apply baked RGB multiplicatively as irradiance
-  vec3 emissive = texture(gbufferEmissive, inUV).rgb;
-  vec3 baked    = texture(gbufferBaked, inUV).rgb;
-  // If baked light is stored as a single-channel (red) map, replicate it to RGB so
-  // it behaves like a grayscale lightmap instead of tinting the scene red.
-  if (baked.g < 1e-6 && baked.b < 1e-6)
-  {
-    baked = vec3(baked.r);
-  }
-  // Avoid zeroing; ensure baked has a minimum multiplicative factor
-  vec3 bakedSafe = max(baked, vec3(1e-6));
-  outLit         = outLit * bakedSafe + emissive;
 
   // Directional lights (diffuse + specular)
   for (int i = 0; i < ubo.directionalLightCount; i++)

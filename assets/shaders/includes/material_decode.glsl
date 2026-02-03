@@ -197,18 +197,6 @@ float material_decodeTransmission(vec2 uv)
   return transmission;
 }
 
-// Helper for sampling baked lightmaps (UV1) — usage: compute per-instance uvScale/uvOffset and pass here.
-vec2 material_getUv1(vec2 baseUv, vec2 uvScale, vec2 uvOffset)
-{
-  return baseUv * uvScale + uvOffset;
-}
-
-vec3 material_sampleBakedLight(vec2 uv1, uint lightmapIndex)
-{
-  // Sample the baked lightmap (linear RGB expected)
-  return texture(globalTextures[nonuniformEXT(lightmapIndex)], uv1).rgb;
-}
-
 vec3 material_computeF0(vec3 albedo, float metallic)
 {
   vec3 F0 = vec3(0.04);

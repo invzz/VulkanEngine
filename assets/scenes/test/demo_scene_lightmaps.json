@@ -1,7 +1,0 @@
-{
-      "version": 1,
-      "lightmapBindings": {
-        "object_01": { "meshes": [ { "primitiveIndex": 0, "lightmap": "lightmaps/lm_000_atlas.vtex", "uvChannel": 1, "uvScale": [1.0, 1.0], "uvOffset": [0.0, 0.0], "resolution": [4, 4] } ] }
-      },
-      "lightmaps": [ { "id": "lm_000", "file": "lightmaps/lm_000_atlas.vtex", "format": "vtex", "resolution": [4, 4], "usage": "Lightmap" } ]
-    }

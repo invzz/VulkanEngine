@@ -79,12 +79,9 @@ namespace engine {
     std::shared_ptr<Texture> clearcoatMap;          // Clearcoat texture (R channel)
     std::shared_ptr<Texture> clearcoatRoughnessMap; // Clearcoat roughness texture (G channel)
     std::shared_ptr<Texture> clearcoatNormalMap;    // Clearcoat normal map
-    // Optional baked lightmap (linear float EXR)
-    std::shared_ptr<Texture> lightmap;
 
     // Helper methods to check if textures are present
     [[nodiscard]] bool hasAlbedoMap() const { return albedoMap != nullptr; }
-    [[nodiscard]] bool hasLightmap() const { return lightmap != nullptr; }
     [[nodiscard]] bool hasNormalMap() const { return normalMap != nullptr; }
     [[nodiscard]] bool hasMetallicMap() const { return metallicMap != nullptr; }
     [[nodiscard]] bool hasRoughnessMap() const { return roughnessMap != nullptr; }

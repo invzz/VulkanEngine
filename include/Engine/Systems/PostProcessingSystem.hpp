@@ -24,13 +24,13 @@ namespace engine {
     float     fxaaSpanMax{8.0f};
     float     fxaaReduceMul{0.125f};
     float     fxaaReduceMin{0.0078125f};
-    int       enableSSAO{1};
+    int       enableSSAO{0};
     int       debugMode{0};
     float     ssaoRadius{0.5f};
     float     ssaoBias{0.025f};
     int       toneMappingMode{1}; // 0: None, 1: ACES
     glm::vec4 sunScreenPos;       // xy = screen pos [0,1], z = isVisible (1.0/0.0), w = padding
-    int       bakedRaw{0};        // 0 = display mode, 1 = raw linear display for baked debug
+    int       _reserved0{0};      // Previously bakedRaw, kept for layout compatibility
     float     godRayDensity{1.0f};
     float     godRayWeight{0.01f};
     float     godRayDecay{1.0f};

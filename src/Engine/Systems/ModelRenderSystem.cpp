@@ -16,7 +16,6 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Scene/components/LightmapComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
@@ -167,29 +166,6 @@ namespace engine {
       // Bit 1: transparent (skip cone culling - back faces may be visible)
       // Bit 2: skip HZB occlusion culling (used for depth prepass)
       push.cullingFlags = (doubleSided ? 1u : 0u) | (isTransparent ? 2u : 0u) | (skipHZB ? 4u : 0u);
-
-      // Populate per-instance lightmap transform (if present on the entity)
-      push.lightmapUvScale  = glm::vec2(1.0f, 1.0f);
-      push.lightmapUvOffset = glm::vec2(0.0f, 0.0f);
-      push.lightmapIndex    = 0u;
-
-      auto& reg = frameInfo.scene->getRegistry();
-      if (reg.all_of<engine::LightmapComponent>(entity))
-      {
-        auto& lm              = reg.get<engine::LightmapComponent>(entity);
-        push.lightmapUvScale  = lm.uvScale;
-        push.lightmapUvOffset = lm.uvOffset;
-        if (lm.textureIndex >= 0)
-        {
-          push.lightmapIndex = static_cast<uint32_t>(lm.textureIndex);
-        }
-      }
-
-      // If material has a bound lightmap texture, prefer its global index
-      if (pMaterial != nullptr && pMaterial->lightmap)
-      {
-        push.lightmapIndex = pMaterial->lightmap->getGlobalIndex();
-      }
 
       return push;
     }
@@ -377,8 +353,8 @@ namespace engine {
     // Depth compare matches the main mesh pipeline behavior when a depth prepass is used.
     pipelineConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-    // G-buffer has 4 MRTs (N, Albedo, Material, HDR emissive); disable blending for all.
-    std::array<VkPipelineColorBlendAttachmentState, 4> attachments{};
+    // G-buffer has 5 MRTs (Normal, Albedo, Material, HDR emissive, Baked); disable blending for all.
+    std::array<VkPipelineColorBlendAttachmentState, 5> attachments{};
     for (auto& a : attachments)
     {
       a             = pipelineConfig.colorBlendAttachment;
@@ -492,12 +468,6 @@ namespace engine {
         float const isSelected = ((uint32_t)item.entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
         if (materialBindings_ != nullptr)
         {
-          // Diagnostic: log descriptor-set handles for serial path so we can compare
-          // against the multithreaded recording path in failing CI/hardware runs.
-          std::cerr << "[MRS][serial] tid=" << std::this_thread::get_id() << " frame=" << frameInfo.frameIndex << " entity=" << static_cast<uint32_t>(item.entity)
-                    << " globalSet=" << frameInfo.globalDescriptorSet << " globalTexSet=" << frameInfo.globalTextureSet
-                    << " materialFrameSet=" << materialBindings_->getFrameDescriptorSet(frameInfo.frameIndex) << "\n";
-
           materialBindings_->bindMaterial(frameInfo, pipelineLayout, item.material, isSelected);
         }
 
@@ -574,14 +544,8 @@ namespace engine {
           if (materialBindings_ != nullptr)
           {
             // Diagnostic: log before and after the material bind in worker-recorded CBs.
-            std::cerr << "[MRS][worker] tid=" << std::this_thread::get_id() << " wid=" << workerId << " frame=" << localFrame.frameIndex << " entity=" << static_cast<uint32_t>(item.entity)
-                      << " globalSet=" << localFrame.globalDescriptorSet << " globalTexSet=" << localFrame.globalTextureSet
-                      << " materialFrameSet=" << materialBindings_->getFrameDescriptorSet(localFrame.frameIndex) << "\n";
-
             std::lock_guard<std::mutex> lk(multithreadBindMutex_);
             materialBindings_->bindMaterial(localFrame, pipelineLayout, item.material, ((uint32_t)item.entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f);
-
-            std::cerr << "[MRS][worker] bind-done tid=" << std::this_thread::get_id() << " wid=" << workerId << " frame=" << localFrame.frameIndex << "\n";
           }
 
           // Compute push constants and draw (pushConstantsAndDraw is thread-safe for recording)
@@ -640,8 +604,6 @@ namespace engine {
     {
       device.freeSecondaryCommandBuffer(cb);
     }
-
-    return;
   }
 
   void ModelRenderSystem::beginFrame(int frameIndex)

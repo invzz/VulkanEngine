@@ -26,10 +26,10 @@ namespace engine {
     SwapChain(const SwapChain&)            = delete;
     SwapChain& operator=(const SwapChain&) = delete;
 
-    VkFramebuffer getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
-    VkRenderPass  getRenderPass() { return renderPass; }
-    VkImageView   getImageView(int index) { return swapChainImageViews[index]; }
-    VkImage       getImage(int index) { return swapChainImages[index]; }
+    VkFramebuffer            getFrameBuffer(int index) { return swapChainFramebuffers[index]; }
+    VkRenderPass             getRenderPass() { return renderPass; }
+    VkImageView              getImageView(int index) { return swapChainImageViews[index]; }
+    VkImage                  getImage(int index) { return swapChainImages[index]; }
     [[nodiscard]] size_t     imageCount() const { return swapChainImages.size(); }
     [[nodiscard]] VkFormat   getSwapChainImageFormat() const { return swapChainImageFormat; }
     [[nodiscard]] VkExtent2D getSwapChainExtent() const { return swapChainExtent; }
@@ -88,11 +88,11 @@ namespace engine {
 
     std::shared_ptr<SwapChain> oldSwapChain;
 
-    // Per-image semaphores for swapchain synchronization
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence>     inFlightFences;
-    std::vector<VkFence>     imagesInFlight;
+    // Synchronization objects - one set per frame in flight.
+    // All arrays have size = maxFramesInFlight for consistency.
+    std::vector<VkSemaphore> imageAvailableSemaphores; // Signaled by vkAcquireNextImageKHR
+    std::vector<VkSemaphore> renderFinishedSemaphores; // Signaled when frame finishes, waited by present
+    std::vector<VkFence>     inFlightFences;           // CPU waits before reusing frame resources
     size_t                   currentFrame = 0;
     struct PresentIdState
     {

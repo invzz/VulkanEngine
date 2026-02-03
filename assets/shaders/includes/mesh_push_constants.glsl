@@ -17,10 +17,5 @@ layout(push_constant) uniform Push
   uint meshletCount;
   vec2 screenSize;
   uint cullingFlags;
-
-  // Per-instance lightmap transform and index
-  vec2 lightmapUvScale;
-  vec2 lightmapUvOffset;
-  uint lightmapIndex;
 }
 push;

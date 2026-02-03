@@ -11,7 +11,7 @@
     // Semantic token colors (clangd)
     // Enable semantic highlighting
     "editor.semanticHighlighting.enabled": true,
-
+    "glsllint.glslangValidatorArgs": ["-V"],
     // Semantic token colors
     "editor.semanticTokenColorCustomizations": {
       "enabled": true,

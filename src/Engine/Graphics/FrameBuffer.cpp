@@ -675,9 +675,10 @@ namespace engine {
     hzbMipImageViews.resize(frameCount);
 
     VkFormat const colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-    VkFormat const depthFormat = device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
-                                                            VK_IMAGE_TILING_OPTIMAL,
-                                                            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
+    VkFormat const depthFormat =
+            device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+
+    // VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
 
     for (uint32_t i = 0; i < frameCount; i++)
     {
@@ -741,7 +742,9 @@ namespace engine {
       depthImageInfo.format        = depthFormat;
       depthImageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
       depthImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      depthImageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+      // Note: D32_SFLOAT doesn't support STORAGE_BIT on most GPUs.
+      // HZB uses the depth as a sampled input and writes to separate R32_SFLOAT images.
+      depthImageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
       if (useMipmaps)
       {
         depthImageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;

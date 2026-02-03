@@ -49,7 +49,7 @@ layout(set = 0, binding = 0, std140) uniform UBO
   int  directionalCascadeCount;
   int  directionalCascadeBaseIndex;
   int  debugMode;
-  int  bakedDebugRaw;
+  int  _reservedDebug; // Previously bakedDebugRaw, kept for layout compatibility
   // Note: 9 ints = 36 bytes; std140 will insert padding so the following vec4 array starts on a 16-byte boundary
   vec4  frustumPlanes[6];
   vec4  fogColor;

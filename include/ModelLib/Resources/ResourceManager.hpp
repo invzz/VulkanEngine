@@ -219,79 +219,6 @@ namespace engine {
      */
     MeshManager& getMeshManager() const { return *meshManager_; }
 
-    // ------------------------------------------------------------------
-    // Scene-level lightmap manifest API
-    // ------------------------------------------------------------------
-
-    struct LightmapBinding
-    {
-      std::string lightmapId;
-      int         uvChannel = 1;
-      glm::vec2   uvScale{1.0f, 1.0f};
-      glm::vec2   uvOffset{0.0f, 0.0f};
-    };
-
-    struct LightmapInfo
-    {
-      std::string      id;
-      std::string      file;
-      std::string      format;
-      std::vector<int> resolution{0, 0};
-      int              paddingPx = 0;
-      std::string      usage;
-    };
-
-    /**
-     * @brief Load a generated scene-level lightmap manifest produced by the baker
-     * @param manifestPath Path to `scene_lightmaps.json`
-     * @return true on success
-     */
-    bool loadSceneLightmapManifest(const std::string& manifestPath);
-
-    /**
-     * @brief Query whether an object has a lightmap binding
-     * @return optional LightmapBinding if present
-     */
-    std::optional<LightmapBinding> getLightmapBindingForObject(const std::string& objectId) const;
-
-    /**
-     * @brief Apply the currently loaded scene-level lightmap bindings to entities in a scene.
-     * This does not automatically load texture files; it records binding info via `LightmapComponent` and
-     * sets `PBRMaterial::uvScale` as a convenience.
-     */
-    void applySceneLightmapBindings(engine::Scene& scene);
-
-    /**
-     * @brief Register a loaded lightmap texture by id (test/runtime helper). The texture will be registered
-     * with the TextureManager and can later be applied to materials via applyLoadedLightmapsToScene.
-     */
-    void registerLightmapTextureForId(const std::string& id, std::shared_ptr<Texture> texture);
-
-    /**
-     * @brief Load lightmap textures referenced by the currently-loaded scene manifest.
-     * For files that do not exist, a white fallback texture is created. basePath should be the project
-     * asset root (e.g., "assets") so manifest-relative paths like "lightmaps/lm.vtex" resolve.
-     */
-    bool loadSceneLightmapTextures(const std::string& basePath = "assets");
-
-    /**
-     * @brief Apply any previously-registered loaded lightmap textures to entities in a scene (sets PBRMaterial::lightmap).
-     */
-    void applyLoadedLightmapsToScene(engine::Scene& scene);
-
-    // Debug helper: dump a registered lightmap (by global index) to a VTEX file
-    bool dumpLightmapByGlobalIndex(uint32_t globalIndex, const std::string& outPath);
-
-    /**
-     * @brief Retrieve lightmap info by id if present
-     */
-    std::optional<LightmapInfo> getLightmapInfoById(const std::string& id) const;
-
-    /**
-     * @brief Retrieve a loaded lightmap texture by id, or nullptr if not loaded
-     */
-    std::shared_ptr<Texture> getLightmapTextureById(const std::string& id) const;
-
   private:
     Device&                         device_;
     std::unique_ptr<TextureManager> textureManager_;
@@ -318,12 +245,6 @@ namespace engine {
     // Content hash cache for embedded textures (hash -> cache key)
     std::unordered_map<std::string, std::string> contentHashToKey_;
 
-    // Scene-level manifests (populated by loadSceneLightmapManifest)
-    std::unordered_map<std::string, LightmapInfo>    sceneLightmaps_;        // id -> info
-    std::unordered_map<std::string, LightmapBinding> sceneLightmapBindings_; // objectId -> binding
-
-    // Loaded lightmap textures (id -> texture)
-    std::unordered_map<std::string, std::weak_ptr<Texture>> sceneLightmapTextures_;
     // Memory management
     size_t         memoryBudget_        = 0; // 0 = unlimited
     mutable size_t cachedTextureMemory_ = 0;

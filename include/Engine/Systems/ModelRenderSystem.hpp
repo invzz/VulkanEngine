@@ -30,17 +30,7 @@ namespace engine {
     uint32_t  meshletCount;
     glm::vec2 screenSize;
     uint32_t  cullingFlags; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
-    uint32_t  _pad_after_culling{0u};
-
-    // Per-instance lightmap transform (UV1 space) and texture index
-    glm::vec2 lightmapUvScale{1.0f, 1.0f};
-    glm::vec2 lightmapUvOffset{0.0f, 0.0f};
-    uint32_t  lightmapIndex{0u};
-
-    // Explicit padding to match GLSL std140-like push constant layout:
-    // - Ensure vec2 members are aligned on 8-byte boundaries (pad after cullingFlags)
-    // - Ensure total size matches the GLSL block expectations
-    uint32_t _pad_end[3]{0u};
+    uint32_t  _pad_end{0u};
   };
 
   static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0u, "MeshPushConstantData layout mismatch: modelMatrix offset");
@@ -54,10 +44,7 @@ namespace engine {
   static_assert(offsetof(MeshPushConstantData, meshletCount) == 172u, "MeshPushConstantData layout mismatch: meshletCount offset");
   static_assert(offsetof(MeshPushConstantData, screenSize) == 176u, "MeshPushConstantData layout mismatch: screenSize offset");
   static_assert(offsetof(MeshPushConstantData, cullingFlags) == 184u, "MeshPushConstantData layout mismatch: cullingFlags offset");
-  static_assert(offsetof(MeshPushConstantData, lightmapUvScale) == 192u, "MeshPushConstantData layout mismatch: lightmapUvScale offset");
-  static_assert(offsetof(MeshPushConstantData, lightmapUvOffset) == 200u, "MeshPushConstantData layout mismatch: lightmapUvOffset offset");
-  static_assert(offsetof(MeshPushConstantData, lightmapIndex) == 208u, "MeshPushConstantData layout mismatch: lightmapIndex offset");
-  static_assert(sizeof(MeshPushConstantData) == 224u, "MeshPushConstantData size mismatch");
+  static_assert(sizeof(MeshPushConstantData) == 192u, "MeshPushConstantData size mismatch");
 
   class MaterialRenderBindings;
   class LightingRenderBindings;

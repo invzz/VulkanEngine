@@ -77,7 +77,7 @@ namespace engine {
     int       directionalCascadeCount     = 0;
     int       directionalCascadeBaseIndex = 0; // Index into lightSpaceMatrices / shadowMaps
     int       debugMode                   = 0; // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting, 6: Lightmap Only
-    int       bakedDebugRaw               = 0; // When set, baked-light debug (11) displays raw linear values
+    int       _reservedDebug               = 0; // Previously bakedDebugRaw, kept for layout compatibility
     // std140 requires vec4-aligned data after arrays of ints; add padding to match std140 layout
     int       _padDebug0 = 0;
     int       _padDebug1 = 0;

@@ -28,8 +28,8 @@ namespace engine {
     bool      useSkyColor{true};
     glm::vec3 color{0.5f, 0.6f, 0.7f};
 
-    // God Rays
-    bool  enableGodRays{true};
+    // God Rays (disabled by default - expensive effect)
+    bool  enableGodRays{false};
     float godRayDensity{1.0f};
     float godRayWeight{0.01f};
     float godRayDecay{0.97f};

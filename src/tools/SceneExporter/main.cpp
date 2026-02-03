@@ -53,23 +53,5 @@ int main(int argc, char** argv)
   out.close();
   std::cout << "Wrote assets/scenes/demo_scene.json\n";
 
-  // Write generated scene_lightmaps.json as a minimal example
-  nlohmann::json lm;
-  lm["version"]                       = 1;
-  lm["lightmapBindings"]              = nlohmann::json::object();
-  lm["lightmapBindings"]["object_01"] = {{"lightmapId", "lm_000"}, {"uvChannel", 1}, {"uvScale", {0.25, 0.25}}, {"uvOffset", {0.5, 0.0}}};
-  lm["lightmaps"]                     = nlohmann::json::array();
-  lm["lightmaps"].push_back({{"id", "lm_000"}, {"file", "lightmaps/lm_000_atlas.vtex"}, {"format", "vtex"}, {"resolution", {2048, 2048}}, {"paddingPx", 8}, {"usage", "Lightmap"}});
-
-  std::ofstream out2("assets/scenes/demo_scene_lightmaps.json");
-  if (!out2)
-  {
-    std::cerr << "Failed to open lightmap manifest file\n";
-    return 1;
-  }
-  out2 << lm.dump(2) << std::endl;
-  out2.close();
-  std::cout << "Wrote assets/scenes/demo_scene_lightmaps.json\n";
-
   return 0;
 }

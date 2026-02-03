@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="1" failures="0" disabled="0" errors="0" time="0.266" timestamp="2026-01-12T18:24:10.076" name="AllTests">
-  <testsuite name="LightBaker" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0.266" timestamp="2026-01-12T18:24:10.076">
-    <testcase name="ModelEXR_Inspect" file="tests/lightbaker_model_exr_inspect_test.cpp" line="14" status="run" result="completed" time="0.266" timestamp="2026-01-12T18:24:10.076" classname="LightBaker" />
-  </testsuite>
-</testsuites>
