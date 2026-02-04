@@ -6,21 +6,18 @@
 
 using namespace engine;
 
-// Regression test: ensure offscreen generateMipmaps() initializes and transitions
-// higher mip levels so they are valid for sampling / copy without producing
-// validation-layer "subresource in UNDEFINED" errors.
-TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
+// =============================================================================
+// FrameBuffer Tests
+// =============================================================================
+
+TEST(FrameBuffer, GivenOffscreenImage_WhenMipmapsGenerated_ThenHigherMipsArePopulated)
 {
-  Window   win(64, 64, "FB_Mipgen");
+  Window   win(64, 64, "FrameBufferTest");
   Device   device(win);
   Renderer renderer(win, device);
 
-  // Clear a known color into mip0 then generate mip chain and read back the
-  // highest mip. The test asserts the highest-mip copy succeeds and contains
-  // non-zero data derived from the clear color.
   VkCommandBuffer cmd = device.beginSingleTimeCommands();
 
-  // Clear mip0 of the offscreen color image to a known value.
   VkImage                 offscreen = renderer.getOffscreenColorImage(0);
   VkImageSubresourceRange range{};
   range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -35,7 +32,7 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
   clearValue.float32[2] = 0.125f;
   clearValue.float32[3] = 1.0f;
 
-  // Transition mip0 -> TRANSFER_DST, clear, then transition back to COLOR_ATTACHMENT
+  // Transition mip0 -> TRANSFER_DST, clear, then transition back
   VkImageMemoryBarrier toDst{};
   toDst.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   toDst.oldLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -63,23 +60,19 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
 
   vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &toColor);
 
-  // Generate mip chain for the offscreen image (should initialize all mips)
   renderer.generateOffscreenMipmaps(cmd);
 
   device.endSingleTimeCommands(cmd);
   device.WaitIdle();
 
-  // Read back the highest mip (mipLevels - 1)
-  // Compute mip levels from the window extent (matches FrameBuffer logic)
+  // Read back mip #1
   VkExtent2D winExtent = win.getExtent();
   uint32_t   maxDim    = std::max(winExtent.width, winExtent.height);
   uint32_t   mipLevels = 1;
   while ((1u << mipLevels) <= maxDim)
     mipLevels++;
-  // We must have at least 2 mips for this test to be meaningful
   ASSERT_GT(mipLevels, 1u);
 
-  // Read back mip #1 (one step down from base) which must be initialized by generateMipmaps
   const uint32_t mipIndex = 1u;
   const uint32_t readW    = std::max(1u, winExtent.width >> mipIndex);
   const uint32_t readH    = std::max(1u, winExtent.height >> mipIndex);
@@ -103,7 +96,6 @@ TEST(FrameBufferGenerateMipmaps, OffscreenMipsPopulatedAndReadable)
   region.imageOffset                     = {0, 0, 0};
   region.imageExtent                     = {readW, readH, 1};
 
-  // Copy and assert some non-zero data was produced by the mip generation blit
   device.getMemory().copyImageToBuffer(offscreen, hostBuf, {region}, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
   void* data = nullptr;

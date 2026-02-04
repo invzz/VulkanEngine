@@ -8,15 +8,17 @@
 
 using namespace engine;
 
-TEST(Device, ThreadLocalPoolsDestroyedBeforeDevice)
+// =============================================================================
+// Device Tests
+// =============================================================================
+
+TEST(Device, GivenThreadLocalPoolsEnabled_WhenThreadsUseCommands_ThenCleanupSucceeds)
 {
-  Window window(1, 1, "TLCP_Teardown");
+  Window window(1, 1, "DeviceTest");
   {
     Device device(window);
     device.enableThreadLocalCommandPools();
 
-    // Spawn a few threads to exercise per-thread pools via the public
-    // single-time command helpers.
     const int                N = 4;
     std::vector<std::thread> threads;
 
@@ -30,19 +32,15 @@ TEST(Device, ThreadLocalPoolsDestroyedBeforeDevice)
         }
         catch (...)
         {
-          // Test should fail if exceptions are thrown, but swallow here to
-          // ensure thread completion and let the destructor assert on crash.
+          // Swallow to ensure thread completion
         }
       });
     }
 
     for (auto& t : threads)
       t.join();
-
-    // Device goes out of scope here; previously this caused vkDestroyCommandPool
-    // to be called with an invalid device handle leading to a crash.
   }
 
-  // If we reach here the destructor didn't abort the process.
+  // If we reach here the destructor didn't abort the process
   SUCCEED();
 }

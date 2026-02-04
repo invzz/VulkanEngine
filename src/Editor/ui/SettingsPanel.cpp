@@ -14,6 +14,7 @@
 #include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 #include "entt/entity/fwd.hpp"
 
@@ -29,12 +30,13 @@ namespace engine {
                                DustSettings&             dustSettings,
                                FogSettings&              fogSettings,
                                HZBSettings&              hzbSettings,
+                               ShadowSettings&           shadowSettings,
                                PostProcessPushConstants& pushConstants,
                                bool&                     multithreadedRecordingEnabled,
                                uint32_t&                 multithreadedRecordingThreads,
                                int&                      debugMode)
       : skybox_(skybox), showSkybox_(showSkybox), showGrid_(showGrid), skySettings_(skySettings), dustSettings_(dustSettings), fogSettings_(fogSettings), hzbSettings_(hzbSettings),
-        multithreadedRecordingEnabled_(multithreadedRecordingEnabled), multithreadedRecordingThreads_(multithreadedRecordingThreads)
+        shadowSettings_(shadowSettings), multithreadedRecordingEnabled_(multithreadedRecordingEnabled), multithreadedRecordingThreads_(multithreadedRecordingThreads)
   {
     cameraPanel_      = std::make_unique<CameraPanel>(cameraEntity, scene);
     iblPanel_         = std::make_unique<IBLPanel>(iblSystem, skybox);
@@ -60,6 +62,23 @@ namespace engine {
       if (ImGui::CollapsingHeader("Sky"))
       {
         ImGui::Checkbox("Debug Cubemap Faces", &skySettings_.debugCubemapFaces);
+      }
+      if (ImGui::CollapsingHeader("Shadows (CSM)"))
+      {
+        ImGui::SliderFloat("Shadow Distance", &shadowSettings_.shadowDistance, 10.0f, 500.0f, "%.0f");
+        ImGui::SetItemTooltip("World-space distance covered by shadow cascades. Lower = higher quality.");
+
+        ImGui::SliderFloat("Lambda (Split Distribution)", &shadowSettings_.cascadeLambda, 0.0f, 1.0f, "%.2f");
+        ImGui::SetItemTooltip("0 = uniform splits, 1 = logarithmic. Higher values give more detail near camera.");
+
+        ImGui::SliderFloat("Cascade Overlap", &shadowSettings_.cascadeOverlap, 0.0f, 0.5f, "%.2f");
+        ImGui::SetItemTooltip("Overlap between cascades for smooth blending. Higher = smoother but more overdraw.");
+
+        ImGui::SliderFloat("Blend Width", &shadowSettings_.cascadeBlendWidth, 0.05f, 0.5f, "%.2f");
+        ImGui::SetItemTooltip("Width of blend region at cascade boundaries as fraction of cascade range.");
+
+        ImGui::Checkbox("Debug Visualization", &shadowSettings_.debugVisualization);
+        ImGui::SetItemTooltip("Visualize cascade boundaries with colors.");
       }
       if (ImGui::CollapsingHeader("Fog"))
       {

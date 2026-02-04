@@ -5,24 +5,46 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "ModelLib/Resources/ResourceManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 
 using namespace engine;
 
-TEST(SceneSerializer, LightBakeFieldsRoundtrip)
+class SceneSerializerTest : public ::testing::Test
 {
-  std::filesystem::create_directories("assets/scenes/test");
-  const std::string filepath = "assets/scenes/test/test_scene_bake_roundtrip.json";
+protected:
+  void SetUp() override
+  {
+    std::filesystem::create_directories("assets/scenes/test");
+    window          = std::make_unique<Window>(16, 16, "SceneSerializer Test");
+    device          = std::make_unique<Device>(*window);
+    resourceManager = std::make_unique<ResourceManager>(*device);
+  }
 
-  // Setup minimal device/context required by ResourceManager
-  Window          win(16, 16, "Test");
-  Device          device(win);
-  ResourceManager rm(device);
+  void TearDown() override
+  {
+    device->WaitIdle();
+    resourceManager.reset();
+    device.reset();
+    window.reset();
+  }
+
+  std::unique_ptr<Window>          window;
+  std::unique_ptr<Device>          device;
+  std::unique_ptr<ResourceManager> resourceManager;
+};
+
+// =============================================================================
+// Light Bake Fields Roundtrip Tests
+// =============================================================================
+
+TEST_F(SceneSerializerTest, GivenDirectionalLightWithBakeFields_WhenSerializedAndDeserialized_ThenFieldsArePreserved)
+{
+  const std::string filepath = "assets/scenes/test/test_scene_bake_roundtrip.json";
 
   // Create a scene with one directional light and bake fields set
   Scene scene;
@@ -33,12 +55,12 @@ TEST(SceneSerializer, LightBakeFieldsRoundtrip)
   dl.bake      = true;
   dl.lightType = LightMobility::Dynamic;
 
-  SceneSerializer serializer(scene, rm);
+  SceneSerializer serializer(scene, *resourceManager);
   serializer.serialize(filepath);
 
   // Deserialize into a fresh scene
   Scene           scene2;
-  SceneSerializer serializer2(scene2, rm);
+  SceneSerializer serializer2(scene2, *resourceManager);
   ASSERT_TRUE(serializer2.deserialize(filepath));
 
   auto view = scene2.getRegistry().view<DirectionalLightComponent>();
@@ -54,21 +76,24 @@ TEST(SceneSerializer, LightBakeFieldsRoundtrip)
   }
 }
 
-TEST(SceneSerializer, DeserializeDemoBakeScene)
+// =============================================================================
+// Demo Scene Loading Tests
+// =============================================================================
+
+TEST_F(SceneSerializerTest, GivenDemoBakeSceneFile_WhenDeserialized_ThenLightComponentsHaveCorrectBakeFlags)
 {
   std::string const path = "assets/scenes/test/demo_scene_bake.json";
 
-  if (!std::filesystem::exists(path)) GTEST_SKIP() << "Missing demo scene file: " << path;
-
-  Window          win(16, 16, "Test");
-  Device          device(win);
-  ResourceManager rm(device);
+  if (!std::filesystem::exists(path))
+  {
+    GTEST_SKIP() << "Missing demo scene file: " << path;
+  }
 
   Scene           scene;
-  SceneSerializer serializer(scene, rm);
+  SceneSerializer serializer(scene, *resourceManager);
   ASSERT_TRUE(serializer.deserialize(path));
 
-  // Verify directional and point light components exist and have bake flags
+  // Verify directional light components exist and have bake flags
   auto dirView = scene.getRegistry().view<DirectionalLightComponent>();
   ASSERT_GT(std::distance(dirView.begin(), dirView.end()), 0);
   for (auto e : dirView)
@@ -78,6 +103,7 @@ TEST(SceneSerializer, DeserializeDemoBakeScene)
     EXPECT_EQ(dl.lightType, LightMobility::Static);
   }
 
+  // Verify point light components exist and have bake flags
   auto pointView = scene.getRegistry().view<PointLightComponent>();
   ASSERT_GT(std::distance(pointView.begin(), pointView.end()), 0);
   for (auto e : pointView)

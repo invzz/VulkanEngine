@@ -17,6 +17,7 @@
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
@@ -61,6 +62,7 @@ namespace engine {
     bool                   showGrid;
     SkyboxSettings&        skySettings;
     DustSettings&          dustSettings;
+    ShadowSettings&        shadowSettings;
   };
 
   class App
@@ -140,6 +142,7 @@ namespace engine {
     DustSettings            dustSettings;
     FogSettings             fogSettings;
     HZBSettings             hzbSettings;
+    ShadowSettings          shadowSettings;
 
     // View toggles
     bool showSkybox = false;

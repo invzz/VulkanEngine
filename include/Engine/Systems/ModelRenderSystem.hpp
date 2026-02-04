@@ -22,14 +22,14 @@ namespace engine {
     glm::mat4 modelMatrix{1.0f};
     glm::mat4 normalMatrix{1.0f};
     uint32_t  meshId{0};
-    uint64_t  meshletBufferAddress;
-    uint64_t  meshletVerticesAddress;
-    uint64_t  meshletTrianglesAddress;
-    uint64_t  vertexBufferAddress;
-    uint32_t  meshletOffset;
-    uint32_t  meshletCount;
-    glm::vec2 screenSize;
-    uint32_t  cullingFlags; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
+    uint64_t  meshletBufferAddress{0};
+    uint64_t  meshletVerticesAddress{0};
+    uint64_t  meshletTrianglesAddress{0};
+    uint64_t  vertexBufferAddress{0};
+    uint32_t  meshletOffset{0};
+    uint32_t  meshletCount{0};
+    glm::vec2 screenSize{0.0f, 0.0f};
+    uint32_t  cullingFlags{0}; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
     uint32_t  _pad_end{0u};
   };
 

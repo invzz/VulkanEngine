@@ -17,6 +17,18 @@
 namespace engine {
 
   /**
+   * @brief Settings for Cascaded Shadow Mapping
+   */
+  struct ShadowSettings
+  {
+    float shadowDistance     = 100.0f; // World-space distance to cover with shadows
+    float cascadeLambda      = 0.85f;  // Logarithmic vs uniform split distribution (0=uniform, 1=log)
+    float cascadeOverlap     = 0.3f;   // Overlap between cascades for blending (0-1)
+    float cascadeBlendWidth  = 0.2f;   // Blend region width as fraction of cascade
+    bool  debugVisualization = false;  // Show cascade boundaries in debug view
+  };
+
+  /**
    * @brief System for rendering shadow maps from light perspectives
    *
    * Uses mesh shaders with built-in frustum culling (Level 3 GPU-driven).
@@ -41,10 +53,9 @@ namespace engine {
     /**
      * @brief Render all shadow maps for the frame
      * @param frameInfo Current frame information
-     * @param shadowDistance World-space distance from the camera to cover with the
-     *        directional light shadow. Larger values reduce quality.
+     * @param settings Shadow settings for CSM configuration
      */
-    void renderShadowMaps(FrameInfo& frameInfo, float shadowDistance = 20.0f);
+    void renderShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings);
 
     [[nodiscard]] int       getDirectionalCascadeCount() const { return directionalCascadeCount_; }
     [[nodiscard]] int       getDirectionalCascadeBaseIndex() const { return directionalCascadeBaseIndex_; }

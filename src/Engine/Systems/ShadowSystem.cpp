@@ -29,7 +29,6 @@
 #include "glm/trigonometric.hpp"
 #include "vulkan/vulkan_core.h"
 
-
 namespace engine {
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -132,10 +131,13 @@ namespace engine {
     configInfo.colorBlendInfo.attachmentCount = 0;
     configInfo.colorBlendAttachment           = {};
 
-    // Depth bias to prevent shadow acne
-    configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
-    configInfo.rasterizationInfo.depthBiasConstantFactor = 1.25f;
-    configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
+    // Disable Vulkan depth bias - we use texel-scaled shader bias instead.
+    // Stacking hardware bias (clip-space) with shader bias (normalized depth)
+    // causes cascade-dependent drift because cascades have different depth ranges,
+    // which can flip depth comparisons at boundaries and create seams.
+    configInfo.rasterizationInfo.depthBiasEnable         = VK_FALSE;
+    configInfo.rasterizationInfo.depthBiasConstantFactor = 0.0f;
+    configInfo.rasterizationInfo.depthBiasSlopeFactor    = 0.0f;
 
     // No culling for shadows (all geometry matters)
     configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
@@ -266,7 +268,7 @@ namespace engine {
     frustumCorners[6] = camPos + camFwd * farZ + camRight * fx + camUp * fy;  // Far top right
     frustumCorners[7] = camPos + camFwd * farZ - camRight * fx + camUp * fy;  // Far top left
 
-    // Calculate frustum center
+    // Calculate frustum center (used for bounds, not for light view)
     glm::vec3 frustumCenter{0.0f};
     for (glm::vec3 const& corner : frustumCorners)
     {
@@ -281,7 +283,12 @@ namespace engine {
       up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
-    glm::mat4 const lightView = glm::lookAt(frustumCenter - lightDir * 50.0f, frustumCenter, up);
+    // CRITICAL: Use camera position as stable reference for light view matrix.
+    // This ensures ALL cascades share the same light-space coordinate system,
+    // which is required for texel snapping to align grids across cascades.
+    // Using frustumCenter (which differs per cascade) causes each cascade to have
+    // a different light-space origin, breaking cross-cascade grid alignment.
+    glm::mat4 const lightView = glm::lookAt(camPos - lightDir * 100.0f, camPos, up);
 
     // Transform frustum corners to light space and find AABB
     glm::vec3 minLS(std::numeric_limits<float>::infinity());
@@ -308,18 +315,28 @@ namespace engine {
     maxLS.z += 10.0f;
 
     // Texel snapping: Round the projection bounds to shadow map texel boundaries
-    // This prevents shadow swimming/shimmering when the camera moves
+    // This prevents shadow swimming/shimmering when the camera moves.
+    // CRITICAL: Snap relative to a shared origin (light-space origin) so ALL cascades
+    // align to the same texel grid. Independent snapping per cascade causes seams
+    // because adjacent cascades quantize the same world point to different texels.
     float const worldUnitsPerTexelX = (maxLS.x - minLS.x) / static_cast<float>(shadowMapSize);
     float const worldUnitsPerTexelY = (maxLS.y - minLS.y) / static_cast<float>(shadowMapSize);
 
-    minLS.x = glm::floor(minLS.x / worldUnitsPerTexelX) * worldUnitsPerTexelX;
-    maxLS.x = glm::floor(maxLS.x / worldUnitsPerTexelX) * worldUnitsPerTexelX;
-    minLS.y = glm::floor(minLS.y / worldUnitsPerTexelY) * worldUnitsPerTexelY;
-    maxLS.y = glm::floor(maxLS.y / worldUnitsPerTexelY) * worldUnitsPerTexelY;
+    // Snap to shared origin (light-space 0,0) - ensures cascade continuity
+    glm::vec2 const snapOrigin = glm::vec2(0.0f);
+    minLS.x                    = snapOrigin.x + glm::floor((minLS.x - snapOrigin.x) / worldUnitsPerTexelX) * worldUnitsPerTexelX;
+    maxLS.x                    = minLS.x + static_cast<float>(shadowMapSize) * worldUnitsPerTexelX;
+    minLS.y                    = snapOrigin.y + glm::floor((minLS.y - snapOrigin.y) / worldUnitsPerTexelY) * worldUnitsPerTexelY;
+    maxLS.y                    = minLS.y + static_cast<float>(shadowMapSize) * worldUnitsPerTexelY;
 
-    // Create orthographic projection matrix
-    float const orthoNear = -maxLS.z - 10.0f; // Extend near plane
-    float const orthoFar  = -minLS.z + 10.0f; // Extend far plane
+    // CRITICAL: Use a FIXED depth range for ALL cascades to ensure consistent depth normalization.
+    // If each cascade has a different orthoNear/orthoFar, the same world point gets different
+    // normalized Z values in adjacent cascades. This causes PCF comparisons to flip at
+    // cascade boundaries, creating seams.
+    // Using a conservative fixed range (±500 units) ensures all cascades map depth identically.
+    constexpr float globalShadowDepth = 500.0f;
+    float const     orthoNear         = -globalShadowDepth;
+    float const     orthoFar          = globalShadowDepth;
 
     glm::mat4 lightProj = glm::orthoZO(minLS.x, maxLS.x, minLS.y, maxLS.y, orthoNear, orthoFar);
     lightProj[1][1] *= -1; // Flip Y for Vulkan
@@ -410,7 +427,7 @@ namespace engine {
     engine::ShadowMap::endRenderPass(frameInfo.commandBuffer);
   }
 
-  void ShadowSystem::renderShadowMaps(FrameInfo& frameInfo, float shadowDistance)
+  void ShadowSystem::renderShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings)
   {
     shadowLightCount_            = 0;
     directionalCascadeCount_     = 0;
@@ -448,9 +465,10 @@ namespace engine {
         farPlane = (A * nearPlane) / (A - 1.0f);
       }
 
-      float const csmFar = glm::clamp(shadowDistance, nearPlane + 0.5f, farPlane);
+      float const csmFar = glm::clamp(settings.shadowDistance, nearPlane + 0.5f, farPlane);
 
-      float const lambda = 0.85f; // Balanced logarithmic distribution
+      // Use configurable lambda for split distribution
+      float const lambda = settings.cascadeLambda;
       float       splits[DIRECTIONAL_CASCADE_COUNT];
       for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; i++)
       {
@@ -465,24 +483,17 @@ namespace engine {
       for (int cascade = 0; cascade < DIRECTIONAL_CASCADE_COUNT; cascade++)
       {
         float const sliceNear = (cascade == 0) ? nearPlane : splits[cascade - 1];
-        float       sliceFar  = splits[cascade];
+        float const sliceFar  = splits[cascade];
 
-        // Add cascade overlap: extend each cascade's far plane by 30% into the next cascade
-        // This ensures geometry is rendered in both cascades at boundaries for smooth blending
-        if (cascade < DIRECTIONAL_CASCADE_COUNT - 1)
-        {
-          float const nextFar = splits[cascade + 1];
-          float const overlap = (nextFar - sliceFar) * 0.3f;
-          sliceFar += overlap;
-        }
-
-        directionalCascadeSplits_[cascade] = splits[cascade]; // Store original split for shader
+        // Store split for shader cascade selection
+        directionalCascadeSplits_[cascade] = splits[cascade];
 
         if (shadowLightCount_ >= MAX_SHADOW_MAPS)
         {
           break;
         }
 
+        // Simple: render exactly the cascade range, no overlap
         lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, shadowMapSize_, nullptr, nullptr);
 
         renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);

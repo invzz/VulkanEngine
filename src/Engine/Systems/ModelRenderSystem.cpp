@@ -194,7 +194,12 @@ namespace engine {
     materialBindings_->createResources();
 
     createPipelineLayout(globalSetLayout, bindlessSetLayout);
-    createPipeline(renderPass);
+
+    // Defer pipeline creation if no render pass provided (for testing API only)
+    if (renderPass != VK_NULL_HANDLE)
+    {
+      createPipeline(renderPass);
+    }
 
     // Default: use a single recording thread (serial). Caller may opt-in.
     multithreadedRecordingEnabled_ = false;

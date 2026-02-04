@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -11,9 +12,13 @@
 
 using namespace engine;
 
-TEST(ThreadLocalCommandPool, CreateAndDestroySingleThread)
+// =============================================================================
+// ThreadLocalCommandPool Tests
+// =============================================================================
+
+TEST(ThreadLocalCommandPool, GivenInitializedPool_WhenGetForCurrentThread_ThenReturnsValidPool)
 {
-  Window window(1, 1, "TLCP_Test");
+  Window window(1, 1, "ThreadLocalCommandPoolTest");
   Device device(window);
 
   ThreadLocalCommandPool mgr;
@@ -22,7 +27,19 @@ TEST(ThreadLocalCommandPool, CreateAndDestroySingleThread)
   VkCommandPool pool = mgr.getForCurrentThread();
   EXPECT_NE(pool, VK_NULL_HANDLE);
 
-  // Allocate a command buffer to ensure pool is usable
+  mgr.destroyForCurrentThread();
+}
+
+TEST(ThreadLocalCommandPool, GivenValidPool_WhenCommandBufferAllocated_ThenSucceeds)
+{
+  Window window(1, 1, "ThreadLocalCommandPoolTest");
+  Device device(window);
+
+  ThreadLocalCommandPool mgr;
+  mgr.init(device.device(), device.findPhysicalQueueFamilies().graphicsFamily);
+
+  VkCommandPool pool = mgr.getForCurrentThread();
+
   VkCommandBufferAllocateInfo allocInfo{};
   allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   allocInfo.commandPool        = pool;
@@ -32,14 +49,14 @@ TEST(ThreadLocalCommandPool, CreateAndDestroySingleThread)
   VkCommandBuffer cmd = VK_NULL_HANDLE;
   EXPECT_EQ(vkAllocateCommandBuffers(device.device(), &allocInfo, &cmd), VK_SUCCESS);
   EXPECT_NE(cmd, VK_NULL_HANDLE);
-  vkFreeCommandBuffers(device.device(), pool, 1, &cmd);
 
+  vkFreeCommandBuffers(device.device(), pool, 1, &cmd);
   mgr.destroyForCurrentThread();
 }
 
-TEST(ThreadLocalCommandPool, ConcurrentAllocations)
+TEST(ThreadLocalCommandPool, GivenMultipleThreads_WhenAccessingConcurrently_ThenAllSucceed)
 {
-  Window window(1, 1, "TLCP_Concurrent");
+  Window window(1, 1, "ThreadLocalCommandPoolTest");
   Device device(window);
 
   ThreadLocalCommandPool mgr;
@@ -47,8 +64,7 @@ TEST(ThreadLocalCommandPool, ConcurrentAllocations)
 
   const int                N = 8;
   std::vector<std::thread> threads;
-
-  std::atomic<int> successCount{0};
+  std::atomic<int>         successCount{0};
 
   for (int i = 0; i < N; ++i)
   {
@@ -70,8 +86,7 @@ TEST(ThreadLocalCommandPool, ConcurrentAllocations)
         }
       }
       catch (...)
-      { /* fail quietly for test */
-      }
+      {}
     });
   }
 
@@ -83,9 +98,9 @@ TEST(ThreadLocalCommandPool, ConcurrentAllocations)
   mgr.destroyAll();
 }
 
-TEST(ThreadLocalCommandPool, MicrobenchmarkAllocFree)
+TEST(ThreadLocalCommandPool, GivenSingleThread_WhenManyAllocations_ThenPerformanceAcceptable)
 {
-  Window window(1, 1, "TLCP_Bench");
+  Window window(1, 1, "ThreadLocalCommandPoolTest");
   Device device(window);
 
   ThreadLocalCommandPool mgr;
@@ -93,6 +108,7 @@ TEST(ThreadLocalCommandPool, MicrobenchmarkAllocFree)
 
   const int loops = 1000;
   auto      start = std::chrono::high_resolution_clock::now();
+
   for (int i = 0; i < loops; ++i)
   {
     VkCommandPool               pool = mgr.getForCurrentThread();
@@ -106,6 +122,7 @@ TEST(ThreadLocalCommandPool, MicrobenchmarkAllocFree)
     vkAllocateCommandBuffers(device.device(), &allocInfo, &cmd);
     vkFreeCommandBuffers(device.device(), pool, 1, &cmd);
   }
+
   auto end = std::chrono::high_resolution_clock::now();
   auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   std::cout << "[TLCP] single-thread alloc/free loops=" << loops << " took " << dur << "ms\n";

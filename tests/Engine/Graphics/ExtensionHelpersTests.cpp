@@ -4,7 +4,11 @@
 
 using namespace engine;
 
-TEST(ExtensionHelpers, EnsureExtensionsPresent_AllPresent)
+// =============================================================================
+// ExtensionHelpers Tests
+// =============================================================================
+
+TEST(ExtensionHelpers, GivenAllExtensionsAvailable_WhenEnsurePresent_ThenReturnsTrue)
 {
   std::vector<VkExtensionProperties> available = {
           VkExtensionProperties{"VK_EXT_one", 0},
@@ -16,7 +20,7 @@ TEST(ExtensionHelpers, EnsureExtensionsPresent_AllPresent)
   EXPECT_TRUE(ensureExtensionsPresent(required, available));
 }
 
-TEST(ExtensionHelpers, EnsureExtensionsPresent_Missing)
+TEST(ExtensionHelpers, GivenMissingExtension_WhenEnsurePresent_ThenReturnsFalse)
 {
   std::vector<VkExtensionProperties> available = {
           VkExtensionProperties{"VK_EXT_one", 0},

@@ -117,6 +117,7 @@ namespace engine {
             .showGrid              = showGrid,
             .skySettings           = skySettings,
             .dustSettings          = dustSettings,
+            .shadowSettings        = shadowSettings,
     };
   }
 
@@ -415,6 +416,7 @@ namespace engine {
                                                         dustSettings,
                                                         fogSettings,
                                                         hzbSettings,
+                                                        shadowSettings,
                                                         postProcessPush,
                                                         multithreadedRecordingEnabled,
                                                         multithreadedRecordingThreads,
@@ -848,8 +850,7 @@ namespace engine {
     ubo.spotLightCount        = lightCounts.spot;
 
     // Render shadow maps for all shadow-casting lights (mesh shader culling - Level 3)
-    // Shadow distance of 500 covers large architectural scenes like Sponza
-    state.shadowSystem.renderShadowMaps(frameInfo, 500.0f);
+    state.shadowSystem.renderShadowMaps(frameInfo, state.shadowSettings);
 
     ubo.projection = frameInfo.camera.getProjection();
     ubo.view       = frameInfo.camera.getView();

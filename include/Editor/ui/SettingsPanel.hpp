@@ -10,6 +10,7 @@
 #include "Editor/ui/UIPanel.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Systems/DustRenderSystem.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 namespace engine {
@@ -27,6 +28,7 @@ namespace engine {
                   DustSettings&             dustSettings,
                   FogSettings&              fogSettings,
                   HZBSettings&              hzbSettings,
+                  ShadowSettings&           shadowSettings,
                   PostProcessPushConstants& pushConstants,
                   bool&                     multithreadedRecordingEnabled,
                   uint32_t&                 multithreadedRecordingThreads,
@@ -41,6 +43,7 @@ namespace engine {
     DustSettings&   dustSettings_;
     FogSettings&    fogSettings_;
     HZBSettings&    hzbSettings_;
+    ShadowSettings& shadowSettings_;
 
     std::unique_ptr<CameraPanel>      cameraPanel_;
     std::unique_ptr<IBLPanel>         iblPanel_;
