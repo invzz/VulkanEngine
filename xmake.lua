@@ -264,7 +264,7 @@ target("Tests")
     set_kind("binary")
     set_group("tests")
     add_files("tests/**.cpp")
-    add_packages("gtest", "glm", "glfw", "nlohmann_json", "entt", "tinyexr")
+    add_packages("gtest", "glm", "glfw", "nlohmann_json", "entt", "tinyexr", "tinygltf", "tinyobjloader")
     if is_plat("linux") then
         add_packages("vulkan")
     elseif is_plat("windows") then
@@ -272,3 +272,20 @@ target("Tests")
     end
     add_deps("stb_provider", "Engine", "EngineSceneIO", "ModelLib")
     add_syslinks("gtest_main")
+
+    -- Copy test assets to the build output directory
+    after_build(function (target)
+        local targetdir = target:targetdir()
+        local projectdir = os.projectdir()
+        
+        -- glTF test models
+        local gltf_models = {"Triangle", "Box", "Cube", "Duck", "Avocado", "BoxTextured"}
+        for _, model in ipairs(gltf_models) do
+            local src = path.join(projectdir, "assets/models/glTF", model)
+            local dst = path.join(targetdir, "assets/models/glTF", model)
+            if os.isdir(src) then
+                os.mkdir(path.join(targetdir, "assets/models/glTF"))
+                os.cp(src, dst)
+            end
+        end
+    end)

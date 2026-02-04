@@ -5,11 +5,48 @@
 # ============================================================================
 
 param(
+    [switch]$Help,
     [switch]$Clean,
     [switch]$Open,
     [string]$Filter = "",
     [string]$Mode = "debug"  # debug, release, or coverage
 )
+
+# Show help if requested
+if ($Help) {
+    Write-Host @"
+VulkanEngine Code Coverage Script
+=================================
+
+USAGE:
+    .\run_coverage.ps1 [OPTIONS]
+
+OPTIONS:
+    -Help               Show this help message and exit
+    -Clean              Remove previous coverage data before running
+    -Open               Open the HTML coverage report after completion
+    -Filter <pattern>   Filter tests using gtest_filter pattern
+                        Example: -Filter "Camera*" or -Filter "*Transform*"
+    -Mode <mode>        Build mode: debug (default), release, or coverage
+
+EXAMPLES:
+    .\run_coverage.ps1                          # Run all tests with coverage
+    .\run_coverage.ps1 -Clean -Open             # Clean, run, and open report
+    .\run_coverage.ps1 -Filter "Buffer*"        # Run only Buffer tests
+    .\run_coverage.ps1 -Mode release            # Use release build
+    .\run_coverage.ps1 -Filter "*Shadow*" -Open # Run Shadow tests, open report
+
+OUTPUT:
+    coverage/html/index.html    HTML coverage report
+    coverage/coverage.xml       Cobertura XML format
+    coverage/lcov.info          LCOV format for VS Code extensions
+
+REQUIREMENTS:
+    - OpenCppCoverage (winget install OpenCppCoverage.OpenCppCoverage)
+    - xmake build system
+"@ -ForegroundColor Cyan
+    exit 0
+}
 
 $ErrorActionPreference = "Stop"
 $ProjectDir = $PSScriptRoot
@@ -67,20 +104,23 @@ if ($LASTEXITCODE -ne 0) {
 
 # Find the actual test binary location
 $TestBinarySearch = Get-ChildItem -Path (Join-Path $ProjectDir "build") -Recurse -Filter "Tests.exe" | 
-    Where-Object { $_.DirectoryName -like "*\$Mode*" -or $_.DirectoryName -like "*$Mode*" } |
-    Select-Object -First 1
+Where-Object { $_.DirectoryName -like "*\$Mode*" -or $_.DirectoryName -like "*$Mode*" } |
+Select-Object -First 1
 if ($TestBinarySearch) {
     $TestBinary = $TestBinarySearch.FullName
     Write-Host "Found test binary: $TestBinary" -ForegroundColor Cyan
-} elseif (Test-Path $TestBinary) {
+}
+elseif (Test-Path $TestBinary) {
     Write-Host "Using test binary: $TestBinary" -ForegroundColor Cyan
-} else {
+}
+else {
     # Fallback: find any Tests.exe
     $TestBinarySearch = Get-ChildItem -Path (Join-Path $ProjectDir "build") -Recurse -Filter "Tests.exe" | Select-Object -First 1
     if ($TestBinarySearch) {
         $TestBinary = $TestBinarySearch.FullName
         Write-Host "Found test binary (fallback): $TestBinary" -ForegroundColor Yellow
-    } else {
+    }
+    else {
         Write-Error "Tests.exe not found in build directory"
         exit 1
     }
@@ -138,6 +178,7 @@ $CovArgs += "--excluded_sources=*\build\*"
 $CovArgs += "--excluded_sources=*\.xmake\*"
 $CovArgs += "--excluded_sources=*\stb\*"
 $CovArgs += "--excluded_sources=*\imgui\*"
+$CovArgs += "--excluded_sources=*.hpp"
 
 # Add the test binary and its arguments
 $CovArgs += "--"
@@ -172,7 +213,8 @@ if (Test-Path $CoberturaFile) {
         
         $lcovContent | Out-File -FilePath $LcovFile -Encoding UTF8
         Write-Host "LCOV file created: $LcovFile" -ForegroundColor Green
-    } catch {
+    }
+    catch {
         Write-Host "Warning: Could not convert to LCOV format: $_" -ForegroundColor Yellow
     }
 }
@@ -182,6 +224,71 @@ Write-Host "`n=== Output Files ===" -ForegroundColor Cyan
 Write-Host "  Cobertura XML: $CoberturaFile"
 Write-Host "  LCOV:          $LcovFile"
 Write-Host "  HTML Report:   $HtmlDir\index.html"
+
+# Generate per-file coverage summary from LCOV
+$SummaryFile = Join-Path $CoverageDir "coverage_summary.txt"
+if (Test-Path $LcovFile) {
+    Write-Host "`n=== Coverage Summary ===" -ForegroundColor Cyan
+    
+    $lines = Get-Content $LcovFile
+    $results = @()
+    $currentFile = ""
+    $hit = 0
+    $total = 0
+    
+    foreach ($line in $lines) {
+        if ($line -match "^SF:(.+)") {
+            if ($currentFile -ne "") {
+                $pct = if ($total -gt 0) { [math]::Round(100 * $hit / $total, 1) } else { 0 }
+                $results += [PSCustomObject]@{File = $currentFile -replace ".*/VulkanEngine/", ""; Pct = $pct; Hit = $hit; Total = $total }
+            }
+            $currentFile = $matches[1]
+            $hit = 0
+            $total = 0
+        }
+        elseif ($line -match "^DA:(\d+),(\d+)") {
+            $total++
+            if ([int]$matches[2] -gt 0) { $hit++ }
+        }
+    }
+    
+    # Don't forget the last file
+    if ($currentFile -ne "") {
+        $pct = if ($total -gt 0) { [math]::Round(100 * $hit / $total, 1) } else { 0 }
+        $results += [PSCustomObject]@{File = $currentFile -replace ".*/VulkanEngine/", ""; Pct = $pct; Hit = $hit; Total = $total }
+    }
+    
+    # Sort by coverage percentage
+    $sortedResults = $results | Sort-Object Pct
+    
+    # Calculate totals
+    $totalHit = ($results | Measure-Object -Property Hit -Sum).Sum
+    $totalLines = ($results | Measure-Object -Property Total -Sum).Sum
+    $overallPct = [math]::Round(100 * $totalHit / $totalLines, 1)
+    
+    # Display to console
+    $sortedResults | Format-Table @{L = "Coverage"; E = { "{0,5:N1}%" -f $_.Pct } }, Hit, Total, File -AutoSize
+    Write-Host "OVERALL: $overallPct% ($totalHit/$totalLines lines)" -ForegroundColor Green
+    
+    # Write to summary file
+    $summaryContent = @()
+    $summaryContent += "VulkanEngine Code Coverage Summary"
+    $summaryContent += "Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    $summaryContent += "=" * 80
+    $summaryContent += ""
+    $summaryContent += "{0,-8} {1,5} {2,5}   {3}" -f "Coverage", "Hit", "Total", "File"
+    $summaryContent += "-" * 80
+    
+    foreach ($r in $sortedResults) {
+        $summaryContent += "{0,6:N1}%  {1,5} {2,5}   {3}" -f $r.Pct, $r.Hit, $r.Total, $r.File
+    }
+    
+    $summaryContent += "-" * 80
+    $summaryContent += "OVERALL: $overallPct% ($totalHit/$totalLines lines)"
+    
+    $summaryContent | Out-File -FilePath $SummaryFile -Encoding UTF8
+    Write-Host "`n  Summary:       $SummaryFile" -ForegroundColor Cyan
+}
 
 # Open HTML report if requested
 if ($Open) {

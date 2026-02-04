@@ -24,5 +24,8 @@
   "coverage-gutters.showLineCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
   "coverage-gutters.showGutterCoverage": true,
-  "coverage-gutters.coverageBaseDir": "."
+  "coverage-gutters.coverageBaseDir": ".",
+  "[powershell]": {
+    "editor.defaultFormatter": "ms-vscode.powershell"
+  }
 }

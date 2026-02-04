@@ -2,8 +2,7 @@
 
 #include <cmath>
 
-#include "Engine/Core/Window.hpp"
-#include "Engine/Graphics/Device.hpp"
+#include "../../fixtures/DeviceFixture.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
@@ -11,24 +10,12 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
+
 using namespace engine;
 
-class ShadowSystemTest : public ::testing::Test
+class ShadowSystemTest : public engine::test::DeviceFixture
 {
 protected:
-  void SetUp() override
-  {
-    window = std::make_unique<Window>(64, 64, "ShadowSystem Test");
-    device = std::make_unique<Device>(*window);
-  }
-
-  void TearDown() override
-  {
-    device->WaitIdle();
-    device.reset();
-    window.reset();
-  }
-
   // Helper to create a valid FrameInfo with the given camera and scene
   FrameInfo makeFrameInfo(Camera& camera, Scene* scene)
   {
@@ -48,9 +35,6 @@ protected:
             .debugMode           = 0,
     };
   }
-
-  std::unique_ptr<Window> window;
-  std::unique_ptr<Device> device;
 };
 
 // =============================================================================
@@ -90,7 +74,7 @@ TEST(ShadowSettings, GivenCustomValues_WhenAssigned_ThenValuesAreStored)
 
 TEST_F(ShadowSystemTest, GivenDefaultShadowMapSize_WhenConstructed_ThenInitialCountsAreZero)
 {
-  ShadowSystem shadowSystem(*device);
+  ShadowSystem shadowSystem(device());
 
   EXPECT_EQ(shadowSystem.getShadowLightCount(), 0);
   EXPECT_EQ(shadowSystem.getCubeShadowLightCount(), 0);
@@ -100,7 +84,7 @@ TEST_F(ShadowSystemTest, GivenDefaultShadowMapSize_WhenConstructed_ThenInitialCo
 
 TEST_F(ShadowSystemTest, GivenCustomShadowMapSize_WhenConstructed_ThenInitialCountsAreZero)
 {
-  ShadowSystem shadowSystem(*device, 1024);
+  ShadowSystem shadowSystem(device(), 1024);
 
   EXPECT_EQ(shadowSystem.getShadowLightCount(), 0);
   EXPECT_EQ(shadowSystem.getDirectionalCascadeCount(), 0);
@@ -124,7 +108,7 @@ TEST_F(ShadowSystemTest, GivenShadowSystem_WhenCheckingConstants_ThenMaxShadowMa
 
 TEST_F(ShadowSystemTest, GivenNewShadowSystem_WhenGettingSplits_ThenCascadeSplitsAreZero)
 {
-  ShadowSystem shadowSystem(*device);
+  ShadowSystem shadowSystem(device());
 
   glm::vec4 splits = shadowSystem.getDirectionalCascadeSplits();
   EXPECT_FLOAT_EQ(splits.x, 0.0f);
@@ -135,7 +119,7 @@ TEST_F(ShadowSystemTest, GivenNewShadowSystem_WhenGettingSplits_ThenCascadeSplit
 
 TEST_F(ShadowSystemTest, GivenNoLights_WhenRenderingShadowMaps_ThenNoShadowMapsAreRendered)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -143,13 +127,13 @@ TEST_F(ShadowSystemTest, GivenNoLights_WhenRenderingShadowMaps_ThenNoShadowMapsA
   camera.setPerspectiveProjection(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
   camera.setViewYXZ(glm::vec3(0.0f), glm::vec3(0.0f));
 
-  VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
   frameInfo.commandBuffer   = cmd;
 
   shadowSystem.renderShadowMaps(frameInfo, settings);
 
-  device->endSingleTimeCommands(cmd);
+  device().endSingleTimeCommands(cmd);
 
   EXPECT_EQ(shadowSystem.getShadowLightCount(), 0);
   EXPECT_EQ(shadowSystem.getDirectionalCascadeCount(), 0);
@@ -157,7 +141,7 @@ TEST_F(ShadowSystemTest, GivenNoLights_WhenRenderingShadowMaps_ThenNoShadowMapsA
 
 TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenAllCascadesAreRendered)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -173,13 +157,13 @@ TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenAllCa
   dirLight.intensity = 1.0f;
   transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
 
-  VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
   frameInfo.commandBuffer   = cmd;
 
   shadowSystem.renderShadowMaps(frameInfo, settings);
 
-  device->endSingleTimeCommands(cmd);
+  device().endSingleTimeCommands(cmd);
 
   EXPECT_EQ(shadowSystem.getDirectionalCascadeCount(), ShadowSystem::DIRECTIONAL_CASCADE_COUNT);
   EXPECT_EQ(shadowSystem.getShadowLightCount(), ShadowSystem::DIRECTIONAL_CASCADE_COUNT);
@@ -194,7 +178,7 @@ TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenAllCa
 
 TEST_F(ShadowSystemTest, GivenCustomShadowDistance_WhenRenderingShadowMaps_ThenSplitsRespectDistance)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -211,13 +195,13 @@ TEST_F(ShadowSystemTest, GivenCustomShadowDistance_WhenRenderingShadowMaps_ThenS
   dirLight.intensity = 1.0f;
   transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
 
-  VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
   frameInfo.commandBuffer   = cmd;
 
   shadowSystem.renderShadowMaps(frameInfo, settings);
 
-  device->endSingleTimeCommands(cmd);
+  device().endSingleTimeCommands(cmd);
 
   glm::vec4 splits = shadowSystem.getDirectionalCascadeSplits();
   EXPECT_LE(splits.w, settings.shadowDistance + 1.0f);
@@ -240,27 +224,27 @@ TEST_F(ShadowSystemTest, GivenDifferentLambdaValues_WhenRenderingShadowMaps_Then
   transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
 
   // Uniform distribution (lambda = 0)
-  ShadowSystem   uniformSystem(*device);
+  ShadowSystem   uniformSystem(device());
   ShadowSettings uniformSettings;
   uniformSettings.cascadeLambda = 0.0f;
 
-  VkCommandBuffer cmd1       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd1       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo1 = makeFrameInfo(camera, &scene);
   frameInfo1.commandBuffer   = cmd1;
   uniformSystem.renderShadowMaps(frameInfo1, uniformSettings);
-  device->endSingleTimeCommands(cmd1);
+  device().endSingleTimeCommands(cmd1);
   glm::vec4 uniformSplits = uniformSystem.getDirectionalCascadeSplits();
 
   // Logarithmic distribution (lambda = 1)
-  ShadowSystem   logSystem(*device);
+  ShadowSystem   logSystem(device());
   ShadowSettings logSettings;
   logSettings.cascadeLambda = 1.0f;
 
-  VkCommandBuffer cmd2       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd2       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo2 = makeFrameInfo(camera, &scene);
   frameInfo2.commandBuffer   = cmd2;
   logSystem.renderShadowMaps(frameInfo2, logSettings);
-  device->endSingleTimeCommands(cmd2);
+  device().endSingleTimeCommands(cmd2);
   glm::vec4 logSplits = logSystem.getDirectionalCascadeSplits();
 
   // With log distribution, early cascades should be smaller
@@ -273,7 +257,7 @@ TEST_F(ShadowSystemTest, GivenDifferentLambdaValues_WhenRenderingShadowMaps_Then
 
 TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenLightSpaceMatricesAreValid)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -289,13 +273,13 @@ TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenLight
   dirLight.intensity = 1.0f;
   transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
 
-  VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
   frameInfo.commandBuffer   = cmd;
 
   shadowSystem.renderShadowMaps(frameInfo, settings);
 
-  device->endSingleTimeCommands(cmd);
+  device().endSingleTimeCommands(cmd);
 
   for (int i = 0; i < shadowSystem.getShadowLightCount(); ++i)
   {
@@ -335,7 +319,7 @@ TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenLight
 
 TEST_F(ShadowSystemTest, GivenNewShadowSystem_WhenGettingDescriptorInfo_ThenAllShadowMapsHaveValidDescriptors)
 {
-  ShadowSystem shadowSystem(*device);
+  ShadowSystem shadowSystem(device());
 
   for (int i = 0; i < ShadowSystem::MAX_SHADOW_MAPS; ++i)
   {
@@ -347,7 +331,7 @@ TEST_F(ShadowSystemTest, GivenNewShadowSystem_WhenGettingDescriptorInfo_ThenAllS
 
 TEST_F(ShadowSystemTest, GivenNewShadowSystem_WhenGettingCubeDescriptorInfo_ThenAllCubeShadowMapsHaveValidDescriptors)
 {
-  ShadowSystem shadowSystem(*device);
+  ShadowSystem shadowSystem(device());
 
   for (int i = 0; i < ShadowSystem::MAX_CUBE_SHADOW_MAPS; ++i)
   {
@@ -363,7 +347,7 @@ TEST_F(ShadowSystemTest, GivenNewShadowSystem_WhenGettingCubeDescriptorInfo_Then
 
 TEST_F(ShadowSystemTest, GivenVerySmallShadowDistance_WhenRenderingShadowMaps_ThenNoCrash)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -380,20 +364,20 @@ TEST_F(ShadowSystemTest, GivenVerySmallShadowDistance_WhenRenderingShadowMaps_Th
   dirLight.intensity = 1.0f;
   transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
 
-  VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
   frameInfo.commandBuffer   = cmd;
 
   EXPECT_NO_THROW(shadowSystem.renderShadowMaps(frameInfo, settings));
 
-  device->endSingleTimeCommands(cmd);
+  device().endSingleTimeCommands(cmd);
 
   EXPECT_EQ(shadowSystem.getDirectionalCascadeCount(), ShadowSystem::DIRECTIONAL_CASCADE_COUNT);
 }
 
 TEST_F(ShadowSystemTest, GivenVeryLargeShadowDistance_WhenRenderingShadowMaps_ThenSplitsClampToFarPlane)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -410,13 +394,13 @@ TEST_F(ShadowSystemTest, GivenVeryLargeShadowDistance_WhenRenderingShadowMaps_Th
   dirLight.intensity = 1.0f;
   transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
 
-  VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
   FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
   frameInfo.commandBuffer   = cmd;
 
   EXPECT_NO_THROW(shadowSystem.renderShadowMaps(frameInfo, settings));
 
-  device->endSingleTimeCommands(cmd);
+  device().endSingleTimeCommands(cmd);
 
   glm::vec4 splits = shadowSystem.getDirectionalCascadeSplits();
   EXPECT_LE(splits.w, 100.0f + 1.0f);
@@ -424,7 +408,7 @@ TEST_F(ShadowSystemTest, GivenVeryLargeShadowDistance_WhenRenderingShadowMaps_Th
 
 TEST_F(ShadowSystemTest, GivenExtremeLambdaValues_WhenRenderingShadowMaps_ThenNoCrash)
 {
-  ShadowSystem   shadowSystem(*device);
+  ShadowSystem   shadowSystem(device());
   Scene          scene;
   Camera         camera;
   ShadowSettings settings;
@@ -443,20 +427,20 @@ TEST_F(ShadowSystemTest, GivenExtremeLambdaValues_WhenRenderingShadowMaps_ThenNo
   // Lambda = 0 (fully uniform)
   settings.cascadeLambda = 0.0f;
   {
-    VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+    VkCommandBuffer cmd       = device().beginSingleTimeCommands();
     FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
     frameInfo.commandBuffer   = cmd;
     EXPECT_NO_THROW(shadowSystem.renderShadowMaps(frameInfo, settings));
-    device->endSingleTimeCommands(cmd);
+    device().endSingleTimeCommands(cmd);
   }
 
   // Lambda = 1 (fully logarithmic)
   settings.cascadeLambda = 1.0f;
   {
-    VkCommandBuffer cmd       = device->beginSingleTimeCommands();
+    VkCommandBuffer cmd       = device().beginSingleTimeCommands();
     FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
     frameInfo.commandBuffer   = cmd;
     EXPECT_NO_THROW(shadowSystem.renderShadowMaps(frameInfo, settings));
-    device->endSingleTimeCommands(cmd);
+    device().endSingleTimeCommands(cmd);
   }
 }

@@ -2,10 +2,10 @@
 
 #include <filesystem>
 
+#include "../../fixtures/DeviceFixture.hpp"
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Core/Window.hpp"
-#include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
+
 
 using namespace engine;
 
@@ -146,25 +146,8 @@ TEST(Pipeline, GivenNonexistentFile_WhenReadFile_ThenThrowsReadFileException)
 // Pipeline Creation Integration Tests
 // =============================================================================
 
-class PipelineTest : public ::testing::Test
-{
-protected:
-  void SetUp() override
-  {
-    window = std::make_unique<Window>(8, 8, "Pipeline Test");
-    device = std::make_unique<Device>(*window);
-  }
-
-  void TearDown() override
-  {
-    device->WaitIdle();
-    device.reset();
-    window.reset();
-  }
-
-  std::unique_ptr<Window> window;
-  std::unique_ptr<Device> device;
-};
+class PipelineTest : public engine::test::DeviceFixture
+{};
 
 TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
 {
@@ -212,7 +195,7 @@ TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
   };
 
   VkRenderPass renderPass;
-  ASSERT_EQ(vkCreateRenderPass(device->device(), &renderPassInfo, nullptr, &renderPass), VK_SUCCESS);
+  ASSERT_EQ(vkCreateRenderPass(device().device(), &renderPassInfo, nullptr, &renderPass), VK_SUCCESS);
 
   // Create pipeline layout (empty for this test)
   VkPipelineLayoutCreateInfo layoutInfo{
@@ -221,17 +204,17 @@ TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
   };
 
   VkPipelineLayout layout;
-  ASSERT_EQ(vkCreatePipelineLayout(device->device(), &layoutInfo, nullptr, &layout), VK_SUCCESS);
+  ASSERT_EQ(vkCreatePipelineLayout(device().device(), &layoutInfo, nullptr, &layout), VK_SUCCESS);
 
   config.renderPass     = renderPass;
   config.pipelineLayout = layout;
 
   // This should not throw
-  EXPECT_NO_THROW({ Pipeline pipeline(*device, vertPath, fragPath, config); });
+  EXPECT_NO_THROW({ Pipeline pipeline(device(), vertPath, fragPath, config); });
 
   // Cleanup
-  vkDestroyPipelineLayout(device->device(), layout, nullptr);
-  vkDestroyRenderPass(device->device(), renderPass, nullptr);
+  vkDestroyPipelineLayout(device().device(), layout, nullptr);
+  vkDestroyRenderPass(device().device(), renderPass, nullptr);
 }
 
 TEST_F(PipelineTest, GivenInvalidShaderPath_WhenReadFile_ThenThrows)

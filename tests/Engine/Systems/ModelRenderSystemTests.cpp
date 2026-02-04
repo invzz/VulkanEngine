@@ -4,12 +4,12 @@
 #include <thread>
 #include <vector>
 
-#include "Engine/Core/Window.hpp"
-#include "Engine/Graphics/Device.hpp"
+#include "../../fixtures/DeviceFixture.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Systems/MaterialRenderBindings.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
+
 
 using namespace engine;
 
@@ -84,30 +84,15 @@ TEST(ModelRenderSystem, GivenDefaultState_WhenEnablingMultiThreadedRecording_The
 // MaterialRenderBindings Multi-threaded Tests
 // =============================================================================
 
-class MaterialRenderBindingsTest : public ::testing::Test
+class MaterialRenderBindingsTest : public engine::test::DeviceFixtureWithSetup
 {
 protected:
-  void SetUp() override
-  {
-    window = std::make_unique<Window>(8, 8, "MRB Test");
-    device = std::make_unique<Device>(*window);
-    device->enableThreadLocalCommandPools();
-  }
-
-  void TearDown() override
-  {
-    device->WaitIdle();
-    device.reset();
-    window.reset();
-  }
-
-  std::unique_ptr<Window> window;
-  std::unique_ptr<Device> device;
+  void SetUp() override { device().enableThreadLocalCommandPools(); }
 };
 
 TEST_F(MaterialRenderBindingsTest, GivenResourcesCreated_WhenFrameBegins_ThenDescriptorSetIsValid)
 {
-  MaterialRenderBindings mrb(*device);
+  MaterialRenderBindings mrb(device());
   mrb.createResources();
   mrb.beginFrame(0);
 
@@ -117,7 +102,7 @@ TEST_F(MaterialRenderBindingsTest, GivenResourcesCreated_WhenFrameBegins_ThenDes
 
 TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_ThenCapturedHandleMatchesFrameSet)
 {
-  MaterialRenderBindings mrb(*device);
+  MaterialRenderBindings mrb(device());
   mrb.createResources();
   mrb.beginFrame(0);
 
@@ -131,7 +116,7 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
     li.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     li.bindingCount = 0;
     li.pBindings    = nullptr;
-    ASSERT_EQ(vkCreateDescriptorSetLayout(device->device(), &li, nullptr, &dummyLayouts[i]), VK_SUCCESS);
+    ASSERT_EQ(vkCreateDescriptorSetLayout(device().device(), &li, nullptr, &dummyLayouts[i]), VK_SUCCESS);
   }
 
   std::array<VkDescriptorSetLayout, 5> layouts{dummyLayouts[0], dummyLayouts[1], dummyLayouts[2], dummyLayouts[3], mrb.getDescriptorSetLayout()};
@@ -142,11 +127,11 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
   pli.pSetLayouts    = layouts.data();
 
   VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-  ASSERT_EQ(vkCreatePipelineLayout(device->device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
+  ASSERT_EQ(vkCreatePipelineLayout(device().device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
 
   // Allocate and begin a secondary command buffer
   VkCommandBuffer serialCB = VK_NULL_HANDLE;
-  ASSERT_EQ(device->allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
+  ASSERT_EQ(device().allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
 
   VkCommandBufferInheritanceRenderingInfoKHR renderingInfo{};
   renderingInfo.sType                = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
@@ -178,17 +163,17 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
 
   // Cleanup
   mrb.enableBindCapture(false);
-  device->freeSecondaryCommandBuffer(serialCB);
-  vkDestroyPipelineLayout(device->device(), pipelineLayout, nullptr);
+  device().freeSecondaryCommandBuffer(serialCB);
+  vkDestroyPipelineLayout(device().device(), pipelineLayout, nullptr);
   for (auto& layout : dummyLayouts)
   {
-    vkDestroyDescriptorSetLayout(device->device(), layout, nullptr);
+    vkDestroyDescriptorSetLayout(device().device(), layout, nullptr);
   }
 }
 
 TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCalled_ThenAllCapturedHandlesMatchSerialHandle)
 {
-  MaterialRenderBindings mrb(*device);
+  MaterialRenderBindings mrb(device());
   mrb.createResources();
   mrb.beginFrame(0);
 
@@ -202,7 +187,7 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
     li.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     li.bindingCount = 0;
     li.pBindings    = nullptr;
-    ASSERT_EQ(vkCreateDescriptorSetLayout(device->device(), &li, nullptr, &dummyLayouts[i]), VK_SUCCESS);
+    ASSERT_EQ(vkCreateDescriptorSetLayout(device().device(), &li, nullptr, &dummyLayouts[i]), VK_SUCCESS);
   }
 
   std::array<VkDescriptorSetLayout, 5> layouts{dummyLayouts[0], dummyLayouts[1], dummyLayouts[2], dummyLayouts[3], mrb.getDescriptorSetLayout()};
@@ -213,7 +198,7 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
   pli.pSetLayouts    = layouts.data();
 
   VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-  ASSERT_EQ(vkCreatePipelineLayout(device->device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
+  ASSERT_EQ(vkCreatePipelineLayout(device().device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
 
   auto beginSecondary = [](VkCommandBuffer cb) -> VkResult {
     VkCommandBufferInheritanceRenderingInfoKHR renderingInfo{};
@@ -234,7 +219,7 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
 
   // Serial bind first
   VkCommandBuffer serialCB = VK_NULL_HANDLE;
-  ASSERT_EQ(device->allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
+  ASSERT_EQ(device().allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
   ASSERT_EQ(beginSecondary(serialCB), VK_SUCCESS);
 
   Camera    camera;
@@ -257,7 +242,7 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
       Camera          cam;
       VkCommandBuffer localCb = VK_NULL_HANDLE;
 
-      if (device->allocateSecondaryCommandBuffer(&localCb) != VK_SUCCESS)
+      if (device().allocateSecondaryCommandBuffer(&localCb) != VK_SUCCESS)
       {
         return;
       }
@@ -294,12 +279,12 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
   mrb.enableBindCapture(false);
   for (auto cb : workerCbs)
   {
-    device->freeSecondaryCommandBuffer(cb);
+    device().freeSecondaryCommandBuffer(cb);
   }
-  device->freeSecondaryCommandBuffer(serialCB);
-  vkDestroyPipelineLayout(device->device(), pipelineLayout, nullptr);
+  device().freeSecondaryCommandBuffer(serialCB);
+  vkDestroyPipelineLayout(device().device(), pipelineLayout, nullptr);
   for (auto& layout : dummyLayouts)
   {
-    vkDestroyDescriptorSetLayout(device->device(), layout, nullptr);
+    vkDestroyDescriptorSetLayout(device().device(), layout, nullptr);
   }
 }

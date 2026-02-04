@@ -5,32 +5,14 @@
 
 #include <gtest/gtest.h>
 
-#include "Engine/Core/Window.hpp"
+#include "../../fixtures/DeviceFixture.hpp"
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
-#include "Engine/Graphics/Device.hpp"
-
 
 namespace engine::test {
 
-  class DescriptorsTest : public ::testing::Test
-  {
-  protected:
-    void SetUp() override
-    {
-      window = std::make_unique<Window>(16, 16, "DescriptorsTest");
-      device = std::make_unique<Device>(*window);
-    }
-
-    void TearDown() override
-    {
-      device.reset();
-      window.reset();
-    }
-
-    std::unique_ptr<Window> window;
-    std::unique_ptr<Device> device;
-  };
+  class DescriptorsTest : public DeviceFixture
+  {};
 
   // ============================================================================
   // DescriptorSetLayout::Builder Tests
@@ -38,7 +20,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, LayoutBuilder_SingleBinding)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
     ASSERT_NE(layout, nullptr);
     EXPECT_NE(layout->getDescriptorSetLayout(), VK_NULL_HANDLE);
@@ -46,7 +28,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, LayoutBuilder_MultipleBindings)
   {
-    auto layout = DescriptorSetLayout::Builder(*device)
+    auto layout = DescriptorSetLayout::Builder(device())
                           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
                           .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                           .addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
@@ -59,7 +41,7 @@ namespace engine::test {
   TEST_F(DescriptorsTest, LayoutBuilder_NonSequentialBindings)
   {
     // Test that non-sequential binding numbers work (e.g., 0, 2, 5)
-    auto layout = DescriptorSetLayout::Builder(*device)
+    auto layout = DescriptorSetLayout::Builder(device())
                           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
                           .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                           .addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
@@ -72,7 +54,7 @@ namespace engine::test {
   TEST_F(DescriptorsTest, LayoutBuilder_WithArrayCount)
   {
     // Test binding with multiple descriptors (array)
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4).build();
 
     ASSERT_NE(layout, nullptr);
     EXPECT_NE(layout->getDescriptorSetLayout(), VK_NULL_HANDLE);
@@ -82,7 +64,7 @@ namespace engine::test {
   {
     VkShaderStageFlags allStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
 
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, allStages).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, allStages).build();
 
     ASSERT_NE(layout, nullptr);
     EXPECT_NE(layout->getDescriptorSetLayout(), VK_NULL_HANDLE);
@@ -90,7 +72,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, LayoutBuilder_WithBindingFlags)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1, VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT).build();
 
     ASSERT_NE(layout, nullptr);
     EXPECT_NE(layout->getDescriptorSetLayout(), VK_NULL_HANDLE);
@@ -102,7 +84,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, PoolBuilder_SinglePoolSize)
   {
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
     ASSERT_NE(pool, nullptr);
     EXPECT_EQ(pool->getMaxSets(), 10u);
@@ -111,7 +93,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, PoolBuilder_MultiplePoolSizes)
   {
-    auto pool = DescriptorPool::Builder(*device)
+    auto pool = DescriptorPool::Builder(device())
                         .setMaxSets(100)
                         .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 50)
                         .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100)
@@ -125,7 +107,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, PoolBuilder_WithFlags)
   {
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).build();
 
     ASSERT_NE(pool, nullptr);
     EXPECT_EQ(pool->getMaxSets(), 10u);
@@ -133,7 +115,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, PoolBuilder_AllowOverflow)
   {
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(5).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5).setAllowOverflow(true).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(5).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5).setAllowOverflow(true).build();
 
     ASSERT_NE(pool, nullptr);
     EXPECT_EQ(pool->getMaxSets(), 5u);
@@ -141,7 +123,7 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, PoolBuilder_DefaultMaxSets)
   {
-    auto pool = DescriptorPool::Builder(*device).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000).build();
+    auto pool = DescriptorPool::Builder(device()).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000).build();
 
     ASSERT_NE(pool, nullptr);
     // Default maxSets is 1000
@@ -154,9 +136,9 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Pool_AllocateSingleDescriptor)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
     bool            result        = pool->allocateDescriptor(layout->getDescriptorSetLayout(), descriptorSet);
@@ -167,9 +149,9 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Pool_AllocateMultipleDescriptors)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
     std::vector<VkDescriptorSet> descriptorSets(5, VK_NULL_HANDLE);
     for (auto& set : descriptorSets)
@@ -185,9 +167,9 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Pool_ResetPool)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(3).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(3).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3).build();
 
     // Allocate all sets
     for (int i = 0; i < 3; ++i)
@@ -206,9 +188,9 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Pool_FreeDescriptors)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(5).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(5).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5).setPoolFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT).build();
 
     std::vector<VkDescriptorSet> sets(3, VK_NULL_HANDLE);
     for (auto& set : sets)
@@ -230,12 +212,12 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Writer_WriteBuffer)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
     // Create a buffer
-    Buffer buffer(*device, sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    Buffer buffer(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = buffer.getBuffer();
@@ -251,11 +233,11 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Writer_BuildWithOutResult)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
-    Buffer buffer(*device, sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    Buffer buffer(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = buffer.getBuffer();
@@ -274,13 +256,13 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Writer_Overwrite)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
-    Buffer buffer1(*device, sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    Buffer buffer1(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    Buffer buffer2(*device, sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    Buffer buffer2(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDescriptorBufferInfo bufferInfo1{};
     bufferInfo1.buffer = buffer1.getBuffer();
@@ -306,16 +288,16 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Writer_MultipleBindings)
   {
-    auto layout = DescriptorSetLayout::Builder(*device)
+    auto layout = DescriptorSetLayout::Builder(device())
                           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
                           .addBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
                           .build();
 
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 20).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 20).build();
 
-    Buffer buffer1(*device, sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    Buffer buffer1(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    Buffer buffer2(*device, sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    Buffer buffer2(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDescriptorBufferInfo bufferInfo1{};
     bufferInfo1.buffer = buffer1.getBuffer();
@@ -340,10 +322,10 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Pool_ExhaustionWithoutOverflow)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
     // Create a very small pool
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(2).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).setAllowOverflow(false).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(2).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).setAllowOverflow(false).build();
 
     VkDescriptorSet set1 = VK_NULL_HANDLE, set2 = VK_NULL_HANDLE, set3 = VK_NULL_HANDLE;
 
@@ -356,10 +338,10 @@ namespace engine::test {
 
   TEST_F(DescriptorsTest, Pool_ExhaustionWithOverflow)
   {
-    auto layout = DescriptorSetLayout::Builder(*device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
+    auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
     // Create a very small pool with overflow enabled
-    auto pool = DescriptorPool::Builder(*device).setMaxSets(2).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).setAllowOverflow(true).build();
+    auto pool = DescriptorPool::Builder(device()).setMaxSets(2).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).setAllowOverflow(true).build();
 
     VkDescriptorSet set1 = VK_NULL_HANDLE, set2 = VK_NULL_HANDLE, set3 = VK_NULL_HANDLE;
 
@@ -374,7 +356,7 @@ namespace engine::test {
   TEST_F(DescriptorsTest, Layout_EmptyLayout)
   {
     // An empty layout (no bindings) should still be valid
-    auto layout = DescriptorSetLayout::Builder(*device).build();
+    auto layout = DescriptorSetLayout::Builder(device()).build();
 
     ASSERT_NE(layout, nullptr);
     EXPECT_NE(layout->getDescriptorSetLayout(), VK_NULL_HANDLE);
@@ -383,7 +365,7 @@ namespace engine::test {
   TEST_F(DescriptorsTest, Pool_AllDescriptorTypes)
   {
     // Test pool with many different descriptor types
-    auto pool = DescriptorPool::Builder(*device)
+    auto pool = DescriptorPool::Builder(device())
                         .setMaxSets(100)
                         .addPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, 10)
                         .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10)
