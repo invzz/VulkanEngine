@@ -1,14 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
-#include <fstream>
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
-#include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 

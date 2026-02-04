@@ -65,7 +65,6 @@
     // TextMate rules for things semantic tokens miss
     "editor.tokenColorCustomizations": {
       "textMateRules": [
-        // Control keywords
         {
           "scope": [
             "keyword.control.return.cpp",
@@ -86,14 +85,15 @@
             "fontStyle": "bold"
           }
         },
-        // Other keywords
         {
-          "scope": ["keyword.other.cpp", "keyword.operator.cpp"],
+          "scope": [
+            "keyword.other.cpp",
+            "keyword.operator.cpp"
+          ],
           "settings": {
             "foreground": "#C586C0"
           }
         },
-        // Comments
         {
           "scope": [
             "comment.line.cpp",
@@ -105,7 +105,6 @@
             "fontStyle": "italic"
           }
         },
-        // Strings
         {
           "scope": [
             "string.quoted.double.cpp",
@@ -116,42 +115,47 @@
             "foreground": "#CE9178"
           }
         },
-        // Numbers
         {
-          "scope": ["constant.numeric.cpp"],
+          "scope": [
+            "constant.numeric.cpp"
+          ],
           "settings": {
             "foreground": "#B5CEA8"
           }
         },
-        // Functions
         {
-          "scope": ["entity.name.function.cpp", "support.function.cpp"],
+          "scope": [
+            "entity.name.function.cpp",
+            "support.function.cpp"
+          ],
           "settings": {
             "foreground": "#DCDCAA"
           }
         },
-        // Local variables
         {
-          "scope": ["variable.other.cpp"],
+          "scope": [
+            "variable.other.cpp"
+          ],
           "settings": {
             "foreground": "#9CDCFE"
           }
         },
-        // Object members
         {
-          "scope": ["variable.other.object.access.cpp"],
+          "scope": [
+            "variable.other.object.access.cpp"
+          ],
           "settings": {
             "foreground": "#FFD700"
           }
         },
-        // Properties
         {
-          "scope": ["variable.other.property.cpp"],
+          "scope": [
+            "variable.other.property.cpp"
+          ],
           "settings": {
             "foreground": "#00CED1"
           }
         },
-        // Types & classes
         {
           "scope": [
             "entity.name.type.cpp",

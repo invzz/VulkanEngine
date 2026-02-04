@@ -12,6 +12,11 @@ profile/
 planiing/
 out/
 
+# Code coverage
+coverage/
+*.profraw
+*.profdata
+
 
 # MacOS Cache
 .DS_Store

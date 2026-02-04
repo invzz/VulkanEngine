@@ -3,7 +3,7 @@
 -- ============================================================================
 
 set_languages("cxx20")
-add_rules("mode.debug", "mode.release")
+add_rules("mode.debug", "mode.release", "mode.coverage")
 
 local project_dir = os.projectdir()
 
@@ -23,6 +23,12 @@ option("deadcode")
     set_showmenu(true)
     set_default(false)
     set_description("Enable unused/dead code warnings and linker GC reporting")
+option_end()
+
+option("coverage")
+    set_showmenu(true)
+    set_default(false)
+    set_description("Enable code coverage instrumentation (use with Clang)")
 option_end()
 
 -- ============================================================================
@@ -51,6 +57,8 @@ end
 -- ============================================================================
 -- Dependencies
 -- ============================================================================
+
+set_policy("package.requires_lock", true)
 
 add_requires(
     "glfw", 
@@ -101,6 +109,20 @@ if has_config("deadcode") then
         )
         add_ldflags("-Wl,--gc-sections", "-Wl,--print-gc-sections", {force = true})
     end
+end
+
+-- Coverage instrumentation (requires Clang toolchain)
+-- Use: xmake f -m coverage --toolchain=clang
+if has_config("coverage") or is_mode("coverage") then
+    -- Only add coverage flags when using clang/clang-cl toolchain
+    -- These flags are ignored by MSVC
+    on_load(function (target)
+        if target:toolchain("clang") or target:toolchain("clang-cl") then
+            target:add("cxflags", "-fprofile-instr-generate", "-fcoverage-mapping", {force = true})
+            target:add("ldflags", "-fprofile-instr-generate", {force = true})
+            target:add("shflags", "-fprofile-instr-generate", {force = true})
+        end
+    end)
 end
 
 -- ============================================================================

@@ -12,9 +12,17 @@
     "source.fixAll.clangd": "always"
   },
 
-  
-
   "[lua]": {
     "editor.defaultFormatter": "yinfei.luahelper"
-  }
+  },
+
+  // Code Coverage settings (Coverage Gutters extension)
+  "coverage-gutters.coverageFileNames": [
+    "coverage/lcov.info",
+    "lcov.info"
+  ],
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  "coverage-gutters.showGutterCoverage": true,
+  "coverage-gutters.coverageBaseDir": "."
 }

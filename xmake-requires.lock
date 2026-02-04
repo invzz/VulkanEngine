@@ -1,0 +1,64 @@
+{
+    __meta__ = {
+        version = "1.0"
+    },
+    ["windows|x64"] = {
+        ["cmake#f56260b5"] = {
+            version = "4.2.1"
+        },
+        ["entt#2ac4ef40"] = {
+            version = "v3.16.0"
+        },
+        ["glfw#2ac4ef40"] = {
+            version = "3.4"
+        },
+        ["glfw#f56260b5"] = {
+            version = "3.4"
+        },
+        ["glm#2ac4ef40"] = {
+            version = "1.0.3"
+        },
+        ["gtest#2ac4ef40"] = {
+            version = "v1.17.0"
+        },
+        ["imgui v1.92.1-docking#2ac4ef40"] = {
+            version = "v1.92.1-docking"
+        },
+        ["meshoptimizer#2ac4ef40"] = {
+            version = "v1.0.1"
+        },
+        ["miniz#f56260b5"] = {
+            version = "3.1.0"
+        },
+        ["ninja#f56260b5"] = {
+            version = "v1.13.1"
+        },
+        ["nlohmann_json#2ac4ef40"] = {
+            version = "v3.12.0"
+        },
+        ["nlohmann_json#f56260b5"] = {
+            version = "v3.12.0"
+        },
+        ["opengl#f56260b5"] = {
+            version = "latest"
+        },
+        ["stb#2ac4ef40"] = {
+            version = "2025.03.14"
+        },
+        ["stb#f56260b5"] = {
+            version = "2025.03.14"
+        },
+        ["tinyexr#2ac4ef40"] = {
+            version = "v1.0.12"
+        },
+        ["tinygltf#2ac4ef40"] = {
+            version = "v2.9.7"
+        },
+        ["tinyobjloader#2ac4ef40"] = {
+            version = "v2.0.0rc13"
+        },
+        ["vulkan-headers#f56260b5"] = {
+            version = "1.4.335+0"
+        }
+    }
+}
