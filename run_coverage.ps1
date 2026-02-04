@@ -8,8 +8,9 @@ param(
     [switch]$Help,
     [switch]$Clean,
     [switch]$Open,
+    [switch]$SkipBuild,  # Skip xmake build (used when called from xmake Coverage target)
     [string]$Filter = "",
-    [string]$Mode = "debug"  # debug, release, or coverage
+    [string]$Mode = "debug"  # debug or release
 )
 
 # Show help if requested
@@ -88,18 +89,23 @@ if ($Clean -or -not (Test-Path $CoverageDir)) {
 }
 New-Item -ItemType Directory -Path $CoverageDir -Force | Out-Null
 
-# Configure and build
-Write-Host "`n=== Building project (mode: $Mode) ===" -ForegroundColor Green
-xmake f -p windows -a x64 -m $Mode -y
-if ($LASTEXITCODE -ne 0) { 
-    Write-Error "xmake configure failed"
-    exit 1 
-}
+# Configure and build (unless SkipBuild is set)
+if (-not $SkipBuild) {
+    Write-Host "`n=== Building project (mode: $Mode) ===" -ForegroundColor Green
+    xmake f -p windows -a x64 -m $Mode -y
+    if ($LASTEXITCODE -ne 0) { 
+        Write-Error "xmake configure failed"
+        exit 1 
+    }
 
-xmake build Tests
-if ($LASTEXITCODE -ne 0) { 
-    Write-Error "xmake build failed"
-    exit 1 
+    xmake build Tests
+    if ($LASTEXITCODE -ne 0) { 
+        Write-Error "xmake build failed"
+        exit 1 
+    }
+}
+else {
+    Write-Host "`n=== Skipping build (using existing Tests.exe) ===" -ForegroundColor Green
 }
 
 # Find the actual test binary location
