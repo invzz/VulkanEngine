@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-#include "../fixtures/DeviceFixture.hpp"
+#include "../fixtures/SceneFixture.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
@@ -10,24 +10,12 @@
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
-#include "ModelLib/Resources/ResourceManager.hpp"
-
 
 using namespace engine;
 
-class SceneSerializerTest : public engine::test::DeviceFixtureWithSetup
-{
-protected:
-  void SetUp() override
-  {
-    std::filesystem::create_directories("assets/scenes/test");
-    resourceManager = std::make_unique<ResourceManager>(device());
-  }
-
-  void TearDown() override { resourceManager.reset(); }
-
-  std::unique_ptr<ResourceManager> resourceManager;
-};
+// Use SceneFixture which provides Device + ResourceManager
+class SceneSerializerTest : public engine::test::SceneFixture
+{};
 
 // =============================================================================
 // Light Bake Fields Roundtrip Tests
@@ -46,12 +34,12 @@ TEST_F(SceneSerializerTest, GivenDirectionalLightWithBakeFields_WhenSerializedAn
   dl.bake      = true;
   dl.lightType = LightMobility::Dynamic;
 
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   serializer.serialize(filepath);
 
   // Deserialize into a fresh scene
   Scene           scene2;
-  SceneSerializer serializer2(scene2, *resourceManager);
+  SceneSerializer serializer2(scene2, resourceManager());
   ASSERT_TRUE(serializer2.deserialize(filepath));
 
   auto view = scene2.getRegistry().view<DirectionalLightComponent>();
@@ -81,7 +69,7 @@ TEST_F(SceneSerializerTest, GivenDemoBakeSceneFile_WhenDeserialized_ThenLightCom
   }
 
   Scene           scene;
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   ASSERT_TRUE(serializer.deserialize(path));
 
   // Verify directional light components exist and have bake flags
@@ -122,11 +110,11 @@ TEST_F(SceneSerializerTest, GivenPointLightWithAllFields_WhenSerializedAndDeseri
   pl.bake      = true;
   pl.lightType = LightMobility::Dynamic;
 
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   serializer.serialize(filepath);
 
   Scene           scene2;
-  SceneSerializer serializer2(scene2, *resourceManager);
+  SceneSerializer serializer2(scene2, resourceManager());
   ASSERT_TRUE(serializer2.deserialize(filepath));
 
   auto view = scene2.getRegistry().view<PointLightComponent>();
@@ -163,11 +151,11 @@ TEST_F(SceneSerializerTest, GivenSpotLightWithAllFields_WhenSerializedAndDeseria
   sl.bake             = true;
   sl.lightType        = LightMobility::Static;
 
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   serializer.serialize(filepath);
 
   Scene           scene2;
-  SceneSerializer serializer2(scene2, *resourceManager);
+  SceneSerializer serializer2(scene2, resourceManager());
   ASSERT_TRUE(serializer2.deserialize(filepath));
 
   auto view = scene2.getRegistry().view<SpotLightComponent>();
@@ -194,11 +182,11 @@ TEST_F(SceneSerializerTest, GivenEmptyScene_WhenSerialized_ThenDeserializesWithD
   const std::string filepath = "assets/scenes/test/test_empty_scene.json";
 
   Scene           scene;
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   serializer.serialize(filepath);
 
   Scene           scene2;
-  SceneSerializer serializer2(scene2, *resourceManager);
+  SceneSerializer serializer2(scene2, resourceManager());
   // Empty scene file should still parse but might not have "objects"
   serializer2.deserialize(filepath);
 
@@ -225,11 +213,11 @@ TEST_F(SceneSerializerTest, GivenEntityWithTransform_WhenSerializedAndDeserializ
   // Need at least a directional light for the scene to have "objects"
   scene.getRegistry().emplace<DirectionalLightComponent>(entity);
 
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   serializer.serialize(filepath);
 
   Scene           scene2;
-  SceneSerializer serializer2(scene2, *resourceManager);
+  SceneSerializer serializer2(scene2, resourceManager());
   ASSERT_TRUE(serializer2.deserialize(filepath));
 
   auto view = scene2.getRegistry().view<TransformComponent, DirectionalLightComponent>();
@@ -257,7 +245,7 @@ TEST_F(SceneSerializerTest, GivenEntityWithTransform_WhenSerializedAndDeserializ
 TEST_F(SceneSerializerTest, GivenNonexistentFile_WhenDeserialized_ThenReturnsFalse)
 {
   Scene           scene;
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   EXPECT_FALSE(serializer.deserialize("assets/scenes/test/nonexistent_file_12345.json"));
 }
 
@@ -289,11 +277,11 @@ TEST_F(SceneSerializerTest, GivenSceneWithMultipleLightTypes_WhenSerializedAndDe
   sl.intensity     = 3.0f;
   scene.getRegistry().emplace<TransformComponent>(spotEntity);
 
-  SceneSerializer serializer(scene, *resourceManager);
+  SceneSerializer serializer(scene, resourceManager());
   serializer.serialize(filepath);
 
   Scene           scene2;
-  SceneSerializer serializer2(scene2, *resourceManager);
+  SceneSerializer serializer2(scene2, resourceManager());
   ASSERT_TRUE(serializer2.deserialize(filepath));
 
   auto pointView = scene2.getRegistry().view<PointLightComponent>();
