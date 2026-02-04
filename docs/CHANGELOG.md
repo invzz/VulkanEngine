@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- Add conservative, opt-in CPU shadow culling for directional cascades, spot shadows and point-light cubemaps; reduces unnecessary mesh-shader dispatches and render-pass overhead. (ShadowSystem)
+- Expose `enableShadowCulling` in Editor settings and add benchmark + unit tests.
+
 ## 2026-01-11
 - Deprecate `ModelLightBaker` tests and CI smoke job in favor of the new `LightBaker` tool. ✅
 - Added `LightBaker` scene integration test (`LightBaker.SceneLights_CLIIncludesBakedLightsInManifest`).

@@ -26,6 +26,12 @@ namespace engine {
     float cascadeOverlap     = 0.3f;   // Overlap between cascades for blending (0-1)
     float cascadeBlendWidth  = 0.2f;   // Blend region width as fraction of cascade
     bool  debugVisualization = false;  // Show cascade boundaries in debug view
+
+    // Enable conservative CPU frustum/cascade culling (off by default).
+    // When true, the system will skip rendering shadow maps for cascades /
+    // spot projections that have no potential shadow casters. This avoids
+    // unnecessary render-pass and pipeline work on CPU/GPU.
+    bool enableShadowCulling = false;
   };
 
   /**
@@ -94,12 +100,16 @@ namespace engine {
     static glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
     static glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
 
+    // Conservative CPU test: does the model's world bounding sphere intersect
+    // the given light projection (lightSpaceMatrix = proj * view)?
+    bool modelIntersectsLightFrustum(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix) const;
+
     /**
      * @brief Render scene to a 2D shadow map using mesh shaders (GPU culling)
      */
     void renderToShadowMapMesh(FrameInfo& frameInfo, ShadowMap& shadowMap, const glm::mat4& lightSpaceMatrix);
 
-    void renderPointLightShadowMaps(FrameInfo& frameInfo);
+    void renderPointLightShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings);
     void renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range);
     void renderToCubeFaceMesh(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, int face, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, float farPlane);
 

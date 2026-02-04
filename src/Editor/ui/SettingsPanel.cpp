@@ -79,6 +79,12 @@ namespace engine {
 
         ImGui::Checkbox("Debug Visualization", &shadowSettings_.debugVisualization);
         ImGui::SetItemTooltip("Visualize cascade boundaries with colors.");
+
+        // CPU-side conservative culling (opt-in)
+        if (ImGui::Checkbox("Enable CPU shadow culling (conservative)", &shadowSettings_.enableShadowCulling))
+        {
+          ImGui::SetItemTooltip("When enabled, conservatively skip entire cascades/spot/cubemaps on CPU when no shadow casters intersect the light projection.");
+        }
       }
       if (ImGui::CollapsingHeader("Fog"))
       {

@@ -4,6 +4,7 @@
 
 #include "../../fixtures/FrameInfoFixture.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
@@ -152,6 +153,98 @@ TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenRenderingShadowMaps_ThenAllCa
   EXPECT_GT(splits.w, splits.z);
 }
 
+TEST_F(ShadowSystemTest, GivenSpotLight_WhenRenderingShadowMaps_ThenNoCrash)
+{
+  ShadowSystem   shadowSystem(device());
+  Scene          scene;
+  Camera         camera;
+  ShadowSettings settings;
+
+  camera.setPerspectiveProjection(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
+  camera.setViewYXZ(glm::vec3(0.0f), glm::vec3(0.0f));
+
+  auto  entity    = scene.createEntity();
+  auto& spotLight = scene.getRegistry().emplace<SpotLightComponent>(entity);
+  auto& transform = scene.getRegistry().emplace<TransformComponent>(entity);
+
+  spotLight.color            = glm::vec3(1.0f);
+  spotLight.intensity        = 1.0f;
+  spotLight.outerCutoffAngle = 15.0f; // tight cone
+  transform.translation      = glm::vec3(0.0f);
+
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
+  FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
+  frameInfo.commandBuffer   = cmd;
+
+  EXPECT_NO_THROW(shadowSystem.renderShadowMaps(frameInfo, settings));
+
+  device().endSingleTimeCommands(cmd);
+
+  // Behavior: we must still produce a shadow map entry for the spotlight (no regressions)
+  EXPECT_GE(shadowSystem.getShadowLightCount(), 1);
+}
+
+TEST_F(ShadowSystemTest, GivenDirectionalLight_WhenCascadeCullingEnabledAndNoModels_ThenNoCascadesRendered)
+{
+  ShadowSystem   shadowSystem(device());
+  Scene          scene;
+  Camera         camera;
+  ShadowSettings settings;
+  settings.enableShadowCulling = true;
+
+  camera.setPerspectiveProjection(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
+  camera.setViewYXZ(glm::vec3(0.0f), glm::vec3(0.0f));
+
+  auto  entity    = scene.createEntity();
+  auto& dirLight  = scene.getRegistry().emplace<DirectionalLightComponent>(entity);
+  auto& transform = scene.getRegistry().emplace<TransformComponent>(entity);
+
+  dirLight.color     = glm::vec3(1.0f);
+  dirLight.intensity = 1.0f;
+  transform.rotation = glm::vec3(glm::radians(-45.0f), 0.0f, 0.0f);
+
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
+  FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
+  frameInfo.commandBuffer   = cmd;
+
+  shadowSystem.renderShadowMaps(frameInfo, settings);
+
+  device().endSingleTimeCommands(cmd);
+
+  EXPECT_EQ(shadowSystem.getDirectionalCascadeCount(), 0);
+  EXPECT_EQ(shadowSystem.getShadowLightCount(), 0);
+}
+
+TEST_F(ShadowSystemTest, GivenSpotLight_WhenFrustumCullingEnabledAndNoModels_ThenNoSpotShadowsRendered)
+{
+  ShadowSystem   shadowSystem(device());
+  Scene          scene;
+  Camera         camera;
+  ShadowSettings settings;
+  settings.enableShadowCulling = true;
+
+  camera.setPerspectiveProjection(glm::radians(45.0f), 1.0f, 0.1f, 100.0f);
+  camera.setViewYXZ(glm::vec3(0.0f), glm::vec3(0.0f));
+
+  auto  entity    = scene.createEntity();
+  auto& spotLight = scene.getRegistry().emplace<SpotLightComponent>(entity);
+  auto& transform = scene.getRegistry().emplace<TransformComponent>(entity);
+
+  spotLight.color            = glm::vec3(1.0f);
+  spotLight.intensity        = 1.0f;
+  spotLight.outerCutoffAngle = 15.0f; // tight cone
+  transform.translation      = glm::vec3(0.0f);
+
+  VkCommandBuffer cmd       = device().beginSingleTimeCommands();
+  FrameInfo       frameInfo = makeFrameInfo(camera, &scene);
+  frameInfo.commandBuffer   = cmd;
+
+  shadowSystem.renderShadowMaps(frameInfo, settings);
+
+  device().endSingleTimeCommands(cmd);
+
+  EXPECT_EQ(shadowSystem.getShadowLightCount(), 0);
+}
 TEST_F(ShadowSystemTest, GivenCustomShadowDistance_WhenRenderingShadowMaps_ThenSplitsRespectDistance)
 {
   ShadowSystem   shadowSystem(device());

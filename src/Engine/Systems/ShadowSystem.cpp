@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <cmath>
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/CubeShadowMap.hpp"
@@ -392,6 +393,15 @@ namespace engine {
 
       const auto& model = modelComp.model;
 
+      // Conservative CPU cull: use helper to test whether the model's
+      // world-space bounding sphere intersects the light projection. This
+      // keeps the per-model logic centralized and allows a cheap test here
+      // before issuing GPU work.
+      if (!modelIntersectsLightFrustum(model, transform.modelTransform(), lightSpaceMatrix))
+      {
+        continue;
+      }
+
       // For each submesh, dispatch mesh shader draws
       for (const auto& subMesh : model->getSubMeshes())
       {
@@ -483,8 +493,6 @@ namespace engine {
         splits[i]            = glm::mix(uniSplit, logSplit, lambda);
       }
 
-      directionalCascadeCount_ = DIRECTIONAL_CASCADE_COUNT;
-
       for (int cascade = 0; cascade < DIRECTIONAL_CASCADE_COUNT; cascade++)
       {
         float const sliceNear = (cascade == 0) ? nearPlane : splits[cascade - 1];
@@ -509,8 +517,30 @@ namespace engine {
           // ")\n";
         }
 
-        renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
-        shadowLightCount_++;
+        // Optional CPU cull: skip this cascade entirely if no models intersect
+        bool shouldRenderCascade = true;
+        if (settings.enableShadowCulling)
+        {
+          shouldRenderCascade = false;
+          auto mview = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+          for (auto e : mview)
+          {
+            auto [mcomp, mtransform] = mview.get<ModelComponent, TransformComponent>(e);
+            if (!mcomp.model || mcomp.model->getMeshletCount() == 0) continue;
+            if (modelIntersectsLightFrustum(mcomp.model, mtransform.modelTransform(), lightSpaceMatrices_[shadowLightCount_]))
+            {
+              shouldRenderCascade = true;
+              break;
+            }
+          }
+        }
+
+        if (shouldRenderCascade)
+        {
+          directionalCascadeCount_++;
+          renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
+          shadowLightCount_++;
+        }
       }
 
       break; // Only one directional light
@@ -533,15 +563,36 @@ namespace engine {
       float const range              = 50.0f;
 
       lightSpaceMatrices_[shadowLightCount_] = calculateSpotLightMatrix(position, direction, outerCutoffDegrees, range);
-      renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
-      shadowLightCount_++;
+
+      bool shouldRenderSpot = true;
+      if (settings.enableShadowCulling)
+      {
+        shouldRenderSpot = false;
+        auto mview = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+        for (auto e : mview)
+        {
+          auto [mcomp, mtransform] = mview.get<ModelComponent, TransformComponent>(e);
+          if (!mcomp.model || mcomp.model->getMeshletCount() == 0) continue;
+          if (modelIntersectsLightFrustum(mcomp.model, mtransform.modelTransform(), lightSpaceMatrices_[shadowLightCount_]))
+          {
+            shouldRenderSpot = true;
+            break;
+          }
+        }
+      }
+
+      if (shouldRenderSpot)
+      {
+        renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
+        shadowLightCount_++;
+      }
     }
 
     // Render cube shadow maps for point lights
-    renderPointLightShadowMaps(frameInfo);
+    renderPointLightShadowMaps(frameInfo, settings);
   }
 
-  void ShadowSystem::renderPointLightShadowMaps(FrameInfo& frameInfo)
+  void ShadowSystem::renderPointLightShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings)
   {
     cubeShadowLightCount_ = 0;
 
@@ -556,6 +607,33 @@ namespace engine {
 
       glm::vec3 const position = transform.translation;
       float const     range    = 25.0f;
+
+      // Optional CPU cull: skip entire cubemap if no models are within range
+      bool shouldRenderPoint = true;
+      if (settings.enableShadowCulling)
+      {
+        shouldRenderPoint = false;
+        auto mview = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
+        for (auto e : mview)
+        {
+          auto [mcomp, mtransform] = mview.get<ModelComponent, TransformComponent>(e);
+          if (!mcomp.model || mcomp.model->getMeshletCount() == 0) continue;
+          const auto& localBounds = mcomp.model->getLocalBounds();
+          AABB        worldBounds = transformAABB(localBounds, mtransform.modelTransform());
+          glm::vec3   center      = worldBounds.center();
+          float       radius      = glm::length(worldBounds.extents());
+          if (glm::length(center - position) <= (radius + range))
+          {
+            shouldRenderPoint = true;
+            break;
+          }
+        }
+      }
+
+      if (!shouldRenderPoint)
+      {
+        continue; // skip this point light
+      }
 
       pointLightPositions_[cubeShadowLightCount_] = position;
       pointLightRanges_[cubeShadowLightCount_]    = range;
@@ -575,6 +653,42 @@ namespace engine {
     glm::mat4 const view = CubeShadowMap::getFaceViewMatrix(position, face);
 
     return projection * view;
+  }
+
+  bool ShadowSystem::modelIntersectsLightFrustum(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix) const
+  {
+    if (!model) return false;
+
+    const auto& localBounds = model->getLocalBounds();
+    AABB        worldBounds = transformAABB(localBounds, modelMatrix);
+    glm::vec3   center      = worldBounds.center();
+    float       radius      = glm::length(worldBounds.extents());
+
+    // Project center into light clip space
+    glm::vec4 clipCenter = lightSpaceMatrix * glm::vec4(center, 1.0f);
+    if (!std::isfinite(clipCenter.w) || glm::abs(clipCenter.w) < 1e-6f)
+    {
+      // Degenerate projection; conservatively assume intersecting
+      return true;
+    }
+
+    glm::vec3 ndcCenter = glm::vec3(clipCenter) / clipCenter.w;
+
+    // Project a radius offset to estimate NDC radius
+    glm::vec4 clipRadiusPt = lightSpaceMatrix * glm::vec4(center + glm::vec3(radius, 0.0f, 0.0f), 1.0f);
+    glm::vec3 ndcRadiusVec = glm::abs(glm::vec3(clipRadiusPt) / clipRadiusPt.w - ndcCenter);
+    float     radiusNDC    = glm::max(ndcRadiusVec.x, ndcRadiusVec.y);
+    float     radiusDepthNDC = ndcRadiusVec.z;
+
+    const float kPad = 0.01f;
+    if ((ndcCenter.x + radiusNDC) < (-1.0f - kPad) || (ndcCenter.x - radiusNDC) > (1.0f + kPad) ||
+        (ndcCenter.y + radiusNDC) < (-1.0f - kPad) || (ndcCenter.y - radiusNDC) > (1.0f + kPad) ||
+        (ndcCenter.z + radiusDepthNDC) < (0.0f - kPad) || (ndcCenter.z - radiusDepthNDC) > (1.0f + kPad))
+    {
+      return false;
+    }
+
+    return true;
   }
 
   void ShadowSystem::renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range)
@@ -603,6 +717,21 @@ namespace engine {
 
       const auto& model = modelComp.model;
 
+      // Cheap CPU cull: skip entire model for point-light faces when the model's
+      // world-space bounding sphere lies completely outside the light's range.
+      // This is conservative and avoids issuing mesh-shader work for distant objects.
+      {
+        const auto& localBounds = model->getLocalBounds();
+        AABB        worldBounds = transformAABB(localBounds, transform.modelTransform());
+        glm::vec3   center      = worldBounds.center();
+        float       radius      = glm::length(worldBounds.extents());
+        if (glm::length(center - lightPos) > (radius + farPlane))
+        {
+          continue; // skip this model entirely
+        }
+      }
+
+      // Per-submesh loop
       for (const auto& subMesh : model->getSubMeshes())
       {
         if (subMesh.meshletCount == 0)
