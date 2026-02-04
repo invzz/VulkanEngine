@@ -219,7 +219,7 @@ namespace engine {
     lodSystem       = std::make_unique<LODSystem>();
 
     // Shadow & IBL
-    shadowSystem = std::make_unique<ShadowSystem>(device, 2048);
+    shadowSystem = std::make_unique<ShadowSystem>(device, 4096);
     iblSystem    = std::make_unique<IBLSystem>(device);
 
     iblGenerationCounter = iblSystem->getGenerationCounter();
@@ -866,6 +866,7 @@ namespace engine {
     ubo.directionalCascadeCount     = state.shadowSystem.getDirectionalCascadeCount();
     ubo.directionalCascadeBaseIndex = state.shadowSystem.getDirectionalCascadeBaseIndex();
     ubo.directionalCascadeSplits    = state.shadowSystem.getDirectionalCascadeSplits();
+    ubo.cascadeBlendWidth           = state.shadowSettings.cascadeBlendWidth;
     ubo.debugMode                   = debugMode;
 
     // Fog Logic

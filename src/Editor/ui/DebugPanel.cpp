@@ -12,7 +12,7 @@ namespace engine {
     // Debug mode indices: 0=None, 1=Albedo, 2=Normal, 3=Roughness, 4=Metallic,
     // 5=Lighting, 6=Emissive, 7=Meshlets, 8=Meshlet Cones, 9=Depth, 10=AO,
     // 11=reserved, 12=IBL Irradiance, 13=IBL Prefilter, 14=IBL BRDF LUT,
-    // 15=CSM Cascades, 16=View Depth
+    // 15=CSM Cascades, 16=View Depth, 17=CSM Split Compare, 18=Raw Depth Hue
     const char* debugItems[] = {"None",
                                 "Albedo",
                                 "Normal",
@@ -29,7 +29,9 @@ namespace engine {
                                 "IBL: Prefilter",
                                 "IBL: BRDF LUT",
                                 "CSM: Cascades",
-                                "CSM: View Depth"};
+                                "CSM: View Depth",
+                                "CSM: Split Compare",
+                                "CSM: Raw Depth"};
     ImGui::Combo("Debug View", &debugMode_, debugItems, IM_ARRAYSIZE(debugItems));
 
     if (debugMode_ == 7 || debugMode_ == 8)
@@ -88,6 +90,24 @@ namespace engine {
     if (debugMode_ == 16)
     {
       ImGui::TextWrapped("Shows view-space depth used for CSM cascade selection. Darker=near, Lighter=far. Normalized by the last cascade split distance.");
+    }
+
+    // Debug mode 17: CSM split comparison
+    if (debugMode_ == 17)
+    {
+      ImGui::TextWrapped("Shows cascade split comparisons: R=depth>split0, G=depth>split1, B=depth>split2. Black=cascade0, Red=cascade1, Yellow=cascade2, White=cascade3.");
+    }
+
+    // Debug mode 18: Raw depth hue
+    if (debugMode_ == 18)
+    {
+      ImGui::TextWrapped("Shows raw view depth as hue (Blue=near, Green=mid, Red=far). Max range 200 units. Use to verify depth scale.");
+    }
+
+    // Debug mode 19: Per-cascade shadow samples
+    if (debugMode_ == 19)
+    {
+      ImGui::TextWrapped("Shows sampled shadow values per cascade (R= cascade0, G=cascade1, B=cascade2). Useful to detect empty/over-biased cascades.");
     }
   }
 } // namespace engine

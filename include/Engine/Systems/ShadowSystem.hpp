@@ -88,8 +88,9 @@ namespace engine {
                                                        float            cascadeFar,
                                                        int              cascadeIndex,
                                                        uint32_t         shadowMapSize,
-                                                       glm::vec3*       outMinLS = nullptr,
-                                                       glm::vec3*       outMaxLS = nullptr);
+                                                       glm::vec3*       outMinLS              = nullptr,
+                                                       glm::vec3*       outMaxLS              = nullptr,
+                                                       float*           outWorldUnitsPerTexel = nullptr);
     static glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
     static glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
 

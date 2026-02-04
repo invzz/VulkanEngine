@@ -146,7 +146,7 @@ namespace engine {
 
     // View toggles
     bool showSkybox = false;
-    bool showGrid   = true;
+    bool showGrid   = false;
 
     // Demo control: multithreaded secondary-command-buffer recording (opt-in pilot).
     // Uses thread-local command pools and secondary command buffers for G-buffer recording.

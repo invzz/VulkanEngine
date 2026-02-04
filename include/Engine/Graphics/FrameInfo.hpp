@@ -69,6 +69,7 @@ namespace engine {
     glm::vec4 pointLightShadowData[4];                 // xyz = position, w = far plane (for cube
                                                        // shadows)
     glm::vec4 directionalCascadeSplits{0.0f};          // View-space split distances (x,y,z,w)
+    float     cascadeBlendWidth           = 0.2f;      // Blend region width as fraction of cascade
     int       pointLightCount             = 0;
     int       directionalLightCount       = 0;
     int       spotLightCount              = 0;
@@ -81,7 +82,6 @@ namespace engine {
     // std140 requires vec4-aligned data after arrays of ints; add padding to match std140 layout
     int       _padDebug0 = 0;
     int       _padDebug1 = 0;
-    int       _padDebug2 = 0;
     glm::vec4 frustumPlanes[6]; // Frustum planes for culling (Left, Right,
                                 // Bottom, Top, Near, Far)
     glm::vec4 fogColor;         // xyz = Horizon Color, w = density

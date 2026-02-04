@@ -34,23 +34,24 @@ struct SpotLight
 
 layout(set = 0, binding = 0, std140) uniform UBO
 {
-  mat4 proj;
-  mat4 view;
-  vec4 ambientLightColor;
-  vec4 cameraPosition;
-  mat4 lightSpaceMatrices[16];
-  vec4 pointLightShadowData[4];
-  vec4 directionalCascadeSplits;
-  int  pointLightCount;
-  int  directionalLightCount;
-  int  spotLightCount;
-  int  shadowLightCount;
-  int  cubeShadowLightCount;
-  int  directionalCascadeCount;
-  int  directionalCascadeBaseIndex;
-  int  debugMode;
-  int  _reservedDebug; // Previously bakedDebugRaw, kept for layout compatibility
-  // Note: 9 ints = 36 bytes; std140 will insert padding so the following vec4 array starts on a 16-byte boundary
+  mat4  proj;
+  mat4  view;
+  vec4  ambientLightColor;
+  vec4  cameraPosition;
+  mat4  lightSpaceMatrices[16];
+  vec4  pointLightShadowData[4];
+  vec4  directionalCascadeSplits;
+  float cascadeBlendWidth;
+  int   pointLightCount;
+  int   directionalLightCount;
+  int   spotLightCount;
+  int   shadowLightCount;
+  int   cubeShadowLightCount;
+  int   directionalCascadeCount;
+  int   directionalCascadeBaseIndex;
+  int   debugMode;
+  int   _reservedDebug; // Previously bakedDebugRaw, kept for layout compatibility
+  // Note: float + 9 ints = 40 bytes; std140 will insert padding so the following vec4 array starts on a 16-byte boundary
   vec4  frustumPlanes[6];
   vec4  fogColor;
   vec4  fogZenithColor;

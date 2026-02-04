@@ -290,6 +290,63 @@ void main()
     return;
   }
 
+  // Debug mode 17: Cascade split comparison diagnostic
+  // R = depth > splits.x, G = depth > splits.y, B = depth > splits.z
+  if (ubo.debugMode == 17)
+  {
+    float depth  = getCSMViewDepth(worldPos);
+    vec4  splits = ubo.directionalCascadeSplits;
+    float r      = (depth > splits.x) ? 1.0 : 0.0;
+    float g      = (depth > splits.y) ? 1.0 : 0.0;
+    float b      = (depth > splits.z) ? 1.0 : 0.0;
+    outColor     = vec4(r, g, b, 1.0);
+    return;
+  }
+
+  // Debug mode 18: Raw depth value as hue (for debugging scale)
+  // Shows depth as color: low=blue, mid=green, high=red
+  if (ubo.debugMode == 18)
+  {
+    float depth = getCSMViewDepth(worldPos);
+    // Clamp to reasonable range and show as hue
+    float t     = clamp(depth / 200.0, 0.0, 1.0); // Assume max 200 units
+    vec3  color = mix(vec3(0.0, 0.0, 1.0), vec3(1.0, 0.0, 0.0), t);
+    if (t < 0.5)
+      color = mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0), t * 2.0);
+    else
+      color = mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.5) * 2.0);
+    outColor = vec4(color, 1.0);
+    return;
+  }
+
+  // Debug mode 19: Per-cascade shadow-sample visualization
+  // R = cascade0 sample, G = cascade1 sample, B = cascade2 sample
+  if (ubo.debugMode == 19)
+  {
+    if (ubo.directionalCascadeCount <= 0)
+    {
+      outColor = vec4(1.0);
+      return;
+    }
+
+    // Reconstruct N/pos for a consistent sample (same as lighting path)
+    vec3 N   = normalize(texture(gbufferNormal, inUV).xyz * 2.0 - 1.0);
+    vec3 pos = reconstructWorldPos(inUV, texture(depthMap, inUV).r);
+    vec3 L   = normalize(-directionalLights[0].direction.xyz);
+
+    int   base        = ubo.directionalCascadeBaseIndex;
+    float NdotL       = max(dot(N, L), 0.0);
+    float grazingFade = smoothstep(CSM_GRAZING_FADE_START, CSM_GRAZING_FADE_END, NdotL);
+    float s0          = sampleShadowMapWithBias(pos, N, L, base + 0, 0, grazingFade);
+    float s1          = sampleShadowMapWithBias(pos, N, L, base + 1, 1, grazingFade);
+    float s2          = sampleShadowMapWithBias(pos, N, L, base + 2, 2, grazingFade);
+    float s3          = sampleShadowMapWithBias(pos, N, L, base + 3, 3, grazingFade);
+
+    // Show per-cascade sample in RGB; visualize absence as white (lit)
+    outColor = vec4(s0, s1, s2, 1.0);
+    return;
+  }
+
   // Ambient fallback boost (kept small; matches forward path behavior)
   diffuseIBL += ubo.ambientLightColor.xyz * ubo.ambientLightColor.w * albedo * ao * 0.05;
 

@@ -206,8 +206,12 @@ namespace engine {
                                                             int              cascadeIndex,
                                                             uint32_t         shadowMapSize,
                                                             glm::vec3*       outMinLS,
-                                                            glm::vec3*       outMaxLS)
+                                                            glm::vec3*       outMaxLS,
+                                                            float*           outWorldUnitsPerTexel)
   {
+    // cascadeIndex reserved for future per-cascade tuning (e.g., bias scaling)
+    (void)cascadeIndex;
+
     // Normalize light direction
     glm::vec3 const lightDir = glm::normalize(lightDirection);
 
@@ -283,12 +287,18 @@ namespace engine {
       up = glm::vec3(0.0f, 0.0f, 1.0f);
     }
 
-    // CRITICAL: Use camera position as stable reference for light view matrix.
-    // This ensures ALL cascades share the same light-space coordinate system,
-    // which is required for texel snapping to align grids across cascades.
-    // Using frustumCenter (which differs per cascade) causes each cascade to have
-    // a different light-space origin, breaking cross-cascade grid alignment.
-    glm::mat4 const lightView = glm::lookAt(camPos - lightDir * 100.0f, camPos, up);
+    // Calculate the bounding sphere radius of the frustum slice first
+    float maxRadius = 0.0f;
+    for (glm::vec3 const& corner : frustumCorners)
+    {
+      float dist = glm::length(corner - frustumCenter);
+      maxRadius  = glm::max(maxRadius, dist);
+    }
+
+    // Position light far enough back to encompass the entire scene
+    // Use the bounding sphere radius to determine how far back to place the light
+    float const     lightDistance = maxRadius + 500.0f; // Extra distance to capture shadow casters behind the frustum
+    glm::mat4 const lightView     = glm::lookAt(frustumCenter - lightDir * lightDistance, frustumCenter, up);
 
     // Transform frustum corners to light space and find AABB
     glm::vec3 minLS(std::numeric_limits<float>::infinity());
@@ -301,49 +311,44 @@ namespace engine {
       maxLS                     = glm::max(maxLS, cornerLS);
     }
 
-    // Add some padding to prevent artifacts at edges
-    float const paddingScale = 0.1f; // 10% padding
-    float const rangeX       = maxLS.x - minLS.x;
-    float const rangeY       = maxLS.y - minLS.y;
-    float const paddingX     = rangeX * paddingScale;
-    float const paddingY     = rangeY * paddingScale;
-    minLS.x -= paddingX;
-    maxLS.x += paddingX;
-    minLS.y -= paddingY;
-    maxLS.y += paddingY;
-    minLS.z -= 10.0f;
-    maxLS.z += 10.0f;
+    // Use the radius to compute a stable, square ortho projection
+    float const stableSize = maxRadius * 2.0f;
+    float const halfSize   = stableSize * 0.5f;
 
-    // Texel snapping: Round the projection bounds to shadow map texel boundaries
-    // This prevents shadow swimming/shimmering when the camera moves.
-    // CRITICAL: Snap relative to a shared origin (light-space origin) so ALL cascades
-    // align to the same texel grid. Independent snapping per cascade causes seams
-    // because adjacent cascades quantize the same world point to different texels.
-    float const worldUnitsPerTexelX = (maxLS.x - minLS.x) / static_cast<float>(shadowMapSize);
-    float const worldUnitsPerTexelY = (maxLS.y - minLS.y) / static_cast<float>(shadowMapSize);
+    // Texel snapping for stable shadows
+    float const worldUnitsPerTexel = stableSize / static_cast<float>(shadowMapSize);
 
-    // Snap to shared origin (light-space 0,0) - ensures cascade continuity
-    glm::vec2 const snapOrigin = glm::vec2(0.0f);
-    minLS.x                    = snapOrigin.x + glm::floor((minLS.x - snapOrigin.x) / worldUnitsPerTexelX) * worldUnitsPerTexelX;
-    maxLS.x                    = minLS.x + static_cast<float>(shadowMapSize) * worldUnitsPerTexelX;
-    minLS.y                    = snapOrigin.y + glm::floor((minLS.y - snapOrigin.y) / worldUnitsPerTexelY) * worldUnitsPerTexelY;
-    maxLS.y                    = minLS.y + static_cast<float>(shadowMapSize) * worldUnitsPerTexelY;
+    // The frustum center in light space - should be near the look-at target
+    glm::vec4 const frustumCenterLS4 = lightView * glm::vec4(frustumCenter, 1.0f);
+    glm::vec3 const frustumCenterLS  = glm::vec3(frustumCenterLS4);
 
-    // CRITICAL: Use a FIXED depth range for ALL cascades to ensure consistent depth normalization.
-    // If each cascade has a different orthoNear/orthoFar, the same world point gets different
-    // normalized Z values in adjacent cascades. This causes PCF comparisons to flip at
-    // cascade boundaries, creating seams.
-    // Using a conservative fixed range (±500 units) ensures all cascades map depth identically.
-    constexpr float globalShadowDepth = 500.0f;
-    float const     orthoNear         = -globalShadowDepth;
-    float const     orthoFar          = globalShadowDepth;
+    // Snap to texel grid
+    float snappedCenterX = glm::floor(frustumCenterLS.x / worldUnitsPerTexel) * worldUnitsPerTexel;
+    float snappedCenterY = glm::floor(frustumCenterLS.y / worldUnitsPerTexel) * worldUnitsPerTexel;
+
+    // Set XY bounds centered on snapped position
+    minLS.x = snappedCenterX - halfSize;
+    maxLS.x = snappedCenterX + halfSize;
+    minLS.y = snappedCenterY - halfSize;
+    maxLS.y = snappedCenterY + halfSize;
+
+    // Provide texel size to caller when requested (diagnostics / debug views)
+    if (outWorldUnitsPerTexel != nullptr)
+    {
+      *outWorldUnitsPerTexel = worldUnitsPerTexel;
+    }
+
+    // For Z: use fixed near=0 and far based on how far back we placed the light
+    // This ensures all geometry between the light and frustum is captured
+    float const orthoNear = 0.0f;
+    float const orthoFar  = lightDistance + maxRadius + 100.0f;
 
     glm::mat4 lightProj = glm::orthoZO(minLS.x, maxLS.x, minLS.y, maxLS.y, orthoNear, orthoFar);
     lightProj[1][1] *= -1; // Flip Y for Vulkan
 
     // Output bounds if requested
-    if (outMinLS) *outMinLS = minLS;
-    if (outMaxLS) *outMaxLS = maxLS;
+    if (outMinLS != nullptr) *outMinLS = minLS;
+    if (outMaxLS != nullptr) *outMaxLS = maxLS;
 
     return lightProj * lightView;
   }
@@ -494,7 +499,15 @@ namespace engine {
         }
 
         // Simple: render exactly the cascade range, no overlap
-        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, shadowMapSize_, nullptr, nullptr);
+        float cascadeTexelSize                 = 0.0f;
+        lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, shadowMapSize_, nullptr, nullptr, &cascadeTexelSize);
+
+        // Log diagnostic info when CSM debug is enabled
+        if (frameInfo.debugMode >= 15 && frameInfo.debugMode <= 18)
+        {
+          // std::cout << "[ShadowSystem] Cascade " << cascade << " texelSize=" << cascadeTexelSize << " (sliceNear=" << sliceNear << ", sliceFar=" << sliceFar << ", mapSize=" << shadowMapSize_ <<
+          // ")\n";
+        }
 
         renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
         shadowLightCount_++;
