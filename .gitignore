@@ -16,7 +16,7 @@ out/
 coverage/
 *.profraw
 *.profdata
-
+.vscode/compile_commands.json
 
 # MacOS Cache
 .DS_Store
