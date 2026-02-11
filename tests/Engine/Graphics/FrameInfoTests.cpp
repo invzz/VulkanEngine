@@ -164,6 +164,8 @@ TEST(GlobalUbo, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults)
   // Matrices should be identity
   EXPECT_EQ(ubo.projection, glm::mat4(1.0f));
   EXPECT_EQ(ubo.view, glm::mat4(1.0f));
+  EXPECT_EQ(ubo.invProjection, glm::mat4(1.0f));
+  EXPECT_EQ(ubo.invView, glm::mat4(1.0f));
 
   // Light counts should be zero
   EXPECT_EQ(ubo.pointLightCount, 0);

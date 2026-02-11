@@ -71,7 +71,7 @@ namespace engine {
     static int width() { return 800; }
     static int height() { return 600; }
 
-    App();
+    App(bool fullscreen = false);
     ~App();
 
     // delete copy operations
@@ -101,7 +101,7 @@ namespace engine {
     static void renderDebugPass(FrameInfo& frameInfo, GameLoopState& state);
     void        uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state);
 
-    Window          window{width(), height(), "Vulkan Editor"};
+    Window          window;
     Device          device{window};
     Renderer        renderer{window, device};
     ResourceManager resourceManager{device};

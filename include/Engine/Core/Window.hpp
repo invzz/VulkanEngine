@@ -13,7 +13,8 @@ namespace engine {
   class Window
   {
   public:
-    Window(int width, int height, std::string title);
+    // `fullscreen` = exclusive fullscreen (mode switch) when true.
+    Window(int width, int height, std::string title, bool fullscreen = false);
     ~Window();
 
     // avoid dangling pointers
@@ -51,6 +52,11 @@ namespace engine {
     void               toggleCursor();
     [[nodiscard]] bool isCursorVisible() const { return cursorVisible; }
 
+    // Fullscreen control (exclusive fullscreen)
+    void               setFullscreen(bool enabled);
+    void               toggleFullscreen() { setFullscreen(!isFullscreen()); }
+    [[nodiscard]] bool isFullscreen() const { return fullscreen_; }
+
   private:
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -73,6 +79,13 @@ namespace engine {
     // Atomic width/height to avoid data races with GLFW callback thread
     std::atomic<uint32_t> width;
     std::atomic<uint32_t> height;
+
+    // Fullscreen state + previous windowed geometry (used to restore on exit)
+    bool     fullscreen_ = false;
+    int      prevX       = 0;
+    int      prevY       = 0;
+    uint32_t prevWidth   = 0;
+    uint32_t prevHeight  = 0;
 
     const std::string title;
   };

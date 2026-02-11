@@ -121,7 +121,9 @@ namespace {
 
 namespace engine {
 
-  Window::Window(int width, int height, std::string title) : window(nullptr), width(width), height(height), title(std::move(title))
+  Window::Window(int width, int height, std::string title, bool fullscreen)
+      : window(nullptr), width(width), height(height), title(std::move(title)), fullscreen_(fullscreen), prevX(0), prevY(0), prevWidth(static_cast<uint32_t>(width)),
+        prevHeight(static_cast<uint32_t>(height))
   {
     initWindow();
   }
@@ -183,7 +185,27 @@ namespace engine {
     GLFWmonitor* targetMonitor = chooseTargetMonitor(haveCursor, cursorX, cursorY);
 
     // Create the window (hidden)
-    window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    const GLFWvidmode* mode = nullptr;
+    if (targetMonitor != nullptr) mode = glfwGetVideoMode(targetMonitor);
+
+    if (fullscreen_)
+    {
+      // Exclusive fullscreen: create on the monitor using its current mode.
+      if (mode != nullptr)
+      {
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+        window = glfwCreateWindow(mode->width, mode->height, title.c_str(), targetMonitor, nullptr);
+      }
+      else
+      {
+        window = glfwCreateWindow(width, height, title.c_str(), targetMonitor, nullptr);
+      }
+    }
+    else
+    {
+      window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    }
+
     if (window == nullptr)
     {
       throw WindowCreationException("Failed to create GLFW window");
@@ -259,4 +281,39 @@ namespace engine {
     setCursorVisible(!cursorVisible);
   }
 
+  void Window::setFullscreen(bool enabled)
+  {
+    if (enabled == fullscreen_) return;
+
+    GLFWmonitor* monitor = nullptr;
+    int          mx = 0, my = 0;
+    if (enabled)
+    {
+      // store previous windowed pos/size
+      glfwGetWindowPos(window, &prevX, &prevY);
+      prevWidth  = getWidth();
+      prevHeight = getHeight();
+
+      monitor                 = chooseTargetMonitor(true, prevX + (prevWidth / 2), prevY + (prevHeight / 2));
+      const GLFWvidmode* mode = monitor ? glfwGetVideoMode(monitor) : nullptr;
+      if (mode)
+      {
+        // switch to exclusive fullscreen using monitor's mode
+        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+        width.store(static_cast<uint32_t>(mode->width));
+        height.store(static_cast<uint32_t>(mode->height));
+      }
+    }
+    else
+    {
+      // restore windowed mode
+      glfwSetWindowMonitor(window, nullptr, prevX, prevY, static_cast<int>(prevWidth), static_cast<int>(prevHeight), 0);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_TRUE);
+      width.store(prevWidth);
+      height.store(prevHeight);
+    }
+
+    fullscreen_ = enabled;
+  }
 } // namespace engine

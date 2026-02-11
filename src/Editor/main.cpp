@@ -8,9 +8,19 @@
 #define SHADER_PATH "assets/shaders/compiled/"
 #endif
 
-int main()
+int main(int argc, char** argv)
 {
-  engine::App app;
+  bool fullscreen = false;
+  for (int i = 1; i < argc; ++i)
+  {
+    if (std::string(argv[i]) == "--fullscreen" || std::string(argv[i]) == "-f")
+    {
+      fullscreen = true;
+      break;
+    }
+  }
+
+  engine::App app(fullscreen);
 
   try
   {

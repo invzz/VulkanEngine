@@ -62,6 +62,8 @@ namespace engine {
   {
     glm::mat4 projection{1.0f};
     glm::mat4 view{1.0f};
+    glm::mat4 invProjection{1.0f}; // CPU-provided inverse projection (stored in UBO)
+    glm::mat4 invView{1.0f};       // CPU-provided inverse view (stored in UBO)
     glm::vec4 lightAmbient{1.f, 1.0f, 1.0f, .02f};
     glm::vec4 cameraPosition;
     glm::mat4 lightSpaceMatrices[maxShadowLightCount]; // Light space transformation

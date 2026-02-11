@@ -52,12 +52,9 @@ layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 vec3 reconstructWorldPos(vec2 uv, float depth)
 {
   vec4 clip    = vec4(uv * 2.0 - 1.0, depth, 1.0);
-  mat4 invProj = inverse(ubo.proj);
-  mat4 invView = inverse(ubo.view);
-
-  vec4 viewPos = invProj * clip;
+  vec4 viewPos = ubo.invProj * clip;
   viewPos /= max(viewPos.w, 1e-6);
-  vec4 worldPos = invView * viewPos;
+  vec4 worldPos = ubo.invView * viewPos;
   return worldPos.xyz;
 }
 

@@ -121,7 +121,8 @@ namespace engine {
     };
   }
 
-  App::App()
+  App::App(bool fullscreen)
+      : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device), scene(), sceneSerializer(scene, resourceManager)
   {
     init();
   }
@@ -684,6 +685,19 @@ namespace engine {
     {
       glfwPollEvents();
 
+      // F11: toggle exclusive fullscreen (edge-detect)
+      static bool f11WasDown = false;
+      int         f11State   = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
+      if (f11State == GLFW_PRESS && !f11WasDown)
+      {
+        window.toggleFullscreen();
+        f11WasDown = true;
+      }
+      else if (f11State == GLFW_RELEASE)
+      {
+        f11WasDown = false;
+      }
+
       auto  newTime   = std::chrono::high_resolution_clock::now();
       float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
       currentTime     = newTime;
@@ -854,6 +868,8 @@ namespace engine {
 
     ubo.projection = frameInfo.camera.getProjection();
     ubo.view       = frameInfo.camera.getView();
+    ubo.invProjection = glm::inverse(ubo.projection);
+    ubo.invView = glm::inverse(ubo.view);
     if (frameInfo.scene->getRegistry().valid(frameInfo.cameraEntity) && frameInfo.scene->getRegistry().all_of<TransformComponent>(frameInfo.cameraEntity))
     {
       ubo.cameraPosition = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);

@@ -36,6 +36,8 @@ layout(set = 0, binding = 0, std140) uniform UBO
 {
   mat4  proj;
   mat4  view;
+  mat4  invProj; // CPU-provided inverse projection (avoid GPU inverse())
+  mat4  invView; // CPU-provided inverse view (avoid GPU inverse())
   vec4  ambientLightColor;
   vec4  cameraPosition;
   mat4  lightSpaceMatrices[16];
