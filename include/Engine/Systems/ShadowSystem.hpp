@@ -32,6 +32,12 @@ namespace engine {
     // spot projections that have no potential shadow casters. This avoids
     // unnecessary render-pass and pipeline work on CPU/GPU.
     bool enableShadowCulling = false;
+
+    // Additional tunables to avoid magic numbers and make testing easier
+    float pointLightDefaultRange   = 25.0f;
+    float spotLightDefaultRange    = 50.0f;
+    float directionalExtraDistance = 500.0f;
+    float cascadePadding           = 0.01f;
   };
 
   /**
@@ -104,10 +110,18 @@ namespace engine {
     // the given light projection (lightSpaceMatrix = proj * view)?
     bool modelIntersectsLightFrustum(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix) const;
 
+    // Unified CPU culling helper used by directional/spot/point flows.
+    bool shouldRenderModel(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix, float lightRange = 0.0f) const;
+
     /**
      * @brief Render scene to a 2D shadow map using mesh shaders (GPU culling)
      */
     void renderToShadowMapMesh(FrameInfo& frameInfo, ShadowMap& shadowMap, const glm::mat4& lightSpaceMatrix);
+
+    // Modular per-light-type renderers (extracted from renderShadowMaps)
+    void renderDirectionalShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
+    void renderSpotShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
+    void renderPointShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
 
     void renderPointLightShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings);
     void renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range);
