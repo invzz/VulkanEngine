@@ -32,10 +32,6 @@
 
 namespace engine {
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Push constants for mesh shader shadow rendering (Level 3)
-  // ─────────────────────────────────────────────────────────────────────────────
-
   struct ShadowMeshPushConstants
   {
     glm::mat4 modelMatrix;
@@ -141,7 +137,7 @@ namespace engine {
     configInfo.rasterizationInfo.depthBiasSlopeFactor    = 0.0f;
 
     // No culling for shadows (all geometry matters)
-    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
+    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
 
     configInfo.renderPass     = shadowMaps_[0]->getRenderPass();
     configInfo.pipelineLayout = meshPipelineLayout_;
