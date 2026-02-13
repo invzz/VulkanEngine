@@ -1,5 +1,6 @@
 #include "Engine/Graphics/ThreadLocalCommandPool.hpp"
 
+#include <algorithm>
 #include <cassert>
 
 #include "Engine/Core/Exceptions.hpp"
@@ -8,8 +9,9 @@ namespace engine {
 
     void ThreadLocalCommandPool::init(VkDevice device, uint32_t queueFamilyIndex) {
         // already initialized
-        if (device_ != VK_NULL_HANDLE)
+        if (device_ != VK_NULL_HANDLE) {
             return;
+        }
         device_           = device;
         queueFamilyIndex_ = queueFamilyIndex;
     }
@@ -20,8 +22,9 @@ namespace engine {
         {
             std::lock_guard<std::mutex> lk(mutex_);
             auto                        it = pools_.find(tid);
-            if (it != pools_.end())
+            if (it != pools_.end()) {
                 return it->second;
+            }
         }
 
         // Create a new pool for this thread
@@ -48,8 +51,9 @@ namespace engine {
         const auto                  tid = std::this_thread::get_id();
         std::lock_guard<std::mutex> lk(mutex_);
         auto                        it = pools_.find(tid);
-        if (it == pools_.end())
+        if (it == pools_.end()) {
             return;
+        }
         if (device_ != VK_NULL_HANDLE && it->second != VK_NULL_HANDLE) {
             vkDestroyCommandPool(device_, it->second, nullptr);
         }
@@ -58,22 +62,20 @@ namespace engine {
 
     void ThreadLocalCommandPool::destroyAll() noexcept {
         std::lock_guard<std::mutex> lk(mutex_);
-        if (device_ == VK_NULL_HANDLE)
+        if (device_ == VK_NULL_HANDLE) {
             return;
+        }
         for (auto& kv : pools_) {
-            if (kv.second != VK_NULL_HANDLE)
+            if (kv.second != VK_NULL_HANDLE) {
                 vkDestroyCommandPool(device_, kv.second, nullptr);
+            }
         }
         pools_.clear();
     }
 
     bool ThreadLocalCommandPool::ownsPool(VkCommandPool pool) const {
         std::lock_guard<std::mutex> lk(mutex_);
-        for (auto const& kv : pools_) {
-            if (kv.second == pool)
-                return true;
-        }
-        return false;
+        return std::ranges::any_of(pools_, [pool](const auto& kv) { return kv.second == pool; });
     }
 
 }  // namespace engine
