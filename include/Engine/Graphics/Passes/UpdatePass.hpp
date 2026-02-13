@@ -10,8 +10,8 @@ class UpdatePass : public IRenderPass {
  public:
   UpdatePass(EngineState* engineState, Renderer& renderer) : engineState_(engineState), renderer(renderer) {}
 
-  [[nodiscard]] std::string& getName() const override {
-    static std::string name = "Update";
+  [[nodiscard]] const std::string& getName() const override {
+    static const std::string name = "Update";
     return name;
   }
   void execute(FrameInfo& frameInfo) override;
