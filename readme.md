@@ -6,6 +6,14 @@ Engine2 is a modern Vulkan-based 3D rendering engine designed for performance an
 
 ## Key Features
 
+### EngineState (single source-of-truth)
+
+- Centralizes runtime state, owned systems, descriptor pools/sets and scene data in a single `EngineState` object.
+- Simplifies `App` to an orchestrator (window, device, renderer, loop) while render passes and UI panels take an `EngineState*` for access to runtime data.
+- Improves testability, serialization, and reduces duplicated state across passes and UI panels.
+
+
+
 - **Core Architecture**:
   - **Entity Component System (ECS)**: Powered by `EnTT` for high-performance data-oriented design.
   - **Render Graph**: Flexible dependency graph for managing render passes and resources.

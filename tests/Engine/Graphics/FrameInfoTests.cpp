@@ -8,8 +8,7 @@ using namespace engine;
 // PointLight Tests
 // =============================================================================
 
-TEST(PointLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault)
-{
+TEST(PointLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault) {
   PointLight light{};
 
   EXPECT_FLOAT_EQ(light.position.x, 0.0f);
@@ -21,22 +20,20 @@ TEST(PointLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefaul
   EXPECT_FLOAT_EQ(light.radius2, 0.0f);
 }
 
-TEST(PointLight, GivenInitializedLight_WhenValuesSet_ThenValuesAreCorrect)
-{
+TEST(PointLight, GivenInitializedLight_WhenValuesSet_ThenValuesAreCorrect) {
   PointLight light;
   light.position = glm::vec4(1.0f, 2.0f, 3.0f, 0.0f);
-  light.color    = glm::vec4(1.0f, 0.5f, 0.0f, 10.0f); // RGB + intensity in w
-  light.radius2  = 100.0f;                             // Squared radius
+  light.color = glm::vec4(1.0f, 0.5f, 0.0f, 10.0f);  // RGB + intensity in w
+  light.radius2 = 100.0f;                            // Squared radius
 
   EXPECT_FLOAT_EQ(light.position.x, 1.0f);
   EXPECT_FLOAT_EQ(light.position.y, 2.0f);
   EXPECT_FLOAT_EQ(light.position.z, 3.0f);
-  EXPECT_FLOAT_EQ(light.color.w, 10.0f); // intensity
+  EXPECT_FLOAT_EQ(light.color.w, 10.0f);  // intensity
   EXPECT_FLOAT_EQ(light.radius2, 100.0f);
 }
 
-TEST(PointLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU)
-{
+TEST(PointLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU) {
   // PointLight should be 48 bytes (3 vec4s + radius2 + 3 floats padding)
   EXPECT_EQ(sizeof(PointLight), 48);
 }
@@ -45,8 +42,7 @@ TEST(PointLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU)
 // DirectionalLight Tests
 // =============================================================================
 
-TEST(DirectionalLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZero)
-{
+TEST(DirectionalLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZero) {
   DirectionalLight light{};
 
   EXPECT_FLOAT_EQ(light.direction.x, 0.0f);
@@ -57,19 +53,17 @@ TEST(DirectionalLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZero)
   EXPECT_FLOAT_EQ(light.color.z, 0.0f);
 }
 
-TEST(DirectionalLight, GivenInitializedLight_WhenValuesSet_ThenDirectionIsNormalized)
-{
+TEST(DirectionalLight, GivenInitializedLight_WhenValuesSet_ThenDirectionIsNormalized) {
   DirectionalLight light;
   light.direction = glm::normalize(glm::vec4(1.0f, -1.0f, 0.0f, 0.0f));
-  light.color     = glm::vec4(1.0f, 1.0f, 1.0f, 2.5f); // White light at 2.5 intensity
+  light.color = glm::vec4(1.0f, 1.0f, 1.0f, 2.5f);  // White light at 2.5 intensity
 
   // Direction should be normalized
   float length = glm::length(glm::vec3(light.direction));
   EXPECT_NEAR(length, 1.0f, 0.0001f);
 }
 
-TEST(DirectionalLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU)
-{
+TEST(DirectionalLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU) {
   // DirectionalLight should be 32 bytes (2 vec4s)
   EXPECT_EQ(sizeof(DirectionalLight), 32);
 }
@@ -78,8 +72,7 @@ TEST(DirectionalLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU)
 // SpotLight Tests
 // =============================================================================
 
-TEST(SpotLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault)
-{
+TEST(SpotLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault) {
   SpotLight light{};
 
   EXPECT_FLOAT_EQ(light.position.x, 0.0f);
@@ -90,8 +83,7 @@ TEST(SpotLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault
   EXPECT_FLOAT_EQ(light.radius2, 0.0f);
 }
 
-TEST(SpotLight, GivenInitializedSpotLight_WhenCutoffSet_ThenInnerIsGreaterThanOuter)
-{
+TEST(SpotLight, GivenInitializedSpotLight_WhenCutoffSet_ThenInnerIsGreaterThanOuter) {
   SpotLight light;
   // Inner cutoff (in direction.w) should be smaller angle = larger cosine
   // Outer cutoff should be larger angle = smaller cosine
@@ -105,8 +97,7 @@ TEST(SpotLight, GivenInitializedSpotLight_WhenCutoffSet_ThenInnerIsGreaterThanOu
   EXPECT_GT(light.direction.w, light.outerCutoff);
 }
 
-TEST(SpotLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU)
-{
+TEST(SpotLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU) {
   // SpotLight should be 80 bytes (3 vec4s + cutoff + 3 atten floats + radius2 + 3 pad)
   // This may vary based on compiler padding - just verify it's reasonable
   EXPECT_GE(sizeof(SpotLight), 64);
@@ -117,8 +108,7 @@ TEST(SpotLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU)
 // HZBSettings Tests
 // =============================================================================
 
-TEST(HZBSettings, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults)
-{
+TEST(HZBSettings, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults) {
   HZBSettings settings{};
 
   EXPECT_EQ(settings.maxMipLevel, 10);
@@ -127,13 +117,12 @@ TEST(HZBSettings, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefault
   EXPECT_EQ(settings.enabled, 1);
 }
 
-TEST(HZBSettings, GivenCustomSettings_WhenModified_ThenValuesAreCorrect)
-{
+TEST(HZBSettings, GivenCustomSettings_WhenModified_ThenValuesAreCorrect) {
   HZBSettings settings;
-  settings.maxMipLevel     = 8;
+  settings.maxMipLevel = 8;
   settings.minScreenPixels = 4.0f;
   settings.screenSizeScale = 2.0f;
-  settings.enabled         = 0;
+  settings.enabled = 0;
 
   EXPECT_EQ(settings.maxMipLevel, 8);
   EXPECT_FLOAT_EQ(settings.minScreenPixels, 4.0f);
@@ -145,8 +134,7 @@ TEST(HZBSettings, GivenCustomSettings_WhenModified_ThenValuesAreCorrect)
 // GlobalUbo Alignment Tests
 // =============================================================================
 
-TEST(GlobalUbo, GivenGlobalUboStruct_WhenAlignmentChecked_ThenMeetsStd140Requirements)
-{
+TEST(GlobalUbo, GivenGlobalUboStruct_WhenAlignmentChecked_ThenMeetsStd140Requirements) {
   // Verify struct meets std140 alignment requirements
   GlobalUbo ubo{};
 
@@ -157,8 +145,7 @@ TEST(GlobalUbo, GivenGlobalUboStruct_WhenAlignmentChecked_ThenMeetsStd140Require
   EXPECT_EQ(sizeof(GlobalUbo) % 16, 0);
 }
 
-TEST(GlobalUbo, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults)
-{
+TEST(GlobalUbo, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults) {
   GlobalUbo ubo{};
 
   // Matrices should be identity
@@ -181,15 +168,14 @@ TEST(GlobalUbo, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults)
   EXPECT_EQ(ubo.hzbMaxMipLevel, 10);
 }
 
-TEST(GlobalUbo, GivenUbo_WhenLightCountsModified_ThenCorrectValuesStored)
-{
+TEST(GlobalUbo, GivenUbo_WhenLightCountsModified_ThenCorrectValuesStored) {
   GlobalUbo ubo{};
 
-  ubo.pointLightCount       = 10;
+  ubo.pointLightCount = 10;
   ubo.directionalLightCount = 2;
-  ubo.spotLightCount        = 5;
-  ubo.shadowLightCount      = 4;
-  ubo.cubeShadowLightCount  = 3;
+  ubo.spotLightCount = 5;
+  ubo.shadowLightCount = 4;
+  ubo.cubeShadowLightCount = 3;
 
   EXPECT_EQ(ubo.pointLightCount, 10);
   EXPECT_EQ(ubo.directionalLightCount, 2);
@@ -198,33 +184,29 @@ TEST(GlobalUbo, GivenUbo_WhenLightCountsModified_ThenCorrectValuesStored)
   EXPECT_EQ(ubo.cubeShadowLightCount, 3);
 }
 
-TEST(GlobalUbo, GivenUbo_WhenFrustumPlanesSet_ThenCanBeRetrieved)
-{
+TEST(GlobalUbo, GivenUbo_WhenFrustumPlanesSet_ThenCanBeRetrieved) {
   GlobalUbo ubo{};
 
   // Set frustum planes (Left, Right, Bottom, Top, Near, Far)
-  for (int i = 0; i < 6; ++i)
-  {
+  for (int i = 0; i < 6; ++i) {
     ubo.frustumPlanes[i] = glm::vec4(static_cast<float>(i), 0.0f, 0.0f, 1.0f);
   }
 
-  for (int i = 0; i < 6; ++i)
-  {
+  for (int i = 0; i < 6; ++i) {
     EXPECT_FLOAT_EQ(ubo.frustumPlanes[i].x, static_cast<float>(i));
   }
 }
 
-TEST(GlobalUbo, GivenUbo_WhenFogSettingsConfigured_ThenValuesAreCorrect)
-{
+TEST(GlobalUbo, GivenUbo_WhenFogSettingsConfigured_ThenValuesAreCorrect) {
   GlobalUbo ubo{};
 
-  ubo.fogColor         = glm::vec4(0.5f, 0.6f, 0.7f, 0.01f); // RGB + density
-  ubo.fogZenithColor   = glm::vec4(0.8f, 0.9f, 1.0f, 0.0f);
-  ubo.fogHeight        = 100.0f;
+  ubo.fogColor = glm::vec4(0.5f, 0.6f, 0.7f, 0.01f);  // RGB + density
+  ubo.fogZenithColor = glm::vec4(0.8f, 0.9f, 1.0f, 0.0f);
+  ubo.fogHeight = 100.0f;
   ubo.fogHeightDensity = 0.5f;
 
   EXPECT_FLOAT_EQ(ubo.fogColor.x, 0.5f);
-  EXPECT_FLOAT_EQ(ubo.fogColor.w, 0.01f); // density in w
+  EXPECT_FLOAT_EQ(ubo.fogColor.w, 0.01f);  // density in w
   EXPECT_FLOAT_EQ(ubo.fogHeight, 100.0f);
   EXPECT_FLOAT_EQ(ubo.fogHeightDensity, 0.5f);
 }
@@ -233,8 +215,7 @@ TEST(GlobalUbo, GivenUbo_WhenFogSettingsConfigured_ThenValuesAreCorrect)
 // maxShadowLightCount Constant Tests
 // =============================================================================
 
-TEST(FrameInfoConstants, GivenMaxShadowLightCount_WhenChecked_ThenHasExpectedValue)
-{
+TEST(FrameInfoConstants, GivenMaxShadowLightCount_WhenChecked_ThenHasExpectedValue) {
   // Verify the constant is set to a reasonable value
   EXPECT_EQ(maxShadowLightCount, 16);
 

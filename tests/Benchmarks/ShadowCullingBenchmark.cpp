@@ -5,23 +5,20 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
 #include "ModelLib/Resources/Model.hpp"
 
 using namespace engine;
 
-class ShadowCullingBenchmark : public ::testing::Test
-{
-protected:
-  void SetUp() override
-  {
+class ShadowCullingBenchmark : public ::testing::Test {
+ protected:
+  void SetUp() override {
     window = std::make_unique<Window>(1, 1, "ShadowCulling Benchmark");
     device = std::make_unique<Device>(*window);
   }
 
-  void TearDown() override
-  {
+  void TearDown() override {
     device->WaitIdle();
     device.reset();
     window.reset();
@@ -32,8 +29,7 @@ protected:
 };
 
 // Disabled by default because timings are CI-flaky; useful for local profiling.
-TEST_F(ShadowCullingBenchmark, DISABLED_SimpleCullingComparison_PrintTimings)
-{
+TEST_F(ShadowCullingBenchmark, DISABLED_SimpleCullingComparison_PrintTimings) {
   Scene scene;
   Camera camera;
   camera.setPerspectiveProjection(glm::radians(45.0f), 1.0f, 0.1f, 200.0f);
@@ -45,19 +41,18 @@ TEST_F(ShadowCullingBenchmark, DISABLED_SimpleCullingComparison_PrintTimings)
   Model::Vertex v1{{0.5f, -0.5f, 0.0f}, {}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}};
   Model::Vertex v2{{0.0f, 0.5f, 0.0f}, {}, {0.0f, 0.0f, 1.0f}, {0.5f, 1.0f}};
   builder.vertices = {v0, v1, v2};
-  builder.indices  = {0u, 1u, 2u};
+  builder.indices = {0u, 1u, 2u};
   Model::SubMesh sm{};
   sm.indexOffset = 0;
-  sm.indexCount  = 3;
-  sm.materialId  = -1;
+  sm.indexCount = 3;
+  sm.materialId = -1;
   builder.subMeshes.push_back(sm);
 
   auto modelPtr = std::make_shared<Model>(*device, builder);
 
   // Spawn many entities that reference the same model
   const int instanceCount = 800;
-  for (int i = 0; i < instanceCount; ++i)
-  {
+  for (int i = 0; i < instanceCount; ++i) {
     auto e = scene.createEntity();
     auto& mc = scene.getRegistry().emplace<ModelComponent>(e);
     mc.model = modelPtr;
@@ -98,7 +93,7 @@ TEST_F(ShadowCullingBenchmark, DISABLED_SimpleCullingComparison_PrintTimings)
   };
 
   long tNoCull = measure(false);
-  long tCull   = measure(true);
+  long tCull = measure(true);
 
   std::cout << "Shadow culling benchmark (instances=" << instanceCount << ") -- noCull=" << tNoCull << "ms, cull=" << tCull << "ms\n";
 

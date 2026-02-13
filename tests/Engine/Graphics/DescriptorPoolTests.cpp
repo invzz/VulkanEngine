@@ -9,13 +9,11 @@ using namespace engine::test;
 // DescriptorPool Tests - Using DescriptorFixture for shared Device
 // =============================================================================
 
-class DescriptorPoolTest : public DescriptorFixture
-{};
+class DescriptorPoolTest : public DescriptorFixture {};
 
-TEST_F(DescriptorPoolTest, GivenPoolWithMaxSets_WhenAllocatingUpToLimit_ThenSucceeds)
-{
+TEST_F(DescriptorPoolTest, GivenPoolWithMaxSets_WhenAllocatingUpToLimit_ThenSucceeds) {
   auto layout = createUBOLayout(VK_SHADER_STAGE_FRAGMENT_BIT);
-  auto pool   = createFreeablePool(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+  auto pool = createFreeablePool(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 
   VkDescriptorSet a = VK_NULL_HANDLE;
   VkDescriptorSet b = VK_NULL_HANDLE;
@@ -24,10 +22,9 @@ TEST_F(DescriptorPoolTest, GivenPoolWithMaxSets_WhenAllocatingUpToLimit_ThenSucc
   EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), b));
 }
 
-TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenAllocating_ThenFails)
-{
+TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenAllocating_ThenFails) {
   auto layout = createUBOLayout(VK_SHADER_STAGE_FRAGMENT_BIT);
-  auto pool   = createFreeablePool(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+  auto pool = createFreeablePool(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 
   VkDescriptorSet a = VK_NULL_HANDLE;
   VkDescriptorSet b = VK_NULL_HANDLE;
@@ -40,10 +37,9 @@ TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenAllocating_ThenFails)
   EXPECT_FALSE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), c));
 }
 
-TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenDescriptorsFreed_ThenCanAllocateAgain)
-{
+TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenDescriptorsFreed_ThenCanAllocateAgain) {
   auto layout = createUBOLayout(VK_SHADER_STAGE_FRAGMENT_BIT);
-  auto pool   = createFreeablePool(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+  auto pool = createFreeablePool(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 
   VkDescriptorSet a = VK_NULL_HANDLE;
   VkDescriptorSet b = VK_NULL_HANDLE;
@@ -57,14 +53,12 @@ TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenDescriptorsFreed_ThenCanAlloca
   EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), a));
 }
 
-TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenReset_ThenCanReallocate)
-{
+TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenReset_ThenCanReallocate) {
   auto layout = createUBOLayout(VK_SHADER_STAGE_FRAGMENT_BIT);
-  auto pool   = createPool(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+  auto pool = createPool(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
 
   std::vector<VkDescriptorSet> allocated(3);
-  for (uint32_t i = 0; i < 3; ++i)
-  {
+  for (uint32_t i = 0; i < 3; ++i) {
     EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), allocated[i]));
   }
 
@@ -77,10 +71,9 @@ TEST_F(DescriptorPoolTest, GivenExhaustedPool_WhenReset_ThenCanReallocate)
   EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), allocated[0]));
 }
 
-TEST_F(DescriptorPoolTest, GivenInsufficientPoolSize_WhenAllocating_ThenFails)
-{
+TEST_F(DescriptorPoolTest, GivenInsufficientPoolSize_WhenAllocating_ThenFails) {
   // Make maxSets=1 so the second allocation must fail
-  auto pool   = createPool(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+  auto pool = createPool(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
   auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
   VkDescriptorSet ds0 = VK_NULL_HANDLE;

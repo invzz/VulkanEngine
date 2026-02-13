@@ -6,17 +6,16 @@
 
 namespace engine {
 
-  class LightsPanel : public UIPanel
-  {
-  public:
-    LightsPanel(Scene& scene);
+class LightsPanel : public UIPanel {
+ public:
+  LightsPanel(Scene& scene);
 
-    void render(FrameInfo& frameInfo) override;
+  void render(FrameInfo& frameInfo) override;
 
-  private:
-    Scene& scene_;
-  };
+ private:
+  Scene& scene_;
+};
 
-} // namespace engine
+}  // namespace engine
 
-#endif // EDITOR_LIGHTSPANEL_HPP
+#endif  // EDITOR_LIGHTSPANEL_HPP

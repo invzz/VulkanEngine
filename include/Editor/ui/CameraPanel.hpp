@@ -6,21 +6,20 @@
 
 namespace engine {
 
-  /**
-   * @brief Panel for camera controls
-   */
-  class CameraPanel : public UIPanel
-  {
-  public:
-    explicit CameraPanel(entt::entity cameraEntity, Scene* scene);
+/**
+ * @brief Panel for camera controls
+ */
+class CameraPanel : public UIPanel {
+ public:
+  explicit CameraPanel(entt::entity cameraEntity, Scene* scene);
 
-    void render(FrameInfo& frameInfo) override;
+  void render(FrameInfo& frameInfo) override;
 
-  private:
-    entt::entity cameraEntity_;
-    Scene*       scene_;
-  };
+ private:
+  entt::entity cameraEntity_;
+  Scene* scene_;
+};
 
-} // namespace engine
+}  // namespace engine
 
-#endif // EDITOR_CAMERAPANEL_HPP
+#endif  // EDITOR_CAMERAPANEL_HPP

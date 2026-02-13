@@ -2,21 +2,19 @@
 #define EDITOR_IBLPANEL_HPP
 
 #include "Editor/ui/UIPanel.hpp"
-#include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 
 namespace engine {
-  class IBLPanel : public UIPanel
-  {
-  public:
-    IBLPanel(IBLSystem& iblSystem, std::unique_ptr<Skybox>* skybox);
-    void render(FrameInfo& frameInfo) override;
+class EngineState;
+class IBLPanel : public UIPanel {
+ public:
+  explicit IBLPanel(EngineState* engineState);
+  void render(FrameInfo& frameInfo) override;
 
-  private:
-    IBLSystem&               iblSystem_;
-    std::unique_ptr<Skybox>* skybox_;
-    IBLSystem::Settings      settings_;
-  };
-} // namespace engine
+ private:
+  EngineState* engineState_ = nullptr;
+  IBLSystem::Settings settings_;
+};
+}  // namespace engine
 
-#endif // EDITOR_IBLPANEL_HPP
+#endif  // EDITOR_IBLPANEL_HPP

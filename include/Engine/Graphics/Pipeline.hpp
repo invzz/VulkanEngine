@@ -9,86 +9,83 @@
 
 namespace engine {
 
-  struct PipelineConfigInfo
-  {
-    explicit PipelineConfigInfo() = default;
+struct PipelineConfigInfo {
+  explicit PipelineConfigInfo() = default;
 
-    std::vector<VkVertexInputBindingDescription>   bindingDescriptions;
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+  std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+  std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
-    VkPipelineViewportStateCreateInfo      viewportInfo;
-    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
-    VkPipelineRasterizationStateCreateInfo rasterizationInfo;
-    VkPipelineMultisampleStateCreateInfo   multisampleInfo;
-    VkPipelineColorBlendAttachmentState    colorBlendAttachment;
-    VkPipelineColorBlendStateCreateInfo    colorBlendInfo;
-    VkPipelineDepthStencilStateCreateInfo  depthStencilInfo;
-    std::vector<VkDynamicState>            dynamicStateEnables;
-    VkPipelineDynamicStateCreateInfo       dynamicStateInfo;
+  VkPipelineViewportStateCreateInfo viewportInfo;
+  VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+  VkPipelineRasterizationStateCreateInfo rasterizationInfo;
+  VkPipelineMultisampleStateCreateInfo multisampleInfo;
+  VkPipelineColorBlendAttachmentState colorBlendAttachment;
+  VkPipelineColorBlendStateCreateInfo colorBlendInfo;
+  VkPipelineDepthStencilStateCreateInfo depthStencilInfo;
+  std::vector<VkDynamicState> dynamicStateEnables;
+  VkPipelineDynamicStateCreateInfo dynamicStateInfo;
 
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    VkRenderPass     renderPass     = VK_NULL_HANDLE;
-    uint32_t         subpass        = 0;
+  VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+  VkRenderPass renderPass = VK_NULL_HANDLE;
+  uint32_t subpass = 0;
+};
+
+class Pipeline {
+ public:
+  Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+  Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+
+  ~Pipeline() {
+    if (vertShaderModule != nullptr) vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
+    if (fragShaderModule != nullptr) vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
+    if (taskShaderModule != nullptr) vkDestroyShaderModule(device.device(), taskShaderModule, nullptr);
+    if (meshShaderModule != nullptr) vkDestroyShaderModule(device.device(), meshShaderModule, nullptr);
+    vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
   };
 
-  class Pipeline
-  {
-  public:
-    Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
-    Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+  // not copyable
+  Pipeline& operator=(const Pipeline&) = delete;
 
-    ~Pipeline()
-    {
-      if (vertShaderModule != nullptr) vkDestroyShaderModule(device.device(), vertShaderModule, nullptr);
-      if (fragShaderModule != nullptr) vkDestroyShaderModule(device.device(), fragShaderModule, nullptr);
-      if (taskShaderModule != nullptr) vkDestroyShaderModule(device.device(), taskShaderModule, nullptr);
-      if (meshShaderModule != nullptr) vkDestroyShaderModule(device.device(), meshShaderModule, nullptr);
-      vkDestroyPipeline(device.device(), graphicsPipeline, nullptr);
-    };
+  // prevent copies
+  Pipeline(const Pipeline&) = delete;
 
-    // not copyable
-    Pipeline& operator=(const Pipeline&) = delete;
+  // static function to get default config
+  static void defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
+  static void defaultMeshPipelineConfigInfo(PipelineConfigInfo& configInfo);
+  static std::vector<char> readFile(const std::string& filePath);
 
-    // prevent copies
-    Pipeline(const Pipeline&) = delete;
+  // function to bind pipeline to command buffer
+  void bind(VkCommandBuffer commandBuffer);
 
-    // static function to get default config
-    static void              defaultPipelineConfigInfo(PipelineConfigInfo& configInfo);
-    static void              defaultMeshPipelineConfigInfo(PipelineConfigInfo& configInfo);
-    static std::vector<char> readFile(const std::string& filePath);
+ private:
+  void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+  void createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
 
-    // function to bind pipeline to command buffer
-    void bind(VkCommandBuffer commandBuffer);
+  void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
 
-  private:
-    void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
-    void createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
+  // could potentially be memory unsafe, need to ensure device lives
+  // longer than pipeline aggregation relationship
 
-    void createShaderModule(const std::vector<char>& code, VkShaderModule* shaderModule);
+  Device& device;
 
-    // could potentially be memory unsafe, need to ensure device lives
-    // longer than pipeline aggregation relationship
+  // handle to the graphics pipeline module
+  // typedef to pointer to opaque struct
+  // always check what the actual type is
+  VkPipeline graphicsPipeline;
 
-    Device& device;
+  // handle to the vertex shader module
+  // typedef to pointer to opaque struct
+  // always check what the actual type is
+  VkShaderModule vertShaderModule = VK_NULL_HANDLE;
 
-    // handle to the graphics pipeline module
-    // typedef to pointer to opaque struct
-    // always check what the actual type is
-    VkPipeline graphicsPipeline;
+  // handle to the fragment shader module
+  // typedef to pointer to opaque struct
+  // always check what the actual type is
+  VkShaderModule fragShaderModule = VK_NULL_HANDLE;
 
-    // handle to the vertex shader module
-    // typedef to pointer to opaque struct
-    // always check what the actual type is
-    VkShaderModule vertShaderModule = VK_NULL_HANDLE;
+  VkShaderModule taskShaderModule = VK_NULL_HANDLE;
+  VkShaderModule meshShaderModule = VK_NULL_HANDLE;
+};
+}  // namespace engine
 
-    // handle to the fragment shader module
-    // typedef to pointer to opaque struct
-    // always check what the actual type is
-    VkShaderModule fragShaderModule = VK_NULL_HANDLE;
-
-    VkShaderModule taskShaderModule = VK_NULL_HANDLE;
-    VkShaderModule meshShaderModule = VK_NULL_HANDLE;
-  };
-} // namespace engine
-
-#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_PIPELINE_HPP

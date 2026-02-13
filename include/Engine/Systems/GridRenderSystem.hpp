@@ -11,27 +11,26 @@
 
 namespace engine {
 
-  class GridRenderSystem
-  {
-  public:
-    GridRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
-    ~GridRenderSystem();
+class GridRenderSystem {
+ public:
+  GridRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+  ~GridRenderSystem();
 
-    GridRenderSystem(const GridRenderSystem&)            = delete;
-    GridRenderSystem& operator=(const GridRenderSystem&) = delete;
+  GridRenderSystem(const GridRenderSystem&) = delete;
+  GridRenderSystem& operator=(const GridRenderSystem&) = delete;
 
-    void render(FrameInfo& frameInfo) const;
+  void render(FrameInfo& frameInfo) const;
 
-  private:
-    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
-    void createPipeline(VkRenderPass renderPass);
+ private:
+  void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+  void createPipeline(VkRenderPass renderPass);
 
-    Device& device_;
+  Device& device_;
 
-    std::unique_ptr<Pipeline> pipeline_;
-    VkPipelineLayout          pipelineLayout_ = VK_NULL_HANDLE;
-  };
+  std::unique_ptr<Pipeline> pipeline_;
+  VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
+};
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_GRIDRENDERSYSTEM_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_GRIDRENDERSYSTEM_HPP

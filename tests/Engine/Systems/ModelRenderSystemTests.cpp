@@ -10,15 +10,13 @@
 #include "Engine/Systems/MaterialRenderBindings.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
 
-
 using namespace engine;
 
 // =============================================================================
 // MeshPushConstantData Tests
 // =============================================================================
 
-TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAreZeroInitialized)
-{
+TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAreZeroInitialized) {
   MeshPushConstantData pcd{};
 
   EXPECT_EQ(pcd.meshId, 0u);
@@ -37,8 +35,7 @@ TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAr
   EXPECT_EQ(pcd.normalMatrix, identity);
 }
 
-TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_ThenOffsetsMatchShaderExpectations)
-{
+TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_ThenOffsetsMatchShaderExpectations) {
   // This test ensures the memory layout matches what the shader expects.
   // If this fails, the shader/CPU side is misaligned.
   static_assert(sizeof(MeshPushConstantData) == 192, "Push constant size mismatch");
@@ -60,8 +57,7 @@ TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_Th
 // ModelRenderSystem Multi-threading API Tests
 // =============================================================================
 
-TEST(ModelRenderSystem, GivenDefaultState_WhenEnablingMultiThreadedRecording_ThenApiAcceptsConfiguration)
-{
+TEST(ModelRenderSystem, GivenDefaultState_WhenEnablingMultiThreadedRecording_ThenApiAcceptsConfiguration) {
   // Basic API/behavior smoke: enabling/disabling should be idempotent and
   // accept a thread count. This test does NOT exercise GPU recording.
   Window win(16, 16, "MT Recording API");
@@ -84,14 +80,14 @@ TEST(ModelRenderSystem, GivenDefaultState_WhenEnablingMultiThreadedRecording_The
 // MaterialRenderBindings Multi-threaded Tests
 // =============================================================================
 
-class MaterialRenderBindingsTest : public engine::test::DeviceFixtureWithSetup
-{
-protected:
-  void SetUp() override { device().enableThreadLocalCommandPools(); }
+class MaterialRenderBindingsTest : public engine::test::DeviceFixtureWithSetup {
+ protected:
+  void SetUp() override {
+    device().enableThreadLocalCommandPools();
+  }
 };
 
-TEST_F(MaterialRenderBindingsTest, GivenResourcesCreated_WhenFrameBegins_ThenDescriptorSetIsValid)
-{
+TEST_F(MaterialRenderBindingsTest, GivenResourcesCreated_WhenFrameBegins_ThenDescriptorSetIsValid) {
   MaterialRenderBindings mrb(device());
   mrb.createResources();
   mrb.beginFrame(0);
@@ -100,8 +96,7 @@ TEST_F(MaterialRenderBindingsTest, GivenResourcesCreated_WhenFrameBegins_ThenDes
   EXPECT_NE(mrb.getFrameDescriptorSet(0), VK_NULL_HANDLE);
 }
 
-TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_ThenCapturedHandleMatchesFrameSet)
-{
+TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_ThenCapturedHandleMatchesFrameSet) {
   MaterialRenderBindings mrb(device());
   mrb.createResources();
   mrb.beginFrame(0);
@@ -110,21 +105,20 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
 
   // Build a pipeline layout with material set at index 4
   VkDescriptorSetLayout dummyLayouts[4] = {};
-  for (int i = 0; i < 4; ++i)
-  {
+  for (int i = 0; i < 4; ++i) {
     VkDescriptorSetLayoutCreateInfo li{};
-    li.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    li.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     li.bindingCount = 0;
-    li.pBindings    = nullptr;
+    li.pBindings = nullptr;
     ASSERT_EQ(vkCreateDescriptorSetLayout(device().device(), &li, nullptr, &dummyLayouts[i]), VK_SUCCESS);
   }
 
   std::array<VkDescriptorSetLayout, 5> layouts{dummyLayouts[0], dummyLayouts[1], dummyLayouts[2], dummyLayouts[3], mrb.getDescriptorSetLayout()};
 
   VkPipelineLayoutCreateInfo pli{};
-  pli.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pli.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pli.setLayoutCount = static_cast<uint32_t>(layouts.size());
-  pli.pSetLayouts    = layouts.data();
+  pli.pSetLayouts = layouts.data();
 
   VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
   ASSERT_EQ(vkCreatePipelineLayout(device().device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
@@ -134,7 +128,7 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
   ASSERT_EQ(device().allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
 
   VkCommandBufferInheritanceRenderingInfoKHR renderingInfo{};
-  renderingInfo.sType                = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
+  renderingInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
   renderingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
   VkCommandBufferInheritanceInfo inherit{};
@@ -142,14 +136,14 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
   inherit.pNext = &renderingInfo;
 
   VkCommandBufferBeginInfo bi{};
-  bi.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  bi.flags            = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+  bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  bi.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
   bi.pInheritanceInfo = &inherit;
 
   ASSERT_EQ(vkBeginCommandBuffer(serialCB, &bi), VK_SUCCESS);
 
-  Camera    camera;
-  Scene     scene;
+  Camera camera;
+  Scene scene;
   FrameInfo frameInfo{0, 0.0f, serialCB, camera, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, 0};
 
   mrb.enableBindCapture(true);
@@ -165,14 +159,12 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
   mrb.enableBindCapture(false);
   device().freeSecondaryCommandBuffer(serialCB);
   vkDestroyPipelineLayout(device().device(), pipelineLayout, nullptr);
-  for (auto& layout : dummyLayouts)
-  {
+  for (auto& layout : dummyLayouts) {
     vkDestroyDescriptorSetLayout(device().device(), layout, nullptr);
   }
 }
 
-TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCalled_ThenAllCapturedHandlesMatchSerialHandle)
-{
+TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCalled_ThenAllCapturedHandlesMatchSerialHandle) {
   MaterialRenderBindings mrb(device());
   mrb.createResources();
   mrb.beginFrame(0);
@@ -181,28 +173,27 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
 
   // Build pipeline layout
   VkDescriptorSetLayout dummyLayouts[4] = {};
-  for (int i = 0; i < 4; ++i)
-  {
+  for (int i = 0; i < 4; ++i) {
     VkDescriptorSetLayoutCreateInfo li{};
-    li.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    li.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     li.bindingCount = 0;
-    li.pBindings    = nullptr;
+    li.pBindings = nullptr;
     ASSERT_EQ(vkCreateDescriptorSetLayout(device().device(), &li, nullptr, &dummyLayouts[i]), VK_SUCCESS);
   }
 
   std::array<VkDescriptorSetLayout, 5> layouts{dummyLayouts[0], dummyLayouts[1], dummyLayouts[2], dummyLayouts[3], mrb.getDescriptorSetLayout()};
 
   VkPipelineLayoutCreateInfo pli{};
-  pli.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  pli.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pli.setLayoutCount = static_cast<uint32_t>(layouts.size());
-  pli.pSetLayouts    = layouts.data();
+  pli.pSetLayouts = layouts.data();
 
   VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
   ASSERT_EQ(vkCreatePipelineLayout(device().device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
 
   auto beginSecondary = [](VkCommandBuffer cb) -> VkResult {
     VkCommandBufferInheritanceRenderingInfoKHR renderingInfo{};
-    renderingInfo.sType                = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
+    renderingInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO_KHR;
     renderingInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
     VkCommandBufferInheritanceInfo inherit{};
@@ -210,8 +201,8 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
     inherit.pNext = &renderingInfo;
 
     VkCommandBufferBeginInfo bi{};
-    bi.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    bi.flags            = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    bi.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    bi.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     bi.pInheritanceInfo = &inherit;
 
     return vkBeginCommandBuffer(cb, &bi);
@@ -222,8 +213,8 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
   ASSERT_EQ(device().allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
   ASSERT_EQ(beginSecondary(serialCB), VK_SUCCESS);
 
-  Camera    camera;
-  Scene     scene;
+  Camera camera;
+  Scene scene;
   FrameInfo frameInfo{0, 0.0f, serialCB, camera, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, 0};
 
   mrb.enableBindCapture(true);
@@ -231,24 +222,21 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
   ASSERT_EQ(vkEndCommandBuffer(serialCB), VK_SUCCESS);
 
   // Worker threads
-  const int                    workerCount = 2;
+  const int workerCount = 2;
   std::vector<VkCommandBuffer> workerCbs;
-  std::mutex                   workerCbsMutex;
-  std::vector<std::thread>     workers;
+  std::mutex workerCbsMutex;
+  std::vector<std::thread> workers;
 
-  for (int t = 0; t < workerCount; ++t)
-  {
+  for (int t = 0; t < workerCount; ++t) {
     workers.emplace_back([this, &mrb, pipelineLayout, &scene, &workerCbs, &workerCbsMutex, &beginSecondary]() {
-      Camera          cam;
+      Camera cam;
       VkCommandBuffer localCb = VK_NULL_HANDLE;
 
-      if (device().allocateSecondaryCommandBuffer(&localCb) != VK_SUCCESS)
-      {
+      if (device().allocateSecondaryCommandBuffer(&localCb) != VK_SUCCESS) {
         return;
       }
 
-      if (beginSecondary(localCb) == VK_SUCCESS)
-      {
+      if (beginSecondary(localCb) == VK_SUCCESS) {
         FrameInfo localFrame{0, 0.0f, localCb, cam, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, 0};
         mrb.bindMaterial(localFrame, pipelineLayout, nullptr, 0.0f);
         vkEndCommandBuffer(localCb);
@@ -261,30 +249,26 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
     });
   }
 
-  for (auto& w : workers)
-  {
+  for (auto& w : workers) {
     if (w.joinable()) w.join();
   }
 
   auto mtCaptured = mrb.getCapturedBinds();
   ASSERT_EQ(mtCaptured.size(), static_cast<size_t>(1 + workerCount));
 
-  for (size_t i = 1; i < mtCaptured.size(); ++i)
-  {
+  for (size_t i = 1; i < mtCaptured.size(); ++i) {
     EXPECT_EQ(mtCaptured[i], serialHandle) << "Worker bind at index " << i << " differs from serial";
     EXPECT_NE(mtCaptured[i], VK_NULL_HANDLE) << "Worker bind at index " << i << " is VK_NULL_HANDLE";
   }
 
   // Cleanup
   mrb.enableBindCapture(false);
-  for (auto cb : workerCbs)
-  {
+  for (auto cb : workerCbs) {
     device().freeSecondaryCommandBuffer(cb);
   }
   device().freeSecondaryCommandBuffer(serialCB);
   vkDestroyPipelineLayout(device().device(), pipelineLayout, nullptr);
-  for (auto& layout : dummyLayouts)
-  {
+  for (auto& layout : dummyLayouts) {
     vkDestroyDescriptorSetLayout(device().device(), layout, nullptr);
   }
 }

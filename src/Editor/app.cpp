@@ -1,15 +1,13 @@
-#include "app.hpp"
+#include "Editor/app.hpp"
 
 #include <GLFW/glfw3.h>
 
-#include <array>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <glm/common.hpp>
 #include <iostream>
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -25,36 +23,30 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
-#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Systems/DeferredLightingSystem.hpp"
-#include "Engine/Systems/DustRenderSystem.hpp"
 #include "ModelLib/Resources/TextureManager.hpp"
-#include "glm/ext/vector_float2.hpp"
 #include "glm/ext/vector_float3.hpp"
-#include "glm/ext/vector_float4.hpp"
-#include "glm/geometric.hpp"
-#include "glm/matrix.hpp"
 #include "vulkan/vulkan_core.h"
 
 // Systems
-#include "Engine/Graphics/RenderGraph.hpp"
+#include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
-#include "Engine/Systems/CameraSystem.hpp"
-#include "Engine/Systems/GridRenderSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
-#include "Engine/Systems/InputSystem.hpp"
-#include "Engine/Systems/LODSystem.hpp"
-#include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
-#include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
-#include "Engine/Systems/ShadowSystem.hpp"
-#include "Engine/Systems/SkyboxRenderSystem.hpp"
+
+// Render Passes
+#include "Engine/Graphics/Passes/CompositionPass.hpp"
+#include "Engine/Graphics/Passes/ComputePass.hpp"
+#include "Engine/Graphics/Passes/DepthPrepass.hpp"
+#include "Engine/Graphics/Passes/HZBPass.hpp"
+#include "Engine/Graphics/Passes/OffscreenPass.hpp"
+#include "Engine/Graphics/Passes/ShadowPass.hpp"
+#include "Engine/Graphics/Passes/UpdatePass.hpp"
 
 // Demo specific
-#include "RenderContext.hpp"
+#include "Editor/RenderContext.hpp"
 
 // UI Panels
 #include "Editor/ui/InspectorPanel.hpp"
@@ -63,961 +55,302 @@
 #include "Editor/ui/SettingsPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
 
-namespace {
-  struct SunInfo
-  {
-    glm::vec3 directionToSun{0.0f, 1.0f, 0.0f};
-    glm::vec3 color{1.0f, 1.0f, 1.0f};
-    float     intensity{0.0f};
-    bool      valid{false};
-  };
-
-  SunInfo queryPrimaryDirectionalLightSunInfo(engine::Scene const& scene)
-  {
-    SunInfo info{};
-
-    auto const& registry = scene.getRegistry();
-    auto        view     = registry.view<engine::TransformComponent, engine::DirectionalLightComponent>();
-    for (auto entity : view)
-    {
-      auto const& transform = view.get<engine::TransformComponent>(entity);
-      auto const& light     = view.get<engine::DirectionalLightComponent>(entity);
-
-      glm::vec3 const lightRayDir = glm::normalize(transform.getForwardDir());
-      info.directionToSun         = -lightRayDir;
-      info.color                  = light.color;
-      info.intensity              = light.intensity;
-      info.valid                  = true;
-      break;
-    }
-
-    return info;
-  }
-} // namespace
-
 namespace engine {
 
-  GameLoopState App::makeGameLoopState()
-  {
-    return GameLoopState{
-            .objectSelectionSystem = *objectSelectionSystem,
-            .inputSystem           = *inputSystem,
-            .cameraSystem          = *cameraSystem,
-            .animationSystem       = *animationSystem,
-            .lodSystem             = *lodSystem,
-            .modelRenderSystem     = *modelRenderSystem,
-            .lightSystem           = *lightSystem,
-            .shadowSystem          = *shadowSystem,
-            .skyboxRenderSystem    = *skyboxRenderSystem,
-            .gridRenderSystem      = *gridRenderSystem,
-            .dustRenderSystem      = *dustRenderSystem,
-            .renderContext         = *renderContext,
-            .uiManager             = *uiManager,
-            .skybox                = showSkybox ? skybox.get() : nullptr,
-            .showGrid              = showGrid,
-            .skySettings           = skySettings,
-            .dustSettings          = dustSettings,
-            .shadowSettings        = shadowSettings,
-    };
-  }
+App::App(bool fullscreen)
+    : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device), sceneSerializer(engineState.scene, resourceManager) {
+  init();
+}
 
-  App::App(bool fullscreen)
-      : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device), scene(), sceneSerializer(scene, resourceManager)
-  {
-    init();
-  }
+App::~App() = default;
 
-  App::~App() = default;
+void App::init() {
+  // Enable thread-local command pools BEFORE any system uses multithreaded
+  // command buffer recording. This avoids VkCommandPool threading validation
+  // errors when worker threads allocate secondary command buffers while the
+  // main thread performs single-time commands (e.g., texture uploads).
+  device.enableThreadLocalCommandPools();
 
-  void App::init()
-  {
-    // Enable thread-local command pools BEFORE any system uses multithreaded
-    // command buffer recording. This avoids VkCommandPool threading validation
-    // errors when worker threads allocate secondary command buffers while the
-    // main thread performs single-time commands (e.g., texture uploads).
-    device.enableThreadLocalCommandPools();
+  // 1. Setup Render Context (moved into EngineState)
+  VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(0);
+  engineState.renderContext = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
 
-    // 1. Setup Render Context
-    VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(0);
-    renderContext                       = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
+  // 2. Setup Scene & Camera
+  setupScene();
 
-    // 2. Setup Scene & Camera
-    setupScene();
+  // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
+  engineState.initialize(device, renderer, resourceManager, &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
 
-    // 3. Setup Systems
-    setupSystems();
+  // 4. Setup UI
+  setupUI();
 
-    // 4. Setup UI
-    setupUI();
+  // If a scene file exists in the working directory, load it at startup
+  if (std::filesystem::exists("scene.json")) {
+    std::cout << "[App] Found scene.json, loading at startup..." << '\n';
+    if (sceneSerializer.deserialize("scene.json")) {
+      std::cout << "[App] Loaded scene.json at startup" << '\n';
 
-    // If a scene file exists in the working directory, load it at startup
-    if (std::filesystem::exists("scene.json"))
-    {
-      std::cout << "[App] Found scene.json, loading at startup..." << '\n';
-      if (sceneSerializer.deserialize("scene.json"))
-      {
-        std::cout << "[App] Loaded scene.json at startup" << '\n';
+      // Reset transient selection state to avoid dangling entt entity references
+      engineState.selectedEntity = entt::null;
+      selectedObjectId = 0;
+      engineState.cameraEntity = entt::null;
 
-        // Reset transient selection state to avoid dangling entt entity references
-        selectedEntity   = entt::null;
-        selectedObjectId = 0;
-        cameraEntity     = entt::null;
-
-        // Find the first camera entity in the loaded scene
-        auto const& registry = scene.getRegistry();
-        auto        view     = registry.view<engine::CameraComponent>();
-        for (auto entity : view)
-        {
-          std::cout << "[App] Found camera entity in loaded scene" << '\n';
-          cameraEntity = entity;
-          break;
-        }
-
-        // If there is no camera, create a default one
-        if (cameraEntity == entt::null)
-        {
-          std::cout << "[App] Creating default camera for the scene" << '\n';
-          cameraEntity = scene.createEntity();
-          scene.getRegistry().emplace<TransformComponent>(cameraEntity);
-          scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
-          scene.getRegistry().emplace<CameraComponent>(cameraEntity);
-        }
-
-        pendingUpdateCameraAfterSceneLoad = true;
+      // Find the first camera entity in the loaded scene
+      auto const& registry = engineState.scene.getRegistry();
+      auto view = registry.view<engine::CameraComponent>();
+      for (auto entity : view) {
+        std::cout << "[App] Found camera entity in loaded scene" << '\n';
+        engineState.cameraEntity = entity;
+        break;
       }
-      else
-      {
-        std::cout << "[App] Failed to deserialize scene.json at startup" << '\n';
-      }
-    }
 
-    // 5. Setup Render Graph
-    setupRenderGraph();
-  }
-
-  void App::setupScene()
-  {
-    camera   = std::make_unique<Camera>();
-    keyboard = std::make_unique<Keyboard>(window);
-    mouse    = std::make_unique<Mouse>(window);
-
-    cameraEntity = scene.createEntity();
-    scene.getRegistry().emplace<TransformComponent>(cameraEntity);
-    scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
-    scene.getRegistry().get<TransformComponent>(cameraEntity).translation = {0.0f, -0.2f, -2.5f};
-    scene.getRegistry().emplace<CameraComponent>(cameraEntity);
-  }
-
-  void App::setupSystems()
-  {
-    // Update Systems
-    objectSelectionSystem = std::make_unique<ObjectSelectionSystem>(*keyboard);
-    inputSystem           = std::make_unique<InputSystem>(*keyboard, *mouse, window);
-    cameraSystem          = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
-
-    // Compute Systems
-    animationSystem = std::make_unique<AnimationSystem>(device);
-    lodSystem       = std::make_unique<LODSystem>();
-
-    // Shadow & IBL
-    shadowSystem = std::make_unique<ShadowSystem>(device, 4096);
-    iblSystem    = std::make_unique<IBLSystem>(device);
-
-    iblGenerationCounter = iblSystem->getGenerationCounter();
-
-    // Render Systems
-    std::cout << "[App] Creating render systems..." << '\n';
-    skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth());
-    gridRenderSystem   = std::make_unique<GridRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
-    dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth());
-    modelRenderSystem  = std::make_unique<ModelRenderSystem>(device,
-                                                            renderer.getOffscreenRenderPassLoadColorDepth(),
-                                                            renderContext->getGlobalSetLayout(),
-                                                            resourceManager.getTextureManager().getDescriptorSetLayout());
-    // Demo default: enable the multithreaded secondary-CB recording pilot (opt-in in library).
-    modelRenderSystem->enableMultiThreadedRecording(multithreadedRecordingEnabled, multithreadedRecordingThreads);
-
-    lightSystem = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
-
-    // G-buffer + Deferred lighting
-    modelRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
-
-    gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 6).build();
-
-    gbufferSetLayout = DescriptorSetLayout::Builder(device)
-                               .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .build();
-
-    deferredIblPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 3).build();
-
-    deferredIblSetLayout = DescriptorSetLayout::Builder(device)
-                                   .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .build();
-
-    deferredShadowPool = DescriptorPool::Builder(device)
-                                 .setMaxSets(SwapChain::maxFramesInFlight())
-                                 .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * (ShadowSystem::MAX_SHADOW_MAPS + ShadowSystem::MAX_CUBE_SHADOW_MAPS))
-                                 .build();
-
-    deferredShadowSetLayout = DescriptorSetLayout::Builder(device)
-                                      .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_SHADOW_MAPS)
-                                      .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_CUBE_SHADOW_MAPS)
-                                      .build();
-
-    // Note: Shadow set must be placed before IBL set to match LightingRenderBindings kShadowSetIndex/kIBLSetIndex
-    deferredLightingSystem = std::make_unique<DeferredLightingSystem>(device,
-                                                                      renderer.getDeferredLightingRenderPass(),
-                                                                      std::vector<VkDescriptorSetLayout>{renderContext->getGlobalSetLayout(),
-                                                                                                         gbufferSetLayout->getDescriptorSetLayout(),
-                                                                                                         deferredShadowSetLayout->getDescriptorSetLayout(),
-                                                                                                         deferredIblSetLayout->getDescriptorSetLayout()});
-
-    gbufferDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (int i = 0; i < gbufferDescriptorSets.size(); i++)
-    {
-      auto nInfo = renderer.getGbufferNormalImageInfo(i);
-      auto aInfo = renderer.getGbufferAlbedoImageInfo(i);
-      auto mInfo = renderer.getGbufferMaterialImageInfo(i);
-      auto dInfo = renderer.getDepthImageInfo(i);
-      // Binding 4 was previously used for emissive (HDR color), but sampling it caused validation errors
-      // because the HDR color is also the render target of the deferred lighting pass.
-      // Emissive is now handled via LOAD_OP_LOAD + additive blending, so binding 4 is unused.
-      // We still bind a valid image (normal) to satisfy the descriptor set layout.
-      auto unusedBinding4Info = nInfo; // Placeholder - shader doesn't read binding 4 anymore
-
-      auto bakedInfo = renderer.getGbufferBakedImageInfo(i);
-      DescriptorWriter(*gbufferSetLayout, *gbufferPool)
-              .writeImage(0, &nInfo)
-              .writeImage(1, &aInfo)
-              .writeImage(2, &mInfo)
-              .writeImage(3, &dInfo)
-              .writeImage(4, &unusedBinding4Info)
-              .writeImage(5, &bakedInfo)
-              .build(gbufferDescriptorSets[i]);
-    }
-
-    deferredIblDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (int i = 0; i < static_cast<int>(deferredIblDescriptorSets.size()); ++i)
-    {
-      auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
-      auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
-      auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
-
-      DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSets[i]);
-
-      std::cout << "[App][IBL] deferredIblDescriptorSet " << i << " => irradiance.view=" << irradianceInfo.imageView << " prefilter.view=" << prefilterInfo.imageView
-                << " brdf.view=" << brdfInfo.imageView << '\n';
-    }
-
-    deferredShadowDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (auto& deferredShadowDescriptorSet : deferredShadowDescriptorSets)
-    {
-      if (!deferredShadowPool->allocateDescriptor(deferredShadowSetLayout->getDescriptorSetLayout(), deferredShadowDescriptorSet))
-      {
-        throw std::runtime_error("Failed to allocate deferred shadow descriptor set");
-      }
-    }
-
-    // Depth prepass pipeline is created but not scheduled yet (RenderGraph wiring is a follow-up task).
-    modelRenderSystem->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
-
-    modelRenderSystem->setShadowSystem(shadowSystem.get());
-    modelRenderSystem->setIBLSystem(iblSystem.get());
-
-    // Post Processing
-    postProcessPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 2).build();
-
-    postProcessSetLayout = DescriptorSetLayout::Builder(device)
-                                   .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .build();
-
-    postProcessingSystem = std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{postProcessSetLayout->getDescriptorSetLayout()});
-
-    postProcessDescriptorSets.resize(SwapChain::maxFramesInFlight());
-    for (int i = 0; i < postProcessDescriptorSets.size(); i++)
-    {
-      auto imageInfo = renderer.getOffscreenImageInfo(i);
-      auto depthInfo = renderer.getDepthImageInfo(i);
-      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).writeImage(1, &depthInfo).build(postProcessDescriptorSets[i]);
-    }
-  }
-
-  void App::setupUI()
-  {
-    imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
-    uiManager    = std::make_unique<UIManager>(*imguiManager);
-
-    uiManager->setOnSaveScene([this]() {
-      std::cout << "Saving scene to scene.json..." << '\n';
-      sceneSerializer.serialize("scene.json");
-    });
-    uiManager->setOnLoadScene([this]() {
-      std::cout << "Loading scene from scene.json..." << '\n';
-      if (sceneSerializer.deserialize("scene.json"))
-      {
-        // Reset transient selection state to avoid dangling entt entity references
-        selectedEntity   = entt::null;
-        selectedObjectId = 0;
-        cameraEntity     = entt::null;
-
-        // get the first camera entity in the loaded scene
-        auto const& registry = scene.getRegistry();
-        auto        view     = registry.view<engine::CameraComponent>();
-        for (auto entity : view)
-        {
-          std::cout << "[App] Found camera entity in loaded scene\n";
-          cameraEntity = entity;
-          break;
-        }
-
-        // if there is no camera, create a default one
-        if (cameraEntity == entt::null)
-        {
-          std::cout << "[App] Creating default camera for the scene\n";
-          cameraEntity = scene.createEntity();
-          scene.getRegistry().emplace<TransformComponent>(cameraEntity);
-          scene.getRegistry().emplace<NameComponent>(cameraEntity, "Camera");
-          scene.getRegistry().emplace<CameraComponent>(cameraEntity);
-        }
-
-        // set the cameracomponent as primary
-        {
-          std::cout << "[App] Setting loaded camera as primary camera\n";
-          auto& camComp = scene.getRegistry().get<CameraComponent>(cameraEntity);
-        }
-
-        std::cout << "[App] Successfully deserialized scene.json\n";
-      }
-      else
-      {
-        std::cout << "[App] Failed to deserialize scene.json\n";
+      // If there is no camera, create a default one
+      if (engineState.cameraEntity == entt::null) {
+        std::cout << "[App] Creating default camera for the scene" << '\n';
+        engineState.cameraEntity = engineState.scene.createEntity();
+        engineState.scene.getRegistry().emplace<TransformComponent>(engineState.cameraEntity);
+        engineState.scene.getRegistry().emplace<NameComponent>(engineState.cameraEntity, "Camera");
+        engineState.scene.getRegistry().emplace<CameraComponent>(engineState.cameraEntity);
       }
 
       pendingUpdateCameraAfterSceneLoad = true;
-    });
-    uiManager->addPanel(std::make_unique<ModelImportPanel>(device, scene, *animationSystem, resourceManager));
-    uiManager->addPanel(std::make_unique<ScenePanel>(device, scene, *animationSystem, resourceManager));
-    uiManager->addPanel(std::make_unique<InspectorPanel>(scene));
-    uiManager->addPanel(std::make_unique<LightsPanel>(scene));
-    uiManager->addPanel(std::make_unique<SettingsPanel>(cameraEntity,
-                                                        &scene,
-                                                        *iblSystem,
-                                                        &skybox,
-                                                        showSkybox,
-                                                        showGrid,
-                                                        skySettings,
-                                                        dustSettings,
-                                                        fogSettings,
-                                                        hzbSettings,
-                                                        shadowSettings,
-                                                        postProcessPush,
-                                                        multithreadedRecordingEnabled,
-                                                        multithreadedRecordingThreads,
-                                                        debugMode));
-  }
-
-  void App::setupRenderGraph()
-  {
-    renderGraph = std::make_unique<RenderGraph>();
-
-    // 1. Update Pass
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("Update", [&](FrameInfo& frameInfo) {
-      auto state = makeGameLoopState();
-      updatePhase(frameInfo, state);
-    }));
-
-    // 2. Compute Pass
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("Compute", [&](FrameInfo& frameInfo) {
-      auto state = makeGameLoopState();
-      computePhase(frameInfo, state);
-    }));
-
-    // 3. Shadow Pass
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("Shadow", [&](FrameInfo& frameInfo) {
-      auto state = makeGameLoopState();
-      shadowPhase(frameInfo, state);
-    }));
-
-    // 4. Depth Prepass (Offscreen Depth Only)
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("DepthPrepass", [&](FrameInfo& frameInfo) {
-      auto state = makeGameLoopState();
-
-      renderer.beginOffscreenDepthPrepassRenderPass(frameInfo.commandBuffer);
-      state.modelRenderSystem.renderDepthPrepass(frameInfo);
-      renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-    }));
-
-    // 5. HZB Build (same frame, after Depth Prepass)
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("HZB", [&](FrameInfo& frameInfo) { renderer.generateDepthPyramid(frameInfo.commandBuffer); }));
-
-    // 6. Offscreen Pass (Main Scene - Load depth from prepass)
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("Offscreen", [&](FrameInfo& frameInfo) {
-      auto state = makeGameLoopState();
-
-      // Respect runtime multithreaded-recording toggle (idempotent).
-      state.modelRenderSystem.enableMultiThreadedRecording(multithreadedRecordingEnabled, multithreadedRecordingThreads);
-
-      // Reset per-frame dynamic offsets before any mesh passes.
-      state.modelRenderSystem.beginFrame(frameInfo.frameIndex);
-      state.modelRenderSystem.updateSceneColorDescriptor(frameInfo.frameIndex, renderer.getSceneColorImageInfo(frameInfo.frameIndex));
-
-      // G-buffer descriptors are created once, but the underlying image views/samplers are recreated on window resize.
-      // Refresh them every frame to avoid stale handles after swapchain/offscreen resize.
-      {
-        auto nInfo     = renderer.getGbufferNormalImageInfo(frameInfo.frameIndex);
-        auto aInfo     = renderer.getGbufferAlbedoImageInfo(frameInfo.frameIndex);
-        auto mInfo     = renderer.getGbufferMaterialImageInfo(frameInfo.frameIndex);
-        auto dInfo     = renderer.getDepthImageInfo(frameInfo.frameIndex);
-        auto cInfo     = renderer.getOffscreenImageInfo(frameInfo.frameIndex);
-        auto bakedInfo = renderer.getGbufferBakedImageInfo(frameInfo.frameIndex);
-
-        DescriptorWriter(*gbufferSetLayout, *gbufferPool)
-                .writeImage(0, &nInfo)
-                .writeImage(1, &aInfo)
-                .writeImage(2, &mInfo)
-                .writeImage(3, &dInfo)
-                .writeImage(4, &cInfo)
-                .writeImage(5, &bakedInfo)
-                .overwrite(gbufferDescriptorSets[frameInfo.frameIndex]);
-      }
-
-      // Use the "current-frame HZB" global descriptor set for the main scene after the HZB pass.
-      // This avoids updating a descriptor set while it is already bound to the command buffer.
-      auto const prevGlobalSet      = frameInfo.globalDescriptorSet;
-      frameInfo.globalDescriptorSet = renderContext->getGlobalDescriptorSetCurrentHzb(frameInfo.frameIndex);
-
-      // Pass 1: Opaque scene (writes color+depth)
-      renderer.beginGbufferRenderPass(frameInfo.commandBuffer, multithreadedRecordingEnabled);
-      state.modelRenderSystem.renderGbuffer(frameInfo);
-      renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-
-      // Pass 2: Deferred lighting (writes HDR color, loads depth)
-      renderer.beginDeferredLightingRenderPass(frameInfo.commandBuffer);
-
-      // Shadow descriptors: write the current shadow maps into an array set for deferred lighting.
-      {
-        int const shadowCount     = state.shadowSystem.getShadowLightCount();
-        int const cubeShadowCount = state.shadowSystem.getCubeShadowLightCount();
-
-        std::array<VkDescriptorImageInfo, ShadowSystem::MAX_SHADOW_MAPS> shadowInfos{};
-        for (int i = 0; i < shadowCount && i < ShadowSystem::MAX_SHADOW_MAPS; i++)
-        {
-          shadowInfos[i] = state.shadowSystem.getShadowMapDescriptorInfo(i);
-        }
-        for (int i = shadowCount; i < ShadowSystem::MAX_SHADOW_MAPS; i++)
-        {
-          shadowInfos[i] = state.shadowSystem.getShadowMapDescriptorInfo(0);
-        }
-
-        std::array<VkDescriptorImageInfo, ShadowSystem::MAX_CUBE_SHADOW_MAPS> cubeShadowInfos{};
-        for (int i = 0; i < cubeShadowCount && i < ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++)
-        {
-          cubeShadowInfos[i] = state.shadowSystem.getCubeShadowMapDescriptorInfo(i);
-        }
-        for (int i = cubeShadowCount; i < ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++)
-        {
-          cubeShadowInfos[i] = state.shadowSystem.getCubeShadowMapDescriptorInfo(0);
-        }
-
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-
-        descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet          = deferredShadowDescriptorSets[frameInfo.frameIndex];
-        descriptorWrites[0].dstBinding      = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[0].descriptorCount = ShadowSystem::MAX_SHADOW_MAPS;
-        descriptorWrites[0].pImageInfo      = shadowInfos.data();
-
-        descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet          = deferredShadowDescriptorSets[frameInfo.frameIndex];
-        descriptorWrites[1].dstBinding      = 1;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = ShadowSystem::MAX_CUBE_SHADOW_MAPS;
-        descriptorWrites[1].pImageInfo      = cubeShadowInfos.data();
-
-        vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-      }
-
-      // Pass descriptor sets in pipeline order: global, gbuffer, shadow, ibl
-      deferredLightingSystem->render(frameInfo,
-                                     frameInfo.globalDescriptorSet,
-                                     gbufferDescriptorSets[frameInfo.frameIndex],
-                                     deferredShadowDescriptorSets[frameInfo.frameIndex],
-                                     deferredIblDescriptorSets[frameInfo.frameIndex]);
-      renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-
-      // Pass 3: Forward overlays: skybox + transmission (no blending) + alpha-blend (regular transparency)
-      // When debug views are enabled, skip overlays so deferred debug output stays visible.
-      if (debugMode == 0)
-      {
-        // 3a) Skybox first, then copy HDR->sceneColor (including the skybox) for refraction.
-        renderer.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
-        renderSkyPass(frameInfo, state);
-        renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-
-        // Copy the HDR color buffer (now containing skybox) for transmission refraction sampling + mip chain.
-        renderer.copyOffscreenColorToSceneColor(frameInfo.commandBuffer);
-
-        // 3b) Forward overlays
-        renderer.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
-        state.modelRenderSystem.renderTransmission(frameInfo);
-        state.modelRenderSystem.renderAlphaBlend(frameInfo);
-
-        // Dust pass (uses scene lighting conditions)
-        auto sunColor     = glm::vec3(1.0f);
-        auto ambientColor = glm::vec3(0.1f);
-
-        SunInfo const sunInfo = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
-        float const   height  = sunInfo.directionToSun.y;
-        if (height > 0.1f)
-        {
-          sunColor     = glm::vec3(1.0f, 0.95f, 0.9f);
-          ambientColor = glm::vec3(0.2f, 0.2f, 0.3f);
-        }
-        else if (height > -0.1f)
-        {
-          sunColor     = glm::vec3(1.0f, 0.6f, 0.3f);
-          ambientColor = glm::vec3(0.3f, 0.2f, 0.2f);
-        }
-        else
-        {
-          sunColor     = glm::vec3(0.05f, 0.05f, 0.1f);
-          ambientColor = glm::vec3(0.01f, 0.01f, 0.02f);
-        }
-
-        glm::vec4 const sunDirWithIntensity = glm::vec4(sunInfo.directionToSun, sunInfo.intensity);
-        state.dustRenderSystem.render(frameInfo, state.dustSettings, sunDirWithIntensity, sunColor, ambientColor);
-
-        renderDebugPass(frameInfo, state);
-        renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-      }
-
-      frameInfo.globalDescriptorSet = prevGlobalSet;
-
-      renderer.generateOffscreenMipmaps(frameInfo.commandBuffer);
-    }));
-
-    // 7. Composition Pass (PostProcess + UI)
-    renderGraph->addPass(std::make_unique<LambdaRenderPass>("Composition", [&](FrameInfo& frameInfo) {
-      auto state = makeGameLoopState();
-
-      renderer.beginSwapChainRenderPass(frameInfo.commandBuffer);
-
-      auto imageInfo = renderer.getOffscreenImageInfo(frameInfo.frameIndex);
-      auto depthInfo = renderer.getDepthImageInfo(frameInfo.frameIndex);
-      DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).writeImage(1, &depthInfo).overwrite(postProcessDescriptorSets[frameInfo.frameIndex]);
-
-      postProcessPush.inverseProjection = glm::inverse(camera->getProjection());
-      postProcessPush.projection        = camera->getProjection();
-
-      // Forward current debug mode so post-process can honor debug-only views
-      postProcessPush.debugMode = debugMode;
-
-      // God Rays Setup
-      if (fogSettings.enableGodRays)
-      {
-        SunInfo const   sunInfo = queryPrimaryDirectionalLightSunInfo(scene);
-        glm::vec3 const sunDir  = sunInfo.directionToSun;
-
-        glm::vec3 const sunWorldPos = camera->getPosition() + sunDir * 1000.0f;
-        glm::vec4 const clipPos     = camera->getProjection() * camera->getView() * glm::vec4(sunWorldPos, 1.0f);
-
-        if (sunInfo.valid && (sunInfo.intensity > 0.0f) && (clipPos.w > 0.0f))
-        {
-          glm::vec3 const ndc          = glm::vec3(clipPos) / clipPos.w;
-          glm::vec2 const screenPos    = glm::vec2(ndc.x, ndc.y) * 0.5f + 0.5f;
-          postProcessPush.sunScreenPos = glm::vec4(screenPos, 1.0f, 0.0f);
-        }
-        else
-        {
-          postProcessPush.sunScreenPos = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-        }
-
-        // Dynamic Time-of-Day Adjustment (Golden Hour Boost)
-        float const sunHeight           = sunInfo.directionToSun.y;
-        float       intensityMultiplier = 1.0f;
-        float       decayModifier       = 0.0f;
-
-        // Boost when sun is low (Height -0.1 to 0.5)
-        if (sunHeight > -0.1f && sunHeight < 0.5f)
-        {
-          // Peak effect at height 0.1 (just above horizon)
-          float const dist  = glm::abs(sunHeight - 0.1f);
-          float const boost = glm::max(0.0f, 1.0f - (dist / 0.4f)); // 0.0 to 1.0
-
-          intensityMultiplier = 1.0f + (boost * 2.0f); // Up to 3x intensity
-          decayModifier       = boost * 0.015f;        // Slightly increase decay for longer rays
-        }
-
-        postProcessPush.godRayDensity  = fogSettings.godRayDensity;
-        postProcessPush.godRayWeight   = fogSettings.godRayWeight * intensityMultiplier;
-        postProcessPush.godRayDecay    = glm::clamp(fogSettings.godRayDecay + decayModifier, 0.0f, 0.995f);
-        postProcessPush.godRayExposure = fogSettings.godRayExposure * intensityMultiplier;
-      }
-      else
-      {
-        postProcessPush.sunScreenPos = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-      }
-
-      postProcessingSystem->render(frameInfo, postProcessDescriptorSets[frameInfo.frameIndex], postProcessPush);
-
-      uiPhase(frameInfo, frameInfo.commandBuffer, state);
-      renderer.endSwapChainRenderPass(frameInfo.commandBuffer);
-    }));
-  }
-
-  void App::run()
-  {
-    auto currentTime   = std::chrono::high_resolution_clock::now();
-    auto lastHeartbeat = currentTime;
-
-    while (!window.shouldClose())
-    {
-      glfwPollEvents();
-
-      // F11: toggle exclusive fullscreen (edge-detect)
-      static bool f11WasDown = false;
-      int         f11State   = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
-      if (f11State == GLFW_PRESS && !f11WasDown)
-      {
-        window.toggleFullscreen();
-        f11WasDown = true;
-      }
-      else if (f11State == GLFW_RELEASE)
-      {
-        f11WasDown = false;
-      }
-
-      auto  newTime   = std::chrono::high_resolution_clock::now();
-      float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
-      currentTime     = newTime;
-      frameTime       = glm::min(frameTime, 0.1f);
-
-      update(frameTime);
-      render(frameTime);
-
-      // Heartbeat log to detect freezes (once per second)
-      if (std::chrono::duration<float>(newTime - lastHeartbeat).count() >= 1.0f)
-      {
-        lastHeartbeat = newTime;
-      }
+    } else {
+      std::cout << "[App] Failed to deserialize scene.json at startup" << '\n';
     }
-
-    device.WaitIdle();
   }
 
-  void App::update(float /*frameTime*/)
-  {
-    if (pendingUpdateCameraAfterSceneLoad)
-    {
-      pendingUpdateCameraAfterSceneLoad = false;
+  // 5. Setup Render Graph
+  renderPipeline = std::make_unique<RenderPipeline>(renderer);
+  setupRenderGraph();
+}
 
-      // After a scene load, assign to cameraEntity the CameraComponent of the first found camera entity in the loaded scene.
-      cameraEntity         = entt::null;
-      auto const& registry = scene.getRegistry();
-      auto        view     = registry.view<engine::CameraComponent>();
-      for (auto entity : view)
-      {
-        cameraEntity = entity;
+void App::setupScene() {
+  camera = std::make_unique<Camera>();
+  engineState.keyboard = std::make_unique<Keyboard>(window);
+  engineState.mouse = std::make_unique<Mouse>(window);
+  engineState.cameraEntity = engineState.scene.createEntity();
+  engineState.scene.getRegistry().emplace<TransformComponent>(engineState.cameraEntity);
+  engineState.scene.getRegistry().emplace<NameComponent>(engineState.cameraEntity, "Camera");
+  engineState.scene.getRegistry().get<TransformComponent>(engineState.cameraEntity).translation = {0.0f, -0.2f, -2.5f};
+  engineState.scene.getRegistry().emplace<CameraComponent>(engineState.cameraEntity);
+}
+
+void App::setupSystems() {
+  // All systems, descriptor pools and per-frame descriptor sets are now owned
+  // and initialized by EngineState::initialize(). Nothing to do here.
+  (void)device;
+  (void)renderer;  // keep unused param silence free if needed
+}
+
+void App::setupUI() {
+  engineState.imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
+  engineState.uiManager = std::make_unique<UIManager>(*engineState.imguiManager);
+
+  engineState.uiManager->setOnSaveScene([this]() {
+    std::cout << "Saving scene to scene.json..." << '\n';
+    sceneSerializer.serialize("scene.json");
+  });
+  engineState.uiManager->setOnLoadScene([this]() {
+    std::cout << "Loading scene from scene.json..." << '\n';
+    if (sceneSerializer.deserialize("scene.json")) {
+      // Reset transient selection state to avoid dangling entt entity references
+      engineState.selectedEntity = entt::null;
+      selectedObjectId = 0;
+      engineState.cameraEntity = entt::null;
+
+      // get the first camera entity in the loaded scene
+      auto const& registry = engineState.scene.getRegistry();
+      auto view = registry.view<engine::CameraComponent>();
+      for (auto entity : view) {
+        std::cout << "[App] Found camera entity in loaded scene\n";
+        engineState.cameraEntity = entity;
         break;
       }
-    }
 
-    if (auto* scenePanel = uiManager->getPanel<ScenePanel>())
-    {
-      scenePanel->processDelayedDeletions(selectedEntity, selectedObjectId);
-    }
-
-    // On-demand environment: only load skybox + generate IBL when the user enables skybox display.
-    if (showSkybox && (skybox == nullptr))
-    {
-      std::cout << "[App] Loading skybox..." << '\n';
-      skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
-
-      // Preferred path: load prebaked IBL (offline-generated) instead of regenerating at runtime.
-      // Convention: assets/textures/ibl/<SkyboxName>/
-      //   irradiance.vtex, prefilter.vtex, brdf_lut.vtex
-      if (!iblSystem->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama"))
-      {
-        std::cout << "[App] No prebaked IBL found for Yokohama (assets/textures/ibl/Yokohama). Using fallback until you regenerate/bake." << '\n';
-      }
-    }
-
-    // If the user turns off the skybox, also drop IBL back to fallback.
-    // Otherwise the last bound IBL descriptor set will keep being sampled.
-    if (!showSkybox && (skybox != nullptr))
-    {
-      std::cout << "[App] Skybox disabled. Resetting IBL to fallback." << '\n';
-      skybox.reset();
-      iblSystem->resetToFallback();
-    }
-
-    iblSystem->update();
-
-    // If IBL images/samplers changed (fallback -> generated, or regeneration), refresh descriptor sets.
-    uint64_t const newGen = iblSystem->getGenerationCounter();
-    if (newGen != iblGenerationCounter)
-    {
-      auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
-      auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
-      auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
-
-      for (auto& deferredIblDescriptorSet : deferredIblDescriptorSets)
-      {
-        DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).overwrite(deferredIblDescriptorSet);
+      // if there is no camera, create a default one
+      if (engineState.cameraEntity == entt::null) {
+        std::cout << "[App] Creating default camera for the scene\n";
+        engineState.cameraEntity = engineState.scene.createEntity();
+        engineState.scene.getRegistry().emplace<TransformComponent>(engineState.cameraEntity);
+        engineState.scene.getRegistry().emplace<NameComponent>(engineState.cameraEntity, "Camera");
+        engineState.scene.getRegistry().emplace<CameraComponent>(engineState.cameraEntity);
       }
 
-      iblGenerationCounter = newGen;
-    }
-  }
-
-  void App::render(float frameTime)
-  {
-    if (auto commandBuffer = renderer.beginFrame())
-    {
-      if (renderer.wasSwapChainRecreated())
+      // set the cameracomponent as primary
       {
-        postProcessingSystem = std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{postProcessSetLayout->getDescriptorSetLayout()});
+        std::cout << "[App] Setting loaded camera as primary camera\n";
+        auto& camComp = engineState.scene.getRegistry().get<CameraComponent>(engineState.cameraEntity);
       }
 
-      int const frameIndex = renderer.getFrameIndex();
+      std::cout << "[App] Successfully deserialized scene.json\n";
+    } else {
+      std::cout << "[App] Failed to deserialize scene.json\n";
+    }
 
-      int const                   prevFrameIndex = (frameIndex - 1 + SwapChain::maxFramesInFlight()) % SwapChain::maxFramesInFlight();
-      VkDescriptorImageInfo const hzbInfo        = renderer.getHzbImageInfo(prevFrameIndex);
-      renderContext->updateHZBDescriptorPrev(frameIndex, hzbInfo);
+    pendingUpdateCameraAfterSceneLoad = true;
+  });
+  engineState.uiManager->addPanel(std::make_unique<ModelImportPanel>(device, &engineState));
+  engineState.uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
+  engineState.uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.scene));
+  engineState.uiManager->addPanel(std::make_unique<LightsPanel>(engineState.scene));
+  engineState.uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
+}
 
-      // Also pre-bind the descriptor that points to the current frame's HZB image view.
-      // It is safe to reference the view before the image is written, as long as the pass ordering/barriers ensure
-      // it is only sampled after generation.
-      VkDescriptorImageInfo const hzbInfoCurrent = renderer.getHzbImageInfo(frameIndex);
-      renderContext->updateHZBDescriptorCurrent(frameIndex, hzbInfoCurrent);
+void App::setupRenderGraph() {
+  auto graph = std::make_unique<RenderGraph>();
 
-      FrameInfo frameInfo{
-              .frameIndex          = frameIndex,
-              .frameTime           = frameTime,
-              .commandBuffer       = commandBuffer,
-              .camera              = *camera,
-              .globalDescriptorSet = renderContext->getGlobalDescriptorSet(frameIndex),
-              .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-              .scene               = &scene,
-              .selectedObjectId    = selectedObjectId,
-              .selectedEntity      = selectedEntity,
-              .cameraEntity        = cameraEntity,
-              .morphManager        = animationSystem->getMorphManager(),
-              .extent              = renderer.getSwapChainExtent(),
-              .debugMode           = debugMode,
-      };
+  // 1. Update Pass
+  graph->addPass(std::make_unique<UpdatePass>(&engineState, renderer));
 
-      renderGraph->execute(frameInfo);
+  // 2. Compute Pass
+  graph->addPass(std::make_unique<ComputePass>(&engineState));
 
-      selectedObjectId = frameInfo.selectedObjectId;
-      selectedEntity   = frameInfo.selectedEntity;
-      cameraEntity     = frameInfo.cameraEntity;
+  // 3. Shadow Pass (EngineState-driven)
+  graph->addPass(std::make_unique<ShadowPass>(&engineState));
 
-      renderer.endFrame();
+  // 4. Depth Prepass (Offscreen Depth Only)
+  graph->addPass(std::make_unique<DepthPrepass>(&engineState, renderer));
+
+  // 5. HZB Build (same frame, after Depth Prepass)
+  graph->addPass(std::make_unique<HZBPass>(&engineState, renderer));
+
+  // 6. Offscreen Pass (Main Scene - Load depth from prepass)
+  graph->addPass(std::make_unique<OffscreenPass>(renderer, &engineState, device, debugMode));
+
+  // 7. Composition Pass (PostProcess + UI)
+  graph->addPass(std::make_unique<CompositionPass>(renderer, &engineState, *camera, window));
+
+  renderPipeline->setRenderGraph(std::move(graph));
+}
+
+void App::run() {
+  auto currentTime = std::chrono::high_resolution_clock::now();
+  auto lastHeartbeat = currentTime;
+
+  while (!window.shouldClose()) {
+    glfwPollEvents();
+
+    // F11: toggle exclusive fullscreen (edge-detect)
+    static bool f11WasDown = false;
+    int f11State = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
+    if (f11State == GLFW_PRESS && !f11WasDown) {
+      window.toggleFullscreen();
+      f11WasDown = true;
+    } else if (f11State == GLFW_RELEASE) {
+      f11WasDown = false;
+    }
+
+    auto newTime = std::chrono::high_resolution_clock::now();
+    float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
+    currentTime = newTime;
+    frameTime = glm::min(frameTime, 0.1f);
+
+    update(frameTime);
+    render(frameTime);
+
+    // Heartbeat log to detect freezes (once per second)
+    if (std::chrono::duration<float>(newTime - lastHeartbeat).count() >= 1.0f) {
+      lastHeartbeat = newTime;
     }
   }
 
-  void App::updatePhase(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    // Update systems (CPU-side processing)
+  device.WaitIdle();
+}
 
-    state.objectSelectionSystem.update(frameInfo);                      // Handle object selection with mouse
-    state.inputSystem.update(frameInfo);                                // Process keyboard/mouse input
-    engine::LODSystem::update(frameInfo);                               // Update Level of Detail
-    engine::CameraSystem::update(frameInfo, renderer.getAspectRatio()); // Update camera matrices
-  }
+void App::update(float /*frameTime*/) {
+  if (pendingUpdateCameraAfterSceneLoad) {
+    pendingUpdateCameraAfterSceneLoad = false;
 
-  void App::computePhase(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    // Update all animations (BEFORE render pass)
-    // - Updates AnimationControllers (interpolates morph weights, skeletal
-    // transforms)
-    // - Dispatches compute shaders for morph targets: baseVertices + deltas *
-    // weights → blended
-    state.animationSystem.update(frameInfo);
-  }
-
-  void App::shadowPhase(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    // Update uniform buffer with per-frame data FIRST (this also rotates point
-    // lights)
-    GlobalUbo ubo{};
-
-    // Keep target-locked directional/spot lights oriented correctly for this frame.
-    LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
-
-    // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
-    auto const lightCounts    = renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
-    ubo.pointLightCount       = lightCounts.point;
-    ubo.directionalLightCount = lightCounts.directional;
-    ubo.spotLightCount        = lightCounts.spot;
-
-    // Render shadow maps for all shadow-casting lights (mesh shader culling - Level 3)
-    state.shadowSystem.renderShadowMaps(frameInfo, state.shadowSettings);
-
-    ubo.projection = frameInfo.camera.getProjection();
-    ubo.view       = frameInfo.camera.getView();
-    ubo.invProjection = glm::inverse(ubo.projection);
-    ubo.invView = glm::inverse(ubo.view);
-    if (frameInfo.scene->getRegistry().valid(frameInfo.cameraEntity) && frameInfo.scene->getRegistry().all_of<TransformComponent>(frameInfo.cameraEntity))
-    {
-      ubo.cameraPosition = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
-    }
-    else
-    {
-      ubo.cameraPosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-    }
-    ubo.shadowLightCount            = state.shadowSystem.getShadowLightCount();
-    ubo.directionalCascadeCount     = state.shadowSystem.getDirectionalCascadeCount();
-    ubo.directionalCascadeBaseIndex = state.shadowSystem.getDirectionalCascadeBaseIndex();
-    ubo.directionalCascadeSplits    = state.shadowSystem.getDirectionalCascadeSplits();
-    ubo.cascadeBlendWidth           = state.shadowSettings.cascadeBlendWidth;
-    ubo.debugMode                   = debugMode;
-
-    // Fog Logic
-    glm::vec3 horizonColor   = fogSettings.color;
-    glm::vec3 zenithColor    = fogSettings.color;
-    float     currentDensity = fogSettings.density;
-
-    if (fogSettings.useSkyColor)
-    {
-      SunInfo const sunInfo         = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
-      float const   visualSunHeight = sunInfo.directionToSun.y;
-
-      glm::vec3 const dayHorizon = glm::vec3(0.7f, 0.8f, 0.9f);
-      glm::vec3 const dayZenith  = glm::vec3(0.2f, 0.4f, 0.8f);
-
-      glm::vec3 const sunsetHorizon = glm::vec3(0.8f, 0.4f, 0.1f);
-      glm::vec3 const sunsetZenith  = glm::vec3(0.2f, 0.2f, 0.4f);
-
-      // Darker night colors to match the starry sky and prevent "glowing fog"
-      glm::vec3 const nightHorizon = glm::vec3(0.01f, 0.01f, 0.02f);
-      glm::vec3 const nightZenith  = glm::vec3(0.0f, 0.0f, 0.005f);
-
-      if (visualSunHeight > 0.2f)
-      {
-        horizonColor = dayHorizon;
-        zenithColor  = dayZenith;
-      }
-      else if (visualSunHeight > -0.1f)
-      {
-        float const t = (visualSunHeight + 0.1f) / 0.3f;
-        horizonColor  = glm::mix(sunsetHorizon, dayHorizon, t);
-        zenithColor   = glm::mix(sunsetZenith, dayZenith, t);
-      }
-      else if (visualSunHeight > -0.3f)
-      {
-        float const t = (visualSunHeight + 0.3f) / 0.2f;
-        horizonColor  = glm::mix(nightHorizon, sunsetHorizon, t);
-        zenithColor   = glm::mix(nightZenith, sunsetZenith, t);
-
-        // Reduce density at night (fade from 100% to 20%)
-        currentDensity = fogSettings.density * glm::mix(0.2f, 1.0f, t);
-      }
-      else
-      {
-        horizonColor   = nightHorizon;
-        zenithColor    = nightZenith;
-        currentDensity = fogSettings.density * 0.2f; // 20% density at night
-      }
-    }
-
-    ubo.fogColor         = glm::vec4(horizonColor, currentDensity);
-    ubo.fogZenithColor   = glm::vec4(zenithColor, 0.0f);
-    ubo.fogHeight        = fogSettings.height;
-    ubo.fogHeightDensity = fogSettings.heightDensity;
-
-    // HZB Occlusion Culling Settings
-    ubo.hzbMaxMipLevel     = hzbSettings.maxMipLevel;
-    ubo.hzbMinScreenPixels = hzbSettings.minScreenPixels;
-    ubo.hzbScreenSizeScale = hzbSettings.screenSizeScale;
-    ubo.hzbEnabled         = hzbSettings.enabled;
-
-    // Calculate Frustum Planes for Culling (Normalized)
-    glm::mat4 const vp   = ubo.projection * ubo.view;
-    glm::mat4       vpT  = glm::transpose(vp);
-    glm::vec4 const row0 = vpT[0];
-    glm::vec4 const row1 = vpT[1];
-    glm::vec4 const row2 = vpT[2];
-    glm::vec4 const row3 = vpT[3];
-
-    ubo.frustumPlanes[0] = row3 + row0; // Left
-    ubo.frustumPlanes[1] = row3 - row0; // Right
-    ubo.frustumPlanes[2] = row3 + row1; // Bottom
-    ubo.frustumPlanes[3] = row3 - row1; // Top
-    ubo.frustumPlanes[4] = row2;        // Near
-    ubo.frustumPlanes[5] = row3 - row2; // Far
-
-    for (auto& frustumPlane : ubo.frustumPlanes)
-    {
-      float const len = glm::length(glm::vec3(frustumPlane));
-      frustumPlane /= len;
-    }
-
-    // Copy all light space matrices
-    for (int i = 0; i < ubo.shadowLightCount; i++)
-    {
-      ubo.lightSpaceMatrices[i] = state.shadowSystem.getLightSpaceMatrix(i);
-    }
-
-    // Copy cube shadow map data for point lights
-    ubo.cubeShadowLightCount = state.shadowSystem.getCubeShadowLightCount();
-    for (int i = 0; i < ubo.cubeShadowLightCount && i < 4; i++)
-    {
-      ubo.pointLightShadowData[i] = glm::vec4(state.shadowSystem.getPointLightPosition(i), state.shadowSystem.getPointLightRange(i));
-    }
-
-    state.renderContext.updateUBO(frameInfo.frameIndex, ubo);
-  }
-
-  void App::renderScenePhase(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    renderSkyPass(frameInfo, state);
-    renderGeometryPass(frameInfo, state);
-    renderDebugPass(frameInfo, state);
-  }
-
-  void App::renderSkyPass(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    // Skybox currently renders inside the offscreen render pass.
-    // This is intentionally isolated so we can later move it after the opaque pass.
-    if (state.skybox != nullptr)
-    {
-      state.skyboxRenderSystem.render(frameInfo, state.skybox, state.skySettings);
+    // After a scene load, assign to engineState.cameraEntity the CameraComponent of the first found camera entity in the loaded scene.
+    engineState.cameraEntity = entt::null;
+    auto const& registry = engineState.scene.getRegistry();
+    auto view = registry.view<engine::CameraComponent>();
+    for (auto entity : view) {
+      engineState.cameraEntity = entity;
+      break;
     }
   }
 
-  void App::renderGeometryPass(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    // Legacy helper; the Offscreen render-graph pass now drives the multi-pass mesh pipeline directly.
-    (void)frameInfo;
-    (void)state;
+  if (auto* scenePanel = engineState.uiManager->getPanel<ScenePanel>()) {
+    scenePanel->processDelayedDeletions(engineState.selectedEntity, selectedObjectId);
   }
 
-  void App::renderDebugPass(FrameInfo& frameInfo, GameLoopState& state)
-  {
-    if (state.showGrid)
-    {
-      state.gridRenderSystem.render(frameInfo);
+  // On-demand environment: only load skybox + generate IBL when the user enables skybox display.
+  if (engineState.showSkybox && (engineState.skybox == nullptr)) {
+    std::cout << "[App] Loading skybox..." << '\n';
+    engineState.skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
+
+    // Preferred path: load prebaked IBL (offline-generated) instead of regenerating at runtime.
+    if (!engineState.iblSystem->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama")) {
+      std::cout << "[App] No prebaked IBL found for Yokohama (assets/textures/ibl/Yokohama). Using fallback until you regenerate/bake." << '\n';
     }
-    state.lightSystem.render(frameInfo);  // Draw light debug visualizations
-    state.cameraSystem.render(frameInfo); // Draw camera debug visualizations
   }
 
-  void App::uiPhase(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, GameLoopState& state)
-  {
-    state.uiManager.render(frameInfo, commandBuffer, window.isCursorVisible());
+  // If the user turns off the skybox, also drop IBL back to fallback.
+  if (!engineState.showSkybox && (engineState.skybox != nullptr)) {
+    std::cout << "[App] Skybox disabled. Resetting IBL to fallback." << '\n';
+    engineState.skybox.reset();
+    engineState.iblSystem->resetToFallback();
   }
 
-} // namespace engine
+  engineState.iblSystem->update();
+
+  // If IBL images/samplers changed (fallback -> generated, or regeneration), refresh descriptor sets.
+  uint64_t const newGen = engineState.iblSystem->getGenerationCounter();
+  if (newGen != iblGenerationCounter) {
+    auto irradianceInfo = engineState.iblSystem->getIrradianceDescriptorInfo();
+    auto prefilterInfo = engineState.iblSystem->getPrefilteredDescriptorInfo();
+    auto brdfInfo = engineState.iblSystem->getBRDFLUTDescriptorInfo();
+
+    for (auto& deferredIblDescriptorSet : engineState.deferredIblDescriptorSets) {
+      DescriptorWriter(*engineState.deferredIblSetLayout, *engineState.deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).overwrite(deferredIblDescriptorSet);
+    }
+
+    iblGenerationCounter = newGen;
+  }
+}
+
+void App::render(float frameTime) {
+  if (auto commandBuffer = renderer.beginFrame()) {
+    if (renderer.wasSwapChainRecreated()) {
+      // PostProcessingSystem lives in EngineState — recreate via EngineState if needed.
+      engineState.postProcessingSystem = std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{engineState.postProcessSetLayout->getDescriptorSetLayout()});
+    }
+
+    int const frameIndex = renderer.getFrameIndex();
+
+    int const prevFrameIndex = (frameIndex - 1 + SwapChain::maxFramesInFlight()) % SwapChain::maxFramesInFlight();
+    VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(prevFrameIndex);
+    engineState.renderContext->updateHZBDescriptorPrev(frameIndex, hzbInfo);
+
+    // Also pre-bind the descriptor that points to the current frame's HZB image view.
+    VkDescriptorImageInfo const hzbInfoCurrent = renderer.getHzbImageInfo(frameIndex);
+    engineState.renderContext->updateHZBDescriptorCurrent(frameIndex, hzbInfoCurrent);
+
+    FrameInfo frameInfo{
+        .frameIndex = frameIndex,
+        .frameTime = frameTime,
+        .commandBuffer = commandBuffer,
+        .camera = *camera,
+        .globalDescriptorSet = engineState.renderContext->getGlobalDescriptorSet(frameIndex),
+        .globalTextureSet = resourceManager.getTextureManager().getDescriptorSet(),
+        .scene = &engineState.scene,
+        .selectedObjectId = selectedObjectId,
+        .selectedEntity = engineState.selectedEntity,
+        .cameraEntity = engineState.cameraEntity,
+        .morphManager = engineState.animationSystem->getMorphManager(),
+        .extent = renderer.getSwapChainExtent(),
+        .debugMode = debugMode,
+    };
+
+    renderPipeline->execute(frameInfo);
+
+    selectedObjectId = frameInfo.selectedObjectId;
+    engineState.selectedEntity = frameInfo.selectedEntity;
+    engineState.cameraEntity = frameInfo.cameraEntity;
+
+    renderer.endFrame();
+  }
+}
+
+}  // namespace engine

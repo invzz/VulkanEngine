@@ -9,14 +9,12 @@ using namespace engine;
 // DebugMessenger Tests
 // =============================================================================
 
-TEST(DebugMessenger, GivenDefaultMessenger_WhenCreated_ThenIsInvalidHandle)
-{
+TEST(DebugMessenger, GivenDefaultMessenger_WhenCreated_ThenIsInvalidHandle) {
   DebugMessenger dbg;
   EXPECT_FALSE(dbg);
 }
 
-TEST(DebugMessenger, GivenValidInstance_WhenMessengerCreated_ThenBecomesValid)
-{
+TEST(DebugMessenger, GivenValidInstance_WhenMessengerCreated_ThenBecomesValid) {
   Instance inst;
   inst.create({VK_EXT_DEBUG_UTILS_EXTENSION_NAME}, {"VK_LAYER_KHRONOS_validation"});
   EXPECT_TRUE(inst);
@@ -26,8 +24,7 @@ TEST(DebugMessenger, GivenValidInstance_WhenMessengerCreated_ThenBecomesValid)
   EXPECT_TRUE(dbg);
 }
 
-TEST(DebugMessenger, GivenValidMessenger_WhenResetCalled_ThenBecomesInvalid)
-{
+TEST(DebugMessenger, GivenValidMessenger_WhenResetCalled_ThenBecomesInvalid) {
   Instance inst;
   inst.create({VK_EXT_DEBUG_UTILS_EXTENSION_NAME}, {"VK_LAYER_KHRONOS_validation"});
 
@@ -39,8 +36,7 @@ TEST(DebugMessenger, GivenValidMessenger_WhenResetCalled_ThenBecomesInvalid)
   EXPECT_FALSE(dbg);
 }
 
-TEST(DebugMessenger, GivenInvalidMessenger_WhenResetCalledMultipleTimes_ThenNoThrow)
-{
+TEST(DebugMessenger, GivenInvalidMessenger_WhenResetCalledMultipleTimes_ThenNoThrow) {
   DebugMessenger dbg;
   EXPECT_NO_THROW(dbg.reset());
   EXPECT_NO_THROW(dbg.reset());

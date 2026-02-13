@@ -12,49 +12,50 @@
 
 namespace engine {
 
+/**
+ * @brief Manages all UI panels
+ */
+class UIManager {
+ public:
+  explicit UIManager(ImGuiManager& imguiManager);
+
   /**
-   * @brief Manages all UI panels
+   * @brief Add a panel to the manager
    */
-  class UIManager
-  {
-  public:
-    explicit UIManager(ImGuiManager& imguiManager);
+  void addPanel(std::unique_ptr<UIPanel> panel);
 
-    /**
-     * @brief Add a panel to the manager
-     */
-    void addPanel(std::unique_ptr<UIPanel> panel);
+  /**
+   * @brief Render all panels
+   */
+  void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer);
+  void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI);
 
-    /**
-     * @brief Render all panels
-     */
-    void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer);
-    void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI);
-
-    /**
-     * @brief Get a specific panel by type (returns nullptr if not found)
-     */
-    template <typename T> T* getPanel()
-    {
-      for (auto& panel : panels_)
-      {
-        if (auto* typed = dynamic_cast<T*>(panel.get()))
-        {
-          return typed;
-        }
+  /**
+   * @brief Get a specific panel by type (returns nullptr if not found)
+   */
+  template <typename T>
+  T* getPanel() {
+    for (auto& panel : panels_) {
+      if (auto* typed = dynamic_cast<T*>(panel.get())) {
+        return typed;
       }
-      return nullptr;
     }
+    return nullptr;
+  }
 
-    void setOnSaveScene(std::function<void()> callback) { onSaveScene_ = std::move(callback); }
-    void setOnLoadScene(std::function<void()> callback) { onLoadScene_ = std::move(callback); }
+  void setOnSaveScene(std::function<void()> callback) {
+    onSaveScene_ = std::move(callback);
+  }
+  void setOnLoadScene(std::function<void()> callback) {
+    onLoadScene_ = std::move(callback);
+  }
 
-  private:
-    ImGuiManager&                         imguiManager_;
-    std::vector<std::unique_ptr<UIPanel>> panels_;
-    std::function<void()>                 onSaveScene_;
-    std::function<void()>                 onLoadScene_;
-  };
-} // namespace engine
+ private:
+  ImGuiManager& imguiManager_;
+  std::vector<std::unique_ptr<UIPanel>> panels_;
+  std::function<void()> onSaveScene_;
+  std::function<void()> onLoadScene_;
+};
+}  // namespace engine
 
-#endif // EDITOR_UIMANAGER_HPP
+#endif  // EDITOR_UIMANAGER_HPP

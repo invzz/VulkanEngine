@@ -10,100 +10,110 @@
 
 namespace engine {
 
+/**
+ * @brief Cube shadow map for omnidirectional point light shadows
+ *
+ * Creates a depth cube map (6 faces) for point light shadow mapping.
+ * Each face captures depth from the light's position in one direction.
+ */
+class CubeShadowMap {
+ public:
+  CubeShadowMap(Device& device, uint32_t size = 1024);
+  ~CubeShadowMap();
+
+  CubeShadowMap(const CubeShadowMap&) = delete;
+  CubeShadowMap& operator=(const CubeShadowMap&) = delete;
+
+  [[nodiscard]] VkRenderPass getRenderPass() const {
+    return renderPass_;
+  }
+  [[nodiscard]] VkImageView getCubeImageView() const {
+    return cubeImageView_;
+  }
+  [[nodiscard]] VkSampler getSampler() const {
+    return sampler_;
+  }
+
+  [[nodiscard]] uint32_t getSize() const {
+    return size_;
+  }
+
   /**
-   * @brief Cube shadow map for omnidirectional point light shadows
-   *
-   * Creates a depth cube map (6 faces) for point light shadow mapping.
-   * Each face captures depth from the light's position in one direction.
+   * @brief Get framebuffer for a specific cube face
+   * @param face Face index (0-5: +X, -X, +Y, -Y, +Z, -Z)
    */
-  class CubeShadowMap
-  {
-  public:
-    CubeShadowMap(Device& device, uint32_t size = 1024);
-    ~CubeShadowMap();
+  [[nodiscard]] VkFramebuffer getFramebuffer(int face) const {
+    return framebuffers_[face];
+  }
 
-    CubeShadowMap(const CubeShadowMap&)            = delete;
-    CubeShadowMap& operator=(const CubeShadowMap&) = delete;
+  /**
+   * @brief Get view matrix for a specific cube face
+   * @param lightPos Position of the point light
+   * @param face Face index (0-5)
+   */
+  static glm::mat4 getFaceViewMatrix(const glm::vec3& lightPos, int face);
 
-    [[nodiscard]] VkRenderPass getRenderPass() const { return renderPass_; }
-    [[nodiscard]] VkImageView  getCubeImageView() const { return cubeImageView_; }
-    [[nodiscard]] VkSampler    getSampler() const { return sampler_; }
+  /**
+   * @brief Get projection matrix for cube shadow map
+   * @param nearPlane Near plane distance
+   * @param farPlane Far plane distance (light range)
+   */
+  static glm::mat4 getProjectionMatrix(float nearPlane, float farPlane);
 
-    [[nodiscard]] uint32_t getSize() const { return size_; }
+  [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const {
+    return VkDescriptorImageInfo{
+        .sampler = sampler_,
+        .imageView = cubeImageView_,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+    };
+  }
 
-    /**
-     * @brief Get framebuffer for a specific cube face
-     * @param face Face index (0-5: +X, -X, +Y, -Y, +Z, -Z)
-     */
-    [[nodiscard]] VkFramebuffer getFramebuffer(int face) const { return framebuffers_[face]; }
+  /**
+   * @brief Transition all faces to attachment optimal before rendering
+   * Call this ONCE before rendering all 6 faces
+   */
+  void transitionToAttachmentLayout(VkCommandBuffer commandBuffer);
 
-    /**
-     * @brief Get view matrix for a specific cube face
-     * @param lightPos Position of the point light
-     * @param face Face index (0-5)
-     */
-    static glm::mat4 getFaceViewMatrix(const glm::vec3& lightPos, int face);
+  /**
+   * @brief Transition all faces to shader read layout after rendering
+   * Call this ONCE after rendering all 6 faces
+   */
+  void transitionToShaderReadLayout(VkCommandBuffer commandBuffer);
 
-    /**
-     * @brief Get projection matrix for cube shadow map
-     * @param nearPlane Near plane distance
-     * @param farPlane Far plane distance (light range)
-     */
-    static glm::mat4 getProjectionMatrix(float nearPlane, float farPlane);
+  /**
+   * @brief Begin render pass for a specific cube face
+   */
+  void beginRenderPass(VkCommandBuffer commandBuffer, int face);
 
-    [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const
-    {
-      return VkDescriptorImageInfo{
-              .sampler     = sampler_,
-              .imageView   = cubeImageView_,
-              .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-      };
-    }
+  /**
+   * @brief End render pass
+   */
+  static void endRenderPass(VkCommandBuffer commandBuffer);
 
-    /**
-     * @brief Transition all faces to attachment optimal before rendering
-     * Call this ONCE before rendering all 6 faces
-     */
-    void transitionToAttachmentLayout(VkCommandBuffer commandBuffer);
+ private:
+  void createDepthResources();
+  void createRenderPass();
+  void createFramebuffers();
+  void createSampler();
 
-    /**
-     * @brief Transition all faces to shader read layout after rendering
-     * Call this ONCE after rendering all 6 faces
-     */
-    void transitionToShaderReadLayout(VkCommandBuffer commandBuffer);
+  Device& device_;
 
-    /**
-     * @brief Begin render pass for a specific cube face
-     */
-    void beginRenderPass(VkCommandBuffer commandBuffer, int face);
+  uint32_t size_;
 
-    /**
-     * @brief End render pass
-     */
-    static void endRenderPass(VkCommandBuffer commandBuffer);
+  VkImage depthImage_ = VK_NULL_HANDLE;
+  VkDeviceMemory depthImageMemory_ = VK_NULL_HANDLE;
+  VkImageView cubeImageView_ = VK_NULL_HANDLE;        // View for the entire cube
+  VkImageView faceImageViews_[6] = {VK_NULL_HANDLE};  // Views for each face
+  VkSampler sampler_ = VK_NULL_HANDLE;
+  VkRenderPass renderPass_ = VK_NULL_HANDLE;
+  VkFramebuffer framebuffers_[6] = {VK_NULL_HANDLE};
+  VkFormat depthFormat_ = VK_FORMAT_D32_SFLOAT;
 
-  private:
-    void createDepthResources();
-    void createRenderPass();
-    void createFramebuffers();
-    void createSampler();
+  [[nodiscard]] VkImage getImage() const {
+    return depthImage_;
+  }
+};
 
-    Device& device_;
+}  // namespace engine
 
-    uint32_t size_;
-
-    VkImage        depthImage_        = VK_NULL_HANDLE;
-    VkDeviceMemory depthImageMemory_  = VK_NULL_HANDLE;
-    VkImageView    cubeImageView_     = VK_NULL_HANDLE;   // View for the entire cube
-    VkImageView    faceImageViews_[6] = {VK_NULL_HANDLE}; // Views for each face
-    VkSampler      sampler_           = VK_NULL_HANDLE;
-    VkRenderPass   renderPass_        = VK_NULL_HANDLE;
-    VkFramebuffer  framebuffers_[6]   = {VK_NULL_HANDLE};
-    VkFormat       depthFormat_       = VK_FORMAT_D32_SFLOAT;
-
-    [[nodiscard]] VkImage getImage() const { return depthImage_; }
-  };
-
-} // namespace engine
-
-#endif // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_CUBESHADOWMAP_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_CUBESHADOWMAP_HPP

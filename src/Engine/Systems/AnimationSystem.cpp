@@ -12,10 +12,10 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/quaternion_common.hpp"
@@ -23,152 +23,123 @@
 
 namespace engine {
 
-  AnimationSystem::AnimationSystem(Device& device) : device_(device)
-  {
-    try
-    {
-      morphManager_ = std::make_unique<MorphTargetManager>(device);
-      std::cout << "[AnimationSystem] Initialized successfully" << '\n';
-    }
-    catch (const std::exception& e)
-    {
-      std::cerr << "[AnimationSystem] ERROR: " << e.what() << '\n';
-      throw;
-    }
+AnimationSystem::AnimationSystem(Device& device) : device_(device) {
+  try {
+    morphManager_ = std::make_unique<MorphTargetManager>(device);
+    std::cout << "[AnimationSystem] Initialized successfully" << '\n';
+  } catch (const std::exception& e) {
+    std::cerr << "[AnimationSystem] ERROR: " << e.what() << '\n';
+    throw;
   }
+}
 
-  AnimationSystem::~AnimationSystem() = default;
+AnimationSystem::~AnimationSystem() = default;
 
-  void AnimationSystem::update(FrameInfo& frameInfo)
-  {
-    // Step 1: Update animation components (CPU-side: interpolate
-    // weights/transforms)
-    updateAnimations(frameInfo);
+void AnimationSystem::update(FrameInfo& frameInfo) {
+  // Step 1: Update animation components (CPU-side: interpolate
+  // weights/transforms)
+  updateAnimations(frameInfo);
 
-    // Step 2: Dispatch morph target compute shaders (GPU-side: blend vertices)
-    updateMorphTargets(frameInfo);
-  }
+  // Step 2: Dispatch morph target compute shaders (GPU-side: blend vertices)
+  updateMorphTargets(frameInfo);
+}
 
-  void AnimationSystem::updateAnimations(FrameInfo& frameInfo)
-  {
-    auto view = frameInfo.scene->getRegistry().view<AnimationComponent, TransformComponent>();
-    for (auto entity : view)
-    {
-      auto [anim, transform] = view.get<AnimationComponent, TransformComponent>(entity);
+void AnimationSystem::updateAnimations(FrameInfo& frameInfo) {
+  auto view = frameInfo.scene->getRegistry().view<AnimationComponent, TransformComponent>();
+  for (auto entity : view) {
+    auto [anim, transform] = view.get<AnimationComponent, TransformComponent>(entity);
 
-      if (!anim.isPlaying || !anim.model || anim.currentAnimationIndex < 0)
-      {
-        continue;
+    if (!anim.isPlaying || !anim.model || anim.currentAnimationIndex < 0) {
+      continue;
+    }
+
+    const auto& animation = anim.model->getAnimations()[anim.currentAnimationIndex];
+
+    // Update time
+    anim.currentTime += frameInfo.frameTime * anim.playbackSpeed;
+
+    // Handle looping
+    if (anim.currentTime > animation.duration) {
+      if (anim.loop) {
+        anim.currentTime = fmod(anim.currentTime, animation.duration);
+      } else {
+        anim.currentTime = animation.duration;
+        anim.isPlaying = false;
       }
+    }
 
-      const auto& animation = anim.model->getAnimations()[anim.currentAnimationIndex];
+    // Update node transforms based on animation
+    updateNodeTransforms(anim, animation);
 
-      // Update time
-      anim.currentTime += frameInfo.frameTime * anim.playbackSpeed;
+    // Apply root node transform to TransformComponent
+    // Find the root node (first node without a parent)
+    int rootNodeIndex = -1;
+    const auto& nodes = anim.model->getNodes();
 
-      // Handle looping
-      if (anim.currentTime > animation.duration)
-      {
-        if (anim.loop)
-        {
-          anim.currentTime = fmod(anim.currentTime, animation.duration);
-        }
-        else
-        {
-          anim.currentTime = animation.duration;
-          anim.isPlaying   = false;
-        }
-      }
-
-      // Update node transforms based on animation
-      updateNodeTransforms(anim, animation);
-
-      // Apply root node transform to TransformComponent
-      // Find the root node (first node without a parent)
-      int         rootNodeIndex = -1;
-      const auto& nodes         = anim.model->getNodes();
-
-      for (size_t i = 0; i < nodes.size(); i++)
-      {
-        bool isRoot = true;
-        for (const auto& node : nodes)
-        {
-          const auto& children = node.children;
-          if (std::ranges::find(children, static_cast<int>(i)) != children.end())
-          {
-            isRoot = false;
-            break;
-          }
-        }
-
-        if (isRoot)
-        {
-          rootNodeIndex = static_cast<int>(i);
+    for (size_t i = 0; i < nodes.size(); i++) {
+      bool isRoot = true;
+      for (const auto& node : nodes) {
+        const auto& children = node.children;
+        if (std::ranges::find(children, static_cast<int>(i)) != children.end()) {
+          isRoot = false;
           break;
         }
       }
 
-      if (rootNodeIndex >= 0 && std::cmp_less(rootNodeIndex, nodes.size()))
-      {
-        const auto& rootNode  = nodes[rootNodeIndex];
-        transform.translation = rootNode.translation;
-        transform.rotation    = glm::eulerAngles(rootNode.rotation);
-        transform.scale       = rootNode.scale * transform.baseScale;
+      if (isRoot) {
+        rootNodeIndex = static_cast<int>(i);
+        break;
       }
     }
+
+    if (rootNodeIndex >= 0 && std::cmp_less(rootNodeIndex, nodes.size())) {
+      const auto& rootNode = nodes[rootNodeIndex];
+      transform.translation = rootNode.translation;
+      transform.rotation = glm::eulerAngles(rootNode.rotation);
+      transform.scale = rootNode.scale * transform.baseScale;
+    }
+  }
+}
+
+void AnimationSystem::updateMorphTargets(FrameInfo& frameInfo) {
+  if (!morphManager_) {
+    return;
   }
 
-  void AnimationSystem::updateMorphTargets(FrameInfo& frameInfo)
-  {
-    if (!morphManager_)
-    {
-      return;
-    }
+  auto view = frameInfo.scene->getRegistry().view<ModelComponent>();
+  for (auto entity : view) {
+    auto& modelComp = view.get<ModelComponent>(entity);
 
-    auto view = frameInfo.scene->getRegistry().view<ModelComponent>();
-    for (auto entity : view)
-    {
-      auto& modelComp = view.get<ModelComponent>(entity);
-
-      if (modelComp.model && modelComp.model->hasMorphTargets())
-      {
-        // Initialize GPU buffers for new models
-        if (!morphManager_->isModelInitialized(modelComp.model.get()))
-        {
-          try
-          {
-            morphManager_->initializeModel(modelComp.model);
-          }
-          catch (const std::exception& e)
-          {
-            std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t)entity << ": " << e.what() << '\n';
-            continue;
-          }
+    if (modelComp.model && modelComp.model->hasMorphTargets()) {
+      // Initialize GPU buffers for new models
+      if (!morphManager_->isModelInitialized(modelComp.model.get())) {
+        try {
+          morphManager_->initializeModel(modelComp.model);
+        } catch (const std::exception& e) {
+          std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t)entity << ": " << e.what() << '\n';
+          continue;
         }
-
-        // Dispatch compute shader
-        morphManager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
       }
+
+      // Dispatch compute shader
+      morphManager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
     }
   }
+}
 
-  void AnimationSystem::updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation)
-  {
-    // Apply animation to nodes
-    auto& nodes = animComp.model->getNodes();
+void AnimationSystem::updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation) {
+  // Apply animation to nodes
+  auto& nodes = animComp.model->getNodes();
 
-    for (const auto& channel : animation.channels)
-    {
-      if (channel.targetNode < 0 || std::cmp_greater_equal(channel.targetNode, nodes.size()))
-      {
-        continue;
-      }
+  for (const auto& channel : animation.channels) {
+    if (channel.targetNode < 0 || std::cmp_greater_equal(channel.targetNode, nodes.size())) {
+      continue;
+    }
 
-      const auto& sampler = animation.samplers[channel.samplerIndex];
-      auto&       node    = nodes[channel.targetNode];
+    const auto& sampler = animation.samplers[channel.samplerIndex];
+    auto& node = nodes[channel.targetNode];
 
-      switch (channel.path)
-      {
+    switch (channel.path) {
       case Model::AnimationChannel::TRANSLATION:
         node.translation = interpolateVec3(sampler, animComp.currentTime);
         break;
@@ -181,160 +152,136 @@ namespace engine {
       case Model::AnimationChannel::WEIGHTS:
         node.morphWeights = interpolateMorphWeights(sampler, animComp.currentTime);
         break;
-      }
-    }
-
-    // Recompute global transforms
-    for (size_t i = 0; i < nodes.size(); i++)
-    {
-      bool isRoot = true;
-      for (auto& node : nodes)
-      {
-        const auto& children = node.children;
-        if (std::ranges::find(children, static_cast<int>(i)) != children.end())
-        {
-          isRoot = false;
-          break;
-        }
-      }
-
-      if (isRoot)
-      {
-        computeGlobalTransforms(animComp, static_cast<int>(i), glm::mat4(1.0f));
-      }
     }
   }
 
-  void AnimationSystem::computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform)
-  {
-    if (nodeIndex < 0 || std::cmp_greater_equal(nodeIndex, animComp.model->getNodes().size()))
-    {
-      return;
-    }
-
-    const auto&     node           = animComp.model->getNodes()[nodeIndex];
-    glm::mat4 const localTransform = node.getLocalTransform();
-
-    if (std::cmp_less(nodeIndex, animComp.nodeTransforms.size()))
-    {
-      animComp.nodeTransforms[nodeIndex] = parentTransform * localTransform;
-    }
-
-    for (int const childIdx : node.children)
-    {
-      computeGlobalTransforms(animComp, childIdx, animComp.nodeTransforms[nodeIndex]);
-    }
-  }
-
-  glm::vec3 AnimationSystem::interpolateVec3(const Model::AnimationSampler& sampler, float time)
-  {
-    if (sampler.times.empty() || sampler.translations.empty())
-    {
-      return glm::vec3(0.0f);
-    }
-
-    if (time <= sampler.times.front()) return sampler.translations.front();
-    if (time >= sampler.times.back()) return sampler.translations.back();
-
-    size_t nextIndex = 0;
-    for (size_t i = 0; i < sampler.times.size() - 1; i++)
-    {
-      if (time >= sampler.times[i] && time < sampler.times[i + 1])
-      {
-        nextIndex = i + 1;
+  // Recompute global transforms
+  for (size_t i = 0; i < nodes.size(); i++) {
+    bool isRoot = true;
+    for (auto& node : nodes) {
+      const auto& children = node.children;
+      if (std::ranges::find(children, static_cast<int>(i)) != children.end()) {
+        isRoot = false;
         break;
       }
     }
 
-    size_t const prevIndex = nextIndex - 1;
-
-    if (sampler.interpolation == Model::AnimationSampler::STEP)
-    {
-      return sampler.translations[prevIndex];
+    if (isRoot) {
+      computeGlobalTransforms(animComp, static_cast<int>(i), glm::mat4(1.0f));
     }
+  }
+}
 
-    float const t0     = sampler.times[prevIndex];
-    float const t1     = sampler.times[nextIndex];
-    float const factor = (time - t0) / (t1 - t0);
-
-    return glm::mix(sampler.translations[prevIndex], sampler.translations[nextIndex], factor);
+void AnimationSystem::computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform) {
+  if (nodeIndex < 0 || std::cmp_greater_equal(nodeIndex, animComp.model->getNodes().size())) {
+    return;
   }
 
-  glm::quat AnimationSystem::interpolateQuat(const Model::AnimationSampler& sampler, float time)
-  {
-    if (sampler.times.empty() || sampler.rotations.empty())
-    {
-      return {1.0f, 0.0f, 0.0f, 0.0f};
-    }
+  const auto& node = animComp.model->getNodes()[nodeIndex];
+  glm::mat4 const localTransform = node.getLocalTransform();
 
-    if (time <= sampler.times.front()) return sampler.rotations.front();
-    if (time >= sampler.times.back()) return sampler.rotations.back();
-
-    size_t nextIndex = 0;
-    for (size_t i = 0; i < sampler.times.size() - 1; i++)
-    {
-      if (time >= sampler.times[i] && time < sampler.times[i + 1])
-      {
-        nextIndex = i + 1;
-        break;
-      }
-    }
-
-    size_t const prevIndex = nextIndex - 1;
-
-    if (sampler.interpolation == Model::AnimationSampler::STEP)
-    {
-      return sampler.rotations[prevIndex];
-    }
-
-    float const t0     = sampler.times[prevIndex];
-    float const t1     = sampler.times[nextIndex];
-    float const factor = (time - t0) / (t1 - t0);
-
-    return glm::slerp(sampler.rotations[prevIndex], sampler.rotations[nextIndex], factor);
+  if (std::cmp_less(nodeIndex, animComp.nodeTransforms.size())) {
+    animComp.nodeTransforms[nodeIndex] = parentTransform * localTransform;
   }
 
-  std::vector<float> AnimationSystem::interpolateMorphWeights(const Model::AnimationSampler& sampler, float time)
-  {
-    if (sampler.times.empty() || sampler.morphWeights.empty())
-    {
-      return {};
-    }
+  for (int const childIdx : node.children) {
+    computeGlobalTransforms(animComp, childIdx, animComp.nodeTransforms[nodeIndex]);
+  }
+}
 
-    if (time <= sampler.times.front()) return sampler.morphWeights.front();
-    if (time >= sampler.times.back()) return sampler.morphWeights.back();
-
-    size_t nextIndex = 0;
-    for (size_t i = 0; i < sampler.times.size() - 1; i++)
-    {
-      if (time >= sampler.times[i] && time < sampler.times[i + 1])
-      {
-        nextIndex = i + 1;
-        break;
-      }
-    }
-
-    size_t const prevIndex = nextIndex - 1;
-
-    if (sampler.interpolation == Model::AnimationSampler::STEP)
-    {
-      return sampler.morphWeights[prevIndex];
-    }
-
-    float const t0     = sampler.times[prevIndex];
-    float const t1     = sampler.times[nextIndex];
-    float const factor = (time - t0) / (t1 - t0);
-
-    const auto&        prevWeights = sampler.morphWeights[prevIndex];
-    const auto&        nextWeights = sampler.morphWeights[nextIndex];
-    std::vector<float> result(prevWeights.size());
-
-    for (size_t i = 0; i < prevWeights.size(); i++)
-    {
-      result[i] = (prevWeights[i] * (1.0f - factor)) + (nextWeights[i] * factor);
-    }
-
-    return result;
+glm::vec3 AnimationSystem::interpolateVec3(const Model::AnimationSampler& sampler, float time) {
+  if (sampler.times.empty() || sampler.translations.empty()) {
+    return glm::vec3(0.0f);
   }
 
-} // namespace engine
+  if (time <= sampler.times.front()) return sampler.translations.front();
+  if (time >= sampler.times.back()) return sampler.translations.back();
+
+  size_t nextIndex = 0;
+  for (size_t i = 0; i < sampler.times.size() - 1; i++) {
+    if (time >= sampler.times[i] && time < sampler.times[i + 1]) {
+      nextIndex = i + 1;
+      break;
+    }
+  }
+
+  size_t const prevIndex = nextIndex - 1;
+
+  if (sampler.interpolation == Model::AnimationSampler::STEP) {
+    return sampler.translations[prevIndex];
+  }
+
+  float const t0 = sampler.times[prevIndex];
+  float const t1 = sampler.times[nextIndex];
+  float const factor = (time - t0) / (t1 - t0);
+
+  return glm::mix(sampler.translations[prevIndex], sampler.translations[nextIndex], factor);
+}
+
+glm::quat AnimationSystem::interpolateQuat(const Model::AnimationSampler& sampler, float time) {
+  if (sampler.times.empty() || sampler.rotations.empty()) {
+    return {1.0f, 0.0f, 0.0f, 0.0f};
+  }
+
+  if (time <= sampler.times.front()) return sampler.rotations.front();
+  if (time >= sampler.times.back()) return sampler.rotations.back();
+
+  size_t nextIndex = 0;
+  for (size_t i = 0; i < sampler.times.size() - 1; i++) {
+    if (time >= sampler.times[i] && time < sampler.times[i + 1]) {
+      nextIndex = i + 1;
+      break;
+    }
+  }
+
+  size_t const prevIndex = nextIndex - 1;
+
+  if (sampler.interpolation == Model::AnimationSampler::STEP) {
+    return sampler.rotations[prevIndex];
+  }
+
+  float const t0 = sampler.times[prevIndex];
+  float const t1 = sampler.times[nextIndex];
+  float const factor = (time - t0) / (t1 - t0);
+
+  return glm::slerp(sampler.rotations[prevIndex], sampler.rotations[nextIndex], factor);
+}
+
+std::vector<float> AnimationSystem::interpolateMorphWeights(const Model::AnimationSampler& sampler, float time) {
+  if (sampler.times.empty() || sampler.morphWeights.empty()) {
+    return {};
+  }
+
+  if (time <= sampler.times.front()) return sampler.morphWeights.front();
+  if (time >= sampler.times.back()) return sampler.morphWeights.back();
+
+  size_t nextIndex = 0;
+  for (size_t i = 0; i < sampler.times.size() - 1; i++) {
+    if (time >= sampler.times[i] && time < sampler.times[i + 1]) {
+      nextIndex = i + 1;
+      break;
+    }
+  }
+
+  size_t const prevIndex = nextIndex - 1;
+
+  if (sampler.interpolation == Model::AnimationSampler::STEP) {
+    return sampler.morphWeights[prevIndex];
+  }
+
+  float const t0 = sampler.times[prevIndex];
+  float const t1 = sampler.times[nextIndex];
+  float const factor = (time - t0) / (t1 - t0);
+
+  const auto& prevWeights = sampler.morphWeights[prevIndex];
+  const auto& nextWeights = sampler.morphWeights[nextIndex];
+  std::vector<float> result(prevWeights.size());
+
+  for (size_t i = 0; i < prevWeights.size(); i++) {
+    result[i] = (prevWeights[i] * (1.0f - factor)) + (nextWeights[i] * factor);
+  }
+
+  return result;
+}
+
+}  // namespace engine

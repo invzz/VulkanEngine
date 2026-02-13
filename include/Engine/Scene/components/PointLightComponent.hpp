@@ -8,17 +8,16 @@
 
 namespace engine {
 
-  struct PointLightComponent
-  {
-    float     intensity{1.0f};
-    glm::vec3 color{1.0f, 1.0f, 1.0f};
-    float     radius{15.0f};
+struct PointLightComponent {
+  float intensity{1.0f};
+  glm::vec3 color{1.0f, 1.0f, 1.0f};
+  float radius{15.0f};
 
-    // Light baking metadata
-    bool          bake{false};
-    LightMobility lightType{LightMobility::Static};
-  };
+  // Light baking metadata
+  bool bake{false};
+  LightMobility lightType{LightMobility::Static};
+};
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_POINTLIGHTCOMPONENT_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_POINTLIGHTCOMPONENT_HPP

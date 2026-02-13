@@ -5,40 +5,45 @@
 
 namespace engine {
 
+/**
+ * @brief Base class for UI panels
+ */
+class UIPanel {
+ public:
+  virtual ~UIPanel() = default;
+
   /**
-   * @brief Base class for UI panels
+   * @brief Render the panel
+   * @param frameInfo Frame information for rendering
    */
-  class UIPanel
-  {
-  public:
-    virtual ~UIPanel() = default;
+  virtual void render(FrameInfo& frameInfo) = 0;
 
-    /**
-     * @brief Render the panel
-     * @param frameInfo Frame information for rendering
-     */
-    virtual void render(FrameInfo& frameInfo) = 0;
+  /**
+   * @brief Check if the panel should be rendered in a separate window
+   * @return true if the panel should be rendered in a separate window, false otherwise
+   */
+  [[nodiscard]] virtual bool isSeparateWindow() const {
+    return false;
+  }
 
-    /**
-     * @brief Check if the panel should be rendered in a separate window
-     * @return true if the panel should be rendered in a separate window, false otherwise
-     */
-    [[nodiscard]] virtual bool isSeparateWindow() const { return false; }
+  /**
+   * @brief Check if panel is visible
+   */
+  [[nodiscard]] bool isVisible() const {
+    return visible_;
+  }
 
-    /**
-     * @brief Check if panel is visible
-     */
-    [[nodiscard]] bool isVisible() const { return visible_; }
+  /**
+   * @brief Set panel visibility
+   */
+  void setVisible(bool visible) {
+    visible_ = visible;
+  }
 
-    /**
-     * @brief Set panel visibility
-     */
-    void setVisible(bool visible) { visible_ = visible; }
+ protected:
+  bool visible_ = true;
+};
 
-  protected:
-    bool visible_ = true;
-  };
+}  // namespace engine
 
-} // namespace engine
-
-#endif // EDITOR_UIPANEL_HPP
+#endif  // EDITOR_UIPANEL_HPP

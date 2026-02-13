@@ -6,15 +6,13 @@
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 
-
 using namespace engine;
 
 // =============================================================================
 // PipelineConfigInfo Default Tests
 // =============================================================================
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenViewportAndScissorConfigured)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenViewportAndScissorConfigured) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -23,8 +21,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenViewportAndScissor
   EXPECT_EQ(config.viewportInfo.scissorCount, 1);
 }
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenInputAssemblyUsesTriangleList)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenInputAssemblyUsesTriangleList) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -33,8 +30,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenInputAssemblyUsesT
   EXPECT_EQ(config.inputAssemblyInfo.primitiveRestartEnable, VK_FALSE);
 }
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenRasterizationCorrectlyConfigured)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenRasterizationCorrectlyConfigured) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -47,8 +43,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenRasterizationCorre
   EXPECT_FLOAT_EQ(config.rasterizationInfo.lineWidth, 1.0f);
 }
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenMultisampleDisabled)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenMultisampleDisabled) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -57,8 +52,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenMultisampleDisable
   EXPECT_EQ(config.multisampleInfo.sampleShadingEnable, VK_FALSE);
 }
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenColorBlendingDisabled)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenColorBlendingDisabled) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -66,8 +60,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenColorBlendingDisab
   EXPECT_EQ(config.colorBlendAttachment.colorWriteMask, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
 }
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDepthTestEnabled)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDepthTestEnabled) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -77,8 +70,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDepthTestEnabled)
   EXPECT_EQ(config.depthStencilInfo.depthCompareOp, VK_COMPARE_OP_LESS);
 }
 
-TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDynamicStatesConfigured)
-{
+TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDynamicStatesConfigured) {
   PipelineConfigInfo config;
   Pipeline::defaultPipelineConfigInfo(config);
 
@@ -86,7 +78,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDynamicStatesConfi
   EXPECT_GT(config.dynamicStateEnables.size(), 0);
   // Should include viewport and scissor
   bool hasViewport = std::find(config.dynamicStateEnables.begin(), config.dynamicStateEnables.end(), VK_DYNAMIC_STATE_VIEWPORT) != config.dynamicStateEnables.end();
-  bool hasScissor  = std::find(config.dynamicStateEnables.begin(), config.dynamicStateEnables.end(), VK_DYNAMIC_STATE_SCISSOR) != config.dynamicStateEnables.end();
+  bool hasScissor = std::find(config.dynamicStateEnables.begin(), config.dynamicStateEnables.end(), VK_DYNAMIC_STATE_SCISSOR) != config.dynamicStateEnables.end();
   EXPECT_TRUE(hasViewport);
   EXPECT_TRUE(hasScissor);
 }
@@ -95,8 +87,7 @@ TEST(PipelineConfigInfo, GivenDefaultConfig_WhenInspected_ThenDynamicStatesConfi
 // PipelineConfigInfo Mesh Pipeline Tests
 // =============================================================================
 
-TEST(PipelineConfigInfo, GivenMeshPipelineConfig_WhenInspected_ThenCorrectlyConfigured)
-{
+TEST(PipelineConfigInfo, GivenMeshPipelineConfig_WhenInspected_ThenCorrectlyConfigured) {
   PipelineConfigInfo config;
   Pipeline::defaultMeshPipelineConfigInfo(config);
 
@@ -106,7 +97,7 @@ TEST(PipelineConfigInfo, GivenMeshPipelineConfig_WhenInspected_ThenCorrectlyConf
 
   // Should also have dynamic states
   bool hasViewport = std::find(config.dynamicStateEnables.begin(), config.dynamicStateEnables.end(), VK_DYNAMIC_STATE_VIEWPORT) != config.dynamicStateEnables.end();
-  bool hasScissor  = std::find(config.dynamicStateEnables.begin(), config.dynamicStateEnables.end(), VK_DYNAMIC_STATE_SCISSOR) != config.dynamicStateEnables.end();
+  bool hasScissor = std::find(config.dynamicStateEnables.begin(), config.dynamicStateEnables.end(), VK_DYNAMIC_STATE_SCISSOR) != config.dynamicStateEnables.end();
   EXPECT_TRUE(hasViewport);
   EXPECT_TRUE(hasScissor);
 }
@@ -115,14 +106,12 @@ TEST(PipelineConfigInfo, GivenMeshPipelineConfig_WhenInspected_ThenCorrectlyConf
 // Pipeline::readFile Tests
 // =============================================================================
 
-TEST(Pipeline, GivenValidShaderFile_WhenReadFile_ThenReturnsNonEmptyBuffer)
-{
+TEST(Pipeline, GivenValidShaderFile_WhenReadFile_ThenReturnsNonEmptyBuffer) {
   // Read an actual compiled shader file that should exist
   std::string shaderPath = "assets/shaders/compiled/post_process_vert.spv";
 
   // Skip if file doesn't exist
-  if (!std::filesystem::exists(shaderPath))
-  {
+  if (!std::filesystem::exists(shaderPath)) {
     GTEST_SKIP() << "Shader file not found: " << shaderPath;
   }
 
@@ -130,15 +119,13 @@ TEST(Pipeline, GivenValidShaderFile_WhenReadFile_ThenReturnsNonEmptyBuffer)
   EXPECT_GT(buffer.size(), 0);
 
   // SPIR-V files start with magic number
-  if (buffer.size() >= 4)
-  {
+  if (buffer.size() >= 4) {
     uint32_t magic = *reinterpret_cast<uint32_t*>(buffer.data());
-    EXPECT_EQ(magic, 0x07230203); // SPIR-V magic number
+    EXPECT_EQ(magic, 0x07230203);  // SPIR-V magic number
   }
 }
 
-TEST(Pipeline, GivenNonexistentFile_WhenReadFile_ThenThrowsReadFileException)
-{
+TEST(Pipeline, GivenNonexistentFile_WhenReadFile_ThenThrowsReadFileException) {
   EXPECT_THROW(Pipeline::readFile("nonexistent_shader.spv"), ReadFileException);
 }
 
@@ -146,17 +133,14 @@ TEST(Pipeline, GivenNonexistentFile_WhenReadFile_ThenThrowsReadFileException)
 // Pipeline Creation Integration Tests
 // =============================================================================
 
-class PipelineTest : public engine::test::DeviceFixture
-{};
+class PipelineTest : public engine::test::DeviceFixture {};
 
-TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
-{
+TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow) {
   // Check required shader files exist
   std::string vertPath = "assets/shaders/compiled/post_process_vert.spv";
   std::string fragPath = "assets/shaders/compiled/post_process_frag.spv";
 
-  if (!std::filesystem::exists(vertPath) || !std::filesystem::exists(fragPath))
-  {
+  if (!std::filesystem::exists(vertPath) || !std::filesystem::exists(fragPath)) {
     GTEST_SKIP() << "Required shader files not found";
   }
 
@@ -165,33 +149,33 @@ TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
 
   // Create a simple render pass for the test
   VkAttachmentDescription colorAttachment{
-          .format         = VK_FORMAT_B8G8R8A8_UNORM,
-          .samples        = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
-          .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      .format = VK_FORMAT_B8G8R8A8_UNORM,
+      .samples = VK_SAMPLE_COUNT_1_BIT,
+      .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+      .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+      .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
   };
 
   VkAttachmentReference colorAttachmentRef{
-          .attachment = 0,
-          .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      .attachment = 0,
+      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
   };
 
   VkSubpassDescription subpass{
-          .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
-          .colorAttachmentCount = 1,
-          .pColorAttachments    = &colorAttachmentRef,
+      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+      .colorAttachmentCount = 1,
+      .pColorAttachments = &colorAttachmentRef,
   };
 
   VkRenderPassCreateInfo renderPassInfo{
-          .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-          .attachmentCount = 1,
-          .pAttachments    = &colorAttachment,
-          .subpassCount    = 1,
-          .pSubpasses      = &subpass,
+      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+      .attachmentCount = 1,
+      .pAttachments = &colorAttachment,
+      .subpassCount = 1,
+      .pSubpasses = &subpass,
   };
 
   VkRenderPass renderPass;
@@ -199,14 +183,14 @@ TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
 
   // Create pipeline layout (empty for this test)
   VkPipelineLayoutCreateInfo layoutInfo{
-          .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-          .setLayoutCount = 0,
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .setLayoutCount = 0,
   };
 
   VkPipelineLayout layout;
   ASSERT_EQ(vkCreatePipelineLayout(device().device(), &layoutInfo, nullptr, &layout), VK_SUCCESS);
 
-  config.renderPass     = renderPass;
+  config.renderPass = renderPass;
   config.pipelineLayout = layout;
 
   // This should not throw
@@ -217,8 +201,7 @@ TEST_F(PipelineTest, GivenValidShadersAndConfig_WhenPipelineCreated_ThenNoThrow)
   vkDestroyRenderPass(device().device(), renderPass, nullptr);
 }
 
-TEST_F(PipelineTest, GivenInvalidShaderPath_WhenReadFile_ThenThrows)
-{
+TEST_F(PipelineTest, GivenInvalidShaderPath_WhenReadFile_ThenThrows) {
   // Test Pipeline::readFile directly rather than Pipeline constructor
   // since the constructor has assert() calls that would crash the test
   EXPECT_THROW(Pipeline::readFile("invalid_vertex.spv"), ReadFileException);

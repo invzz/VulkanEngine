@@ -9,40 +9,41 @@
 
 namespace engine {
 
+/**
+ * @brief System for managing morph target animations
+ *
+ * Automatically initializes and updates morph target blending for all models.
+ * Runs compute shaders to blend base vertices with morph deltas before rendering.
+ */
+class MorphTargetSystem {
+ public:
+  MorphTargetSystem(Device& device);
+  ~MorphTargetSystem();
+
+  MorphTargetSystem(const MorphTargetSystem&) = delete;
+  MorphTargetSystem& operator=(const MorphTargetSystem&) = delete;
+
   /**
-   * @brief System for managing morph target animations
+   * @brief Update morph targets for all models
    *
-   * Automatically initializes and updates morph target blending for all models.
-   * Runs compute shaders to blend base vertices with morph deltas before rendering.
+   * This dispatches compute shaders to blend vertices.
+   * Should be called BEFORE the render pass begins.
+   *
+   * @param frameInfo Contains command buffer and game objects
    */
-  class MorphTargetSystem
-  {
-  public:
-    MorphTargetSystem(Device& device);
-    ~MorphTargetSystem();
+  void update(FrameInfo& frameInfo);
 
-    MorphTargetSystem(const MorphTargetSystem&)            = delete;
-    MorphTargetSystem& operator=(const MorphTargetSystem&) = delete;
+  /**
+   * @brief Get the underlying manager (for use by render systems)
+   */
+  MorphTargetManager* getManager() {
+    return manager_.get();
+  }
 
-    /**
-     * @brief Update morph targets for all models
-     *
-     * This dispatches compute shaders to blend vertices.
-     * Should be called BEFORE the render pass begins.
-     *
-     * @param frameInfo Contains command buffer and game objects
-     */
-    void update(FrameInfo& frameInfo);
+ private:
+  std::unique_ptr<MorphTargetManager> manager_;
+};
 
-    /**
-     * @brief Get the underlying manager (for use by render systems)
-     */
-    MorphTargetManager* getManager() { return manager_.get(); }
+}  // namespace engine
 
-  private:
-    std::unique_ptr<MorphTargetManager> manager_;
-  };
-
-} // namespace engine
-
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MORPHTARGETSYSTEM_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MORPHTARGETSYSTEM_HPP

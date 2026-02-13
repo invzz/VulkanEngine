@@ -12,26 +12,21 @@ using namespace engine;
 // Device Tests
 // =============================================================================
 
-TEST(Device, GivenThreadLocalPoolsEnabled_WhenThreadsUseCommands_ThenCleanupSucceeds)
-{
+TEST(Device, GivenThreadLocalPoolsEnabled_WhenThreadsUseCommands_ThenCleanupSucceeds) {
   Window window(1, 1, "DeviceTest");
   {
     Device device(window);
     device.enableThreadLocalCommandPools();
 
-    const int                N = 4;
+    const int N = 4;
     std::vector<std::thread> threads;
 
-    for (int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
       threads.emplace_back([&device]() {
-        try
-        {
+        try {
           VkCommandBuffer cmd = device.beginSingleTimeCommands();
           device.endSingleTimeCommands(cmd);
-        }
-        catch (...)
-        {
+        } catch (...) {
           // Swallow to ensure thread completion
         }
       });
