@@ -111,7 +111,11 @@ namespace engine {
     bool modelIntersectsLightFrustum(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix) const;
 
     // Unified CPU culling helper used by directional/spot/point flows.
-    bool shouldRenderModel(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix, float lightRange = 0.0f) const;
+    bool shouldRenderModel(const std::shared_ptr<engine::Model>& model,
+                           const glm::mat4&                      modelMatrix,
+                           const glm::mat4&                      lightSpaceMatrix,
+                           float                                 lightRange = 0.0f,
+                           const glm::vec3&                      lightPos   = glm::vec3(0.0f)) const;
 
     /**
      * @brief Render scene to a 2D shadow map using mesh shaders (GPU culling)

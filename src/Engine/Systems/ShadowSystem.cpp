@@ -137,7 +137,7 @@ namespace engine {
     configInfo.rasterizationInfo.depthBiasSlopeFactor    = 0.0f;
 
     // No culling for shadows (all geometry matters)
-    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_FRONT_AND_BACK;
+    configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
     configInfo.renderPass     = shadowMaps_[0]->getRenderPass();
     configInfo.pipelineLayout = meshPipelineLayout_;
@@ -373,19 +373,22 @@ namespace engine {
   }
 
   // Unified CPU culling helper used across shadow renderers.
-  bool ShadowSystem::shouldRenderModel(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix, float lightRange) const
+  bool ShadowSystem::shouldRenderModel(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix, float lightRange, const glm::vec3& lightPos) const
   {
     if (!model) return false;
     if (model->getMeshletCount() == 0) return false;
 
-    // If a finite lightRange is provided, use a cheap sphere-vs-sphere test.
+    // If a finite lightRange is provided, use a cheap sphere-vs-sphere test
+    // in world space and use squared distances to avoid sqrt.
     if (lightRange > 0.0f)
     {
       const auto& localBounds = model->getLocalBounds();
       AABB        worldBounds = transformAABB(localBounds, modelMatrix);
       glm::vec3   center      = worldBounds.center();
       float       radius      = glm::length(worldBounds.extents());
-      return (glm::length(center - glm::vec3(lightSpaceMatrix[3])) <= (radius + lightRange));
+      float       rsum        = radius + lightRange;
+      glm::vec3   d           = center - lightPos;
+      return glm::dot(d, d) <= (rsum * rsum);
     }
 
     // Otherwise fall back to the conservative projection-space test already
@@ -419,25 +422,61 @@ namespace engine {
         continue;
       }
 
-      // For each submesh, dispatch mesh shader draws
-      for (const auto& subMesh : model->getSubMeshes())
+      // Batch contiguous opaque submeshes to reduce per-submesh push-constant calls.
+      // Conservative criteria:
+      //  - consecutive submeshes
+      //  - subMesh.meshletOffset is contiguous (offset == prev.offset + prev.count)
+      //  - material is opaque for all submeshes in the batch
+      //  - same model-level buffer addresses (guaranteed for submeshes of the same model)
+      const auto& materials = model->getMaterials();
+      const auto& subMeshes = model->getSubMeshes();
+      size_t      i         = 0u;
+      while (i < subMeshes.size())
       {
-        if (subMesh.meshletCount == 0)
+        const auto& first = subMeshes[i];
+        if (first.meshletCount == 0)
         {
+          ++i;
           continue;
         }
 
-        // Skip transparent meshes for directional light shadows
-        const auto& materials = model->getMaterials();
-        if (subMesh.materialId >= 0 && subMesh.materialId < static_cast<int>(materials.size()))
+        // Check material opacity for the first submesh
+        bool firstOpaque = true;
+        if (first.materialId >= 0 && first.materialId < static_cast<int>(materials.size()))
         {
-          const auto& material = materials[subMesh.materialId];
-          if (material.pbrMaterial.alphaMode != engine::AlphaMode::Opaque)
-          {
-            continue; // Skip transparent meshes
-          }
+          firstOpaque = (materials[first.materialId].pbrMaterial.alphaMode == engine::AlphaMode::Opaque);
+        }
+        if (!firstOpaque)
+        {
+          ++i; // leave transparent/alpha-tested submeshes untouched
+          continue;
         }
 
+        // Start a batch at i
+        uint32_t batchOffset = first.meshletOffset;
+        uint32_t batchCount  = first.meshletCount;
+        size_t   j           = i + 1u;
+
+        // Merge subsequent submeshes while they are contiguous and opaque
+        for (; j < subMeshes.size(); ++j)
+        {
+          const auto& next = subMeshes[j];
+          if (next.meshletCount == 0) break;
+
+          // must be contiguous in meshlet index space
+          if (next.meshletOffset != batchOffset + batchCount) break;
+
+          // material must be opaque
+          if (next.materialId >= 0 && next.materialId < static_cast<int>(materials.size()))
+          {
+            if (materials[next.materialId].pbrMaterial.alphaMode != engine::AlphaMode::Opaque) break;
+          }
+
+          // merge
+          batchCount += next.meshletCount;
+        }
+
+        // Emit single push-constant + draw for the whole batch
         ShadowMeshPushConstants push{};
         push.modelMatrix             = transform.modelTransform();
         push.lightSpaceMatrix        = lightSpaceMatrix;
@@ -445,14 +484,16 @@ namespace engine {
         push.meshletVerticesAddress  = model->getMeshletVerticesAddress();
         push.meshletTrianglesAddress = model->getMeshletTrianglesAddress();
         push.vertexBufferAddress     = model->getVertexBufferAddress();
-        push.meshletOffset           = subMesh.meshletOffset;
-        push.meshletCount            = subMesh.meshletCount;
+        push.meshletOffset           = batchOffset;
+        push.meshletCount            = batchCount;
 
         vkCmdPushConstants(frameInfo.commandBuffer, meshPipelineLayout_, VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(push), &push);
 
-        // Dispatch mesh shader task groups (32 meshlets per group)
-        uint32_t const groupCount = (subMesh.meshletCount + 31) / 32;
+        uint32_t const groupCount = (batchCount + 31) / 32;
         device_.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
+
+        // Advance to the next submesh after the batch
+        i = j;
       }
     }
 
@@ -630,7 +671,7 @@ namespace engine {
           AABB        worldBounds = transformAABB(localBounds, mtransform.modelTransform());
           glm::vec3   center      = worldBounds.center();
           float       radius      = glm::length(worldBounds.extents());
-          if (glm::length(center - position) <= (radius + range))
+          if (shouldRenderModel(mcomp.model, mtransform.modelTransform(), glm::mat4(1.0f), range, position))
           {
             shouldRenderPoint = true;
             break;
@@ -722,35 +763,70 @@ namespace engine {
       // Cheap CPU cull: skip entire model for point-light faces when the model's
       // world-space bounding sphere lies completely outside the light's range.
       // This is conservative and avoids issuing mesh-shader work for distant objects.
-      if (!shouldRenderModel(model, transform.modelTransform(), lightSpaceMatrix, farPlane))
+      if (!shouldRenderModel(model, transform.modelTransform(), lightSpaceMatrix, farPlane, lightPos))
       {
         continue; // skip this model entirely
-        for (const auto& subMesh : model->getSubMeshes())
-        {
-          if (subMesh.meshletCount == 0)
-          {
-            continue;
-          }
-
-          CubeShadowMeshPushConstants push{};
-          push.modelMatrix             = transform.modelTransform();
-          push.lightSpaceMatrix        = lightSpaceMatrix;
-          push.lightPosAndFarPlane     = glm::vec4(lightPos, farPlane);
-          push.meshletBufferAddress    = model->getMeshletBufferAddress();
-          push.meshletVerticesAddress  = model->getMeshletVerticesAddress();
-          push.meshletTrianglesAddress = model->getMeshletTrianglesAddress();
-          push.vertexBufferAddress     = model->getVertexBufferAddress();
-          push.meshletOffset           = subMesh.meshletOffset;
-          push.meshletCount            = subMesh.meshletCount;
-
-          vkCmdPushConstants(frameInfo.commandBuffer, cubeMeshPipelineLayout_, VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
-
-          uint32_t const groupCount = (subMesh.meshletCount + 31) / 32;
-          device_.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
-        }
       }
 
-      engine::CubeShadowMap::endRenderPass(frameInfo.commandBuffer);
+      // Batch contiguous opaque submeshes for cube-shadow rendering as well.
+      const auto& materialsC = model->getMaterials();
+      const auto& subMeshesC = model->getSubMeshes();
+      size_t      idx        = 0u;
+      while (idx < subMeshesC.size())
+      {
+        const auto& first = subMeshesC[idx];
+        if (first.meshletCount == 0)
+        {
+          ++idx;
+          continue;
+        }
+
+        bool firstOpaque = true;
+        if (first.materialId >= 0 && first.materialId < static_cast<int>(materialsC.size()))
+        {
+          firstOpaque = (materialsC[first.materialId].pbrMaterial.alphaMode == engine::AlphaMode::Opaque);
+        }
+        if (!firstOpaque)
+        {
+          ++idx;
+          continue;
+        }
+
+        uint32_t batchOffset = first.meshletOffset;
+        uint32_t batchCount  = first.meshletCount;
+        size_t   k           = idx + 1u;
+        for (; k < subMeshesC.size(); ++k)
+        {
+          const auto& next = subMeshesC[k];
+          if (next.meshletCount == 0) break;
+          if (next.meshletOffset != batchOffset + batchCount) break;
+          if (next.materialId >= 0 && next.materialId < static_cast<int>(materialsC.size()))
+          {
+            if (materialsC[next.materialId].pbrMaterial.alphaMode != engine::AlphaMode::Opaque) break;
+          }
+          batchCount += next.meshletCount;
+        }
+
+        CubeShadowMeshPushConstants push{};
+        push.modelMatrix             = transform.modelTransform();
+        push.lightSpaceMatrix        = lightSpaceMatrix;
+        push.lightPosAndFarPlane     = glm::vec4(lightPos, farPlane);
+        push.meshletBufferAddress    = model->getMeshletBufferAddress();
+        push.meshletVerticesAddress  = model->getMeshletVerticesAddress();
+        push.meshletTrianglesAddress = model->getMeshletTrianglesAddress();
+        push.vertexBufferAddress     = model->getVertexBufferAddress();
+        push.meshletOffset           = batchOffset;
+        push.meshletCount            = batchCount;
+
+        vkCmdPushConstants(frameInfo.commandBuffer, cubeMeshPipelineLayout_, VK_SHADER_STAGE_TASK_BIT_EXT | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
+
+        uint32_t const groupCount = (batchCount + 31) / 32;
+        device_.vkCmdDrawMeshTasksEXT(frameInfo.commandBuffer, groupCount, 1, 1);
+
+        idx = k;
+      }
     }
+
+    engine::CubeShadowMap::endRenderPass(frameInfo.commandBuffer);
   }
 } // namespace engine
