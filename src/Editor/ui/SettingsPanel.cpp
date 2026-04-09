@@ -19,6 +19,10 @@
 #include "Editor/ui/PostProcessPanel.hpp"
 #include "entt/entity/fwd.hpp"
 
+// Cache ImGui texture IDs for shadow-map thumbnails (one per directional cascade)
+static ImTextureID s_csmShadowImTex[engine::ShadowSystem::DIRECTIONAL_CASCADE_COUNT]         = {};
+static VkImageView s_csmShadowLastImageView[engine::ShadowSystem::DIRECTIONAL_CASCADE_COUNT] = {VK_NULL_HANDLE};
+
 namespace engine {
 
     SettingsPanel::SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled, uint32_t& multithreadedRecordingThreads, int& debugMode)
@@ -142,7 +146,7 @@ namespace engine {
                 ImGui::SetItemTooltip("0 = auto (HW threads - 1); set to 1 to force single-threaded serial recording.");
 
                 ImGui::Separator();
-                ImGui::Text("Week 6 Cache Metrics");
+                ImGui::Text("Cache Metrics");
 
                 if (engineState_->modelRenderSystem != nullptr) {
                     auto const     stats   = engineState_->modelRenderSystem->getMaterialDescriptorCacheStats();

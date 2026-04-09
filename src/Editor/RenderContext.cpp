@@ -239,8 +239,8 @@ namespace engine {
         }
 
         {
+            // Only a single directional light is supported at runtime — take the first one found.
             auto view = registry.view<DirectionalLightComponent, TransformComponent>();
-            dirLights.reserve(view.size_hint());
             for (auto entity : view) {
                 auto [dir, transform] = view.get<DirectionalLightComponent, TransformComponent>(entity);
                 DirectionalLight dl{};
@@ -249,6 +249,7 @@ namespace engine {
                 dl.direction              = glm::vec4(glm::normalize(direction), 0.f);
                 dl.color                  = glm::vec4(dir.color, dir.intensity);
                 dirLights.push_back(dl);
+                break;  // only keep the first directional light
             }
         }
 
