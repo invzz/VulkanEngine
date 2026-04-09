@@ -78,6 +78,27 @@ xmake run Cube
 
 Use `xmake f -m release` for an optimized build.
 
+Validation defaults:
+- Debug mode: validation enabled
+- Release mode: validation disabled
+
+Force validation in any mode:
+
+```fish
+xmake f -m release --validation=y
+xmake
+```
+
+Runtime override flags:
+- `--validation` or `--validation=on` enables validation
+- `--no-validation` or `--validation=off` disables validation
+
+Example:
+
+```fish
+xmake run Editor -- --validation=off
+```
+
 ## Shader Compilation
 
 Shaders are compiled automatically during the build process, but you can manually regenerate them if needed:

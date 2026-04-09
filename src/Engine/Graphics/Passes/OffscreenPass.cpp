@@ -59,14 +59,14 @@ namespace engine {
             auto cInfo     = renderer_.getOffscreenImageInfo(frameInfo.frameIndex);
             auto bakedInfo = renderer_.getGbufferBakedImageInfo(frameInfo.frameIndex);
 
-            DescriptorWriter(*engineState_->gbufferSetLayout, *engineState_->gbufferPool)
+            DescriptorWriter(engineState_->gbufferSetLayoutRef(), engineState_->gbufferPoolRef())
                 .writeImage(0, &nInfo)
                 .writeImage(1, &aInfo)
                 .writeImage(2, &mInfo)
                 .writeImage(3, &dInfo)
                 .writeImage(4, &cInfo)
                 .writeImage(5, &bakedInfo)
-                .overwrite(engineState_->gbufferDescriptorSets[frameInfo.frameIndex]);
+                .overwrite(engineState_->gbufferDescriptorSetRef(frameInfo.frameIndex));
         }
 
         // Use the "current-frame HZB" global descriptor set for the main scene after the HZB pass.
@@ -102,7 +102,7 @@ namespace engine {
         std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
         descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet          = engineState_->deferredShadowDescriptorSets[frameInfo.frameIndex];
+        descriptorWrites[0].dstSet          = engineState_->deferredShadowDescriptorSetRef(frameInfo.frameIndex);
         descriptorWrites[0].dstBinding      = 0;
         descriptorWrites[0].dstArrayElement = 0;
         descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -110,7 +110,7 @@ namespace engine {
         descriptorWrites[0].pImageInfo      = shadowInfos.data();
 
         descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet          = engineState_->deferredShadowDescriptorSets[frameInfo.frameIndex];
+        descriptorWrites[1].dstSet          = engineState_->deferredShadowDescriptorSetRef(frameInfo.frameIndex);
         descriptorWrites[1].dstBinding      = 1;
         descriptorWrites[1].dstArrayElement = 0;
         descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -121,9 +121,9 @@ namespace engine {
 
         engineState_->deferredLightingSystem->render(frameInfo,
             frameInfo.globalDescriptorSet,
-            engineState_->gbufferDescriptorSets[frameInfo.frameIndex],
-            engineState_->deferredShadowDescriptorSets[frameInfo.frameIndex],
-            engineState_->deferredIblDescriptorSets[frameInfo.frameIndex]);
+            engineState_->getGbufferDescriptorSet(frameInfo.frameIndex),
+            engineState_->getDeferredShadowDescriptorSet(frameInfo.frameIndex),
+            engineState_->getDeferredIblDescriptorSet(frameInfo.frameIndex));
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
 
         if (debugMode_ == 0) {

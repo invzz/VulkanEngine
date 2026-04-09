@@ -47,7 +47,7 @@ namespace engine {
         auto depthInfo = renderer_.getDepthImageInfo(frameInfo.frameIndex);
 
         // Refresh the post-process descriptor set each frame (image/depth views may change on resize)
-        DescriptorWriter(*engineState_->postProcessSetLayout, *engineState_->postProcessPool).writeImage(0, &imageInfo).writeImage(1, &depthInfo).overwrite(engineState_->postProcessDescriptorSets[frameInfo.frameIndex]);
+        DescriptorWriter(engineState_->postProcessSetLayoutRef(), engineState_->postProcessPoolRef()).writeImage(0, &imageInfo).writeImage(1, &depthInfo).overwrite(engineState_->postProcessDescriptorSetRef(frameInfo.frameIndex));
 
         engineState_->postProcessPush.inverseProjection = glm::inverse(camera_.getProjection());
         engineState_->postProcessPush.projection        = camera_.getProjection();
@@ -57,7 +57,7 @@ namespace engine {
         // Begin swapchain render pass for composition + UI (swapchain render pass is not active elsewhere)
         renderer_.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
-        engineState_->postProcessingSystem->render(frameInfo, engineState_->postProcessDescriptorSets[frameInfo.frameIndex], engineState_->postProcessPush);
+        engineState_->postProcessingSystem->render(frameInfo, engineState_->getPostProcessDescriptorSet(frameInfo.frameIndex), engineState_->postProcessPush);
         engineState_->uiManager->render(frameInfo, frameInfo.commandBuffer, true);
 
         // End swapchain render pass started above

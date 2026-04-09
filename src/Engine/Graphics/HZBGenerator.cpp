@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameBuffer.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
@@ -145,10 +145,8 @@ namespace engine {
             return;
         }
 
-        if (hzbDescriptorPool_ != VK_NULL_HANDLE && mipLevels_ == mipLevels && framesInFlight_ == framesInFlight) {
-            return;
-        }
-
+        // FrameBuffer resources are recreated on swapchain resize, so descriptor sets
+        // must always be rebuilt even when mip/frame counts are unchanged.
         destroyDescriptorPool();
         mipLevels_      = mipLevels;
         framesInFlight_ = framesInFlight;
@@ -204,8 +202,31 @@ namespace engine {
                 }
 
                 // Diagnostic check: log if any required resource is null so we can trace why HZB descriptors contain null imageViews.
-                if (inputView == VK_NULL_HANDLE || outputView == VK_NULL_HANDLE || inputSampler == VK_NULL_HANDLE) {
-                    std::cerr << "[HZBGenerator] WARNING: null HZB resource detected (frame=" << frame << ", mip=" << mip << ", inputView=" << inputView << ", outputView=" << outputView << ", sampler=" << inputSampler << ")\n";
+                bool invalidResource = (inputView == VK_NULL_HANDLE || outputView == VK_NULL_HANDLE || inputSampler == VK_NULL_HANDLE);
+                if (invalidResource) {
+                    Logger::warn(LogChannel::Resource,
+                        "HZB descriptor resource is null (frame=",
+                        frame,
+                        ", mip=",
+                        mip,
+                        ", inputView=",
+                        inputView,
+                        ", outputView=",
+                        outputView,
+                        ", sampler=",
+                        inputSampler,
+                        ")");
+                    Logger::warn(LogChannel::Resource,
+                        "FrameBuffer mipLevels=",
+                        frameBuffer.getMipLevels(),
+                        ", expectedMipLevels=",
+                        mipLevels_,
+                        ", hzbDescriptorPool=",
+                        hzbDescriptorPool_);
+
+                    // Defensive: abort descriptor setup so we don't write invalid descriptors that later cause vkCmdDispatch to bind a null imageView.
+                    destroyDescriptorPool();
+                    return;
                 }
 
                 VkDescriptorImageInfo inputInfo{};

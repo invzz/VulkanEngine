@@ -25,6 +25,12 @@ option("deadcode")
     set_description("Enable unused/dead code warnings and linker GC reporting")
 option_end()
 
+option("validation")
+    set_showmenu(true)
+    set_default(false)
+    set_description("Force-enable Vulkan validation layers in this build")
+option_end()
+
 -- ============================================================================
 -- Global Defines (paths, config)
 -- ============================================================================
@@ -43,6 +49,14 @@ add_defines(
     "GLM_FORCE_DEPTH_ZERO_TO_ONE",
     "GLM_ENABLE_EXPERIMENTAL"
 )
+
+if has_config("validation") then
+    add_defines("ENGINE_ENABLE_VALIDATION=1")
+elseif is_mode("debug") then
+    add_defines("ENGINE_ENABLE_VALIDATION=1")
+else
+    add_defines("ENGINE_ENABLE_VALIDATION=0")
+end
 
 if is_plat("linux") then
     add_defines("GLFW_USE_WAYLAND=1")

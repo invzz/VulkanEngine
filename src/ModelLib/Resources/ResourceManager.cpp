@@ -152,7 +152,7 @@ namespace engine {
         auto        pos = path.find_last_of('.');
         if (pos != std::string::npos) {
             ext = toLower(path.substr(pos + 1));
-}
+        }
 
         std::shared_ptr<Model> model;
         try {
@@ -713,6 +713,235 @@ namespace engine {
         taskQueueCV_.notify_one();
 
         return future;
+    }
+
+    AsyncLoadId ResourceManager::enqueueModelLoad(
+        const std::string&                                 path,
+        bool                                               enableTextures,
+        bool                                               loadMaterials,
+        bool                                               enableMorphTargets,
+        ResourcePriority                                   priority,
+        std::function<void(const std::shared_ptr<Model>&)> onComplete,
+        std::function<void(const std::string&)>            onFailed) {
+        AsyncLoadId const id = nextAsyncLoadId_.fetch_add(1);
+
+        // Start from existing async path and wrap into a tracked shared_future.
+        std::future<std::shared_ptr<Model>>        future = loadModelAsync(path, enableTextures, loadMaterials, enableMorphTargets, priority);
+        std::shared_future<std::shared_ptr<Model>> shared = std::move(future).share();
+
+        AsyncModelTaskRecord record;
+        record.id         = id;
+        record.path       = path;
+        record.status     = LoadStatus::PENDING;
+        record.progress   = 0.0f;
+        record.future     = shared;
+        record.onComplete = std::move(onComplete);
+        record.onFailed   = std::move(onFailed);
+
+        {
+            std::scoped_lock const lock(asyncTasksMutex_);
+            asyncModelTasks_[id] = std::move(record);
+        }
+
+        return id;
+    }
+
+    bool ResourceManager::tryGetModelLoadResult(AsyncLoadId id, std::shared_ptr<Model>& outModel, std::string* outError) {
+        std::shared_future<std::shared_ptr<Model>> shared;
+        {
+            std::scoped_lock const lock(asyncTasksMutex_);
+            auto                   it = asyncModelTasks_.find(id);
+            if (it == asyncModelTasks_.end()) {
+                if (outError != nullptr) {
+                    *outError = "Invalid async load id";
+                }
+                return true;
+            }
+
+            auto& task = it->second;
+            if (task.cancelled) {
+                if (outError != nullptr) {
+                    *outError = "Cancelled";
+                }
+                return true;
+            }
+
+            if (task.status == LoadStatus::COMPLETE) {
+                outModel = task.result;
+                if (outError != nullptr) {
+                    outError->clear();
+                }
+                return true;
+            }
+
+            if (task.status == LoadStatus::FAILED) {
+                if (outError != nullptr) {
+                    *outError = task.error;
+                }
+                return true;
+            }
+
+            shared = task.future;
+        }
+
+        if (!shared.valid() || shared.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            return false;
+        }
+
+        try {
+            auto result = shared.get();
+            {
+                std::scoped_lock const lock(asyncTasksMutex_);
+                auto                   it = asyncModelTasks_.find(id);
+                if (it != asyncModelTasks_.end()) {
+                    it->second.result   = result;
+                    it->second.status   = LoadStatus::COMPLETE;
+                    it->second.progress = 1.0f;
+                }
+            }
+            outModel = std::move(result);
+            if (outError != nullptr) {
+                outError->clear();
+            }
+        } catch (const std::exception& e) {
+            std::string error = e.what();
+            {
+                std::scoped_lock const lock(asyncTasksMutex_);
+                auto                   it = asyncModelTasks_.find(id);
+                if (it != asyncModelTasks_.end()) {
+                    it->second.error    = error;
+                    it->second.status   = LoadStatus::FAILED;
+                    it->second.progress = 1.0f;
+                }
+            }
+            if (outError != nullptr) {
+                *outError = error;
+            }
+        }
+
+        return true;
+    }
+
+    std::vector<AsyncLoadSnapshot> ResourceManager::getAsyncLoadSnapshots() const {
+        std::vector<AsyncLoadSnapshot> snapshots;
+
+        std::scoped_lock const lock(asyncTasksMutex_);
+        snapshots.reserve(asyncModelTasks_.size());
+
+        for (const auto& [id, task] : asyncModelTasks_) {
+            AsyncLoadSnapshot snap;
+            snap.id       = id;
+            snap.status   = task.cancelled ? LoadStatus::FAILED : task.status;
+            snap.path     = task.path;
+            snap.progress = task.progress;
+            snap.isModel  = true;
+            snap.hasError = !task.error.empty();
+            snap.error    = task.error;
+            snapshots.push_back(std::move(snap));
+        }
+
+        return snapshots;
+    }
+
+    void ResourceManager::updateAsyncCallbacks() {
+        std::vector<AsyncLoadId> toDispatch;
+
+        {
+            std::scoped_lock const lock(asyncTasksMutex_);
+            for (auto& [id, task] : asyncModelTasks_) {
+                if (task.cancelled) {
+                    task.callbackDispatched = true;
+                    continue;
+                }
+
+                if (task.status == LoadStatus::COMPLETE || task.status == LoadStatus::FAILED) {
+                    if (!task.callbackDispatched && (task.onComplete || task.onFailed)) {
+                        toDispatch.push_back(id);
+                    }
+                    continue;
+                }
+
+                // Transition to LOADING once worker has picked up work.
+                if (task.status == LoadStatus::PENDING) {
+                    task.status   = LoadStatus::LOADING;
+                    task.progress = 0.25f;
+                }
+
+                if (task.future.valid() && task.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                    try {
+                        task.result   = task.future.get();
+                        task.status   = LoadStatus::COMPLETE;
+                        task.progress = 1.0f;
+                    } catch (const std::exception& e) {
+                        task.error    = e.what();
+                        task.status   = LoadStatus::FAILED;
+                        task.progress = 1.0f;
+                    }
+                    if (task.onComplete || task.onFailed) {
+                        toDispatch.push_back(id);
+                    }
+                }
+            }
+        }
+
+        for (AsyncLoadId id : toDispatch) {
+            std::function<void(const std::shared_ptr<Model>&)> onComplete;
+            std::function<void(const std::string&)>            onFailed;
+            std::shared_ptr<Model>                             result;
+            std::string                                        error;
+            bool                                               success = false;
+
+            {
+                std::scoped_lock const lock(asyncTasksMutex_);
+                auto                   it = asyncModelTasks_.find(id);
+                if (it == asyncModelTasks_.end() || it->second.callbackDispatched || it->second.cancelled) {
+                    continue;
+                }
+
+                onComplete                    = it->second.onComplete;
+                onFailed                      = it->second.onFailed;
+                result                        = it->second.result;
+                error                         = it->second.error;
+                success                       = (it->second.status == LoadStatus::COMPLETE);
+                it->second.callbackDispatched = true;
+            }
+
+            if (success) {
+                if (onComplete) {
+                    onComplete(result);
+                }
+            } else {
+                if (onFailed) {
+                    onFailed(error.empty() ? std::string("Async model load failed") : error);
+                }
+            }
+        }
+
+        {
+            std::scoped_lock const lock(asyncTasksMutex_);
+            for (auto it = asyncModelTasks_.begin(); it != asyncModelTasks_.end();) {
+                const auto& task     = it->second;
+                const bool  terminal = task.cancelled || task.status == LoadStatus::COMPLETE || task.status == LoadStatus::FAILED;
+                if (terminal && task.callbackDispatched) {
+                    it = asyncModelTasks_.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+    }
+
+    void ResourceManager::cancelModelLoad(AsyncLoadId id) {
+        std::scoped_lock const lock(asyncTasksMutex_);
+        auto                   it = asyncModelTasks_.find(id);
+        if (it != asyncModelTasks_.end()) {
+            it->second.cancelled = true;
+            it->second.status    = LoadStatus::FAILED;
+            it->second.progress  = 1.0f;
+            if (it->second.error.empty()) {
+                it->second.error = "Cancelled";
+            }
+        }
     }
 
     size_t ResourceManager::getPendingAsyncLoads() const {

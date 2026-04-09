@@ -5,7 +5,11 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "ModelLib/Resources/Model.hpp"
 
@@ -73,7 +77,21 @@ TEST_F(ShadowCullingBenchmark, DISABLED_SimpleCullingComparison_PrintTimings) {
   ShadowSystem shadowSystem(*device, 1024);
   ShadowSettings settings;
 
-  FrameInfo frameInfo = FrameInfo{&camera, &scene, nullptr, 0, 0, 0};
+  FrameInfo frameInfo{
+      .frameIndex = 0,
+      .frameTime = 0.0f,
+      .commandBuffer = VK_NULL_HANDLE,
+      .camera = camera,
+      .globalDescriptorSet = VK_NULL_HANDLE,
+      .globalTextureSet = VK_NULL_HANDLE,
+      .scene = &scene,
+      .selectedObjectId = 0,
+      .selectedEntity = entt::null,
+      .cameraEntity = entt::null,
+      .morphManager = nullptr,
+      .extent = {1, 1},
+      .debugMode = 0,
+  };
 
   // Warm up
   VkCommandBuffer cmd = device->beginSingleTimeCommands();

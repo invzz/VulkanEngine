@@ -3,6 +3,7 @@
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"
+#include "Engine/Core/Exceptions.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "ModelLib/Resources/TextureManager.hpp"
 
@@ -17,19 +18,85 @@ void EngineState::initialize(Device& device,
   // store non-owned resource pointer
   this->resourceManager = &resourceManagerRef;
 
-  // high-level orchestration — helpers keep intent explicit and testable
+  // input devices are optional and can be initialized directly
   createInputDevices(window);
-  initCoreSystems(device, renderer, multithreadedRecordingEnabled, multithreadedRecordingThreads);
-  initDescriptorResources(device, renderer);
-  allocatePerFrameDescriptorSets(renderer);
 
-  // Depth prepass pipeline and system links
-  modelRenderSystem->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
-  modelRenderSystem->setShadowSystem(shadowSystem.get());
-  modelRenderSystem->setIBLSystem(iblSystem.get());
+  // Phase 3 kickoff: register and initialize subsystems through explicit dependencies.
+  systemRegistry.clear();
+  std::string registerError;
 
-  initPostProcessing(device, renderer);
-  initInputRelatedSystems(window);
+  if (!systemRegistry.registerSystem(
+          "core.systems",
+          {},
+          [this, &device, &renderer, multithreadedRecordingEnabled, multithreadedRecordingThreads](std::string&) {
+            initCoreSystems(device, renderer, multithreadedRecordingEnabled, multithreadedRecordingThreads);
+            return true;
+          },
+          &registerError)) {
+    throw RuntimeException(registerError);
+  }
+
+  if (!systemRegistry.registerSystem(
+          "descriptor.resources",
+          {"core.systems"},
+          [this, &device, &renderer](std::string&) {
+            initDescriptorResources(device, renderer);
+            return true;
+          },
+          &registerError)) {
+    throw RuntimeException(registerError);
+  }
+
+  if (!systemRegistry.registerSystem(
+          "per.frame.descriptors",
+          {"descriptor.resources"},
+          [this, &renderer](std::string&) {
+            allocatePerFrameDescriptorSets(renderer);
+            return true;
+          },
+          &registerError)) {
+    throw RuntimeException(registerError);
+  }
+
+  if (!systemRegistry.registerSystem(
+          "pipeline.links",
+          {"core.systems"},
+          [this, &renderer](std::string&) {
+            modelRenderSystem->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
+            modelRenderSystem->setShadowSystem(shadowSystem.get());
+            modelRenderSystem->setIBLSystem(iblSystem.get());
+            return true;
+          },
+          &registerError)) {
+    throw RuntimeException(registerError);
+  }
+
+  if (!systemRegistry.registerSystem(
+          "post.processing",
+          {"per.frame.descriptors", "pipeline.links"},
+          [this, &device, &renderer](std::string&) {
+            initPostProcessing(device, renderer);
+            return true;
+          },
+          &registerError)) {
+    throw RuntimeException(registerError);
+  }
+
+  if (!systemRegistry.registerSystem(
+          "input.systems",
+          {"core.systems"},
+          [this, window](std::string&) {
+            initInputRelatedSystems(window);
+            return true;
+          },
+          &registerError)) {
+    throw RuntimeException(registerError);
+  }
+
+  std::string initError;
+  if (!systemRegistry.initializeAll(&initError)) {
+    throw RuntimeException(initError);
+  }
 }
 
 // --- helper implementations ---
