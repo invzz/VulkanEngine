@@ -189,6 +189,7 @@ namespace engine {
         std::unique_ptr<DeviceMemory>                                              memory_;
         uint32_t                                                                   currentFrameIndex_ = 0;
         std::array<std::vector<std::function<void(VkDevice)>>, kMaxFramesInFlight> deferredDestroy_;
+        mutable std::mutex                                                         deferredDestroyMutex_;
 
         // Mapping from temporary command buffers to the command pool that owns them. Used
         // for single-time commands when executed concurrently on worker threads.

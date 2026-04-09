@@ -99,15 +99,26 @@ namespace engine {
     }
 
     void Device::deferDestroy(std::function<void(VkDevice)> fn) {
+        if (!fn) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(deferredDestroyMutex_);
         deferredDestroy_[currentFrameIndex_].push_back(std::move(fn));
     }
 
     void Device::flushDeferred(uint32_t frameIndex) {
-        auto& bucket = deferredDestroy_[frameIndex % kMaxFramesInFlight];
-        for (auto& fn : bucket) {
-            fn(device_);
+        std::vector<std::function<void(VkDevice)>> bucket;
+        {
+            std::lock_guard<std::mutex> lock(deferredDestroyMutex_);
+            bucket.swap(deferredDestroy_[frameIndex % kMaxFramesInFlight]);
         }
-        bucket.clear();
+
+        for (auto& fn : bucket) {
+            if (fn) {
+                fn(device_);
+            }
+        }
     }
 
     void Device::flushAllDeferred() {

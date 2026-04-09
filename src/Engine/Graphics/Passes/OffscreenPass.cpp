@@ -45,7 +45,6 @@ namespace {
 namespace engine {
 
     void OffscreenPass::execute(FrameInfo& frameInfo) {
-        engineState_->modelRenderSystem->enableMultiThreadedRecording(true, 0);
         // Reset per-frame dynamic offsets before any mesh passes.
         engineState_->modelRenderSystem->beginFrame(frameInfo.frameIndex);
         engineState_->modelRenderSystem->updateSceneColorDescriptor(frameInfo.frameIndex, renderer_.getSceneColorImageInfo(frameInfo.frameIndex));
@@ -74,7 +73,7 @@ namespace engine {
         frameInfo.globalDescriptorSet = engineState_->renderContext->getGlobalDescriptorSetCurrentHzb(frameInfo.frameIndex);
 
         // Begin G-buffer with secondary command buffer support when model recording is multithreaded.
-        renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, true);
+        renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, engineState_->modelRenderSystem->isMultiThreadedRecordingEnabled());
         engineState_->modelRenderSystem->renderGbuffer(frameInfo);
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
         renderer_.beginDeferredLightingRenderPass(frameInfo.commandBuffer);

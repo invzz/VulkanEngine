@@ -102,6 +102,7 @@ namespace engine {
 
         bool                            isMeshPipeline_ = false;
         PipelineConfigInfo              configInfo_{};
+        std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments_{};
         std::string                     vertFilePath_;
         std::string                     fragFilePath_;
         std::string                     taskFilePath_;

@@ -33,12 +33,11 @@ void SceneLoader::createFromFile(Device& /*device*/, Scene& scene, ResourceManag
     return;
   }
 
-  auto modelPtr = resourceManager.loadModel(modelPath, false, true, true);
+  auto modelPtr = resourceManager.loadModel(modelPath, true, true, true);
 
   auto entity = scene.createEntity();
   scene.getRegistry().emplace<TransformComponent>(entity);
   scene.getRegistry().emplace<ModelComponent>(entity, std::move(modelPtr));
-  scene.getRegistry().emplace<PBRMaterial>(entity);
   scene.getRegistry().emplace<NameComponent>(entity, "LoadedModel");
 
   auto& transform = scene.getRegistry().get<TransformComponent>(entity);

@@ -19,6 +19,35 @@
 
 namespace engine {
 
+    namespace {
+        void normalizePipelineConfigPointers(PipelineConfigInfo& configInfo, std::vector<VkPipelineColorBlendAttachmentState>& ownedColorBlendAttachments) {
+            configInfo.dynamicStateInfo.pDynamicStates = configInfo.dynamicStateEnables.data();
+
+            uint32_t const attachmentCount = configInfo.colorBlendInfo.attachmentCount;
+            if (attachmentCount == 0u) {
+                ownedColorBlendAttachments.clear();
+                configInfo.colorBlendInfo.pAttachments = nullptr;
+                return;
+            }
+
+            if (attachmentCount == 1u) {
+                if (configInfo.colorBlendInfo.pAttachments != nullptr) {
+                    configInfo.colorBlendAttachment = configInfo.colorBlendInfo.pAttachments[0];
+                }
+                ownedColorBlendAttachments.clear();
+                configInfo.colorBlendInfo.pAttachments = &configInfo.colorBlendAttachment;
+                return;
+            }
+
+            if (configInfo.colorBlendInfo.pAttachments != nullptr) {
+                ownedColorBlendAttachments.assign(configInfo.colorBlendInfo.pAttachments, configInfo.colorBlendInfo.pAttachments + attachmentCount);
+                configInfo.colorBlendInfo.pAttachments = ownedColorBlendAttachments.data();
+            } else if (!ownedColorBlendAttachments.empty()) {
+                configInfo.colorBlendInfo.pAttachments = ownedColorBlendAttachments.data();
+            }
+        }
+    }  // namespace
+
     Pipeline::Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device)
 
     {
@@ -26,8 +55,7 @@ namespace engine {
         vertFilePath_                               = vertFilePath;
         fragFilePath_                               = fragFilePath;
         configInfo_                                 = configInfo;
-        configInfo_.colorBlendInfo.pAttachments     = &configInfo_.colorBlendAttachment;
-        configInfo_.dynamicStateInfo.pDynamicStates = configInfo_.dynamicStateEnables.data();
+        normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
         createGraphicsPipeline(vertFilePath_, fragFilePath_, configInfo_);
         cacheShaderWriteTimes();
@@ -41,8 +69,7 @@ namespace engine {
         meshFilePath_                               = meshFilePath;
         fragFilePath_                               = fragFilePath;
         configInfo_                                 = configInfo;
-        configInfo_.colorBlendInfo.pAttachments     = &configInfo_.colorBlendAttachment;
-        configInfo_.dynamicStateInfo.pDynamicStates = configInfo_.dynamicStateEnables.data();
+        normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
         createMeshPipeline(taskFilePath_, meshFilePath_, fragFilePath_, configInfo_);
         cacheShaderWriteTimes();
@@ -116,6 +143,7 @@ namespace engine {
 
     bool Pipeline::rebuild(std::string* statusMessage) {
         destroyPipelineResources();
+        normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
         try {
             if (isMeshPipeline_) {

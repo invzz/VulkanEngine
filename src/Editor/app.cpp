@@ -65,6 +65,16 @@ namespace engine {
     }
 
     App::~App() {
+        try {
+            resourceManager.waitForAsyncLoads();
+            resourceManager.updateAsyncCallbacks();
+            device.WaitIdle();
+        } catch (const std::exception& e) {
+            std::cerr << "[App::~App] Shutdown drain failed: " << e.what() << '\n';
+        } catch (...) {
+            std::cerr << "[App::~App] Shutdown drain failed with unknown exception\n";
+        }
+
         GpuProfiler::instance().shutdown();
     }
 

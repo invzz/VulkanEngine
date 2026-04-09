@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -118,17 +119,115 @@ namespace engine {
     namespace {
         constexpr float kFeatureEpsCpu = 0.01f;
 
-        const PBRMaterial* resolveMaterialForSubMesh(FrameInfo& frameInfo, entt::entity entity, const ModelComponent& modelComp, const Model::SubMesh& subMesh) {
-            if (auto* mat = frameInfo.scene->getRegistry().try_get<PBRMaterial>(entity)) {
-                return mat;
+        bool isMeaningfulMaterialOverride(const PBRMaterial& material) {
+            const PBRMaterial defaults{};
+
+            if (material.albedo != defaults.albedo || material.metallic != defaults.metallic || material.roughness != defaults.roughness || material.ao != defaults.ao
+                || material.alphaMode != defaults.alphaMode || material.alphaCutoff != defaults.alphaCutoff || material.doubleSided != defaults.doubleSided || material.clearcoat != defaults.clearcoat
+                || material.clearcoatRoughness != defaults.clearcoatRoughness || material.anisotropic != defaults.anisotropic || material.anisotropicRotation != defaults.anisotropicRotation
+                || material.transmission != defaults.transmission || material.ior != defaults.ior || material.thickness != defaults.thickness || material.attenuationColor != defaults.attenuationColor
+                || material.attenuationDistance != defaults.attenuationDistance || material.iridescence != defaults.iridescence || material.iridescenceIOR != defaults.iridescenceIOR
+                || material.iridescenceThickness != defaults.iridescenceThickness || material.emissiveColor != defaults.emissiveColor || material.emissiveStrength != defaults.emissiveStrength
+                || material.useMetallicRoughnessTexture != defaults.useMetallicRoughnessTexture
+                || material.useOcclusionRoughnessMetallicTexture != defaults.useOcclusionRoughnessMetallicTexture
+                || material.useSpecularGlossinessWorkflow != defaults.useSpecularGlossinessWorkflow || material.specularFactor != defaults.specularFactor
+                || material.glossinessFactor != defaults.glossinessFactor || material.uvScale != defaults.uvScale) {
+                return true;
             }
 
+            return material.albedoMap != nullptr || material.normalMap != nullptr || material.metallicMap != nullptr || material.roughnessMap != nullptr || material.aoMap != nullptr
+                || material.emissiveMap != nullptr || material.specularGlossinessMap != nullptr || material.transmissionMap != nullptr || material.clearcoatMap != nullptr
+                || material.clearcoatRoughnessMap != nullptr || material.clearcoatNormalMap != nullptr;
+        }
+
+        PBRMaterial mergeMaterialOverrides(const PBRMaterial* baseMaterial, const PBRMaterial& overrideMaterial) {
+            PBRMaterial merged = (baseMaterial != nullptr) ? *baseMaterial : PBRMaterial{};
+
+            merged.albedo                               = overrideMaterial.albedo;
+            merged.metallic                             = overrideMaterial.metallic;
+            merged.roughness                            = overrideMaterial.roughness;
+            merged.ao                                   = overrideMaterial.ao;
+            merged.alphaMode                            = overrideMaterial.alphaMode;
+            merged.alphaCutoff                          = overrideMaterial.alphaCutoff;
+            merged.doubleSided                          = overrideMaterial.doubleSided;
+            merged.clearcoat                            = overrideMaterial.clearcoat;
+            merged.clearcoatRoughness                   = overrideMaterial.clearcoatRoughness;
+            merged.anisotropic                          = overrideMaterial.anisotropic;
+            merged.anisotropicRotation                  = overrideMaterial.anisotropicRotation;
+            merged.transmission                         = overrideMaterial.transmission;
+            merged.ior                                  = overrideMaterial.ior;
+            merged.thickness                            = overrideMaterial.thickness;
+            merged.attenuationColor                     = overrideMaterial.attenuationColor;
+            merged.attenuationDistance                  = overrideMaterial.attenuationDistance;
+            merged.iridescence                          = overrideMaterial.iridescence;
+            merged.iridescenceIOR                       = overrideMaterial.iridescenceIOR;
+            merged.iridescenceThickness                 = overrideMaterial.iridescenceThickness;
+            merged.emissiveColor                        = overrideMaterial.emissiveColor;
+            merged.emissiveStrength                     = overrideMaterial.emissiveStrength;
+            merged.useMetallicRoughnessTexture          = overrideMaterial.useMetallicRoughnessTexture;
+            merged.useOcclusionRoughnessMetallicTexture = overrideMaterial.useOcclusionRoughnessMetallicTexture;
+            merged.useSpecularGlossinessWorkflow        = overrideMaterial.useSpecularGlossinessWorkflow;
+            merged.specularFactor                       = overrideMaterial.specularFactor;
+            merged.glossinessFactor                     = overrideMaterial.glossinessFactor;
+            merged.uvScale                              = overrideMaterial.uvScale;
+
+            if (overrideMaterial.albedoMap != nullptr) {
+                merged.albedoMap = overrideMaterial.albedoMap;
+            }
+            if (overrideMaterial.normalMap != nullptr) {
+                merged.normalMap = overrideMaterial.normalMap;
+            }
+            if (overrideMaterial.metallicMap != nullptr) {
+                merged.metallicMap = overrideMaterial.metallicMap;
+            }
+            if (overrideMaterial.roughnessMap != nullptr) {
+                merged.roughnessMap = overrideMaterial.roughnessMap;
+            }
+            if (overrideMaterial.aoMap != nullptr) {
+                merged.aoMap = overrideMaterial.aoMap;
+            }
+            if (overrideMaterial.emissiveMap != nullptr) {
+                merged.emissiveMap = overrideMaterial.emissiveMap;
+            }
+            if (overrideMaterial.specularGlossinessMap != nullptr) {
+                merged.specularGlossinessMap = overrideMaterial.specularGlossinessMap;
+            }
+            if (overrideMaterial.transmissionMap != nullptr) {
+                merged.transmissionMap = overrideMaterial.transmissionMap;
+            }
+            if (overrideMaterial.clearcoatMap != nullptr) {
+                merged.clearcoatMap = overrideMaterial.clearcoatMap;
+            }
+            if (overrideMaterial.clearcoatRoughnessMap != nullptr) {
+                merged.clearcoatRoughnessMap = overrideMaterial.clearcoatRoughnessMap;
+            }
+            if (overrideMaterial.clearcoatNormalMap != nullptr) {
+                merged.clearcoatNormalMap = overrideMaterial.clearcoatNormalMap;
+            }
+
+            return merged;
+        }
+
+        const PBRMaterial* resolveMaterialForSubMesh(FrameInfo& frameInfo,
+            entt::entity                                     entity,
+            const ModelComponent&                            modelComp,
+            const Model::SubMesh&                            subMesh,
+            std::optional<PBRMaterial>&                      mergedMaterialStorage) {
             const auto& materials = modelComp.model->getMaterials();
+            const PBRMaterial* baseMaterial = nullptr;
             if (subMesh.materialId >= 0 && subMesh.materialId < static_cast<int>(materials.size())) {
-                return &materials[subMesh.materialId].pbrMaterial;
+                baseMaterial = &materials[subMesh.materialId].pbrMaterial;
             }
 
-            return nullptr;
+            if (auto* overrideMaterial = frameInfo.scene->getRegistry().try_get<PBRMaterial>(entity)) {
+                if (!isMeaningfulMaterialOverride(*overrideMaterial)) {
+                    return baseMaterial;
+                }
+                mergedMaterialStorage = mergeMaterialOverrides(baseMaterial, *overrideMaterial);
+                return &*mergedMaterialStorage;
+            }
+
+            return baseMaterial;
         }
 
         MeshPushConstantData makeMeshPush(FrameInfo const& frameInfo,
@@ -492,7 +591,8 @@ namespace engine {
                     continue;
                 }
 
-                const PBRMaterial* pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh);
+                std::optional<PBRMaterial> mergedMaterial;
+                const PBRMaterial*         pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh, mergedMaterial);
 
                 bool hasTransmission = false;
                 bool isAlphaBlend    = false;
@@ -806,7 +906,8 @@ namespace engine {
                     continue;
                 }
 
-                const PBRMaterial* pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh);
+                std::optional<PBRMaterial> mergedMaterial;
+                const PBRMaterial*         pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh, mergedMaterial);
 
                 bool hasTransmission = false;
                 if (pMaterial != nullptr) {
@@ -888,7 +989,8 @@ namespace engine {
                     continue;
                 }
 
-                const PBRMaterial* pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh);
+                std::optional<PBRMaterial> mergedMaterial;
+                const PBRMaterial*         pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh, mergedMaterial);
 
                 bool hasTransmission = false;
                 bool isAlphaBlend    = false;
@@ -982,7 +1084,8 @@ namespace engine {
                     continue;
                 }
 
-                const PBRMaterial* pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh);
+                std::optional<PBRMaterial> mergedMaterial;
+                const PBRMaterial*         pMaterial = resolveMaterialForSubMesh(frameInfo, entity, modelComp, subMesh, mergedMaterial);
 
                 bool prepassEligible = true;
                 if (pMaterial != nullptr) {

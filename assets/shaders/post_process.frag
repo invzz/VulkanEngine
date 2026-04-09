@@ -181,6 +181,15 @@ float computeSSAO(vec2 uv)
 
 void main()
 {
+  const float gamma = 2.2;
+
+  if (push.debugMode != 0)
+  {
+    vec3 debugColor = max(texture(sceneColor, inUV).rgb, vec3(0.0));
+    outColor = vec4(pow(debugColor, vec3(1.0 / gamma)), 1.0);
+    return;
+  }
+
   vec3 color;
 
   if (push.enableFXAA == 1)
@@ -267,7 +276,6 @@ void main()
   }
 
   // Gamma correction
-  const float gamma = 2.2;
   mapped            = pow(mapped, vec3(1.0 / gamma));
 
   // Vignette

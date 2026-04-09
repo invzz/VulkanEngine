@@ -72,6 +72,38 @@ struct adl_serializer<glm::vec4> {
 
 namespace engine {
 
+namespace {
+void ensureDefaultDirectionalLight(Scene& scene) {
+  auto& registry = scene.getRegistry();
+
+  const bool hasDirectional = !registry.view<DirectionalLightComponent>().empty();
+  const bool hasPoint = !registry.view<PointLightComponent>().empty();
+  const bool hasSpot = !registry.view<SpotLightComponent>().empty();
+  if (hasDirectional || hasPoint || hasSpot) {
+    return;
+  }
+
+  const bool hasModel = !registry.view<ModelComponent>().empty();
+  if (!hasModel) {
+    return;
+  }
+
+  auto lightEntity = scene.createEntity();
+  auto& transform = registry.emplace<TransformComponent>(lightEntity);
+  transform.translation = {6.0f, 8.0f, -6.0f};
+  transform.lookAt(glm::vec3(0.0f, 0.0f, 0.0f));
+
+  auto& light = registry.emplace<DirectionalLightComponent>(lightEntity);
+  light.intensity = 4.0f;
+  light.color = glm::vec3(1.0f, 0.95f, 0.9f);
+  light.bake = false;
+  light.lightType = LightMobility::Static;
+
+  registry.emplace<NameComponent>(lightEntity, "DefaultDirectionalLight");
+  std::cout << "SceneSerializer: created default directional light\n";
+}
+}  // namespace
+
 SceneSerializer::SceneSerializer(Scene& scene, ResourceManager& resourceManager) : scene(scene), resourceManager(resourceManager) {}
 
 void SceneSerializer::serialize(const std::string& filepath) {
@@ -313,6 +345,8 @@ bool SceneSerializer::deserialize(const std::string& filepath) {
       }
     }
   }
+
+  ensureDefaultDirectionalLight(scene);
 
   return foundAny;
 }

@@ -91,6 +91,9 @@ namespace engine {
         [[nodiscard]] const std::string& standardVariantFallbackReason() const {
             return standardVariantFallbackReason_;
         }
+        [[nodiscard]] bool isMultiThreadedRecordingEnabled() const {
+            return multithreadedRecordingEnabled_;
+        }
 
         // Multi-pass rendering entry points.
         void renderGbuffer(FrameInfo& frameInfo);
