@@ -139,7 +139,7 @@ namespace engine {
 
     void App::setupScene() {
         camera                   = std::make_unique<Camera>();
-        auto sceneState = engineState.sceneState();
+        auto sceneState          = engineState.sceneState();
         *sceneState.cameraEntity = sceneState.scene->createEntity();
         sceneState.scene->getRegistry().emplace<TransformComponent>(*sceneState.cameraEntity);
         sceneState.scene->getRegistry().emplace<NameComponent>(*sceneState.cameraEntity, "Camera");
@@ -294,7 +294,7 @@ namespace engine {
         }
 
         // On-demand environment: only load skybox + generate IBL when the user enables skybox display.
-        auto rendering = engineState.renderingState();
+        auto rendering  = engineState.renderingState();
         auto sceneState = engineState.sceneState();
 
         if ((rendering.showSkybox != nullptr) && *rendering.showSkybox && (sceneState.skybox == nullptr)) {

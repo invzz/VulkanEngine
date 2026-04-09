@@ -211,11 +211,11 @@ namespace engine {
         }
 
         VkDescriptorPoolCreateInfo fallbackInfo{};
-        fallbackInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        fallbackInfo.poolSizeCount = static_cast<uint32_t>(fallbackSizes.size());
-        fallbackInfo.pPoolSizes    = fallbackSizes.data();
-        fallbackInfo.maxSets       = 1;
-        fallbackInfo.flags         = poolFlags;  // inherit flags
+        fallbackInfo.sType            = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        fallbackInfo.poolSizeCount    = static_cast<uint32_t>(fallbackSizes.size());
+        fallbackInfo.pPoolSizes       = fallbackSizes.data();
+        fallbackInfo.maxSets          = 1;
+        fallbackInfo.flags            = poolFlags;  // inherit flags
         VkDescriptorPool fallbackPool = VK_NULL_HANDLE;
         if (vkCreateDescriptorPool(device.device(), &fallbackInfo, nullptr, &fallbackPool) != VK_SUCCESS) {
             ErrorState::report(ErrorCode::DescriptorPoolCreationError, ErrorBoundary::Fatal, "Descriptor overflow pool creation failed");
