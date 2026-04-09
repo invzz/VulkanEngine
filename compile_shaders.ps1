@@ -12,7 +12,8 @@
 
 param(
     [string]$InputDir = "assets/shaders",
-    [string]$OutputDir = "assets/shaders/compiled"
+    [string]$OutputDir = "assets/shaders/compiled",
+    [switch]$SkipStandardVariant
 )
 
 $includeArgs = @(
@@ -64,7 +65,7 @@ if ($fragmentShaders) {
 
         # Build an additional "standard" PBR variant with expensive rarely-used features compiled out.
         # This reduces register pressure/occupancy cost compared to relying on runtime branches.
-        if ($shader.Name -ieq "pbr_shader.frag") {
+        if ($shader.Name -ieq "pbr_shader.frag" -and -not $SkipStandardVariant) {
             $standardOut = Join-Path $OutputDir "pbr_shader_standard.frag.spv"
             $standardDefines = @(
                 "-DPBR_ENABLE_DEBUG=0",
@@ -82,6 +83,9 @@ if ($fragmentShaders) {
             else {
                 Write-Host "Compiling: $($shader.Name) [Variant Failed]" -ForegroundColor Red
             }
+        }
+        elseif ($shader.Name -ieq "pbr_shader.frag" -and $SkipStandardVariant) {
+            Write-Host "Compiling: $($shader.Name) [Variant Skipped] --SkipStandardVariant" -ForegroundColor Yellow
         }
     }
 }

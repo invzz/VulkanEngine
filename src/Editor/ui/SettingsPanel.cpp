@@ -169,6 +169,32 @@ namespace engine {
                 }
             }
 
+            if (ImGui::CollapsingHeader("Shader Variants (Week 10)")) {
+                if (engineState_->modelRenderSystem == nullptr) {
+                    ImGui::TextDisabled("ModelRenderSystem is not available.");
+                } else {
+                    int                          variantPolicy = static_cast<int>(engineState_->modelRenderSystem->variantPolicy());
+                    static constexpr const char* variantItems  = "Auto\0Force Standard\0Force Full\0";
+                    if (ImGui::Combo("Variant Policy", &variantPolicy, variantItems)) {
+                        variantPolicy = std::clamp(variantPolicy, 0, 2);
+                        engineState_->modelRenderSystem->setVariantPolicy(static_cast<ModelRenderSystem::VariantPolicy>(variantPolicy));
+                    }
+                    ImGui::SetItemTooltip("Auto chooses per-material; forced modes pin all transparent/transmission rendering to one variant.");
+
+                    bool hotReloadEnabled = engineState_->modelRenderSystem->shaderHotReloadEnabled();
+                    if (ImGui::Checkbox("Shader Hot Reload", &hotReloadEnabled)) {
+                        engineState_->modelRenderSystem->setShaderHotReloadEnabled(hotReloadEnabled);
+                    }
+
+                    if (engineState_->modelRenderSystem->standardVariantFallbackActive()) {
+                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "Standard variant fallback active");
+                        ImGui::TextWrapped("%s", engineState_->modelRenderSystem->standardVariantFallbackReason().c_str());
+                    } else {
+                        ImGui::TextDisabled("Standard variant is available.");
+                    }
+                }
+            }
+
             if (ImGui::CollapsingHeader("GPU Profiler")) {
                 auto& profiler = GpuProfiler::instance();
                 bool  enabled  = profiler.isEnabled();

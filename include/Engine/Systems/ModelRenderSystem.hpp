@@ -2,7 +2,9 @@
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "Engine/Graphics/Descriptors.hpp"
@@ -51,6 +53,12 @@ namespace engine {
 
     class ModelRenderSystem {
        public:
+        enum class VariantPolicy : std::uint8_t {
+            Auto,
+            ForceStandard,
+            ForceFull,
+        };
+
         ModelRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
         ~ModelRenderSystem();
 
@@ -63,6 +71,26 @@ namespace engine {
         // Opt-in: enable multithreaded secondary-command-buffer recording (pilot).
         // threadCount==0 -> choose (HW threads - 1) by default.
         void enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
+
+        void setVariantPolicy(VariantPolicy policy) {
+            variantPolicy_ = policy;
+        }
+        [[nodiscard]] VariantPolicy variantPolicy() const {
+            return variantPolicy_;
+        }
+
+        void setShaderHotReloadEnabled(bool enabled) {
+            shaderHotReloadEnabled_ = enabled;
+        }
+        [[nodiscard]] bool shaderHotReloadEnabled() const {
+            return shaderHotReloadEnabled_;
+        }
+        [[nodiscard]] bool standardVariantFallbackActive() const {
+            return standardVariantFallbackActive_;
+        }
+        [[nodiscard]] const std::string& standardVariantFallbackReason() const {
+            return standardVariantFallbackReason_;
+        }
 
         // Multi-pass rendering entry points.
         void renderGbuffer(FrameInfo& frameInfo);
@@ -92,7 +120,10 @@ namespace engine {
         void createSceneColorDescriptorResources();
 
         // Shared helpers for the forward compositing passes.
-        void bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+        void                    bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+        void                    hotReloadPipelinesIfNeeded();
+        [[nodiscard]] Pipeline* chooseTransparentPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
+        [[nodiscard]] Pipeline* chooseTransmissionPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
 
         Device&                   device;
         std::unique_ptr<Pipeline> depthPrepassPipeline;
@@ -121,6 +152,11 @@ namespace engine {
         VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
         std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;
         std::vector<VkDescriptorSet>            sceneColorDescriptorSets_;
+
+        VariantPolicy variantPolicy_                 = VariantPolicy::Auto;
+        bool          shaderHotReloadEnabled_        = true;
+        bool          standardVariantFallbackActive_ = false;
+        std::string   standardVariantFallbackReason_;
     };
 }  // namespace engine
 

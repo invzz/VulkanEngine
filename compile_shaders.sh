@@ -23,6 +23,10 @@ OUTPUT_DIR="assets/shaders/compiled"
 
 INCLUDE_ARGS=("-I" "${SHADER_DIR}" "-I" "${SHADER_DIR}/includes")
 
+# Variant controls:
+#   ENGINE_BUILD_STANDARD_VARIANT=0 -> skip pbr_shader_standard.frag.spv
+BUILD_STANDARD_VARIANT="${ENGINE_BUILD_STANDARD_VARIANT:-1}"
+
 # Parse options
 while getopts ":o:d:" opt; do
   case $opt in
@@ -61,7 +65,7 @@ for shader in "$SHADER_DIR"/*.frag; do
     fi
 
     # Build an additional "standard" PBR variant with expensive features OK out.
-    if [[ "$filename" == "pbr_shader.frag" ]]; then
+    if [[ "$filename" == "pbr_shader.frag" && "$BUILD_STANDARD_VARIANT" != "0" ]]; then
         standard_out="$OUTPUT_DIR/pbr_shader_standard.frag.spv"
         if glslc --target-spv=spv1.5 \
             -DPBR_ENABLE_DEBUG=0 \
@@ -75,6 +79,8 @@ for shader in "$SHADER_DIR"/*.frag; do
         else
             echo -e "[ ${RED}Failed variant ${NC}]$shader${NC}"
         fi
+    elif [[ "$filename" == "pbr_shader.frag" && "$BUILD_STANDARD_VARIANT" == "0" ]]; then
+        echo -e "[ ${YELLOW}Skip variant${NC} ] $shader (ENGINE_BUILD_STANDARD_VARIANT=0)"
     fi
 done
 
@@ -108,12 +114,4 @@ for shader in "$SHADER_DIR"/*.mesh; do
     fi
 done
 
-for shader in "$SHADER_DIR"/*.vert; do
-    filename=$(basename -- "$shader")
-    output_file="$OUTPUT_DIR/${filename%.vert}.vert.spv"
-    if glslc --target-spv=spv1.5 "${INCLUDE_ARGS[@]}" "$shader" -o "$output_file"; then
-        echo -e "[ ${GREEN}OK${NC} ] $shader -> ${VIOLET}$output_file${NC}"
-    else
-        echo -e "[ ${RED}Failed to compile ${NC}]$shader${NC}"
-    fi
-done
+# Note: vertex shader compilation loop intentionally runs once (duplicate removed).

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
@@ -256,6 +257,9 @@ namespace engine {
     void ModelRenderSystem::createPipeline(VkRenderPass renderPass) {
         assert(pipelineLayout != VK_NULL_HANDLE && "Pipeline layout must be created before pipeline.");
 
+        standardVariantFallbackActive_ = false;
+        standardVariantFallbackReason_.clear();
+
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultMeshPipelineConfigInfo(pipelineConfig);
 
@@ -288,11 +292,26 @@ namespace engine {
             std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
             transparentConfig);
 
-        standardTransparentPipeline = std::make_unique<Pipeline>(device,
-            std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-            std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-            std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
-            transparentConfig);
+        try {
+            standardTransparentPipeline = std::make_unique<Pipeline>(device,
+                std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
+                transparentConfig);
+        } catch (const std::exception& e) {
+            Logger::warn(LogChannel::Render, "Standard transparent variant unavailable, falling back to full variant: ", e.what());
+            standardVariantFallbackActive_ = true;
+            if (!standardVariantFallbackReason_.empty()) {
+                standardVariantFallbackReason_ += "\n";
+            }
+            standardVariantFallbackReason_ += "Transparent standard variant unavailable: ";
+            standardVariantFallbackReason_ += e.what();
+            standardTransparentPipeline = std::make_unique<Pipeline>(device,
+                std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
+                transparentConfig);
+        }
 
         // Create Transmission Pipeline (no blending, no depth write; shaded refraction)
         PipelineConfigInfo transmissionConfig                = pipelineConfig;
@@ -306,11 +325,73 @@ namespace engine {
             std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
             transmissionConfig);
 
-        standardTransmissionPipeline = std::make_unique<Pipeline>(device,
-            std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
-            std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
-            std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
-            transmissionConfig);
+        try {
+            standardTransmissionPipeline = std::make_unique<Pipeline>(device,
+                std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                std::string(SHADER_PATH) + R"(pbr_shader_standard.frag.spv)",
+                transmissionConfig);
+        } catch (const std::exception& e) {
+            Logger::warn(LogChannel::Render, "Standard transmission variant unavailable, falling back to full variant: ", e.what());
+            standardVariantFallbackActive_ = true;
+            if (!standardVariantFallbackReason_.empty()) {
+                standardVariantFallbackReason_ += "\n";
+            }
+            standardVariantFallbackReason_ += "Transmission standard variant unavailable: ";
+            standardVariantFallbackReason_ += e.what();
+            standardTransmissionPipeline = std::make_unique<Pipeline>(device,
+                std::string(SHADER_PATH) + R"(simple_mesh.task.spv)",
+                std::string(SHADER_PATH) + R"(simple_mesh.mesh.spv)",
+                std::string(SHADER_PATH) + R"(pbr_shader.frag.spv)",
+                transmissionConfig);
+        }
+    }
+
+    void ModelRenderSystem::hotReloadPipelinesIfNeeded() {
+        if (!shaderHotReloadEnabled_) {
+            return;
+        }
+
+        auto reload = [&](std::unique_ptr<Pipeline>& p, const char* label) {
+            if (!p) {
+                return;
+            }
+            std::string status;
+            if (p->reloadIfChanged(&status)) {
+                Logger::info(LogChannel::Render, "Hot-reloaded ", label, " pipeline");
+            }
+        };
+
+        reload(gbufferPipeline, "gbuffer");
+        reload(depthPrepassPipeline, "depth-prepass");
+        reload(transparentPipeline, "transparent-full");
+        reload(standardTransparentPipeline, "transparent-standard");
+        reload(transmissionPipeline, "transmission-full");
+        reload(standardTransmissionPipeline, "transmission-standard");
+    }
+
+    Pipeline* ModelRenderSystem::chooseTransparentPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const {
+        switch (variantPolicy_) {
+            case VariantPolicy::ForceFull:
+                return transparentPipeline.get();
+            case VariantPolicy::ForceStandard:
+                return standardTransparentPipeline.get();
+            case VariantPolicy::Auto:
+            default:
+                return MaterialRenderBindings::needsFullVariant(frameInfo, material) ? transparentPipeline.get() : standardTransparentPipeline.get();
+        }
+    }
+
+    Pipeline* ModelRenderSystem::chooseTransmissionPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const {
+        switch (variantPolicy_) {
+            case VariantPolicy::ForceFull:
+                return transmissionPipeline.get();
+            case VariantPolicy::ForceStandard:
+                return standardTransmissionPipeline.get();
+            case VariantPolicy::Auto:
+            default:
+                return MaterialRenderBindings::needsFullVariant(frameInfo, material) ? transmissionPipeline.get() : standardTransmissionPipeline.get();
+        }
     }
 
     void ModelRenderSystem::bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const {
@@ -585,6 +666,7 @@ namespace engine {
     }
 
     void ModelRenderSystem::beginFrame(int frameIndex) {
+        hotReloadPipelinesIfNeeded();
         if (materialBindings_ != nullptr) {
             materialBindings_->beginFrame(frameIndex);
         }
@@ -735,7 +817,7 @@ namespace engine {
                     continue;
                 }
 
-                Pipeline* desired = MaterialRenderBindings::needsFullVariant(frameInfo, pMaterial) ? transmissionPipeline.get() : standardTransmissionPipeline.get();
+                Pipeline* desired = chooseTransmissionPipeline(frameInfo, pMaterial);
                 bindPipelineIfNeeded(desired);
                 renderItem(entity, subMesh, pMaterial, transform.modelTransform());
             }
@@ -829,7 +911,7 @@ namespace engine {
 
         boundPipeline = nullptr;
         for (const auto& item : transparentItems) {
-            Pipeline* desired = MaterialRenderBindings::needsFullVariant(frameInfo, item.material) ? transparentPipeline.get() : standardTransparentPipeline.get();
+            Pipeline* desired = chooseTransparentPipeline(frameInfo, item.material);
             bindPipelineIfNeeded(desired);
             renderItem(item.entity, *item.subMesh, item.material, item.modelMatrix);
         }
