@@ -88,7 +88,15 @@ void main()
   vec2 nOct = octEncode(N);
 
   outNormal   = vec4(nOct * 0.5 + 0.5, materialIOR, iridescenceIOR);
-  outAlbedo   = vec4(alphaOnly.albedo, iridescenceThickness);
-  outMaterial = vec4(metallic, roughness, ao, iridescenceFactor);
+
+  // Option A: Albedo → RGBA8UNORM (4 bytes/pixel)
+  // RGB quantized to 8-bit UNORM; A = iridescence thickness (may clamp > 1.0)
+  outAlbedo = vec4(clamp(alphaOnly.albedo, 0.0, 1.0) * 255.0, iridescenceThickness) / 255.0;
+
+  // Option B: Material → RG8UNORM (2 bytes/pixel)
+  // R: metallic (high 8 bits) | roughness (low 8 bits)
+  // G: AO
+  uint mrPacked = uint(metallic * 255.0) << 8 | uint(roughness * 255.0);
+  outMaterial   = vec4(vec2(uintBitsToFloat(mrPacked)), ao, iridescenceFactor);
   outEmissive = vec4(emissive, 1.0);
 }

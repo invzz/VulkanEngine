@@ -236,6 +236,14 @@ namespace engine {
         void initPostProcessing(Device& device, Renderer& renderer);
         void initInputRelatedSystems(Window* window);
 
+        // System registration functions for better readability
+        bool registerCoreSystems(std::string& error);
+        bool registerDescriptorResources(std::string& error);
+        bool registerPerFrameDescriptors(std::string& error);
+        bool registerPipelineLinks(std::string& error);
+        bool registerPostProcessing(std::string& error);
+        bool registerInputSystems(std::string& error);
+
         SystemRegistry systemRegistry;
 
        public:

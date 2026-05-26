@@ -13,6 +13,7 @@
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/ShaderMonitor.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
 #include "vulkan/vulkan_core.h"
@@ -57,8 +58,11 @@ namespace engine {
         configInfo_                                 = configInfo;
         normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
+        shaderMonitor_ = std::make_unique<ShaderMonitor>();
+        shaderMonitor_->addShader(vertFilePath);
+        shaderMonitor_->addShader(fragFilePath);
+
         createGraphicsPipeline(vertFilePath_, fragFilePath_, configInfo_);
-        cacheShaderWriteTimes();
         std::cout << "[" << GREEN << "Pipeline" << RESET << "] vert: " << BLUE << std::filesystem::path(vertFilePath).filename().string() << " frag: " << BLUE
                   << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
     }
@@ -71,8 +75,12 @@ namespace engine {
         configInfo_                                 = configInfo;
         normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
+        shaderMonitor_ = std::make_unique<ShaderMonitor>();
+        shaderMonitor_->addShader(taskFilePath);
+        shaderMonitor_->addShader(meshFilePath);
+        shaderMonitor_->addShader(fragFilePath);
+
         createMeshPipeline(taskFilePath_, meshFilePath_, fragFilePath_, configInfo_);
-        cacheShaderWriteTimes();
         std::cout << "[" << GREEN << "Pipeline" << RESET << "] task: " << BLUE << std::filesystem::path(taskFilePath).filename().string() << " mesh: " << BLUE
                   << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
     }
@@ -100,45 +108,11 @@ namespace engine {
         }
     }
 
-    void Pipeline::cacheShaderWriteTimes() {
-        try {
-            if (!vertFilePath_.empty()) {
-                vertWriteTime_ = std::filesystem::last_write_time(vertFilePath_);
-            }
-            if (!fragFilePath_.empty()) {
-                fragWriteTime_ = std::filesystem::last_write_time(fragFilePath_);
-            }
-            if (!taskFilePath_.empty()) {
-                taskWriteTime_ = std::filesystem::last_write_time(taskFilePath_);
-            }
-            if (!meshFilePath_.empty()) {
-                meshWriteTime_ = std::filesystem::last_write_time(meshFilePath_);
-            }
-        } catch (const std::exception& e) {
-            Logger::warn(LogChannel::Render, "Failed to cache shader write times: ", e.what());
-        }
-    }
-
     bool Pipeline::hasAnyShaderChanged(std::string* changedShaderPath) const {
-        auto check = [&](const std::string& path, const std::filesystem::file_time_type& cached) -> bool {
-            if (path.empty()) {
-                return false;
-            }
-            try {
-                auto const current = std::filesystem::last_write_time(path);
-                if (current != cached) {
-                    if (changedShaderPath != nullptr) {
-                        *changedShaderPath = path;
-                    }
-                    return true;
-                }
-            } catch (const std::exception& e) {
-                Logger::warn(LogChannel::Render, "Failed to query shader timestamp for ", path, ": ", e.what());
-            }
+        if (shaderMonitor_ == nullptr) {
             return false;
-        };
-
-        return check(vertFilePath_, vertWriteTime_) || check(taskFilePath_, taskWriteTime_) || check(meshFilePath_, meshWriteTime_) || check(fragFilePath_, fragWriteTime_);
+        }
+        return shaderMonitor_->hasAnyShaderChanged(changedShaderPath);
     }
 
     bool Pipeline::rebuild(std::string* statusMessage) {
@@ -151,7 +125,12 @@ namespace engine {
             } else {
                 createGraphicsPipeline(vertFilePath_, fragFilePath_, configInfo_);
             }
-            cacheShaderWriteTimes();
+
+            // Update shader monitoring with new timestamps
+            if (shaderMonitor_ != nullptr) {
+                shaderMonitor_->refreshTimestamps();
+            }
+
             if (statusMessage != nullptr) {
                 *statusMessage = "Pipeline rebuilt";
             }

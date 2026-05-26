@@ -120,68 +120,7 @@ bool isVisible(Meshlet meshlet, mat4 model, vec3 cameraPos) {
             return false;
         }
 
-        // 5. Occlusion Culling (HZB)
-        // Skip HZB if disabled or skipHZB flag is set (depth prepass)
-        // Bit 2 of cullingFlags = skip HZB (used for depth prepass to ensure complete depth buffer)
-
-        // Occlusion culling (HZB)
-        if (ubo.hzbEnabled != 0 && (push.cullingFlags & 4u) == 0u) {
-            // Skip HZB for very small objects (early-z will handle them)
-            if (pixelRadius >= ubo.hzbMinScreenPixels) {
-                // Project sphere center to clip space
-                vec4 clipCenter = ubo.proj * viewCenter;
-
-                // Only test if in front of camera
-                if (clipCenter.w > 0.0) {
-                    vec3 ndc = clipCenter.xyz / clipCenter.w;
-
-                    // Only test if within valid depth range
-                    if (ndc.z >= 0.0 && ndc.z <= 1.0) {
-                        // Convert to UV [0, 1]
-                        vec2 uvCenter = clamp(ndc.xy * 0.5 + 0.5, vec2(0.0), vec2(1.0));
-
-                        // Projected radius in UV space
-                        float uvRadius = projectedRadius * 0.5;
-
-                        // Calculate mip level
-                        ivec2 texSize        = textureSize(hzbTexture, 0);
-                        float diameterPixels = uvRadius * 2.0 * float(max(texSize.x, texSize.y));
-                        float mip            = ceil(log2(max(1.0, diameterPixels)) * ubo.hzbScreenSizeScale);
-                        mip                  = clamp(mip, 0.0, float(ubo.hzbMaxMipLevel));
-
-                        // Sample HZB - use MAX of samples for conservative test
-                        float hzbDepth;
-                        if (pixelRadius > 64.0) {
-                            // Large object: sample 4 corners
-                            vec2  offset = vec2(uvRadius * 0.5);
-                            float d1     = textureLod(hzbTexture, clamp(uvCenter + vec2(-offset.x, -offset.y), vec2(0.0), vec2(1.0)), mip).r;
-                            float d2     = textureLod(hzbTexture, clamp(uvCenter + vec2(offset.x, -offset.y), vec2(0.0), vec2(1.0)), mip).r;
-                            float d3     = textureLod(hzbTexture, clamp(uvCenter + vec2(-offset.x, offset.y), vec2(0.0), vec2(1.0)), mip).r;
-                            float d4     = textureLod(hzbTexture, clamp(uvCenter + vec2(offset.x, offset.y), vec2(0.0), vec2(1.0)), mip).r;
-                            hzbDepth     = max(max(d1, d2), max(d3, d4));
-                        }
-                        else {
-                            hzbDepth = textureLod(hzbTexture, uvCenter, mip).r;
-                        }
-
-                        // Compute the nearest depth of the bounding sphere
-                        float nearViewZ = viewCenter.z + radius;
-
-                        // Only cull if sphere is fully in front of near plane
-                        if (nearViewZ < -0.001) {
-                            vec4  nearClip  = ubo.proj * vec4(0.0, 0.0, nearViewZ, 1.0);
-                            float nearDepth = clamp(nearClip.z / nearClip.w, 0.0, 1.0);
-
-                            // Occluded if nearest point is behind all HZB samples
-                            // Standard depth: 0=near, 1=far, so occluded if nearDepth > hzbDepth
-                            if (nearDepth > hzbDepth) {
-                                return false;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // HZB occlusion culling disabled intentionally.
     }
 
     return true;

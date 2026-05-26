@@ -5,8 +5,10 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Graphics/ShaderMonitor.hpp"
 
 namespace engine {
 
@@ -71,7 +73,6 @@ namespace engine {
         void createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
         void createMeshPipeline(const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);
         void destroyPipelineResources();
-        void cacheShaderWriteTimes();
         bool hasAnyShaderChanged(std::string* changedShaderPath = nullptr) const;
         bool rebuild(std::string* statusMessage);
 
@@ -107,10 +108,9 @@ namespace engine {
         std::string                     fragFilePath_;
         std::string                     taskFilePath_;
         std::string                     meshFilePath_;
-        std::filesystem::file_time_type vertWriteTime_{};
-        std::filesystem::file_time_type fragWriteTime_{};
-        std::filesystem::file_time_type taskWriteTime_{};
-        std::filesystem::file_time_type meshWriteTime_{};
+
+        // Shader monitoring
+        std::unique_ptr<ShaderMonitor> shaderMonitor_;
     };
 }  // namespace engine
 

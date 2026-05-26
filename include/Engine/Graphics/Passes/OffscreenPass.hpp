@@ -28,6 +28,8 @@ class OffscreenPass : public IRenderPass {
   }
 
  private:
+  void refreshGbufferDescriptors(int frameIndex);
+
   Renderer& renderer_;
   EngineState* engineState_ = nullptr;
   Device& device_;

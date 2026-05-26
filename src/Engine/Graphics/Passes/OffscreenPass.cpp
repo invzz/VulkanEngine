@@ -40,6 +40,73 @@ namespace {
 
         return info;
     }
+
+    void updateShadowDescriptors(engine::EngineState* engineState, engine::Device& device, int frameIndex) {
+        // Shadow descriptors update
+        int const shadowCount     = engineState->shadowSystem->getShadowLightCount();
+        int const cubeShadowCount = engineState->shadowSystem->getCubeShadowLightCount();
+
+        std::array<VkDescriptorImageInfo, engine::ShadowSystem::MAX_SHADOW_MAPS> shadowInfos{};
+        for (int i = 0; i < shadowCount && i < engine::ShadowSystem::MAX_SHADOW_MAPS; i++) {
+            shadowInfos[i] = engineState->shadowSystem->getShadowMapDescriptorInfo(i);
+        }
+        for (int i = shadowCount; i < engine::ShadowSystem::MAX_SHADOW_MAPS; i++) {
+            shadowInfos[i] = engineState->shadowSystem->getShadowMapDescriptorInfo(0);
+        }
+
+        std::array<VkDescriptorImageInfo, engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS> cubeShadowInfos{};
+        for (int i = 0; i < cubeShadowCount && i < engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
+            cubeShadowInfos[i] = engineState->shadowSystem->getCubeShadowMapDescriptorInfo(i);
+        }
+        for (int i = cubeShadowCount; i < engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
+            cubeShadowInfos[i] = engineState->shadowSystem->getCubeShadowMapDescriptorInfo(0);
+        }
+
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+        descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet          = engineState->deferredShadowDescriptorSetRef(frameIndex);
+        descriptorWrites[0].dstBinding      = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[0].descriptorCount = engine::ShadowSystem::MAX_SHADOW_MAPS;
+        descriptorWrites[0].pImageInfo      = shadowInfos.data();
+
+        descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet          = engineState->deferredShadowDescriptorSetRef(frameIndex);
+        descriptorWrites[1].dstBinding      = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS;
+        descriptorWrites[1].pImageInfo      = cubeShadowInfos.data();
+
+        vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+
+    void performDustRendering(engine::EngineState* engineState,
+                             engine::FrameInfo& frameInfo,
+                             const engine::Scene& scene) {
+        // Dust rendering uses the current scene + camera to compute lighting
+        SunInfo const sunInfo = queryPrimaryDirectionalLightSunInfo(scene);
+
+        auto sunColor     = glm::vec3(1.0f);
+        auto ambientColor = glm::vec3(0.1f);
+
+        float const height = sunInfo.directionToSun.y;
+        if (height > 0.1f) {
+            sunColor     = glm::vec3(1.0f, 0.95f, 0.9f);
+            ambientColor = glm::vec3(0.2f, 0.2f, 0.3f);
+        } else if (height > -0.1f) {
+            sunColor     = glm::vec3(1.0f, 0.6f, 0.3f);
+            ambientColor = glm::vec3(0.3f, 0.2f, 0.2f);
+        } else {
+            sunColor     = glm::vec3(0.05f, 0.05f, 0.1f);
+            ambientColor = glm::vec3(0.01f, 0.01f, 0.02f);
+        }
+
+        auto const sunDirWithIntensity = glm::vec4(sunInfo.directionToSun, sunInfo.intensity);
+        engineState->dustRenderSystem->render(frameInfo, engineState->dustSettings, sunDirWithIntensity, sunColor, ambientColor);
+    }
 }  // namespace
 
 namespace engine {
@@ -50,23 +117,7 @@ namespace engine {
         engineState_->modelRenderSystem->updateSceneColorDescriptor(frameInfo.frameIndex, renderer_.getSceneColorImageInfo(frameInfo.frameIndex));
 
         // Refresh G-buffer descriptors every frame (images may change on resize)
-        {
-            auto nInfo     = renderer_.getGbufferNormalImageInfo(frameInfo.frameIndex);
-            auto aInfo     = renderer_.getGbufferAlbedoImageInfo(frameInfo.frameIndex);
-            auto mInfo     = renderer_.getGbufferMaterialImageInfo(frameInfo.frameIndex);
-            auto dInfo     = renderer_.getDepthImageInfo(frameInfo.frameIndex);
-            auto cInfo     = renderer_.getOffscreenImageInfo(frameInfo.frameIndex);
-            auto bakedInfo = renderer_.getGbufferBakedImageInfo(frameInfo.frameIndex);
-
-            DescriptorWriter(engineState_->gbufferSetLayoutRef(), engineState_->gbufferPoolRef())
-                .writeImage(0, &nInfo)
-                .writeImage(1, &aInfo)
-                .writeImage(2, &mInfo)
-                .writeImage(3, &dInfo)
-                .writeImage(4, &cInfo)
-                .writeImage(5, &bakedInfo)
-                .overwrite(engineState_->gbufferDescriptorSetRef(frameInfo.frameIndex));
-        }
+        refreshGbufferDescriptors(frameInfo.frameIndex);
 
         // Use the "current-frame HZB" global descriptor set for the main scene after the HZB pass.
         auto const prevGlobalSet      = frameInfo.globalDescriptorSet;
@@ -78,45 +129,8 @@ namespace engine {
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
         renderer_.beginDeferredLightingRenderPass(frameInfo.commandBuffer);
 
-        // Shadow descriptors update
-        int const shadowCount     = engineState_->shadowSystem->getShadowLightCount();
-        int const cubeShadowCount = engineState_->shadowSystem->getCubeShadowLightCount();
-
-        std::array<VkDescriptorImageInfo, ShadowSystem::MAX_SHADOW_MAPS> shadowInfos{};
-        for (int i = 0; i < shadowCount && i < ShadowSystem::MAX_SHADOW_MAPS; i++) {
-            shadowInfos[i] = engineState_->shadowSystem->getShadowMapDescriptorInfo(i);
-        }
-        for (int i = shadowCount; i < ShadowSystem::MAX_SHADOW_MAPS; i++) {
-            shadowInfos[i] = engineState_->shadowSystem->getShadowMapDescriptorInfo(0);
-        }
-
-        std::array<VkDescriptorImageInfo, ShadowSystem::MAX_CUBE_SHADOW_MAPS> cubeShadowInfos{};
-        for (int i = 0; i < cubeShadowCount && i < ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
-            cubeShadowInfos[i] = engineState_->shadowSystem->getCubeShadowMapDescriptorInfo(i);
-        }
-        for (int i = cubeShadowCount; i < ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
-            cubeShadowInfos[i] = engineState_->shadowSystem->getCubeShadowMapDescriptorInfo(0);
-        }
-
-        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-
-        descriptorWrites[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[0].dstSet          = engineState_->deferredShadowDescriptorSetRef(frameInfo.frameIndex);
-        descriptorWrites[0].dstBinding      = 0;
-        descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[0].descriptorCount = ShadowSystem::MAX_SHADOW_MAPS;
-        descriptorWrites[0].pImageInfo      = shadowInfos.data();
-
-        descriptorWrites[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet          = engineState_->deferredShadowDescriptorSetRef(frameInfo.frameIndex);
-        descriptorWrites[1].dstBinding      = 1;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = ShadowSystem::MAX_CUBE_SHADOW_MAPS;
-        descriptorWrites[1].pImageInfo      = cubeShadowInfos.data();
-
-        vkUpdateDescriptorSets(device_.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+        // Update shadow descriptors
+        updateShadowDescriptors(engineState_, device_, frameInfo.frameIndex);
 
         engineState_->deferredLightingSystem->render(frameInfo,
             frameInfo.globalDescriptorSet,
@@ -133,26 +147,7 @@ namespace engine {
             engineState_->modelRenderSystem->renderTransmission(frameInfo);
             engineState_->modelRenderSystem->renderAlphaBlend(frameInfo);
 
-            // Dust rendering uses the current scene + camera to compute lighting
-            SunInfo const sunInfo = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
-
-            glm::vec3 sunColor     = glm::vec3(1.0f);
-            glm::vec3 ambientColor = glm::vec3(0.1f);
-
-            float const height = sunInfo.directionToSun.y;
-            if (height > 0.1f) {
-                sunColor     = glm::vec3(1.0f, 0.95f, 0.9f);
-                ambientColor = glm::vec3(0.2f, 0.2f, 0.3f);
-            } else if (height > -0.1f) {
-                sunColor     = glm::vec3(1.0f, 0.6f, 0.3f);
-                ambientColor = glm::vec3(0.3f, 0.2f, 0.2f);
-            } else {
-                sunColor     = glm::vec3(0.05f, 0.05f, 0.1f);
-                ambientColor = glm::vec3(0.01f, 0.01f, 0.02f);
-            }
-
-            glm::vec4 const sunDirWithIntensity = glm::vec4(sunInfo.directionToSun, sunInfo.intensity);
-            engineState_->dustRenderSystem->render(frameInfo, engineState_->dustSettings, sunDirWithIntensity, sunColor, ambientColor);
+            performDustRendering(engineState_, frameInfo, *frameInfo.scene);
 
             renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
         }
@@ -160,6 +155,24 @@ namespace engine {
         frameInfo.globalDescriptorSet = prevGlobalSet;
 
         renderer_.generateOffscreenMipmaps(frameInfo.commandBuffer);
+    }
+
+    void OffscreenPass::refreshGbufferDescriptors(int frameIndex) {
+        auto nInfo     = renderer_.getGbufferNormalImageInfo(frameIndex);
+        auto aInfo     = renderer_.getGbufferAlbedoImageInfo(frameIndex);
+        auto mInfo     = renderer_.getGbufferMaterialImageInfo(frameIndex);
+        auto dInfo     = renderer_.getDepthImageInfo(frameIndex);
+        auto cInfo     = renderer_.getOffscreenImageInfo(frameIndex);
+        auto bakedInfo = renderer_.getGbufferBakedImageInfo(frameIndex);
+
+        DescriptorWriter(engineState_->gbufferSetLayoutRef(), engineState_->gbufferPoolRef())
+            .writeImage(0, &nInfo)
+            .writeImage(1, &aInfo)
+            .writeImage(2, &mInfo)
+            .writeImage(3, &dInfo)
+            .writeImage(4, &cInfo)
+            .writeImage(5, &bakedInfo)
+            .overwrite(engineState_->gbufferDescriptorSetRef(frameIndex));
     }
 
 }  // namespace engine

@@ -29,7 +29,7 @@ namespace engine {
         if (!systemRegistry.registerSystem(
                 "core.systems",
                 {},
-                [this, &device, &renderer, multithreadedRecordingEnabled, multithreadedRecordingThreads](std::string&) {
+                [this, &device, &renderer, multithreadedRecordingEnabled, multithreadedRecordingThreads](std::string& error) {
                     initCoreSystems(device, renderer, multithreadedRecordingEnabled, multithreadedRecordingThreads);
                     return true;
                 },
@@ -40,7 +40,7 @@ namespace engine {
         if (!systemRegistry.registerSystem(
                 "descriptor.resources",
                 {"core.systems"},
-                [this, &device, &renderer](std::string&) {
+                [this, &device, &renderer](std::string& error) {
                     initDescriptorResources(device, renderer);
                     return true;
                 },
@@ -51,7 +51,7 @@ namespace engine {
         if (!systemRegistry.registerSystem(
                 "per.frame.descriptors",
                 {"descriptor.resources"},
-                [this, &renderer](std::string&) {
+                [this, &renderer](std::string& error) {
                     allocatePerFrameDescriptorSets(renderer);
                     return true;
                 },
@@ -62,7 +62,7 @@ namespace engine {
         if (!systemRegistry.registerSystem(
                 "pipeline.links",
                 {"core.systems"},
-                [this, &renderer](std::string&) {
+                [this, &renderer](std::string& error) {
                     modelRenderSystem->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
                     modelRenderSystem->setShadowSystem(shadowSystem.get());
                     modelRenderSystem->setIBLSystem(iblSystem.get());
@@ -75,7 +75,7 @@ namespace engine {
         if (!systemRegistry.registerSystem(
                 "post.processing",
                 {"per.frame.descriptors", "pipeline.links"},
-                [this, &device, &renderer](std::string&) {
+                [this, &device, &renderer](std::string& error) {
                     initPostProcessing(device, renderer);
                     return true;
                 },
@@ -86,7 +86,7 @@ namespace engine {
         if (!systemRegistry.registerSystem(
                 "input.systems",
                 {"core.systems"},
-                [this, window](std::string&) {
+                [this, window](std::string& error) {
                     initInputRelatedSystems(window);
                     return true;
                 },
@@ -210,6 +210,7 @@ namespace engine {
             }
         }
     }
+
 
     void EngineState::initPostProcessing(Device& device, Renderer& renderer) {
         // Post processing resources

@@ -156,8 +156,10 @@ Surface loadSurface(vec2 uv, float depth, out bool isDebugPrimitive) {
     isDebugPrimitive = (iridescenceThickness < 0.0);
 
     vec4 mat          = texture(gbufferMaterial, uv);
-    s.metallic        = mat.r;
-    s.roughness       = mat.g;
+    // Option B: RG8UNORM unpack — R bit-packed metallic(8b)+roughness(8b)
+    uint mrPacked     = floatBitsToUint(mat.r);
+    s.metallic        = float(mrPacked >> 8) / 255.0;
+    s.roughness       = float(mrPacked & 0xFF) / 255.0;
     s.ao              = mat.b;
     float iridescence = mat.a;
 

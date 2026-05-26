@@ -369,8 +369,13 @@ namespace engine {
         gN.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
         gN.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        VkAttachmentDescription const gA = gN;
-        VkAttachmentDescription const gM = gN;
+        // Option A: Albedo → RGBA8UNORM (4 bytes/pixel, 50% savings)
+        VkAttachmentDescription gA = gN;
+        gA.format = VK_FORMAT_R8G8B8A8_UNORM;
+
+        // Option B: Material → RG8UNORM (2 bytes/pixel, 75% savings)
+        VkAttachmentDescription gM = gN;
+        gM.format = VK_FORMAT_R8G8_UNORM;
 
         // Emissive is written directly into the HDR color buffer during the opaque/G-buffer pass.
         // This ensures emissive contributes to post/bloom and is visible in the scene color copy.
