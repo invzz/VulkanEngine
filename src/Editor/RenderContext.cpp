@@ -28,7 +28,11 @@
 namespace engine {
 
     RenderContext::RenderContext(Device& device, MeshManager& meshManager, VkDescriptorImageInfo hzbImageInfo)
-        : device_{device}, meshManager_{meshManager}, uboBuffers_(SwapChain::maxFramesInFlight()), globalDescriptorSets_(SwapChain::maxFramesInFlight()) {
+        : device_{device},
+          meshManager_{meshManager},
+          uboBuffers_(SwapChain::maxFramesInFlight()),
+          uboColdBuffers_(SwapChain::maxFramesInFlight()),
+          globalDescriptorSets_(SwapChain::maxFramesInFlight()) {
         createDescriptorPool();
         createGlobalSetLayout();
         createUBOBuffers();
@@ -51,7 +55,8 @@ namespace engine {
         globalPool_ = DescriptorPool::Builder(device_)
                           // We allocate two global descriptor sets per frame: prev-HZB + current-HZB.
                           .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
+                          // Two UBO bindings (hot + cold) per set.
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
                           // Storage buffers: mesh buffer + 3 light buffers per set.
                           .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2 * 4))
                           .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
@@ -67,18 +72,28 @@ namespace engine {
                                .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+                               // Cold frame data (HZB knobs and other rarely changed values)
+                               .addBinding(6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .build();
     }
 
     void RenderContext::createUBOBuffers() {
-        for (auto& buffer : uboBuffers_) {
-            buffer = std::make_unique<Buffer>(device_,
+        for (size_t i = 0; i < uboBuffers_.size(); ++i) {
+            uboBuffers_[i] = std::make_unique<Buffer>(device_,
                 sizeof(GlobalUbo),
                 1,
                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
                 device_.getProperties().limits.minUniformBufferOffsetAlignment);
-            buffer->map();
+            uboBuffers_[i]->map();
+
+            uboColdBuffers_[i] = std::make_unique<Buffer>(device_,
+                sizeof(GlobalUboCold),
+                1,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                device_.getProperties().limits.minUniformBufferOffsetAlignment);
+            uboColdBuffers_[i]->map();
         }
     }
 
@@ -123,6 +138,7 @@ namespace engine {
 
         for (size_t i = 0; i < globalDescriptorSets_.size(); i++) {
             auto bufferInfo = uboBuffers_[i]->descriptorInfo();
+            auto coldBufferInfo = uboColdBuffers_[i]->descriptorInfo();
             auto meshInfo   = meshManager_.getDescriptorInfo();
             auto pointInfo  = pointLightBuffers_[i]->descriptorInfo();
             auto dirInfo    = directionalLightBuffers_[i]->descriptorInfo();
@@ -138,6 +154,7 @@ namespace engine {
                 .writeBuffer(3, &pointInfo)
                 .writeBuffer(4, &dirInfo)
                 .writeBuffer(5, &spotInfo)
+                .writeBuffer(6, &coldBufferInfo)
                 .build(globalDescriptorSets_[i]);
             if (globalDescriptorSets_[i] == VK_NULL_HANDLE) {
                 throw std::runtime_error("failed to allocate global descriptor set (prev HZB)");
@@ -150,6 +167,7 @@ namespace engine {
                 .writeBuffer(3, &pointInfo)
                 .writeBuffer(4, &dirInfo)
                 .writeBuffer(5, &spotInfo)
+                .writeBuffer(6, &coldBufferInfo)
                 .build(globalDescriptorSetsCurrentHzb_[i]);
             if (globalDescriptorSetsCurrentHzb_[i] == VK_NULL_HANDLE) {
                 throw std::runtime_error("failed to allocate global descriptor set (current HZB)");
@@ -212,9 +230,12 @@ namespace engine {
         updateHzbDescriptorSet(device_, globalDescriptorSetsCurrentHzb_[frameIndex], hzbImageInfo);
     }
 
-    void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo) {
+    void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold) {
         uboBuffers_[frameIndex]->writeToBuffer(&ubo);
         uboBuffers_[frameIndex]->flush();
+
+        uboColdBuffers_[frameIndex]->writeToBuffer(&uboCold);
+        uboColdBuffers_[frameIndex]->flush();
     }
 
     RenderContext::LightCounts RenderContext::updateLightBuffers(int frameIndex, Scene& scene) {
@@ -231,9 +252,8 @@ namespace engine {
             for (auto entity : view) {
                 auto [point, transform] = view.get<PointLightComponent, TransformComponent>(entity);
                 PointLight pl{};
-                pl.position = glm::vec4(transform.translation, 1.f);
-                pl.color    = glm::vec4(point.color, point.intensity);
-                pl.radius2  = point.radius * point.radius;
+                pl.positionRadius2 = glm::vec4(transform.translation, point.radius * point.radius);
+                pl.colorIntensity  = glm::vec4(point.color, point.intensity);
                 pointLights.push_back(pl);
             }
         }
@@ -245,9 +265,13 @@ namespace engine {
                 auto [dir, transform] = view.get<DirectionalLightComponent, TransformComponent>(entity);
                 DirectionalLight dl{};
 
-                glm::vec3 const direction = transform.getForwardDir();
-                dl.direction              = glm::vec4(glm::normalize(direction), 0.f);
-                dl.color                  = glm::vec4(dir.color, dir.intensity);
+                glm::vec3 direction = transform.getForwardDir();
+                if (!std::isfinite(direction.x) || !std::isfinite(direction.y) || !std::isfinite(direction.z) || glm::dot(direction, direction) < 1e-8f) {
+                    // Fallback to a stable default sun direction if transform forward is invalid.
+                    direction = glm::vec3(0.0f, -1.0f, 0.0f);
+                }
+                dl.direction = glm::vec4(glm::normalize(direction), 0.f);
+                dl.color     = glm::vec4(dir.color, dir.intensity);
                 dirLights.push_back(dl);
                 break;  // only keep the first directional light
             }
@@ -262,14 +286,14 @@ namespace engine {
 
                 glm::vec3 const direction = transform.getForwardDir();
 
-                sl.position       = glm::vec4(transform.translation, 1.f);
-                sl.direction      = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(spot.innerCutoffAngle)));
-                sl.color          = glm::vec4(spot.color, spot.intensity);
-                sl.outerCutoff    = glm::cos(glm::radians(spot.outerCutoffAngle));
-                sl.constantAtten  = spot.constantAttenuation;
-                sl.linearAtten    = spot.linearAttenuation;
-                sl.quadraticAtten = spot.quadraticAttenuation;
-                sl.radius2        = computeSpotLightRadius2(spot);
+                sl.positionRadius2 = glm::vec4(transform.translation, computeSpotLightRadius2(spot));
+                sl.directionInner  = glm::vec4(glm::normalize(direction), glm::cos(glm::radians(spot.innerCutoffAngle)));
+                sl.colorIntensity  = glm::vec4(spot.color, spot.intensity);
+                sl.attenOuter      = glm::vec4(
+                    glm::cos(glm::radians(spot.outerCutoffAngle)),
+                    spot.constantAttenuation,
+                    spot.linearAttenuation,
+                    spot.quadraticAttenuation);
 
                 spotLights.push_back(sl);
             }

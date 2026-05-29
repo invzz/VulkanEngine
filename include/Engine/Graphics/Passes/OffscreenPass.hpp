@@ -9,7 +9,6 @@ class Renderer;
 class ModelRenderSystem;
 class DeferredLightingSystem;
 class ShadowSystem;
-class DustRenderSystem;
 class RenderContext;
 class Device;
 class DescriptorPool;

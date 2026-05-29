@@ -19,21 +19,6 @@ struct SkyboxSettings {
   bool debugCubemapFaces{false};
 };
 
-struct FogSettings {
-  float density{0.005f};
-  float height{0.0f};
-  float heightDensity{0.1f};
-  bool useSkyColor{true};
-  glm::vec3 color{0.5f, 0.6f, 0.7f};
-
-  // God Rays (disabled by default - expensive effect)
-  bool enableGodRays{false};
-  float godRayDensity{1.0f};
-  float godRayWeight{0.01f};
-  float godRayDecay{0.97f};
-  float godRayExposure{0.5f};
-};
-
 /**
  * @brief Render system for skybox/environment maps
  *

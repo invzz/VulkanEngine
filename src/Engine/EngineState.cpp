@@ -5,6 +5,7 @@
 #include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Renderer.hpp"
+#include "Engine/Systems/PhysicsSystem.hpp"
 
 #include "ModelLib/Resources/TextureManager.hpp"
 
@@ -94,6 +95,18 @@ namespace engine {
             throw RuntimeException(registerError);
         }
 
+        if (!systemRegistry.registerSystem(
+                "physics.systems",
+                {"core.systems"},
+                [this, &device](std::string& error) {
+                    physicsSystem = std::make_unique<PhysicsSystem>(device);
+                    joltPhysicsSystem = std::make_unique<JoltPhysicsSystem>();
+                    return true;
+                },
+                &registerError)) {
+            throw RuntimeException(registerError);
+        }
+
         std::string initError;
         if (!systemRegistry.initializeAll(&initError)) {
             throw RuntimeException(initError);
@@ -123,7 +136,6 @@ namespace engine {
         // Render systems
         skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth());
         gridRenderSystem   = std::make_unique<GridRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
-        dustRenderSystem   = std::make_unique<DustRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth());
         modelRenderSystem  = std::make_unique<ModelRenderSystem>(device,
             renderer.getOffscreenRenderPassLoadColorDepth(),
             renderContext->getGlobalSetLayout(),
@@ -137,15 +149,13 @@ namespace engine {
         // G-buffer + Deferred lighting
         modelRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
 
-        gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 6).build();
+        gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 4).build();
 
         gbufferSetLayout = DescriptorSetLayout::Builder(device)
                                .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .build();
 
         deferredIblPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 3).build();
@@ -183,15 +193,11 @@ namespace engine {
             auto aInfo              = renderer.getGbufferAlbedoImageInfo(i);
             auto mInfo              = renderer.getGbufferMaterialImageInfo(i);
             auto dInfo              = renderer.getDepthImageInfo(i);
-            auto unusedBinding4Info = nInfo;
-            auto bakedInfo          = renderer.getGbufferBakedImageInfo(i);
             DescriptorWriter(*gbufferSetLayout, *gbufferPool)
                 .writeImage(0, &nInfo)
                 .writeImage(1, &aInfo)
                 .writeImage(2, &mInfo)
                 .writeImage(3, &dInfo)
-                .writeImage(4, &unusedBinding4Info)
-                .writeImage(5, &bakedInfo)
                 .build(gbufferDescriptorSets[i]);
         }
 

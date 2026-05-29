@@ -490,10 +490,6 @@ namespace engine {
         return offscreenFrameBuffer->getGbufferMaterialImageInfo(index);
     }
 
-    VkDescriptorImageInfo Renderer::getGbufferBakedImageInfo(int index) const {
-        return offscreenFrameBuffer->getGbufferBakedImageInfo(index);
-    }
-
     VkDescriptorImageInfo Renderer::getDepthImageInfo(int index) const {
         VkDescriptorImageInfo info{};
         info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;

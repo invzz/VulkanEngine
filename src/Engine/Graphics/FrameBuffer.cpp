@@ -14,6 +14,26 @@
 
 namespace engine {
 
+    namespace {
+        // Validation toggle for compact G-buffer formats. Switch to false to A/B test
+        // against higher-precision reference formats.
+        constexpr bool kUseCompactGbufferFormats = true;
+
+        constexpr VkFormat kGbufferNormalFormatCompact = VK_FORMAT_R16G16_SNORM;
+        constexpr VkFormat kGbufferNormalFormatReference = VK_FORMAT_R16G16B16A16_SFLOAT;
+        constexpr VkFormat kGbufferAlbedoFormatCompact = VK_FORMAT_R8G8B8A8_UNORM;
+        constexpr VkFormat kGbufferAlbedoFormatReference = VK_FORMAT_R16G16B16A16_SFLOAT;
+        constexpr VkFormat kGbufferMaterialFormatCompact = VK_FORMAT_R8G8B8A8_UNORM;
+        constexpr VkFormat kGbufferMaterialFormatReference = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+        constexpr VkFormat kSelectedGbufferNormalFormat =
+            kUseCompactGbufferFormats ? kGbufferNormalFormatCompact : kGbufferNormalFormatReference;
+        constexpr VkFormat kSelectedGbufferAlbedoFormat =
+            kUseCompactGbufferFormats ? kGbufferAlbedoFormatCompact : kGbufferAlbedoFormatReference;
+        constexpr VkFormat kSelectedGbufferMaterialFormat =
+            kUseCompactGbufferFormats ? kGbufferMaterialFormatCompact : kGbufferMaterialFormatReference;
+    }  // namespace
+
     FrameBuffer::FrameBuffer(Device& device, VkExtent2D extent, uint32_t frameCount, bool useMipmaps) : device{device}, extent{extent}, frameCount{frameCount}, useMipmaps{useMipmaps} {
         createRenderPass();
         createImages();
@@ -79,11 +99,6 @@ namespace engine {
             target.destroy(device);
         }
         gbufferMaterialTargets.clear();
-
-        for (auto& target : gbufferBakedTargets) {
-            target.destroy(device);
-        }
-        gbufferBakedTargets.clear();
 
         for (auto& target : depthTargets) {
             target.destroy(device);
@@ -360,7 +375,7 @@ namespace engine {
 
         // 5) G-buffer render pass: write normal/albedo/material + emissive(HDR color) + depth
         VkAttachmentDescription gN{};
-        gN.format         = VK_FORMAT_R16G16B16A16_SFLOAT;
+        gN.format         = kSelectedGbufferNormalFormat;
         gN.samples        = VK_SAMPLE_COUNT_1_BIT;
         gN.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
         gN.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
@@ -369,13 +384,13 @@ namespace engine {
         gN.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
         gN.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        // Option A: Albedo → RGBA8UNORM (4 bytes/pixel, 50% savings)
+        // Albedo format is controlled by the compact/reference toggle above.
         VkAttachmentDescription gA = gN;
-        gA.format = VK_FORMAT_R8G8B8A8_UNORM;
+        gA.format = kSelectedGbufferAlbedoFormat;
 
-        // Option B: Material → RG8UNORM (2 bytes/pixel, 75% savings)
+        // Material format is controlled by the compact/reference toggle above.
         VkAttachmentDescription gM = gN;
-        gM.format = VK_FORMAT_R8G8_UNORM;
+        gM.format = kSelectedGbufferMaterialFormat;
 
         // Emissive is written directly into the HDR color buffer during the opaque/G-buffer pass.
         // This ensures emissive contributes to post/bloom and is visible in the scene color copy.
@@ -384,13 +399,6 @@ namespace engine {
         gHdr.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
         gHdr.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
         gHdr.finalLayout             = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        // Baked light RGB (separate MRT). Use same color format as gbuffer color attachments.
-        VkAttachmentDescription gBaked = gN;
-        gBaked.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        gBaked.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
-        gBaked.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
-        gBaked.finalLayout             = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
         VkAttachmentDescription gDepth{};
         gDepth.format  = depthFormat;
@@ -403,15 +411,14 @@ namespace engine {
         gDepth.initialLayout  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         gDepth.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        std::array<VkAttachmentReference, 5> gbufferColorRefs{};
+        std::array<VkAttachmentReference, 4> gbufferColorRefs{};
         gbufferColorRefs[0] = VkAttachmentReference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         gbufferColorRefs[1] = VkAttachmentReference{1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         gbufferColorRefs[2] = VkAttachmentReference{2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         gbufferColorRefs[3] = VkAttachmentReference{3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-        gbufferColorRefs[4] = VkAttachmentReference{4, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-        // Depth is now attachment index 5
-        VkAttachmentReference const gbufferDepthRef{5, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        // Depth is attachment index 4
+        VkAttachmentReference const gbufferDepthRef{4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
         VkSubpassDescription gbufferSubpass{};
         gbufferSubpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -438,7 +445,7 @@ namespace engine {
         gbufferDeps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
         gbufferDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-        std::array<VkAttachmentDescription, 6> gbufferAttachments = {gN, gA, gM, gHdr, gBaked, gDepth};
+        std::array<VkAttachmentDescription, 5> gbufferAttachments = {gN, gA, gM, gHdr, gDepth};
 
         VkRenderPassCreateInfo gbufferInfo{};
         gbufferInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -515,7 +522,6 @@ namespace engine {
         gbufferNormalTargets.resize(frameCount);
         gbufferAlbedoTargets.resize(frameCount);
         gbufferMaterialTargets.resize(frameCount);
-        gbufferBakedTargets.resize(frameCount);
         depthTargets.resize(frameCount);
         hzbTargets.resize(frameCount);
 
@@ -577,8 +583,7 @@ namespace engine {
             depthUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
 
-        constexpr VkFormat gbufferFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-        constexpr VkFormat hzbFormat     = VK_FORMAT_R32_SFLOAT;
+        constexpr VkFormat hzbFormat             = VK_FORMAT_R32_SFLOAT;
 
         for (uint32_t i = 0; i < frameCount; ++i) {
             makeTarget(colorTargets[i], colorFormat, mipLevels, colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, false, true, true, &linearSamplerInfo);
@@ -597,28 +602,21 @@ namespace engine {
                 false,
                 false,
                 nullptr);
-            makeTarget(gbufferNormalTargets[i], gbufferFormat, 1,
+            makeTarget(gbufferNormalTargets[i], kSelectedGbufferNormalFormat, 1,
                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 false,
                 false,
                 false,
                 nullptr);
-            makeTarget(gbufferAlbedoTargets[i], gbufferFormat, 1,
+            makeTarget(gbufferAlbedoTargets[i], kSelectedGbufferAlbedoFormat, 1,
                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 false,
                 false,
                 false,
                 nullptr);
-            makeTarget(gbufferMaterialTargets[i], gbufferFormat, 1,
-                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                false,
-                false,
-                false,
-                nullptr);
-            makeTarget(gbufferBakedTargets[i], gbufferFormat, 1,
+            makeTarget(gbufferMaterialTargets[i], kSelectedGbufferMaterialFormat, 1,
                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_IMAGE_ASPECT_COLOR_BIT,
                 false,
@@ -709,13 +707,12 @@ namespace engine {
                 throw std::runtime_error("failed to create load-color-depth framebuffer!");
             }
 
-            // G-buffer framebuffer: N, Albedo, Material, HDR (emissive), Baked (RGB), Depth
-            std::array<VkImageView, 6> gbufferAttachments =
+            // G-buffer framebuffer: N, Albedo, Material, HDR (emissive), Depth
+            std::array<VkImageView, 5> gbufferAttachments =
                 {gbufferNormalTargets[i].getView(),
                     gbufferAlbedoTargets[i].getView(),
                     gbufferMaterialTargets[i].getView(),
                     colorTargets[i].getAttachmentView(),
-                    gbufferBakedTargets[i].getView(),
                     depthTargets[i].getView()};
             VkFramebufferCreateInfo gbufferFbInfo{};
             gbufferFbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -783,14 +780,6 @@ namespace engine {
         return VkDescriptorImageInfo{
             .sampler     = colorTargets[index].getSampler(),
             .imageView   = gbufferMaterialTargets[index].getView(),
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-    }
-
-    VkDescriptorImageInfo FrameBuffer::getGbufferBakedImageInfo(int index) const {
-        return VkDescriptorImageInfo{
-            .sampler     = colorTargets[index].getSampler(),
-            .imageView   = gbufferBakedTargets[index].getView(),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }

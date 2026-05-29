@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -14,7 +13,6 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/ShadowMap.hpp"
-#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
@@ -23,7 +21,6 @@
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/PBRMaterial.hpp"
 #include "glm/common.hpp"
-#include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/vector_float4.hpp"
@@ -61,7 +58,7 @@ namespace engine {
     // ─────────────────────────────────────────────────────────────────────────────
 
     ShadowSystem::ShadowSystem(Device& device, uint32_t shadowMapSize) : device_{device}, shadowMapSize_{shadowMapSize} {
-        // Create multiple shadow maps for directional/spot lights
+        // Create 2D shadow maps for spot lights
         for (auto& lightSpaceMatrix : lightSpaceMatrices_) {
             shadowMaps_.push_back(std::make_unique<ShadowMap>(device, shadowMapSize, shadowMapSize));
             lightSpaceMatrix = glm::mat4(1.0f);
@@ -181,154 +178,6 @@ namespace engine {
             std::string(SHADER_PATH) + R"(cube_shadow.mesh.spv)",
             std::string(SHADER_PATH) + R"(cube_shadow_mesh.frag.spv)",
             configInfo);
-    }
-
-    glm::mat4 ShadowSystem::calculateDirectionalCascadeMatrix(const glm::vec3& lightDirection,
-        const Camera&                                                          camera,
-        float                                                                  cascadeNear,
-        float                                                                  cascadeFar,
-        int                                                                    cascadeIndex,
-        uint32_t                                                               shadowMapSize,
-        glm::vec3*                                                             outMinLS,
-        glm::vec3*                                                             outMaxLS,
-        float*                                                                 outWorldUnitsPerTexel) {
-        // cascadeIndex reserved for future per-cascade tuning (e.g., bias scaling)
-        (void) cascadeIndex;
-
-        // Normalize light direction
-        glm::vec3 const lightDir = glm::normalize(lightDirection);
-
-        // Get camera matrices
-        glm::mat4 const proj    = camera.getProjectionMatrix();
-        glm::mat4 const invView = camera.getInverseView();
-
-        // Extract near/far planes from projection matrix
-        float const A         = proj[2][2];
-        float const B         = proj[3][2];
-        float       nearPlane = 0.1f;
-        if (glm::abs(A) > 1e-6f) {
-            nearPlane = glm::max(0.001f, -B / A);
-        }
-
-        float farPlane = nearPlane + 100.0f;
-        if (glm::abs(A - 1.0f) > 1e-6f) {
-            farPlane = (A * nearPlane) / (A - 1.0f);
-        }
-
-        // Extract field of view and aspect ratio
-        float const tanHalfFovy = 1.0f / glm::max(proj[1][1], 1e-6f);
-        float const aspect      = proj[1][1] / glm::max(proj[0][0], 1e-6f);
-
-        // Clamp cascade distances to valid range
-        float const sliceNear = glm::clamp(cascadeNear, nearPlane, farPlane - 0.01f);
-        float const sliceFar  = glm::clamp(cascadeFar, sliceNear + 0.01f, farPlane);
-
-        // Calculate frustum dimensions at near and far planes
-        float const nearHeight = 2.0f * tanHalfFovy * sliceNear;
-        float const nearWidth  = nearHeight * aspect;
-        float const farHeight  = 2.0f * tanHalfFovy * sliceFar;
-        float const farWidth   = farHeight * aspect;
-
-        // Get camera position and orientation
-        glm::vec3 const camPos   = glm::vec3(invView[3]);
-        glm::vec3 const camRight = glm::normalize(glm::vec3(invView[0]));
-        glm::vec3 const camUp    = glm::normalize(glm::vec3(invView[1]));
-        glm::vec3 const camFwd   = glm::normalize(glm::vec3(invView[2]));
-
-        // Calculate frustum corners in world space
-        glm::vec3   frustumCorners[8];
-        float const nearZ = sliceNear;
-        float const farZ  = sliceFar;
-        float const nx    = nearWidth * 0.5f;
-        float const ny    = nearHeight * 0.5f;
-        float const fx    = farWidth * 0.5f;
-        float const fy    = farHeight * 0.5f;
-
-        frustumCorners[0] = camPos + camFwd * nearZ - camRight * nx - camUp * ny;  // Near bottom left
-        frustumCorners[1] = camPos + camFwd * nearZ + camRight * nx - camUp * ny;  // Near bottom right
-        frustumCorners[2] = camPos + camFwd * nearZ + camRight * nx + camUp * ny;  // Near top right
-        frustumCorners[3] = camPos + camFwd * nearZ - camRight * nx + camUp * ny;  // Near top left
-        frustumCorners[4] = camPos + camFwd * farZ - camRight * fx - camUp * fy;   // Far bottom left
-        frustumCorners[5] = camPos + camFwd * farZ + camRight * fx - camUp * fy;   // Far bottom right
-        frustumCorners[6] = camPos + camFwd * farZ + camRight * fx + camUp * fy;   // Far top right
-        frustumCorners[7] = camPos + camFwd * farZ - camRight * fx + camUp * fy;   // Far top left
-
-        // Calculate frustum center (used for bounds, not for light view)
-        glm::vec3 frustumCenter{0.0f};
-        for (glm::vec3 const& corner : frustumCorners) {
-            frustumCenter += corner;
-        }
-        frustumCenter /= 8.0f;
-
-        // Choose up vector for light view matrix
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-        if (glm::abs(glm::dot(lightDir, up)) > 0.99f) {
-            up = glm::vec3(0.0f, 0.0f, 1.0f);
-        }
-
-        // Calculate the bounding sphere radius of the frustum slice first
-        float maxRadius = 0.0f;
-        for (glm::vec3 const& corner : frustumCorners) {
-            float dist = glm::length(corner - frustumCenter);
-            maxRadius  = glm::max(maxRadius, dist);
-        }
-
-        // Position light far enough back to encompass the entire scene
-        // Use the bounding sphere radius to determine how far back to place the light
-        float const     lightDistance = maxRadius + 500.0f;  // Extra distance to capture shadow casters behind the frustum
-        glm::mat4 const lightView     = glm::lookAt(frustumCenter - lightDir * lightDistance, frustumCenter, up);
-
-        // Transform frustum corners to light space and find AABB
-        glm::vec3 minLS(std::numeric_limits<float>::infinity());
-        glm::vec3 maxLS(-std::numeric_limits<float>::infinity());
-        for (glm::vec3 const& cornerWS : frustumCorners) {
-            glm::vec4 const cornerLS4 = lightView * glm::vec4(cornerWS, 1.0f);
-            glm::vec3 const cornerLS  = glm::vec3(cornerLS4);
-            minLS                     = glm::min(minLS, cornerLS);
-            maxLS                     = glm::max(maxLS, cornerLS);
-        }
-
-        // Use the radius to compute a stable, square ortho projection
-        float const stableSize = maxRadius * 2.0f;
-        float const halfSize   = stableSize * 0.5f;
-
-        // Texel snapping for stable shadows
-        float const worldUnitsPerTexel = stableSize / static_cast<float>(shadowMapSize);
-
-        // The frustum center in light space - should be near the look-at target
-        glm::vec4 const frustumCenterLS4 = lightView * glm::vec4(frustumCenter, 1.0f);
-        glm::vec3 const frustumCenterLS  = glm::vec3(frustumCenterLS4);
-
-        // Snap to texel grid
-        float snappedCenterX = glm::floor(frustumCenterLS.x / worldUnitsPerTexel) * worldUnitsPerTexel;
-        float snappedCenterY = glm::floor(frustumCenterLS.y / worldUnitsPerTexel) * worldUnitsPerTexel;
-
-        // Set XY bounds centered on snapped position
-        minLS.x = snappedCenterX - halfSize;
-        maxLS.x = snappedCenterX + halfSize;
-        minLS.y = snappedCenterY - halfSize;
-        maxLS.y = snappedCenterY + halfSize;
-
-        // Provide texel size to caller when requested (diagnostics / debug views)
-        if (outWorldUnitsPerTexel != nullptr) {
-            *outWorldUnitsPerTexel = worldUnitsPerTexel;
-        }
-
-        // For Z: use fixed near=0 and far based on how far back we placed the light
-        // This ensures all geometry between the light and frustum is captured
-        float const orthoNear = 0.0f;
-        float const orthoFar  = lightDistance + maxRadius + 100.0f;
-
-        glm::mat4 lightProj = glm::orthoZO(minLS.x, maxLS.x, minLS.y, maxLS.y, orthoNear, orthoFar);
-        lightProj[1][1] *= -1;  // Flip Y for Vulkan
-
-        // Output bounds if requested
-        if (outMinLS != nullptr)
-            *outMinLS = minLS;
-        if (outMaxLS != nullptr)
-            *outMaxLS = maxLS;
-
-        return lightProj * lightView;
     }
 
     glm::mat4 ShadowSystem::calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range) {
@@ -475,79 +324,6 @@ namespace engine {
     // --------------------------------------------------------------------------
     // Modular per-light-type renderers
     // --------------------------------------------------------------------------
-    void ShadowSystem::renderDirectionalShadows(FrameInfo& frameInfo, const ShadowSettings& settings) {
-        // Only the first directional light is used for cascades (classic CSM)
-        auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
-        for (auto entity : dirView) {
-            if (shadowLightCount_ >= MAX_SHADOW_MAPS)
-                break;
-
-            auto [dirLight, transform] = dirView.get<DirectionalLightComponent, TransformComponent>(entity);
-            glm::vec3 const lightDir   = transform.getForwardDir();
-
-            // Extract near/far from camera projection (keeps existing behavior)
-            glm::mat4 const proj   = frameInfo.camera.getProjectionMatrix();
-            float const     A      = proj[2][2];
-            float const     B      = proj[3][2];
-            float           nearPl = 0.1f;
-            if (glm::abs(A) > 1e-6f)
-                nearPl = glm::max(0.001f, -B / A);
-
-            float farPl = nearPl + 100.0f;
-            if (glm::abs(A - 1.0f) > 1e-6f)
-                farPl = (A * nearPl) / (A - 1.0f);
-
-            float const csmFar = glm::clamp(settings.shadowDistance, nearPl + 0.5f, farPl);
-
-            // Split distribution
-            float const lambda = settings.cascadeLambda;
-            float       splits[DIRECTIONAL_CASCADE_COUNT];
-            for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; ++i) {
-                float const p        = static_cast<float>(i + 1) / static_cast<float>(DIRECTIONAL_CASCADE_COUNT);
-                float const logSplit = nearPl * glm::pow(csmFar / nearPl, p);
-                float const uniSplit = nearPl + ((csmFar - nearPl) * p);
-                splits[i]            = glm::mix(uniSplit, logSplit, lambda);
-            }
-
-            // Per-cascade
-            for (int cascade = 0; cascade < DIRECTIONAL_CASCADE_COUNT; ++cascade) {
-                float const sliceNear = (cascade == 0) ? nearPl : splits[cascade - 1];
-                float const sliceFar  = splits[cascade];
-
-                directionalCascadeSplits_[cascade] = splits[cascade];
-                if (shadowLightCount_ >= MAX_SHADOW_MAPS)
-                    break;
-
-                float cascadeTexelSize                 = 0.0f;
-                lightSpaceMatrices_[shadowLightCount_] = calculateDirectionalCascadeMatrix(lightDir, frameInfo.camera, sliceNear, sliceFar, cascade, shadowMapSize_, nullptr, nullptr, &cascadeTexelSize);
-
-                // store diagnostic texel-size for UI/inspection
-                directionalCascadeWorldUnitsPerTexel_[cascade] = cascadeTexelSize;
-
-                bool shouldRenderCascade = true;
-                if (settings.enableShadowCulling) {
-                    shouldRenderCascade = false;
-                    auto mview          = frameInfo.scene->getRegistry().view<ModelComponent, TransformComponent>();
-                    for (auto e : mview) {
-                        auto [mcomp, mtransform] = mview.get<ModelComponent, TransformComponent>(e);
-                        if (shouldRenderModel(mcomp.model, mtransform.modelTransform(), lightSpaceMatrices_[shadowLightCount_], 0.0f)) {
-                            shouldRenderCascade = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (shouldRenderCascade) {
-                    directionalCascadeCount_++;
-                    renderToShadowMapMesh(frameInfo, *shadowMaps_[shadowLightCount_], lightSpaceMatrices_[shadowLightCount_]);
-                    shadowLightCount_++;
-                }
-            }
-
-            break;  // Only first directional light
-        }
-    }
-
     void ShadowSystem::renderSpotShadows(FrameInfo& frameInfo, const ShadowSettings& settings) {
         auto spotView = frameInfo.scene->getRegistry().view<SpotLightComponent, TransformComponent>();
         for (auto entity : spotView) {
@@ -591,19 +367,9 @@ namespace engine {
 
     void ShadowSystem::renderShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings) {
         // Reset per-frame counters
-        shadowLightCount_            = 0;
-        directionalCascadeCount_     = 0;
-        directionalCascadeBaseIndex_ = 0;
-        for (float& directionalCascadeSplit : directionalCascadeSplits_) {
-            directionalCascadeSplit = 0.0f;
-        }
-        // Reset diagnostic texel-size values
-        for (int i = 0; i < DIRECTIONAL_CASCADE_COUNT; ++i) {
-            directionalCascadeWorldUnitsPerTexel_[i] = 0.0f;
-        }
+        shadowLightCount_ = 0;
 
         // Modular, per-light-type rendering (keeps behavior identical)
-        renderDirectionalShadows(frameInfo, settings);
         renderSpotShadows(frameInfo, settings);
         renderPointShadows(frameInfo, settings);
     }

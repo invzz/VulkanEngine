@@ -12,7 +12,6 @@
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
-#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/GridRenderSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/InputSystem.hpp"
@@ -21,6 +20,8 @@
 #include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/PhysicsSystem.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -47,7 +48,6 @@ namespace engine {
             LightSystem*            lightSystem            = nullptr;
             SkyboxRenderSystem*     skyboxRenderSystem     = nullptr;
             GridRenderSystem*       gridRenderSystem       = nullptr;
-            DustRenderSystem*       dustRenderSystem       = nullptr;
             DeferredLightingSystem* deferredLightingSystem = nullptr;
             PostProcessingSystem*   postProcessingSystem   = nullptr;
             IBLSystem*              iblSystem              = nullptr;
@@ -63,8 +63,6 @@ namespace engine {
             entt::entity*   cameraEntity   = nullptr;
             Skybox*         skybox         = nullptr;
             SkyboxSettings* skySettings    = nullptr;
-            DustSettings*   dustSettings   = nullptr;
-            FogSettings*    fogSettings    = nullptr;
             HZBSettings*    hzbSettings    = nullptr;
             ShadowSettings* shadowSettings = nullptr;
         };
@@ -105,7 +103,6 @@ namespace engine {
                 .lightSystem            = lightSystem.get(),
                 .skyboxRenderSystem     = skyboxRenderSystem.get(),
                 .gridRenderSystem       = gridRenderSystem.get(),
-                .dustRenderSystem       = dustRenderSystem.get(),
                 .deferredLightingSystem = deferredLightingSystem.get(),
                 .postProcessingSystem   = postProcessingSystem.get(),
                 .iblSystem              = iblSystem.get(),
@@ -123,8 +120,6 @@ namespace engine {
                 .cameraEntity   = &cameraEntity,
                 .skybox         = skybox.get(),
                 .skySettings    = &skySettings,
-                .dustSettings   = &dustSettings,
-                .fogSettings    = &fogSettings,
                 .hzbSettings    = &hzbSettings,
                 .shadowSettings = &shadowSettings,
             };
@@ -258,10 +253,11 @@ namespace engine {
         std::unique_ptr<LightSystem>            lightSystem;
         std::unique_ptr<SkyboxRenderSystem>     skyboxRenderSystem;
         std::unique_ptr<GridRenderSystem>       gridRenderSystem;
-        std::unique_ptr<DustRenderSystem>       dustRenderSystem;
         std::unique_ptr<DeferredLightingSystem> deferredLightingSystem;
         std::unique_ptr<PostProcessingSystem>   postProcessingSystem;
         std::unique_ptr<IBLSystem>              iblSystem;
+        std::unique_ptr<PhysicsSystem>          physicsSystem;
+        std::unique_ptr<JoltPhysicsSystem>      joltPhysicsSystem;
 
         // Resources
         std::unique_ptr<RenderContext> renderContext;
@@ -301,8 +297,6 @@ namespace engine {
         // Scene resources
         std::unique_ptr<Skybox> skybox;
         SkyboxSettings          skySettings;
-        DustSettings            dustSettings;
-        FogSettings             fogSettings;
         HZBSettings             hzbSettings;
         ShadowSettings          shadowSettings;
 
@@ -310,6 +304,9 @@ namespace engine {
         bool showSkybox = false;
         bool showGrid   = false;
         bool debugMode  = false;
+
+        // Runtime controls
+        bool physicsSimulationRunning = false;
     };
 
 }  // namespace engine

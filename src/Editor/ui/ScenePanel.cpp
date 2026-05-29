@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <cstdint>
-#include <cstdlib>
 #include <fstream>
 #include <imgui.h>
 #include <iostream>
@@ -16,14 +16,14 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/SceneUtils.hpp"
+#include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
-#include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
 
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/entity.hpp"
@@ -36,8 +36,9 @@ namespace engine {
         : device_(device), engineState_(engineState) {}
 
     void ScenePanel::render(FrameInfo& frameInfo) {
-        if (!visible_)
+        if (!visible_) {
             return;
+        }
 
         if (ImGui::Begin("Scene Objects", &visible_)) {
             if ((engineState_ != nullptr) && (engineState_->resourceManager != nullptr)) {
@@ -82,7 +83,7 @@ namespace engine {
                         std::cerr << "[Model] Async load failed for " << fullPath << ": " << error << '\n';
                     });
 
-                ScenePanel::PendingModelLoad pending;
+                PendingModelLoad pending;
                 pending.id      = id;
                 pending.path    = fullPath;
                 pending.name    = name;
@@ -90,77 +91,8 @@ namespace engine {
                 pendingLoads_.emplace_back(std::move(pending));
             };
 
-            // Temporary auto-test: if AUTO_ADD_MODEL env var is set, auto-load that model once.
-            static bool autoTestDone = false;
-            if (!autoTestDone) {
-                const char* autoModelEnv = std::getenv("AUTO_ADD_MODEL");
-                if ((autoModelEnv != nullptr) && autoModelEnv[0] != '\0') {
-                    std::string autoModelName(autoModelEnv);
-                    std::string indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
-                    try {
-                        std::ifstream f(indexPath);
-                        if (f.is_open()) {
-                            nlohmann::json j;
-                            f >> j;
-                            for (const auto& item : j) {
-                                if (!item.contains("name"))
-                                    continue;
-                                std::string name = item["name"].get<std::string>();
-                                if (name != autoModelName)
-                                    continue;
-
-                                std::string relativePath;
-                                if (item.contains("variants") && item["variants"].contains("glTF")) {
-                                    std::string variantFile = item["variants"]["glTF"].get<std::string>();
-                                    relativePath            = "glTF/";
-                                    relativePath.append(name);
-                                    relativePath.append("/glTF/");
-                                    relativePath.append(variantFile);
-                                }
-
-                                std::string fullPath;
-                                if (relativePath.empty()) {
-                                    fullPath = std::string(MODEL_PATH);
-                                    fullPath.append("/glTF/");
-                                    fullPath.append(name);
-                                    fullPath.append("/glTF/");
-                                    fullPath.append(name);
-                                    fullPath.append(".gltf");
-                                } else {
-                                    fullPath = std::string(MODEL_PATH);
-                                    fullPath.append("/");
-                                    fullPath.append(relativePath);
-                                }
-                                try {
-                                    // Start async load (do not block UI)
-                                    engine::ModelInsertionOptions opts;
-                                    opts.enableTextures     = true;
-                                    opts.loadMaterials      = true;
-                                    opts.enableMorphTargets = true;
-
-                                    ScenePanel::PendingModelLoad pending;
-                                    enqueueModelLoad(fullPath, name, opts);
-                                    std::cerr << "AUTO_ADD_MODEL: queued model for async load: " << fullPath << '\n';
-                                } catch (const std::exception& e) {
-                                    std::cerr << "AUTO_ADD_MODEL exception: " << e.what() << '\n';
-                                }
-                                break;
-                            }
-                        } else {
-                            std::cerr << "AUTO_ADD_MODEL: failed to open model index: " << indexPath << '\n';
-                        }
-                    } catch (const std::exception& e) {
-                        std::cerr << "AUTO_ADD_MODEL: error parsing index: " << e.what() << '\n';
-                    }
-                }
-                autoTestDone = true;
-            }
-
-            // Add buttons moved into category headers (see Cameras / Lights sections below)
-
             ImGui::Separator();
 
-            // Show pending async model loads
             if (!pendingLoads_.empty()) {
                 std::unordered_map<AsyncLoadId, AsyncLoadSnapshot> snapshotById;
                 if ((engineState_ != nullptr) && (engineState_->resourceManager != nullptr)) {
@@ -207,7 +139,7 @@ namespace engine {
                 }
 
                 pendingLoads_.erase(
-                    std::remove_if(pendingLoads_.begin(), pendingLoads_.end(), [&](const ScenePanel::PendingModelLoad& pending) {
+                    std::remove_if(pendingLoads_.begin(), pendingLoads_.end(), [&](const PendingModelLoad& pending) {
                         if (pending.cancelled) {
                             return true;
                         }
@@ -258,6 +190,17 @@ namespace engine {
                     models.push_back(entity);
                     continue;
                 }
+            }
+
+            // Enforce policy: keep at most one directional light entity in the scene.
+            if (dirLights.size() > 1) {
+                for (size_t i = 1; i < dirLights.size(); ++i) {
+                    entt::entity const extra = dirLights[i];
+                    if (std::find(toDelete_.begin(), toDelete_.end(), extra) == toDelete_.end()) {
+                        toDelete_.push_back(extra);
+                    }
+                }
+                dirLights.resize(1);
             }
 
             auto drawEntityRow = [&](entt::entity entity, const char* icon, ImVec4 color) {
@@ -318,8 +261,9 @@ namespace engine {
 
                 if (entity == frameInfo.cameraEntity) {
                     ImGui::TextDisabled("Delete");
-                    if (ImGui::IsItemHovered())
+                    if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Cannot delete the active camera");
+                    }
                 } else {
                     if (ImGui::SmallButton("Delete")) {
                         toDelete_.push_back(entity);
@@ -365,12 +309,24 @@ namespace engine {
                     ImGui::OpenPopup("AddLightPopup");
                 }
                 if (ImGui::BeginPopup("AddLightPopup")) {
+                    bool const canAddDirectional = dirLights.empty();
+                    if (!canAddDirectional) {
+                        ImGui::BeginDisabled();
+                    }
                     if (ImGui::Selectable("Add Directional")) {
-                        auto entity = engineState_->scene.createEntity();
-                        engineState_->scene.getRegistry().emplace<TransformComponent>(entity);
-                        engineState_->scene.getRegistry().emplace<DirectionalLightComponent>(entity);
-                        engineState_->scene.getRegistry().emplace<NameComponent>(entity, "Directional Light");
+                        if (canAddDirectional) {
+                            auto entity = engineState_->scene.createEntity();
+                            engineState_->scene.getRegistry().emplace<TransformComponent>(entity);
+                            engineState_->scene.getRegistry().emplace<DirectionalLightComponent>(entity);
+                            engineState_->scene.getRegistry().emplace<NameComponent>(entity, "Directional Light");
+                        }
                         ImGui::CloseCurrentPopup();
+                    }
+                    if (!canAddDirectional) {
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("Only one directional light is allowed.");
+                        }
+                        ImGui::EndDisabled();
                     }
                     if (ImGui::Selectable("Add Point")) {
                         auto entity = engineState_->scene.createEntity();
@@ -423,7 +379,6 @@ namespace engine {
                     ImGui::OpenPopup("AddModelPopup");
                 }
 
-                // Popup: list available models from model-index.json
                 if (ImGui::BeginPopup("AddModelPopup")) {
                     static char filter[128] = "";
                     ImGui::InputText("Filter", filter, sizeof(filter));
@@ -438,11 +393,11 @@ namespace engine {
                             nlohmann::json j;
                             f >> j;
                             for (const auto& item : j) {
-                                if (!item.contains("name"))
+                                if (!item.contains("name")) {
                                     continue;
+                                }
                                 std::string name = item["name"].get<std::string>();
 
-                                // Build glTF relative path if present
                                 std::string relativePath;
                                 if (item.contains("variants") && item["variants"].contains("glTF")) {
                                     std::string variantFile = item["variants"]["glTF"].get<std::string>();
@@ -452,15 +407,15 @@ namespace engine {
                                 if (filter[0] != '\0') {
                                     std::string lowName   = name;
                                     std::string lowFilter = filter;
-                                    std::transform(lowName.begin(), lowName.end(), lowName.begin(), ::tolower);
-                                    std::transform(lowFilter.begin(), lowFilter.end(), lowFilter.begin(), ::tolower);
-                                    if (lowName.find(lowFilter) == std::string::npos)
+                                    std::transform(lowName.begin(), lowName.end(), lowName.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                                    std::transform(lowFilter.begin(), lowFilter.end(), lowFilter.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                                    if (lowName.find(lowFilter) == std::string::npos) {
                                         continue;
+                                    }
                                 }
 
                                 ImGui::Selectable(name.c_str());
                                 if (ImGui::IsItemActivated()) {
-                                    // Create entity and load model via ResourceManager
                                     std::string fullPath;
                                     if (relativePath.empty()) {
                                         fullPath.append(MODEL_PATH);
@@ -474,18 +429,14 @@ namespace engine {
                                         fullPath.append("/");
                                         fullPath.append(relativePath);
                                     }
-                                    // Enqueue async model load and insert when complete (do not block UI)
-                                    try {
-                                        engine::ModelInsertionOptions opts;
-                                        opts.enableTextures     = true;
-                                        opts.loadMaterials      = true;
-                                        opts.enableMorphTargets = true;
 
-                                        enqueueModelLoad(fullPath, name, opts);
-                                        ImGui::CloseCurrentPopup();
-                                    } catch (const std::exception& e) {
-                                        std::cerr << "Exception starting async model load: " << e.what() << '\n';
-                                    }
+                                    engine::ModelInsertionOptions opts;
+                                    opts.enableTextures     = true;
+                                    opts.loadMaterials      = true;
+                                    opts.enableMorphTargets = true;
+
+                                    enqueueModelLoad(fullPath, name, opts);
+                                    ImGui::CloseCurrentPopup();
                                 }
                             }
                         }
@@ -495,7 +446,6 @@ namespace engine {
 
                     ImGui::EndPopup();
                 }
-
                 ImGui::PopID();
                 if (open) {
                     for (auto entity : models) {
@@ -509,8 +459,9 @@ namespace engine {
     }
 
     void ScenePanel::processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId) {
-        if (toDelete_.empty())
+        if (toDelete_.empty()) {
             return;
+        }
 
         vkDeviceWaitIdle(device_.device());
 

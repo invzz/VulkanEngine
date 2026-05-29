@@ -14,15 +14,11 @@ class MorphTargetManager;
 
 // Maximum number of 2D shadow-casting lights stored in the UBO.
 // (Dynamic lighting itself is unbounded via SSBOs.)
-constexpr size_t maxShadowLightCount = 16;
+constexpr size_t maxShadowLightCount = 8;
 
 struct PointLight {
-  glm::vec4 position;  // w component unused
-  glm::vec4 color;     // w component is intensity
-  float radius2{0.0f};
-  float _pad0{0.0f};
-  float _pad1{0.0f};
-  float _pad2{0.0f};
+  glm::vec4 positionRadius2;   // xyz = position, w = radius^2
+  glm::vec4 colorIntensity;    // rgb = color, w = intensity
 };
 
 struct DirectionalLight {
@@ -31,17 +27,10 @@ struct DirectionalLight {
 };
 
 struct SpotLight {
-  glm::vec4 position;    // w component unused
-  glm::vec4 direction;   // w component is inner cutoff angle (cos)
-  glm::vec4 color;       // w component is intensity
-  float outerCutoff;     // Outer cutoff angle (cos)
-  float constantAtten;   // Constant attenuation
-  float linearAtten;     // Linear attenuation
-  float quadraticAtten;  // Quadratic attenuation
-  float radius2{0.0f};
-  float _pad0{0.0f};
-  float _pad1{0.0f};
-  float _pad2{0.0f};
+  glm::vec4 positionRadius2;   // xyz = position, w = radius^2
+  glm::vec4 directionInner;    // xyz = direction, w = inner cutoff angle (cos)
+  glm::vec4 colorIntensity;    // rgb = color, w = intensity
+  glm::vec4 attenOuter;        // x = outer cutoff (cos), y = constant, z = linear, w = quadratic
 };
 
 /**
@@ -65,30 +54,21 @@ struct GlobalUbo {
                                                       // matrices for shadows
   glm::vec4 pointLightShadowData[4];                  // xyz = position, w = far plane (for cube
                                                       // shadows)
-  glm::vec4 directionalCascadeSplits{0.0f};           // View-space split distances (x,y,z,w)
-  float cascadeBlendWidth = 0.2f;                     // Blend region width as fraction of cascade
   int pointLightCount = 0;
   int directionalLightCount = 0;
   int spotLightCount = 0;
   int shadowLightCount = 0;      // Number of 2D shadow maps (dir cascades + spots)
   int cubeShadowLightCount = 0;  // Number of cube shadow maps (point lights)
-  int directionalCascadeCount = 0;
-  int directionalCascadeBaseIndex = 0;  // Index into lightSpaceMatrices / shadowMaps
-  int debugMode = 0;                    // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting, 6: Lightmap Only
-  int _reservedDebug = 0;               // Previously bakedDebugRaw, kept for layout compatibility
-  // std140 requires vec4-aligned data after arrays of ints; add padding to match std140 layout
+  int debugMode = 0;              // 0: None, 1: Albedo, 2: Normal, 3: Roughness, 4: Metallic, 5: Lighting, 6: Emissive Only
+  int _padDebug = 0;
+  // std140 requires vec4-aligned data after arrays of ints; add padding to match std140 layout.
   int _padDebug0 = 0;
-  int _padDebug1 = 0;
   glm::vec4 frustumPlanes[6];  // Frustum planes for culling (Left, Right,
                                // Bottom, Top, Near, Far)
-  glm::vec4 fogColor;          // xyz = Horizon Color, w = density
-  glm::vec4 fogZenithColor;    // xyz = Zenith Color, w = unused
-  float fogHeight;
-  float fogHeightDensity;
-  // Padding to align HZB settings to 16-byte boundary
-  float _padFog0 = 0.0f;
-  float _padFog1 = 0.0f;
-  // HZB settings - now starts at 16-byte aligned offset
+};
+
+struct GlobalUboCold {
+  // HZB settings
   int hzbMaxMipLevel = 10;          // Maximum mip level for HZB testing
   float hzbMinScreenPixels = 2.0f;  // Skip HZB for objects smaller than this
   float hzbScreenSizeScale = 1.0f;  // Mip selection bias
@@ -97,6 +77,7 @@ struct GlobalUbo {
 
 static_assert(offsetof(GlobalUbo, frustumPlanes) % 16 == 0, "GlobalUbo::frustumPlanes must be 16-byte aligned for std140");
 static_assert(sizeof(GlobalUbo) % 16 == 0, "GlobalUbo size must be a multiple of 16 bytes for std140");
+static_assert(sizeof(GlobalUboCold) % 16 == 0, "GlobalUboCold size must be a multiple of 16 bytes for std140");
 
 struct FrameInfo {
   int frameIndex;

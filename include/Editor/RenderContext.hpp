@@ -17,7 +17,7 @@ class RenderContext {
  public:
   explicit RenderContext(Device& device, MeshManager& meshManager, VkDescriptorImageInfo hzbImageInfo);
 
-  void updateUBO(int frameIndex, const GlobalUbo& ubo);
+  void updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold);
   // Upload dynamic light arrays (SSBO) for this frame and return counts.
   // Note: counts must be copied into GlobalUbo by the caller.
   struct LightCounts {
@@ -47,6 +47,7 @@ class RenderContext {
   std::unique_ptr<DescriptorPool> globalPool_;
   std::unique_ptr<DescriptorSetLayout> globalSetLayout_;
   std::vector<std::unique_ptr<Buffer>> uboBuffers_;
+  std::vector<std::unique_ptr<Buffer>> uboColdBuffers_;
 
   // Dynamic light SSBOs (per frame)
   std::vector<std::unique_ptr<Buffer>> pointLightBuffers_;

@@ -18,7 +18,8 @@ namespace engine {
 
         // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
         auto const lightCounts = engineState_->renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
-        GlobalUbo  ubo{};
+        GlobalUbo     ubo{};
+        GlobalUboCold uboCold{};
         ubo.pointLightCount       = lightCounts.point;
         ubo.directionalLightCount = lightCounts.directional;
         ubo.spotLightCount        = lightCounts.spot;
@@ -36,68 +37,13 @@ namespace engine {
             ubo.cameraPosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         }
 
-        ubo.shadowLightCount            = engineState_->shadowSystem->getShadowLightCount();
-        ubo.directionalCascadeCount     = engineState_->shadowSystem->getDirectionalCascadeCount();
-        ubo.directionalCascadeBaseIndex = engineState_->shadowSystem->getDirectionalCascadeBaseIndex();
-        ubo.directionalCascadeSplits    = engineState_->shadowSystem->getDirectionalCascadeSplits();
-        ubo.cascadeBlendWidth           = engineState_->shadowSettings.cascadeBlendWidth;
-
-        // // Fog Logic (same as App::shadowPhase)
-        // glm::vec3 horizonColor   = fogSettings_.color;
-        // glm::vec3 zenithColor    = fogSettings_.color;
-        // float     currentDensity = fogSettings_.density;
-
-        // if (fogSettings_.useSkyColor)
-        // {
-        //   SunInfo const sunInfo         = queryPrimaryDirectionalLightSunInfo(*frameInfo.scene);
-        //   float const   visualSunHeight = sunInfo.directionToSun.y;
-
-        //   glm::vec3 const dayHorizon = glm::vec3(0.7f, 0.8f, 0.9f);
-        //   glm::vec3 const dayZenith  = glm::vec3(0.2f, 0.4f, 0.8f);
-
-        //   glm::vec3 const sunsetHorizon = glm::vec3(0.8f, 0.4f, 0.1f);
-        //   glm::vec3 const sunsetZenith  = glm::vec3(0.2f, 0.2f, 0.4f);
-
-        //   glm::vec3 const nightHorizon = glm::vec3(0.01f, 0.01f, 0.02f);
-        //   glm::vec3 const nightZenith  = glm::vec3(0.0f, 0.0f, 0.005f);
-
-        //   if (visualSunHeight > 0.2f)
-        //   {
-        //     horizonColor = dayHorizon;
-        //     zenithColor  = dayZenith;
-        //   }
-        //   else if (visualSunHeight > -0.1f)
-        //   {
-        //     float const t = (visualSunHeight + 0.1f) / 0.3f;
-        //     horizonColor  = glm::mix(sunsetHorizon, dayHorizon, t);
-        //     zenithColor   = glm::mix(sunsetZenith, dayZenith, t);
-        //   }
-        //   else if (visualSunHeight > -0.3f)
-        //   {
-        //     float const t = (visualSunHeight + 0.3f) / 0.2f;
-        //     horizonColor  = glm::mix(nightHorizon, sunsetHorizon, t);
-        //     zenithColor   = glm::mix(nightZenith, sunsetZenith, t);
-
-        //     currentDensity = fogSettings_.density * glm::mix(0.2f, 1.0f, t);
-        //   }
-        //   else
-        //   {
-        //     horizonColor   = nightHorizon;
-        //     zenithColor    = nightZenith;
-        //     currentDensity = fogSettings_.density * 0.2f;
-        //   }
-        // }
-
-        // ubo.fogColor         = glm::vec4(horizonColor, currentDensity);
-        // ubo.fogZenithColor   = glm::vec4(zenithColor, 0.0f);
-        ubo.fogHeight        = engineState_->fogSettings.height;
-        ubo.fogHeightDensity = engineState_->fogSettings.heightDensity;
+        ubo.shadowLightCount = engineState_->shadowSystem->getShadowLightCount();
 
         // HZB settings copied into UBO
-        ubo.hzbMaxMipLevel     = engineState_->hzbSettings.maxMipLevel;
-        ubo.hzbMinScreenPixels = engineState_->hzbSettings.minScreenPixels;
-        ubo.hzbScreenSizeScale = engineState_->hzbSettings.screenSizeScale;
-        ubo.hzbEnabled         = engineState_->hzbSettings.enabled;
+        uboCold.hzbMaxMipLevel     = engineState_->hzbSettings.maxMipLevel;
+        uboCold.hzbMinScreenPixels = engineState_->hzbSettings.minScreenPixels;
+        uboCold.hzbScreenSizeScale = engineState_->hzbSettings.screenSizeScale;
+        uboCold.hzbEnabled         = engineState_->hzbSettings.enabled;
 
         // Frustum planes
         glm::mat4 const vp   = ubo.projection * ubo.view;
@@ -131,7 +77,7 @@ namespace engine {
         // Copy editor/debug selection into GPU UBO so shaders can react to debugMode changes.
         ubo.debugMode = frameInfo.debugMode;
 
-        engineState_->renderContext->updateUBO(frameInfo.frameIndex, ubo);
+        engineState_->renderContext->updateUBO(frameInfo.frameIndex, ubo, uboCold);
     }
 
 }  // namespace engine

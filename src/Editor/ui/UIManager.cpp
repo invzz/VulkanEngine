@@ -58,7 +58,7 @@ void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.0f, 8.0f));
 
   ImGui::Begin("DockSpace", nullptr, dockspace_flags);
   ImGui::PopStyleVar(3);
@@ -68,24 +68,22 @@ void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool
   ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
   ImGui::End();
 
-  // Main engine controls window (now dockable)
+  // Main engine controls window
   ImGui::Begin("Engine Controls");
   ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
   ImGui::Text("Tip: Drag panel headers to dock as sidebars");
   ImGui::Separator();
 
-  // Render all panels
+  // Render all dockable panels (isSeparateWindow=false)
   for (auto& panel : panels_) {
-    if (panel->isVisible()) {
-      if (!panel->isSeparateWindow()) {
-        panel->render(frameInfo);
-      }
+    if (panel->isVisible() && !panel->isSeparateWindow()) {
+      panel->render(frameInfo);
     }
   }
 
   ImGui::End();
 
-  // Render separate window panels
+  // Render separate window panels (dockable via drag)
   for (auto& panel : panels_) {
     if (panel->isVisible() && panel->isSeparateWindow()) {
       panel->render(frameInfo);

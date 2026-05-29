@@ -1,6 +1,7 @@
 #ifndef EDITOR_SCENEPANEL_HPP
 #define EDITOR_SCENEPANEL_HPP
 
+#include <string>
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
@@ -27,7 +28,6 @@ namespace engine {
         void processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
        private:
-        // Pending async model load data
         struct PendingModelLoad {
             AsyncLoadId                   id{0};
             std::string                   path;
@@ -36,9 +36,9 @@ namespace engine {
             bool                          cancelled = false;
         };
 
-        Device&                       device_;
-        EngineState*                  engineState_ = nullptr;
-        std::vector<entt::entity>     toDelete_;
+            Device&                   device_;
+            EngineState*              engineState_ = nullptr;
+            std::vector<entt::entity> toDelete_;
         std::vector<PendingModelLoad> pendingLoads_;
     };
 

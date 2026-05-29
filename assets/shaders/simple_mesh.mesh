@@ -5,116 +5,66 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_buffer_reference2 : require
+#extension GL_GOOGLE_include_directive : enable
+
+#include "includes/scene_ubo.glsl"
 
 layout(local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 layout(triangles, max_vertices = 64, max_primitives = 124) out;
 
-struct Meshlet
-{
-  uint vertexOffset;
-  uint triangleOffset;
-  uint vertexCount;
-  uint triangleCount;
+struct Meshlet {
+    uint vertexOffset;
+    uint triangleOffset;
+    uint vertexCount;
+    uint triangleCount;
 
-  float center[3];
-  float radius;
+    float center[3];
+    float radius;
 
-  float cone_axis[3];
-  float cone_cutoff;
+    float cone_axis[3];
+    float cone_cutoff;
 
-  uint padding[4];
+    uint padding[4];
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletBuffer
-{
-  Meshlet meshlets[];
+layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
+    Meshlet meshlets[];
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletVerticesBuffer
-{
-  uint vertexIndices[];
+layout(buffer_reference, scalar) readonly buffer MeshletVerticesBuffer {
+    uint vertexIndices[];
 };
 
-layout(buffer_reference, scalar) readonly buffer MeshletTrianglesBuffer
-{
-  uint8_t triangleIndices[];
+layout(buffer_reference, scalar) readonly buffer MeshletTrianglesBuffer {
+    uint8_t triangleIndices[];
 };
 
-struct Vertex
-{
-  vec3 position;
-  vec3 color;
-  vec3 normal;
-  vec2 uv;
-  int  materialId;
+struct Vertex {
+    vec3 position;
+    vec3 color;
+    vec3 normal;
+    vec2 uv;
+    int  materialId;
 };
 
-layout(buffer_reference, scalar) readonly buffer VertexBuffer
-{
-  Vertex vertices[];
+layout(buffer_reference, scalar) readonly buffer VertexBuffer {
+    Vertex vertices[];
 };
 
-layout(push_constant) uniform Push
-{
-  mat4 modelMatrix;
-  mat4 normalMatrix;
-  uint meshId;
+layout(push_constant) uniform Push {
+    mat4 modelMatrix;
+    mat4 normalMatrix;
+    uint meshId;
 
-  uint64_t meshletBufferAddress;
-  uint64_t meshletVerticesAddress;
-  uint64_t meshletTrianglesAddress;
-  uint64_t vertexBufferAddress;
-  uint     meshletOffset;
-  uint     meshletCount;
-  vec2     screenSize;
+    uint64_t meshletBufferAddress;
+    uint64_t meshletVerticesAddress;
+    uint64_t meshletTrianglesAddress;
+    uint64_t vertexBufferAddress;
+    uint     meshletOffset;
+    uint     meshletCount;
+    vec2     screenSize;
 }
 push;
-
-struct PointLight
-{
-  vec4 position;
-  vec4 color;
-};
-
-struct DirectionalLight
-{
-  vec4 direction;
-  vec4 color;
-};
-
-struct SpotLight
-{
-  vec4  position;
-  vec4  direction;
-  vec4  color;
-  float outerCutoff;
-  float constantAtten;
-  float linearAtten;
-  float quadraticAtten;
-};
-
-layout(set = 0, binding = 0) uniform GlobalUbo
-{
-  mat4             projection;
-  mat4             view;
-  vec4             ambientLightColor;
-  vec4             cameraPosition;
-  PointLight       pointLights[16];
-  DirectionalLight directionalLights[16];
-  SpotLight        spotLights[16];
-  mat4             lightSpaceMatrices[16];
-  vec4             pointLightShadowData[4];
-  int              pointLightCount;
-  int              directionalLightCount;
-  int              spotLightCount;
-  int              shadowLightCount;
-  int              cubeShadowLightCount;
-  int              debugMode;
-  int              _pad2;
-  int              _pad3;
-  vec4             frustumPlanes[6];
-}
-ubo;
 
 layout(location = 0) out vec3 outColor[];
 layout(location = 1) out vec3 outWorldPos[];
@@ -123,52 +73,48 @@ layout(location = 3) out vec2 outUV[];
 layout(location = 4) out flat uint outMeshletId[];
 layout(location = 5) out flat vec3 outConeAxis[];
 
-struct TaskPayload
-{
-  uint meshletIndices[32];
+struct TaskPayload {
+    uint meshletIndices[32];
 };
 
 taskPayloadSharedEXT TaskPayload payload;
 
-void main()
-{
-  uint meshletId = payload.meshletIndices[gl_WorkGroupID.x];
+void main() {
+    uint meshletId = payload.meshletIndices[gl_WorkGroupID.x];
 
-  MeshletBuffer meshletBuffer = MeshletBuffer(push.meshletBufferAddress);
-  Meshlet       meshlet       = meshletBuffer.meshlets[meshletId];
+    MeshletBuffer meshletBuffer = MeshletBuffer(push.meshletBufferAddress);
+    Meshlet       meshlet       = meshletBuffer.meshlets[meshletId];
 
-  SetMeshOutputsEXT(meshlet.vertexCount, meshlet.triangleCount);
+    SetMeshOutputsEXT(meshlet.vertexCount, meshlet.triangleCount);
 
-  MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
-  VertexBuffer          vertexBuffer    = VertexBuffer(push.vertexBufferAddress);
+    MeshletVerticesBuffer meshletVertices = MeshletVerticesBuffer(push.meshletVerticesAddress);
+    VertexBuffer          vertexBuffer    = VertexBuffer(push.vertexBufferAddress);
 
-  // Calculate normal matrix
-  mat3 normalMatrix = mat3(push.normalMatrix);
+    // Calculate normal matrix
+    mat3 normalMatrix = mat3(push.normalMatrix);
 
-  for (uint i = gl_LocalInvocationIndex; i < meshlet.vertexCount; i += 32)
-  {
-    uint   vertexIndex = meshletVertices.vertexIndices[meshlet.vertexOffset + i];
-    Vertex v           = vertexBuffer.vertices[vertexIndex];
+    for (uint i = gl_LocalInvocationIndex; i < meshlet.vertexCount; i += 32) {
+        uint   vertexIndex = meshletVertices.vertexIndices[meshlet.vertexOffset + i];
+        Vertex v           = vertexBuffer.vertices[vertexIndex];
 
-    gl_MeshVerticesEXT[i].gl_Position = ubo.projection * ubo.view * push.modelMatrix * vec4(v.position, 1.0);
+        gl_MeshVerticesEXT[i].gl_Position = ubo.proj * ubo.view * push.modelMatrix * vec4(v.position, 1.0);
 
-    outColor[i]     = v.color;
-    outWorldPos[i]  = (push.modelMatrix * vec4(v.position, 1.0)).xyz;
-    outNormal[i]    = normalize(normalMatrix * v.normal);
-    outUV[i]        = v.uv;
-    outMeshletId[i] = meshletId;
-    outConeAxis[i]  = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
-  }
+        outColor[i]     = v.color;
+        outWorldPos[i]  = (push.modelMatrix * vec4(v.position, 1.0)).xyz;
+        outNormal[i]    = normalize(normalMatrix * v.normal);
+        outUV[i]        = v.uv;
+        outMeshletId[i] = meshletId;
+        outConeAxis[i]  = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
+    }
 
-  MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);
+    MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);
 
-  for (uint i = gl_LocalInvocationIndex; i < meshlet.triangleCount; i += 32)
-  {
-    uint    baseTriIdx = meshlet.triangleOffset + (i * 3);
-    uint8_t idx0       = meshletTriangles.triangleIndices[baseTriIdx + 0];
-    uint8_t idx1       = meshletTriangles.triangleIndices[baseTriIdx + 1];
-    uint8_t idx2       = meshletTriangles.triangleIndices[baseTriIdx + 2];
+    for (uint i = gl_LocalInvocationIndex; i < meshlet.triangleCount; i += 32) {
+        uint    baseTriIdx = meshlet.triangleOffset + (i * 3);
+        uint8_t idx0       = meshletTriangles.triangleIndices[baseTriIdx + 0];
+        uint8_t idx1       = meshletTriangles.triangleIndices[baseTriIdx + 1];
+        uint8_t idx2       = meshletTriangles.triangleIndices[baseTriIdx + 2];
 
-    gl_PrimitiveTriangleIndicesEXT[i] = uvec3(idx0, idx1, idx2);
-  }
+        gl_PrimitiveTriangleIndicesEXT[i] = uvec3(idx0, idx1, idx2);
+    }
 }

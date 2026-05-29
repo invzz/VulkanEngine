@@ -28,22 +28,13 @@ struct PostProcessPushConstants {
   float ssaoRadius{0.5f};
   float ssaoBias{0.025f};
   int toneMappingMode{1};  // 0: None, 1: ACES
-  glm::vec4 sunScreenPos;  // xy = screen pos [0,1], z = isVisible (1.0/0.0), w = padding
-  int _reserved0{0};       // Previously bakedRaw, kept for layout compatibility
-  float godRayDensity{1.0f};
-  float godRayWeight{0.01f};
-  float godRayDecay{1.0f};
-  float godRayExposure{1.0f};
   alignas(16) glm::mat4 inverseProjection{1.0f};
   alignas(16) glm::mat4 projection{1.0f};
 };
 
 // Compile-time checks to ensure C++ push-constant layout matches GLSL expectations
-static_assert(offsetof(PostProcessPushConstants, sunScreenPos) % 16 == 0, "PostProcessPushConstants::sunScreenPos must be 16-byte aligned for GLSL vec4 alignment");
-static_assert(offsetof(PostProcessPushConstants, sunScreenPos) == 64, "Unexpected offset for sunScreenPos; does GLSL push layout match C++?");
-static_assert(offsetof(PostProcessPushConstants, godRayExposure) == 96, "Unexpected offset for godRayExposure; does GLSL push layout match C++?");
-static_assert(offsetof(PostProcessPushConstants, inverseProjection) == 112, "Unexpected offset for inverseProjection; does GLSL push layout match C++?");
-static_assert(sizeof(PostProcessPushConstants) == 240, "Unexpected PostProcessPushConstants size; expected 240 bytes per std140-like packing");
+static_assert(offsetof(PostProcessPushConstants, inverseProjection) == 64, "Unexpected offset for inverseProjection; does GLSL push layout match C++?");
+static_assert(sizeof(PostProcessPushConstants) == 192, "Unexpected PostProcessPushConstants size; expected 192 bytes per std140-like packing");
 static_assert(sizeof(PostProcessPushConstants) <= 256, "PostProcessPushConstants size exceeds 256 bytes and may exceed typical GPU push constant limits");
 
 class PostProcessingSystem {

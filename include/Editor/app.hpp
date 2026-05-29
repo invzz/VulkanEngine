@@ -12,7 +12,6 @@
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Scene/Skybox.hpp"
-#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
@@ -49,13 +48,11 @@ struct GameLoopState {
   ShadowSystem& shadowSystem;
   SkyboxRenderSystem& skyboxRenderSystem;
   GridRenderSystem& gridRenderSystem;
-  DustRenderSystem& dustRenderSystem;
   RenderContext& renderContext;
   UIManager& uiManager;
   Skybox* skybox;
   bool showGrid;
   SkyboxSettings& skySettings;
-  DustSettings& dustSettings;
   ShadowSettings& shadowSettings;
 };
 
@@ -91,11 +88,11 @@ class App {
   Device device{window};
   Renderer renderer{window, device};
   ResourceManager resourceManager{device};
-  SceneSerializer sceneSerializer;  // will be initialized in ctor
   int debugMode = 0;
 
   // Central engine state (owns systems, scene, resources used by passes)
   EngineState engineState;
+  SceneSerializer sceneSerializer;  // initialized in ctor using engineState
 
   // Input & Camera
   std::unique_ptr<Camera> camera;

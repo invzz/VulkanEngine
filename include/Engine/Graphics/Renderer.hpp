@@ -69,7 +69,6 @@ namespace engine {
         [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
-        [[nodiscard]] VkDescriptorImageInfo getGbufferBakedImageInfo(int index) const;
 
         // Expose offscreen color image handle for readback in tests
         [[nodiscard]] VkImage getOffscreenColorImage(int index) const {

@@ -513,8 +513,8 @@ namespace engine {
         // Depth compare matches the main mesh pipeline behavior when a depth prepass is used.
         pipelineConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-        // G-buffer has 5 MRTs (Normal, Albedo, Material, HDR emissive, Baked); disable blending for all.
-        std::array<VkPipelineColorBlendAttachmentState, 5> attachments{};
+        // G-buffer has 4 MRTs (Normal, Albedo, Material, HDR emissive); disable blending for all.
+        std::array<VkPipelineColorBlendAttachmentState, 4> attachments{};
         for (auto& a : attachments) {
             a             = pipelineConfig.colorBlendAttachment;
             a.blendEnable = VK_FALSE;

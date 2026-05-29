@@ -11,24 +11,19 @@
 #define MAX_REFLECTION_LOD 4.0
 
 /* Debug modes */
-const int DEBUG_ALBEDO         = 1;
-const int DEBUG_NORMAL         = 2;
-const int DEBUG_ROUGHNESS      = 3;
-const int DEBUG_METALLIC       = 4;
-const int DEBUG_LIGHTING_ONLY  = 5;
-const int DEBUG_EMISSIVE_ONLY  = 6;
-const int DEBUG_MESHLETS       = 7;
-const int DEBUG_MESHLET_CONES  = 8;
-const int DEBUG_DEPTH          = 9;
-const int DEBUG_AO             = 10;
-const int DEBUG_IBL_DIFFUSE    = 12;
-const int DEBUG_IBL_SPECULAR   = 13;
-const int DEBUG_BRDF_LUT       = 14;
-const int DEBUG_CSM_CASCADES   = 15;
-const int DEBUG_CSM_VIEW_DEPTH = 16;
-const int DEBUG_CSM_SPLITS     = 17;
-const int DEBUG_CSM_DEPTH_HUE  = 18;
-const int DEBUG_CSM_SAMPLES    = 19;
+const int DEBUG_ALBEDO        = 1;
+const int DEBUG_NORMAL        = 2;
+const int DEBUG_ROUGHNESS     = 3;
+const int DEBUG_METALLIC      = 4;
+const int DEBUG_LIGHTING_ONLY = 5;
+const int DEBUG_EMISSIVE_ONLY = 6;
+const int DEBUG_MESHLETS      = 7;
+const int DEBUG_MESHLET_CONES = 8;
+const int DEBUG_DEPTH         = 9;
+const int DEBUG_AO            = 10;
+const int DEBUG_IBL_DIFFUSE   = 12;
+const int DEBUG_IBL_SPECULAR  = 13;
+const int DEBUG_BRDF_LUT      = 14;
 
 /*==============================================================================
   I/O
@@ -137,16 +132,16 @@ vec3 applyIridescenceToF0(vec3 F0, float metallic, float NdotV, float iridescenc
 ==============================================================================*/
 
 Surface loadSurface(vec2 uv, float depth, out bool isDebugPrimitive) {
-    Surface s;
+    Surface     s;
+    const float minMaterialIOR        = 1.0;
+    const float materialIORRange      = 1.5;
+    const float defaultIridescenceIOR = 1.3;
 
     s.worldPos = reconstructWorldPos(uv, depth);
     s.V        = normalize(ubo.cameraPosition.xyz - s.worldPos);
 
     vec4 nPacked = texture(gbufferNormal, uv);
-    s.N          = octDecode(nPacked.rg * 2.0 - 1.0);
-
-    float materialIOR    = nPacked.b;
-    float iridescenceIOR = nPacked.a;
+    s.N          = octDecode(nPacked.rg);
 
     vec4 albedoA = texture(gbufferAlbedo, uv);
     s.albedo     = albedoA.rgb;
@@ -155,20 +150,24 @@ Surface loadSurface(vec2 uv, float depth, out bool isDebugPrimitive) {
 
     isDebugPrimitive = (iridescenceThickness < 0.0);
 
-    vec4 mat          = texture(gbufferMaterial, uv);
-    // Option B: RG8UNORM unpack — R bit-packed metallic(8b)+roughness(8b)
-    uint mrPacked     = floatBitsToUint(mat.r);
-    s.metallic        = float(mrPacked >> 8) / 255.0;
-    s.roughness       = float(mrPacked & 0xFF) / 255.0;
-    s.ao              = mat.b;
-    float iridescence = mat.a;
+    vec4 mat    = texture(gbufferMaterial, uv);
+    s.metallic  = mat.r;
+    s.roughness = mat.g;
+    s.ao        = mat.b;
+
+    uint packedByte = uint(round(clamp(mat.a, 0.0, 1.0) * 255.0));
+    uint iorQ       = (packedByte >> 4u) & 0xFu;
+    uint iridesQ    = packedByte & 0xFu;
+
+    float materialIOR = minMaterialIOR + (float(iorQ) / 15.0) * materialIORRange;
+    float iridescence = float(iridesQ) / 15.0;
 
     s.NdotV = max(dot(s.N, s.V), 0.0);
 
     float dielectricF0 = iorToF0(materialIOR);
     s.F0               = mix(vec3(dielectricF0), s.albedo, s.metallic);
 
-    s.F0 = applyIridescenceToF0(s.F0, s.metallic, s.NdotV, iridescence, iridescenceIOR, iridescenceThickness);
+    s.F0 = applyIridescenceToF0(s.F0, s.metallic, s.NdotV, iridescence, defaultIridescenceIOR, iridescenceThickness);
 
     return s;
 }
@@ -244,77 +243,6 @@ bool handleDebug(Surface s, vec3 iblDiffuse, vec3 iblSpecular) {
         case DEBUG_BRDF_LUT:
             outColor = vec4(vec3(texture(brdfLUT, vec2(s.NdotV, s.roughness)).x), 1.0);
             return true;
-
-        // ---------------------------------------------------------------------
-        // Cascaded Shadow Map (CSM) debug views (use helpers from shadows.glsl)
-        // ---------------------------------------------------------------------
-        case DEBUG_CSM_CASCADES:
-            // Color-code cascade index at each pixel
-            outColor = vec4(getCSMCascadeDebugColor(s.worldPos), 1.0);
-            return true;
-
-        case DEBUG_CSM_VIEW_DEPTH:
-            // Visualize depth precision within the selected cascade
-            outColor = vec4(getCSMDepthPrecisionDebug(s.worldPos), 1.0);
-            return true;
-
-        case DEBUG_CSM_SPLITS: {
-            // Show which splits the view-depth exceeds (R= >split0, G=>split1, B=>split2)
-            float vd     = getViewDepth(s.worldPos);
-            vec3  splits = vec3(vd > ubo.directionalCascadeSplits.x ? 1.0 : 0.0,
-                vd > ubo.directionalCascadeSplits.y ? 1.0 : 0.0,
-                vd > ubo.directionalCascadeSplits.z ? 1.0 : 0.0);
-            outColor = vec4(splits, 1.0);
-            return true;
-        }
-
-        case DEBUG_CSM_DEPTH_HUE: {
-            // Raw view-depth mapped to a simple blue->green->red ramp
-            float vd  = getViewDepth(s.worldPos);
-            float t   = clamp(vd / max(ubo.directionalCascadeSplits.w, 1.0), 0.0, 1.0);
-            vec3  col = (t < 0.5) ? mix(vec3(0.0, 0.0, 1.0), vec3(0.0, 1.0, 0.0), t * 2.0) : mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.5) * 2.0);
-            outColor  = vec4(col, 1.0);
-            return true;
-        }
-
-        case DEBUG_CSM_SAMPLES: {
-            // Show per-cascade shadow sample (R= cascade0, G=cascade1, B=cascade2)
-            // Also mask channels when the shader believes the corresponding shadow-map
-            // binding is not present or the projected coords lie outside the cascade.
-            vec3 samples  = vec3(1.0);
-            vec3 validity = vec3(0.0);
-            if (ubo.directionalLightCount > 0 && ubo.directionalCascadeCount > 0) {
-                vec3 L = normalize(-directionalLights[0].direction.xyz);
-                for (int c = 0; c < 3; ++c) {
-                    if (c >= ubo.directionalCascadeCount)
-                        continue;
-                    int  lightIdx = ubo.directionalCascadeBaseIndex + c;
-                    bool bound    = (lightIdx < ubo.shadowLightCount);
-                    if (bound) {
-                        // Quick proj-coords check (matches sampleShadowMapWithBias's early-out)
-                        vec4 lsPos      = ubo.lightSpaceMatrices[lightIdx] * vec4(s.worldPos, 1.0);
-                        vec3 projCoords = lsPos.xyz / lsPos.w;
-                        projCoords.xy   = projCoords.xy * 0.5 + 0.5;
-                        bool inRange    = !(projCoords.z < 0.0 || projCoords.z > 1.0 || any(lessThan(projCoords.xy, vec2(0.0))) || any(greaterThan(projCoords.xy, vec2(1.0))));
-                        if (inRange)
-                            validity[c] = 1.0;
-                    }
-
-                    // Still sample (returns 1.0 when unbound/outsided due to early-return) so
-                    // we can compare sample vs validity in the debug view.
-                    if (c == 0)
-                        samples.r = sampleShadowMapWithBias(s.worldPos, s.N, L, lightIdx, 0, 1.0);
-                    else if (c == 1)
-                        samples.g = sampleShadowMapWithBias(s.worldPos, s.N, L, lightIdx, 1, 1.0);
-                    else if (c == 2)
-                        samples.b = sampleShadowMapWithBias(s.worldPos, s.N, L, lightIdx, 2, 1.0);
-                }
-            }
-
-            // Visual encoding: channel = sample * validity
-            outColor = vec4(samples * validity, 1.0);
-            return true;
-        }
     }
     return false;
 }
@@ -360,12 +288,12 @@ vec3 handleDirectionalLights(in Surface s) {
         if (intensity <= 1e-6)
             continue;
 
-        vec3 L        = normalize(-directionalLights[i].direction.xyz);
-        vec3 radiance = directionalLights[i].color.xyz * intensity;
-
-        if (i == 0 && ubo.directionalCascadeCount > 0) {
-            radiance *= calculateDirectionalCSMShadow(s.worldPos, s.N, L);
+        vec3 Lraw = -directionalLights[i].direction.xyz;
+        if (dot(Lraw, Lraw) < 1e-8) {
+            Lraw = vec3(0.0, 1.0, 0.0);
         }
+        vec3 L        = normalize(Lraw);
+        vec3 radiance = directionalLights[i].color.xyz * intensity;
 
         vec3 diff, spec;
         calculateDirectLight(s.N, s.V, s.albedo, s.metallic, s.roughness, s.F0, L, radiance, diff, spec);
@@ -382,21 +310,21 @@ vec3 handlePointLights(in Surface s) {
     vec3 color = vec3(0.0);
 
     for (int i = 0; i < ubo.pointLightCount; i++) {
-        float intensity = pointLights[i].color.w;
+        float intensity = pointLights[i].colorIntensity.w;
         if (intensity <= 1e-6)
             continue;
 
-        vec3  Lvec  = pointLights[i].position.xyz - s.worldPos;
+        vec3  Lvec  = pointLights[i].positionRadius2.xyz - s.worldPos;
         float dist2 = dot(Lvec, Lvec);
 
-        float att = computeDistanceAttenuation(dist2, pointLights[i].radius2);
+        float att = computeDistanceAttenuation(dist2, pointLights[i].positionRadius2.w);
         if (att <= 0.0)
             continue;
 
         vec3  L      = normalize(Lvec);
         float shadow = calculatePointLightShadow(s.worldPos, i);
 
-        vec3 radiance = pointLights[i].color.xyz * intensity * att * shadow;
+        vec3 radiance = pointLights[i].colorIntensity.xyz * intensity * att * shadow;
 
         vec3 diff, spec;
         calculateDirectLight(s.N, s.V, s.albedo, s.metallic, s.roughness, s.F0, L, radiance, diff, spec);
@@ -411,30 +339,30 @@ vec3 handlePointLights(in Surface s) {
 ==============================================================================*/
 vec3 handleSpotLights(in Surface s) {
     vec3 color      = vec3(0.0);
-    int  shadowBase = ubo.directionalCascadeCount;
+    int  shadowBase = 0;
 
     for (int i = 0; i < ubo.spotLightCount; i++) {
-        float intensity = spotLights[i].color.w;
+        float intensity = spotLights[i].colorIntensity.w;
         if (intensity <= 1e-6)
             continue;
 
-        vec3  toLight = spotLights[i].position.xyz - s.worldPos;
+        vec3  toLight = spotLights[i].positionRadius2.xyz - s.worldPos;
         float dist2   = dot(toLight, toLight);
 
-        float att = computeDistanceAttenuation(dist2, spotLights[i].radius2);
+        float att = computeDistanceAttenuation(dist2, spotLights[i].positionRadius2.w);
         if (att <= 0.0)
             continue;
 
         vec3 L = normalize(toLight);
 
-        vec3  lightDir = normalize(spotLights[i].direction.xyz);
+        vec3  lightDir = normalize(spotLights[i].directionInner.xyz);
         float theta    = dot(normalize(-toLight), lightDir);
 
-        float cone = clamp((theta - spotLights[i].outerCutoff) / max(spotLights[i].direction.w - spotLights[i].outerCutoff, 1e-4), 0.0, 1.0);
+        float cone = clamp((theta - spotLights[i].attenOuter.x) / max(spotLights[i].directionInner.w - spotLights[i].attenOuter.x, 1e-4), 0.0, 1.0);
 
         float shadow = calculateShadow(s.worldPos, s.N, L, shadowBase + i);
 
-        vec3 radiance = spotLights[i].color.xyz * intensity * att * cone * shadow;
+        vec3 radiance = spotLights[i].colorIntensity.xyz * intensity * att * cone * shadow;
 
         vec3 diff, spec;
         calculateDirectLight(s.N, s.V, s.albedo, s.metallic, s.roughness, s.F0, L, radiance, diff, spec);

@@ -80,7 +80,11 @@ add_requires(
     "entt",
     "gtest",
     "imgui v1.92.1-docking", { configs = { glfw = true, vulkan = true } }
+    
 )
+
+-- Jolt Physics — multi-core rigid-body physics engine
+ add_requires("joltphysics", { configs = { debug_renderer = true } } )
 
 if is_plat("linux") then
     add_requires("vulkan")
@@ -197,6 +201,7 @@ target("Engine")
         "stb", "nlohmann_json", "meshoptimizer",
         "imgui", "entt"
     )
+    add_packages("joltphysics", {public = true})
     if is_plat("linux") then
         add_packages("vulkan")
     elseif is_plat("windows") then

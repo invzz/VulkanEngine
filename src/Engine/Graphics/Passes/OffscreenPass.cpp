@@ -3,44 +3,13 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/components/DirectionalLightComponent.hpp"
-#include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
-#include "Engine/Systems/DustRenderSystem.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
 #include "Editor/RenderContext.hpp"
 
 namespace {
-    struct SunInfo {
-        glm::vec3 directionToSun{0.0f, 1.0f, 0.0f};
-        glm::vec3 color{1.0f, 1.0f, 1.0f};
-        float     intensity{0.0f};
-        bool      valid{false};
-    };
-
-    SunInfo queryPrimaryDirectionalLightSunInfo(engine::Scene const& scene) {
-        SunInfo info{};
-
-        auto const& registry = scene.getRegistry();
-        auto        view     = registry.view<engine::TransformComponent, engine::DirectionalLightComponent>();
-        for (auto entity : view) {
-            auto const& transform = view.get<engine::TransformComponent>(entity);
-            auto const& light     = view.get<engine::DirectionalLightComponent>(entity);
-
-            glm::vec3 const lightRayDir = glm::normalize(transform.getForwardDir());
-            info.directionToSun         = -lightRayDir;
-            info.color                  = light.color;
-            info.intensity              = light.intensity;
-            info.valid                  = true;
-            break;
-        }
-
-        return info;
-    }
-
     void updateShadowDescriptors(engine::EngineState* engineState, engine::Device& device, int frameIndex) {
         // Shadow descriptors update
         int const shadowCount     = engineState->shadowSystem->getShadowLightCount();
@@ -82,31 +51,6 @@ namespace {
 
         vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
-
-    void performDustRendering(engine::EngineState* engineState,
-                             engine::FrameInfo& frameInfo,
-                             const engine::Scene& scene) {
-        // Dust rendering uses the current scene + camera to compute lighting
-        SunInfo const sunInfo = queryPrimaryDirectionalLightSunInfo(scene);
-
-        auto sunColor     = glm::vec3(1.0f);
-        auto ambientColor = glm::vec3(0.1f);
-
-        float const height = sunInfo.directionToSun.y;
-        if (height > 0.1f) {
-            sunColor     = glm::vec3(1.0f, 0.95f, 0.9f);
-            ambientColor = glm::vec3(0.2f, 0.2f, 0.3f);
-        } else if (height > -0.1f) {
-            sunColor     = glm::vec3(1.0f, 0.6f, 0.3f);
-            ambientColor = glm::vec3(0.3f, 0.2f, 0.2f);
-        } else {
-            sunColor     = glm::vec3(0.05f, 0.05f, 0.1f);
-            ambientColor = glm::vec3(0.01f, 0.01f, 0.02f);
-        }
-
-        auto const sunDirWithIntensity = glm::vec4(sunInfo.directionToSun, sunInfo.intensity);
-        engineState->dustRenderSystem->render(frameInfo, engineState->dustSettings, sunDirWithIntensity, sunColor, ambientColor);
-    }
 }  // namespace
 
 namespace engine {
@@ -140,14 +84,12 @@ namespace engine {
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
 
         if (debugMode_ == 0) {
-            // Copy color -> scene color, then perform transmission/alpha+dust passes
+            // Copy color -> scene color, then perform transmission/alpha pass
             renderer_.copyOffscreenColorToSceneColor(frameInfo.commandBuffer);
 
             renderer_.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
             engineState_->modelRenderSystem->renderTransmission(frameInfo);
             engineState_->modelRenderSystem->renderAlphaBlend(frameInfo);
-
-            performDustRendering(engineState_, frameInfo, *frameInfo.scene);
 
             renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
         }
@@ -162,16 +104,12 @@ namespace engine {
         auto aInfo     = renderer_.getGbufferAlbedoImageInfo(frameIndex);
         auto mInfo     = renderer_.getGbufferMaterialImageInfo(frameIndex);
         auto dInfo     = renderer_.getDepthImageInfo(frameIndex);
-        auto cInfo     = renderer_.getOffscreenImageInfo(frameIndex);
-        auto bakedInfo = renderer_.getGbufferBakedImageInfo(frameIndex);
 
         DescriptorWriter(engineState_->gbufferSetLayoutRef(), engineState_->gbufferPoolRef())
             .writeImage(0, &nInfo)
             .writeImage(1, &aInfo)
             .writeImage(2, &mInfo)
             .writeImage(3, &dInfo)
-            .writeImage(4, &cInfo)
-            .writeImage(5, &bakedInfo)
             .overwrite(engineState_->gbufferDescriptorSetRef(frameIndex));
     }
 

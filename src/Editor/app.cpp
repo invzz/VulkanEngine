@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-#include "Engine/Core/Keyboard.hpp"
-#include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
@@ -52,7 +50,6 @@
 
 // UI Panels
 #include "Editor/ui/InspectorPanel.hpp"
-#include "Editor/ui/ModelImportPanel.hpp"
 #include "Editor/ui/ScenePanel.hpp"
 #include "Editor/ui/SettingsPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
@@ -211,10 +208,8 @@ namespace engine {
 
             pendingUpdateCameraAfterSceneLoad = true;
         });
-        engineState.uiManager->addPanel(std::make_unique<ModelImportPanel>(device, &engineState));
         engineState.uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
-        engineState.uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene()));
-        engineState.uiManager->addPanel(std::make_unique<LightsPanel>(engineState.getScene()));
+        engineState.uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunning));
         engineState.uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
     }
 

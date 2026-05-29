@@ -50,7 +50,6 @@ namespace engine {
         [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
-        [[nodiscard]] VkDescriptorImageInfo getGbufferBakedImageInfo(int index) const;
 
         void        beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
         void        beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
@@ -145,9 +144,6 @@ namespace engine {
         std::vector<RenderTarget> gbufferAlbedoTargets;
 
         std::vector<RenderTarget> gbufferMaterialTargets;
-
-        // Baked light (RGB) attachment
-        std::vector<RenderTarget> gbufferBakedTargets;
 
         // Depth attachment
         std::vector<RenderTarget> depthTargets;

@@ -13,10 +13,11 @@
 
 namespace engine {
 
-InspectorPanel::InspectorPanel(Scene& scene) {
+InspectorPanel::InspectorPanel(Scene& scene, bool* physicsSimulationRunning) {
   transformPanel_ = std::make_unique<TransformPanel>(scene);
   lightsPanel_ = std::make_unique<LightsPanel>(scene);
   animationPanel_ = std::make_unique<AnimationPanel>(scene);
+  physicsPanel_ = std::make_unique<PhysicsPanel>(scene, physicsSimulationRunning);
 }
 
 void InspectorPanel::render(FrameInfo& frameInfo) {
@@ -25,11 +26,16 @@ void InspectorPanel::render(FrameInfo& frameInfo) {
   if (ImGui::Begin("Inspector", &visible_)) {
     if (frameInfo.selectedEntity != entt::null) {
       transformPanel_->render(frameInfo);
+      ImGui::Separator();
       lightsPanel_->render(frameInfo);
+      ImGui::Separator();
       animationPanel_->render(frameInfo);
     } else {
       ImGui::Text("No entity selected.");
     }
+
+    ImGui::Separator();
+    physicsPanel_->render(frameInfo);
   }
   ImGui::End();
 }
