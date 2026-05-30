@@ -37,6 +37,10 @@ namespace engine {
             ImGui::Checkbox("Show Skybox", &engineState_->showSkybox);
             ImGui::SameLine();
             ImGui::Checkbox("Show Grid", &engineState_->showGrid);
+            ImGui::SameLine();
+            if (ImGui::Button(engineState_->showDebugObjects ? "Hide Debug Objects" : "Show Debug Objects")) {
+                engineState_->showDebugObjects = !engineState_->showDebugObjects;
+            }
             if (engineState_->showSkybox && engineState_->skybox == nullptr) {
                 ImGui::TextDisabled("(Skybox will load next frame)");
             }

@@ -124,6 +124,7 @@ namespace engine {
     void EngineState::initCoreSystems(Device& device, Renderer& renderer, bool multithreadedRecordingEnabled, uint32_t multithreadedRecordingThreads) {
         // Camera system depends on render context already being created by caller
         cameraSystem = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
+        colliderDebugRenderSystem = std::make_unique<ColliderDebugRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
 
         // Compute / utility systems
         animationSystem = std::make_unique<AnimationSystem>(device);

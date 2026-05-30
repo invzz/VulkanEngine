@@ -19,6 +19,8 @@ namespace engine {
  */
     class ScenePanel : public UIPanel {
        public:
+        using StaticColliderImportMode = ModelInsertionOptions::StaticColliderImportMode;
+
         ScenePanel(Device& device, EngineState* engineState);
 
         void               render(FrameInfo& frameInfo) override;
@@ -33,6 +35,7 @@ namespace engine {
             std::string                   path;
             std::string                   name;
             engine::ModelInsertionOptions options;
+            StaticColliderImportMode      colliderMode{StaticColliderImportMode::AutoDetect};
             bool                          cancelled = false;
         };
 
@@ -40,6 +43,7 @@ namespace engine {
             EngineState*              engineState_ = nullptr;
             std::vector<entt::entity> toDelete_;
         std::vector<PendingModelLoad> pendingLoads_;
+            StaticColliderImportMode colliderImportMode_{StaticColliderImportMode::AutoDetect};
     };
 
 }  // namespace engine

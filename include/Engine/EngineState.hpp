@@ -11,6 +11,7 @@
 #include "Engine/SystemRegistry.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
+#include "Engine/Systems/ColliderDebugRenderSystem.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/GridRenderSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
@@ -54,6 +55,8 @@ namespace engine {
             RenderContext*          renderContext          = nullptr;
             bool*                   showSkybox             = nullptr;
             bool*                   showGrid               = nullptr;
+            bool*                   showDebugObjects       = nullptr;
+            bool*                   showColliderWireframes = nullptr;
             bool*                   debugMode              = nullptr;
         };
 
@@ -108,6 +111,8 @@ namespace engine {
                 .renderContext          = renderContext.get(),
                 .showSkybox             = &showSkybox,
                 .showGrid               = &showGrid,
+                .showDebugObjects       = &showDebugObjects,
+                .showColliderWireframes = &showColliderWireframes,
                 .debugMode              = &debugMode,
             };
         }
@@ -244,6 +249,7 @@ namespace engine {
         std::unique_ptr<ObjectSelectionSystem>  objectSelectionSystem;
         std::unique_ptr<InputSystem>            inputSystem;
         std::unique_ptr<CameraSystem>           cameraSystem;
+        std::unique_ptr<ColliderDebugRenderSystem> colliderDebugRenderSystem;
         std::unique_ptr<AnimationSystem>        animationSystem;
         std::unique_ptr<LODSystem>              lodSystem;
         std::unique_ptr<ModelRenderSystem>      modelRenderSystem;
@@ -300,6 +306,8 @@ namespace engine {
         // View toggles
         bool showSkybox = false;
         bool showGrid   = false;
+        bool showDebugObjects = false;
+        bool showColliderWireframes = false;
         bool debugMode  = false;
 
         // Runtime controls

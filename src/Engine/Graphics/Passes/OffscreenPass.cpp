@@ -87,8 +87,20 @@ namespace engine {
             renderer_.copyOffscreenColorToSceneColor(frameInfo.commandBuffer);
 
             renderer_.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
+            if ((engineState_->gridRenderSystem != nullptr) && engineState_->showGrid) {
+                engineState_->gridRenderSystem->render(frameInfo);
+            }
             engineState_->modelRenderSystem->renderTransmission(frameInfo);
             engineState_->modelRenderSystem->renderAlphaBlend(frameInfo);
+            if ((engineState_->showDebugObjects) && (engineState_->lightSystem != nullptr)) {
+                engineState_->lightSystem->render(frameInfo);
+            }
+            if ((engineState_->showDebugObjects) && (engineState_->cameraSystem != nullptr)) {
+                engineState_->cameraSystem->render(frameInfo);
+            }
+            if ((engineState_->showColliderWireframes) && (engineState_->colliderDebugRenderSystem != nullptr)) {
+                engineState_->colliderDebugRenderSystem->render(frameInfo);
+            }
 
             renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
         }

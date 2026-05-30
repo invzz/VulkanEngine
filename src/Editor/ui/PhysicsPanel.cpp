@@ -6,14 +6,15 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "entt/entity/entity.hpp"
 
 namespace engine {
 
-PhysicsPanel::PhysicsPanel(Scene& scene, bool* simulationRunning)
-    : scene_(scene), simulationRunning_(simulationRunning) {}
+PhysicsPanel::PhysicsPanel(Scene& scene, bool* simulationRunning, bool* showColliderWireframes)
+    : scene_(scene), simulationRunning_(simulationRunning), showColliderWireframes_(showColliderWireframes) {}
 
 void PhysicsPanel::render(FrameInfo& frameInfo) {
     if (!visible_) return;
@@ -31,6 +32,15 @@ void PhysicsPanel::render(FrameInfo& frameInfo) {
             }
             ImGui::SameLine();
             ImGui::TextDisabled("Status: %s", *simulationRunning_ ? "Running" : "Stopped");
+            ImGui::Separator();
+        }
+
+        if (showColliderWireframes_ != nullptr) {
+            if (ImGui::Button(*showColliderWireframes_ ? "Hide Collider Wireframes" : "Show Collider Wireframes")) {
+                *showColliderWireframes_ = !*showColliderWireframes_;
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("Collider Debug: %s", *showColliderWireframes_ ? "On" : "Off");
             ImGui::Separator();
         }
 
@@ -71,6 +81,25 @@ void PhysicsPanel::render(FrameInfo& frameInfo) {
                     auto& collider = registry.emplace<ColliderComponent>(entity);
                     collider.shape = ColliderComponent::ShapeType::Box;
                     collider.size = glm::vec3(1.0f, 1.0f, 1.0f);
+                    collider.radius = 0.5f;
+                    collider.centerOffset = glm::vec3(0.0f);
+                    collider.pendingShapeRebuild = true;
+
+                    if (registry.all_of<ModelComponent>(entity)) {
+                        auto& modelComp = registry.get<ModelComponent>(entity);
+                        if (modelComp.model != nullptr) {
+                            const AABB& localBounds = modelComp.model->getLocalBounds();
+                            if (localBounds.isValid()) {
+                                const glm::vec3 extents = glm::max(localBounds.extents(), glm::vec3(0.01f));
+                                collider.size = glm::max(extents * 2.0f, glm::vec3(0.02f));
+                                collider.centerOffset = localBounds.center();
+                            }
+                        }
+                    }
+
+                    if (registry.all_of<RigidBodyComponent>(entity)) {
+                        registry.get<RigidBodyComponent>(entity).pendingBodyStateOverride = true;
+                    }
                 }
                 ImGui::Spacing();
             } else {
@@ -81,6 +110,8 @@ void PhysicsPanel::render(FrameInfo& frameInfo) {
                     }
                 }
                 ImGui::Spacing();
+
+                editColliderProperties(frameInfo);
             }
 
             // Display current component information
@@ -149,6 +180,7 @@ void PhysicsPanel::addPhysicsComponent(FrameInfo& frameInfo) {
     rigidBody.angularVelocity = glm::vec3(0.0f);
     rigidBody.isStatic = false;
     rigidBody.useGravity = true;
+    rigidBody.pendingBodyStateOverride = true;
 }
 
 void PhysicsPanel::editPhysicsProperties(FrameInfo& frameInfo) {
@@ -163,6 +195,8 @@ void PhysicsPanel::editPhysicsProperties(FrameInfo& frameInfo) {
 
     ImGui::Text("Edit Physics Properties:");
 
+    bool bodyStateEdited = false;
+
     // Mass
     ImGui::DragFloat("Mass", &rigidBody.mass, 0.1f, 0.01f, 1000.0f);
 
@@ -176,9 +210,9 @@ void PhysicsPanel::editPhysicsProperties(FrameInfo& frameInfo) {
 
     // Velocity
     if (ImGui::CollapsingHeader("Velocity")) {
-        ImGui::DragFloat("X##velocity", &rigidBody.velocity.x, 0.1f);
-        ImGui::DragFloat("Y##velocity", &rigidBody.velocity.y, 0.1f);
-        ImGui::DragFloat("Z##velocity", &rigidBody.velocity.z, 0.1f);
+        bodyStateEdited |= ImGui::DragFloat("X##velocity", &rigidBody.velocity.x, 0.1f);
+        bodyStateEdited |= ImGui::DragFloat("Y##velocity", &rigidBody.velocity.y, 0.1f);
+        bodyStateEdited |= ImGui::DragFloat("Z##velocity", &rigidBody.velocity.z, 0.1f);
     }
 
     // Acceleration
@@ -190,10 +224,97 @@ void PhysicsPanel::editPhysicsProperties(FrameInfo& frameInfo) {
 
     // Angular Velocity
     if (ImGui::CollapsingHeader("Angular Velocity")) {
-        ImGui::DragFloat("X##angular", &rigidBody.angularVelocity.x, 0.01f);
-        ImGui::DragFloat("Y##angular", &rigidBody.angularVelocity.y, 0.01f);
-        ImGui::DragFloat("Z##angular", &rigidBody.angularVelocity.z, 0.01f);
+        bodyStateEdited |= ImGui::DragFloat("X##angular", &rigidBody.angularVelocity.x, 0.01f);
+        bodyStateEdited |= ImGui::DragFloat("Y##angular", &rigidBody.angularVelocity.y, 0.01f);
+        bodyStateEdited |= ImGui::DragFloat("Z##angular", &rigidBody.angularVelocity.z, 0.01f);
     }
+
+    if (bodyStateEdited) {
+        rigidBody.pendingBodyStateOverride = true;
+    }
+}
+
+void PhysicsPanel::editColliderProperties(FrameInfo& frameInfo) {
+    auto entity = frameInfo.selectedEntity;
+    auto& registry = scene_.getRegistry();
+
+    if (!registry.all_of<ColliderComponent>(entity)) {
+        return;
+    }
+
+    auto& collider = registry.get<ColliderComponent>(entity);
+    auto* rigidBody = registry.try_get<RigidBodyComponent>(entity);
+
+    ImGui::Text("Edit Collider Properties:");
+
+    bool colliderChanged = false;
+
+    const char* shapeLabels[] = {"Sphere", "Box", "Capsule", "Mesh"};
+    int currentShapeIndex = static_cast<int>(collider.shape);
+    if (ImGui::Combo("Shape", &currentShapeIndex, shapeLabels, IM_ARRAYSIZE(shapeLabels))) {
+        collider.shape = static_cast<ColliderComponent::ShapeType>(currentShapeIndex);
+        colliderChanged = true;
+    }
+
+    colliderChanged |= ImGui::Checkbox("Is Trigger", &collider.isTrigger);
+    colliderChanged |= ImGui::DragFloat3("Center Offset", &collider.centerOffset.x, 0.01f);
+
+    switch (collider.shape) {
+        case ColliderComponent::ShapeType::Box:
+            colliderChanged |= ImGui::DragFloat3("Size", &collider.size.x, 0.05f, 0.01f, 1000.0f);
+            break;
+        case ColliderComponent::ShapeType::Sphere:
+            colliderChanged |= ImGui::DragFloat("Radius", &collider.radius, 0.01f, 0.01f, 1000.0f);
+            break;
+        case ColliderComponent::ShapeType::Capsule:
+            colliderChanged |= ImGui::DragFloat("Radius##capsule", &collider.radius, 0.01f, 0.01f, 1000.0f);
+            colliderChanged |= ImGui::DragFloat("Height##capsule", &collider.size.y, 0.05f, 0.01f, 1000.0f);
+            break;
+        case ColliderComponent::ShapeType::Mesh:
+            ImGui::TextDisabled("Mesh collider uses model triangles.");
+            break;
+    }
+
+    if (registry.all_of<ModelComponent>(entity)) {
+        auto& modelComp = registry.get<ModelComponent>(entity);
+        if (modelComp.model != nullptr) {
+            const AABB& localBounds = modelComp.model->getLocalBounds();
+            if (localBounds.isValid()) {
+                if (ImGui::Button("Fit Collider To Model Bounds")) {
+                    const glm::vec3 extents = glm::max(localBounds.extents(), glm::vec3(0.01f));
+                    collider.centerOffset = localBounds.center();
+
+                    switch (collider.shape) {
+                        case ColliderComponent::ShapeType::Sphere:
+                            collider.radius = glm::max(extents.x, glm::max(extents.y, extents.z));
+                            break;
+                        case ColliderComponent::ShapeType::Capsule:
+                            collider.radius = glm::max(extents.x, extents.z);
+                            collider.size.y = glm::max(extents.y * 2.0f, collider.radius * 2.0f);
+                            break;
+                        case ColliderComponent::ShapeType::Mesh:
+                            // Mesh colliders already match mesh geometry; keep current shape.
+                            break;
+                        case ColliderComponent::ShapeType::Box:
+                        default:
+                            collider.size = glm::max(extents * 2.0f, glm::vec3(0.02f));
+                            break;
+                    }
+
+                    colliderChanged = true;
+                }
+            }
+        }
+    }
+
+    if (colliderChanged) {
+        collider.pendingShapeRebuild = true;
+        if (rigidBody != nullptr) {
+            rigidBody->pendingBodyStateOverride = true;
+        }
+    }
+
+    ImGui::Separator();
 }
 
 } // namespace engine

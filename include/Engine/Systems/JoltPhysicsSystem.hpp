@@ -91,14 +91,16 @@ public:
     Jolt::PhysicsSystem* getPhysicsSystem() { return physicsSystem_.get(); }
 
 private:
+    void createGroundBody();
+
     /**
      * @brief Create a Jolt collision shape from ColliderComponent.
      */
-    std::unique_ptr<Jolt::BodyCreationSettings> createCollisionShape(
+    static std::unique_ptr<Jolt::BodyCreationSettings> createCollisionShape(
         const TransformComponent& transform,
         const RigidBodyComponent& rigidBody,
         const ColliderComponent& collider,
-        const PhysicsMaterialComponent* material) const;
+        const PhysicsMaterialComponent* material);
 
     /**
     * @brief Convert glm::vec3 to Jolt::Vec3.
@@ -133,6 +135,7 @@ private:
         ColliderComponent::ShapeType shapeType{ColliderComponent::ShapeType::Sphere};
     };
     std::unordered_map<uint32_t, BodySyncInfo> bodyMap_;
+    Jolt::BodyID groundBodyID_;
 };
 
 } // namespace engine

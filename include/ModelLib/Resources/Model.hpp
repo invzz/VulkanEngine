@@ -341,6 +341,14 @@ class Model {
     return hasIndexBuffer;
   }
 
+  // CPU-side collision geometry used by physics mesh collider construction.
+  [[nodiscard]] const std::vector<glm::vec3>& getCollisionVertices() const {
+    return collisionVertices_;
+  }
+  [[nodiscard]] const std::vector<uint32_t>& getCollisionIndices() const {
+    return collisionIndices_;
+  }
+
  private:
   // Global meshlet build configuration (shared across all models)
   static MeshletBuildConfig s_meshletConfig_;
@@ -370,6 +378,9 @@ class Model {
   std::vector<MorphTargetSet> morphTargetSets_;       // Morph targets
 
   AABB localBounds_;  // Object-space bounding box
+
+  std::vector<glm::vec3> collisionVertices_;
+  std::vector<uint32_t> collisionIndices_;
 
   void createVertexBuffers(const std::vector<Vertex>& vertices);
   void createIndexBuffers(const std::vector<uint32_t>& indices);

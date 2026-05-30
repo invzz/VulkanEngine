@@ -11,7 +11,7 @@ namespace engine {
  */
 class PhysicsPanel : public UIPanel {
 public:
-    PhysicsPanel(Scene& scene, bool* simulationRunning);
+    PhysicsPanel(Scene& scene, bool* simulationRunning, bool* showColliderWireframes);
 
     void render(FrameInfo& frameInfo) override;
 
@@ -22,6 +22,7 @@ public:
 private:
     Scene& scene_;
     bool* simulationRunning_ = nullptr;
+    bool* showColliderWireframes_ = nullptr;
 
     /**
      * @brief Add physics component to selected entity
@@ -32,6 +33,11 @@ private:
      * @brief Edit physics properties of selected entity
      */
     void editPhysicsProperties(FrameInfo& frameInfo);
+
+    /**
+     * @brief Edit collider properties of selected entity
+     */
+    void editColliderProperties(FrameInfo& frameInfo);
 };
 
 } // namespace engine

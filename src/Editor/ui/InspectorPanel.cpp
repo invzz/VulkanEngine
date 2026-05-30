@@ -13,15 +13,20 @@
 
 namespace engine {
 
-InspectorPanel::InspectorPanel(Scene& scene, bool* physicsSimulationRunning) {
+InspectorPanel::InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes) {
   transformPanel_ = std::make_unique<TransformPanel>(scene);
   lightsPanel_ = std::make_unique<LightsPanel>(scene);
   animationPanel_ = std::make_unique<AnimationPanel>(scene);
-  physicsPanel_ = std::make_unique<PhysicsPanel>(scene, physicsSimulationRunning);
+  physicsPanel_ = std::make_unique<PhysicsPanel>(scene, physicsSimulationRunning, showColliderWireframes);
 }
 
 void InspectorPanel::render(FrameInfo& frameInfo) {
   if (!visible_) return;
+
+  auto& registry = frameInfo.scene->getRegistry();
+  if (frameInfo.selectedEntity != entt::null && !registry.valid(frameInfo.selectedEntity)) {
+    frameInfo.selectedEntity = entt::null;
+  }
 
   if (ImGui::Begin("Inspector", &visible_)) {
     if (frameInfo.selectedEntity != entt::null) {

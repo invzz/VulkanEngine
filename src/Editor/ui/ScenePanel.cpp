@@ -24,6 +24,7 @@
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/PhysicsComponents.hpp"
 
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/entity.hpp"
@@ -31,6 +32,40 @@
 #include "vulkan/vulkan_core.h"
 
 namespace engine {
+
+namespace {
+std::string toLower(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+    return value;
+}
+
+bool shouldAutoCreateStaticCollider(const std::string& path, const std::string& name) {
+    const std::string combined = toLower(path + " " + name);
+    static const std::vector<std::string> tokens = {
+        "col_", "ucx_", "collision", "collider", "wall", "floor", "ground", "world", "level", "static"};
+
+    for (const auto& token : tokens) {
+        if (combined.find(token) != std::string::npos) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool shouldCreateStaticCollider(const std::string& path, const std::string& name, ScenePanel::StaticColliderImportMode mode) {
+    switch (mode) {
+        case ScenePanel::StaticColliderImportMode::ForceOn:
+            return true;
+        case ScenePanel::StaticColliderImportMode::ForceOff:
+            return false;
+        case ScenePanel::StaticColliderImportMode::AutoDetect:
+        default:
+            return shouldAutoCreateStaticCollider(path, name);
+    }
+}
+}  // namespace
 
     ScenePanel::ScenePanel(Device& device, EngineState* engineState)
         : device_(device), engineState_(engineState) {}
@@ -45,7 +80,10 @@ namespace engine {
                 engineState_->resourceManager->updateAsyncCallbacks();
             }
 
-            auto enqueueModelLoad = [&](const std::string& fullPath, const std::string& name, const engine::ModelInsertionOptions& opts) {
+            auto enqueueModelLoad = [&](const std::string& fullPath,
+                                        const std::string& name,
+                                        const engine::ModelInsertionOptions& opts,
+                                        StaticColliderImportMode colliderMode) {
                 if ((engineState_ == nullptr) || (engineState_->resourceManager == nullptr)) {
                     return;
                 }
@@ -56,7 +94,7 @@ namespace engine {
                     opts.loadMaterials,
                     opts.enableMorphTargets,
                     ResourcePriority::HIGH,
-                    [this, fullPath, name](const std::shared_ptr<engine::Model>& modelPtr) {
+                    [this, fullPath, name, colliderMode](const std::shared_ptr<engine::Model>& modelPtr) {
                         if (!modelPtr || engineState_ == nullptr) {
                             std::cerr << "[Model] Async load returned null model: " << fullPath << "\n";
                             return;
@@ -66,6 +104,17 @@ namespace engine {
                         engineState_->scene.getRegistry().emplace<TransformComponent>(entity);
                         engineState_->scene.getRegistry().emplace<ModelComponent>(entity, modelPtr);
                         engineState_->scene.getRegistry().emplace<NameComponent>(entity, name);
+
+                        if (shouldCreateStaticCollider(fullPath, name, colliderMode)) {
+                            auto& rigidBody = engineState_->scene.getRegistry().emplace<RigidBodyComponent>(entity);
+                            rigidBody.isStatic = true;
+                            rigidBody.mode = RigidBodyComponent::PhysicsMode::Static;
+                            rigidBody.useGravity = false;
+
+                            auto& collider = engineState_->scene.getRegistry().emplace<ColliderComponent>(entity);
+                            collider.shape = ColliderComponent::ShapeType::Mesh;
+                            collider.isTrigger = false;
+                        }
 
                         auto& modelComp = engineState_->scene.getRegistry().get<ModelComponent>(entity);
                         if (modelComp.model->hasAnimations()) {
@@ -88,6 +137,7 @@ namespace engine {
                 pending.path    = fullPath;
                 pending.name    = name;
                 pending.options = opts;
+                pending.colliderMode = colliderMode;
                 pendingLoads_.emplace_back(std::move(pending));
             };
 
@@ -382,6 +432,16 @@ namespace engine {
                 if (ImGui::BeginPopup("AddModelPopup")) {
                     static char filter[128] = "";
                     ImGui::InputText("Filter", filter, sizeof(filter));
+
+                    int colliderModeIndex = static_cast<int>(colliderImportMode_);
+                    static const char* modeLabels[] = {"Auto Detect", "Force On", "Force Off"};
+                    if (ImGui::Combo("Static Mesh Collider", &colliderModeIndex, modeLabels, IM_ARRAYSIZE(modeLabels))) {
+                        colliderImportMode_ = static_cast<StaticColliderImportMode>(colliderModeIndex);
+                    }
+
+                    if (colliderImportMode_ == StaticColliderImportMode::AutoDetect) {
+                        ImGui::TextDisabled("Auto tokens: col_, ucx_, collision, collider, wall, floor, ground, world, level, static");
+                    }
                     ImGui::Separator();
 
                     std::string const indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
@@ -435,7 +495,7 @@ namespace engine {
                                     opts.loadMaterials      = true;
                                     opts.enableMorphTargets = true;
 
-                                    enqueueModelLoad(fullPath, name, opts);
+                                    enqueueModelLoad(fullPath, name, opts, colliderImportMode_);
                                     ImGui::CloseCurrentPopup();
                                 }
                             }

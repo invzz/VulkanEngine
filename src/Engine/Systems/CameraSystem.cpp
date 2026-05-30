@@ -70,6 +70,8 @@ void CameraSystem::createPipeline(VkRenderPass renderPass) {
   pipelineConfig.renderPass = renderPass;
   pipelineConfig.pipelineLayout = pipelineLayout;
   pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+  pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
+  pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
   pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + "debug_frustum.vert.spv", std::string(SHADER_PATH) + "debug_frustum.frag.spv", pipelineConfig);
 }
@@ -79,15 +81,15 @@ void CameraSystem::render(FrameInfo& frameInfo) const {
   vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
   auto& registry = frameInfo.scene->getRegistry();
+  float const aspectRatio = (frameInfo.extent.height > 0) ? static_cast<float>(frameInfo.extent.width) / static_cast<float>(frameInfo.extent.height) : 1.0f;
 
-  // Only render if we have a selected entity that is a camera
-  if (registry.valid(frameInfo.selectedEntity) && registry.all_of<CameraComponent, TransformComponent>(frameInfo.selectedEntity)) {
-    // Don't render the active camera's frustum (it would be weird/invisible)
-    if (frameInfo.selectedEntity == frameInfo.cameraEntity) {
-      return;
+  auto view = registry.view<CameraComponent, TransformComponent>();
+  for (auto entity : view) {
+    if (entity == frameInfo.cameraEntity) {
+      continue;
     }
 
-    auto [cameraComp, transform] = registry.get<CameraComponent, TransformComponent>(frameInfo.selectedEntity);
+    auto [cameraComp, transform] = view.get<CameraComponent, TransformComponent>(entity);
 
     auto modelMatrix = glm::mat4(1.0f);
     modelMatrix = glm::translate(modelMatrix, transform.translation);
@@ -99,7 +101,7 @@ void CameraSystem::render(FrameInfo& frameInfo) const {
     push.modelMatrix = modelMatrix;
     push.color = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow
     push.fovY = glm::radians(cameraComp.fovY);
-    push.aspectRatio = 16.0f / 9.0f;  // Approximation, or use actual aspect ratio if stored
+    push.aspectRatio = aspectRatio;
     push.nearZ = cameraComp.nearZ;
     push.farZ = cameraComp.farZ;
 

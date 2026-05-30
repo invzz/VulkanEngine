@@ -13,7 +13,7 @@ namespace engine {
 
 class InspectorPanel : public UIPanel {
  public:
-  InspectorPanel(Scene& scene, bool* physicsSimulationRunning);
+  InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes);
 
   void render(FrameInfo& frameInfo) override;
   [[nodiscard]] bool isSeparateWindow() const override {

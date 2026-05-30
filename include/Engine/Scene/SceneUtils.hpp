@@ -11,9 +11,16 @@
 namespace engine {
 
 struct ModelInsertionOptions {
+  enum class StaticColliderImportMode : uint8_t {
+    AutoDetect = 0,
+    ForceOn = 1,
+    ForceOff = 2,
+  };
+
   bool enableTextures = true;
   bool loadMaterials = true;
   bool enableMorphTargets = true;
+  StaticColliderImportMode staticColliderMode = StaticColliderImportMode::AutoDetect;
   Model::MeshletBuildConfig meshletCfg;
 };
 

@@ -115,14 +115,6 @@ TEST_F(RendererTest, GivenRenderer_WhenGetDepthImageInfo_ThenReturnsValidInfo) {
   EXPECT_NE(info.imageView, VK_NULL_HANDLE);
 }
 
-TEST_F(RendererTest, GivenRenderer_WhenGetHzbImageInfo_ThenReturnsValidInfo) {
-  Renderer renderer(window(), device());
-
-  VkDescriptorImageInfo info = renderer.getHzbImageInfo(0);
-  EXPECT_NE(info.imageView, VK_NULL_HANDLE);
-  EXPECT_NE(info.sampler, VK_NULL_HANDLE);
-}
-
 TEST_F(RendererTest, GivenRenderer_WhenGetSceneColorImageInfo_ThenReturnsValidInfo) {
   Renderer renderer(window(), device());
 
@@ -148,13 +140,6 @@ TEST_F(RendererTest, GivenRenderer_WhenGetGbufferMaterialImageInfo_ThenReturnsVa
   Renderer renderer(window(), device());
 
   VkDescriptorImageInfo info = renderer.getGbufferMaterialImageInfo(0);
-  EXPECT_NE(info.imageView, VK_NULL_HANDLE);
-}
-
-TEST_F(RendererTest, GivenRenderer_WhenGetGbufferBakedImageInfo_ThenReturnsValidInfo) {
-  Renderer renderer(window(), device());
-
-  VkDescriptorImageInfo info = renderer.getGbufferBakedImageInfo(0);
   EXPECT_NE(info.imageView, VK_NULL_HANDLE);
 }
 

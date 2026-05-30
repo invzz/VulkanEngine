@@ -17,6 +17,7 @@ struct RigidBodyComponent {
     bool useGravity{true};
     float friction{0.5f};
     float restitution{0.3f};
+    bool pendingBodyStateOverride{false};
 
     // For future extension - allow different physics simulation modes
     enum class PhysicsMode {
@@ -38,10 +39,12 @@ struct ColliderComponent {
     ShapeType shape{ShapeType::Sphere};
     glm::vec3 size{1.0f, 1.0f, 1.0f}; // For box and capsule shapes
     float radius{0.5f};               // For sphere shape
+    glm::vec3 centerOffset{0.0f, 0.0f, 0.0f};
 
     // For mesh collider - reference to mesh data or mesh ID
     // This would be populated by a mesh loading system
     bool isTrigger{false};
+    bool pendingShapeRebuild{false};
 
     // Collision filtering
     uint32_t collisionGroup{0};

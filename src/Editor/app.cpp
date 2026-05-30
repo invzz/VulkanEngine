@@ -90,6 +90,22 @@ namespace engine {
         // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
         engineState.initialize(device, renderer, resourceManager, &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
 
+        sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
+            .showSkybox = &engineState.showSkybox,
+            .showGrid = &engineState.showGrid,
+            .showDebugObjects = &engineState.showDebugObjects,
+            .physicsSimulationRunning = &engineState.physicsSimulationRunning,
+            .skySettings = &engineState.skySettings,
+            .postProcessPush = &engineState.postProcessPush,
+            .iblSystem = engineState.iblSystem.get(),
+            .modelRenderSystem = engineState.modelRenderSystem.get(),
+            .getGpuProfilerEnabled = []() { return GpuProfiler::instance().isEnabled(); },
+            .setGpuProfilerEnabled = [](bool enabled) { GpuProfiler::instance().setEnabled(enabled); },
+            .multithreadedRecordingEnabled = &multithreadedRecordingEnabled,
+            .multithreadedRecordingThreads = &multithreadedRecordingThreads,
+            .debugMode = &debugMode,
+        });
+
         // 4. Setup UI
         setupUI();
 
@@ -193,11 +209,7 @@ namespace engine {
                     engineState.scene.getRegistry().emplace<CameraComponent>(engineState.cameraEntity);
                 }
 
-                // set the cameracomponent as primary
-                {
-                    std::cout << "[App] Setting loaded camera as primary camera\n";
-                    auto& camComp = engineState.scene.getRegistry().get<CameraComponent>(engineState.cameraEntity);
-                }
+                std::cout << "[App] Setting loaded camera as active camera\n";
 
                 std::cout << "[App] Successfully deserialized scene.json\n";
             } else {
@@ -207,7 +219,7 @@ namespace engine {
             pendingUpdateCameraAfterSceneLoad = true;
         });
         engineState.uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
-        engineState.uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunning));
+        engineState.uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunning, &engineState.showColliderWireframes));
         engineState.uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
     }
 

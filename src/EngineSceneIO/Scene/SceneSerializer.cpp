@@ -14,9 +14,13 @@
 #include "Engine/Scene/components/LightCommon.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Core/Logger.hpp"
+#include "Engine/Systems/IBLSystem.hpp"
+#include "Engine/Systems/ModelRenderSystem.hpp"
 #include "ModelLib/Resources/PBRMaterial.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/fwd.hpp"
@@ -73,6 +77,213 @@ struct adl_serializer<glm::vec4> {
 namespace engine {
 
 namespace {
+std::string physicsModeToString(RigidBodyComponent::PhysicsMode mode) {
+  switch (mode) {
+    case RigidBodyComponent::PhysicsMode::Dynamic:
+      return "dynamic";
+    case RigidBodyComponent::PhysicsMode::Kinematic:
+      return "kinematic";
+    case RigidBodyComponent::PhysicsMode::Static:
+      return "static";
+    default:
+      return "dynamic";
+  }
+}
+
+RigidBodyComponent::PhysicsMode physicsModeFromJson(const nlohmann::json& value) {
+  if (value.is_string()) {
+    const std::string mode = value.get<std::string>();
+    if (mode == "static") {
+      return RigidBodyComponent::PhysicsMode::Static;
+    }
+    if (mode == "kinematic") {
+      return RigidBodyComponent::PhysicsMode::Kinematic;
+    }
+    return RigidBodyComponent::PhysicsMode::Dynamic;
+  }
+
+  if (value.is_number_integer()) {
+    const int raw = value.get<int>();
+    if (raw == static_cast<int>(RigidBodyComponent::PhysicsMode::Static)) {
+      return RigidBodyComponent::PhysicsMode::Static;
+    }
+    if (raw == static_cast<int>(RigidBodyComponent::PhysicsMode::Kinematic)) {
+      return RigidBodyComponent::PhysicsMode::Kinematic;
+    }
+    return RigidBodyComponent::PhysicsMode::Dynamic;
+  }
+
+  return RigidBodyComponent::PhysicsMode::Dynamic;
+}
+
+std::string colliderShapeToString(ColliderComponent::ShapeType shape) {
+  switch (shape) {
+    case ColliderComponent::ShapeType::Sphere:
+      return "sphere";
+    case ColliderComponent::ShapeType::Box:
+      return "box";
+    case ColliderComponent::ShapeType::Capsule:
+      return "capsule";
+    case ColliderComponent::ShapeType::Mesh:
+      return "mesh";
+    default:
+      return "sphere";
+  }
+}
+
+ColliderComponent::ShapeType colliderShapeFromJson(const nlohmann::json& value) {
+  if (value.is_string()) {
+    const std::string shape = value.get<std::string>();
+    if (shape == "box") {
+      return ColliderComponent::ShapeType::Box;
+    }
+    if (shape == "capsule") {
+      return ColliderComponent::ShapeType::Capsule;
+    }
+    if (shape == "mesh") {
+      return ColliderComponent::ShapeType::Mesh;
+    }
+    return ColliderComponent::ShapeType::Sphere;
+  }
+
+  if (value.is_number_integer()) {
+    const int raw = value.get<int>();
+    if (raw == static_cast<int>(ColliderComponent::ShapeType::Box)) {
+      return ColliderComponent::ShapeType::Box;
+    }
+    if (raw == static_cast<int>(ColliderComponent::ShapeType::Capsule)) {
+      return ColliderComponent::ShapeType::Capsule;
+    }
+    if (raw == static_cast<int>(ColliderComponent::ShapeType::Mesh)) {
+      return ColliderComponent::ShapeType::Mesh;
+    }
+    return ColliderComponent::ShapeType::Sphere;
+  }
+
+  return ColliderComponent::ShapeType::Sphere;
+}
+
+std::string variantPolicyToString(ModelRenderSystem::VariantPolicy policy) {
+  switch (policy) {
+    case ModelRenderSystem::VariantPolicy::Auto:
+      return "auto";
+    case ModelRenderSystem::VariantPolicy::ForceStandard:
+      return "force_standard";
+    case ModelRenderSystem::VariantPolicy::ForceFull:
+      return "force_full";
+    default:
+      return "auto";
+  }
+}
+
+ModelRenderSystem::VariantPolicy variantPolicyFromJson(const nlohmann::json& value) {
+  if (value.is_string()) {
+    const std::string mode = value.get<std::string>();
+    if (mode == "force_standard") {
+      return ModelRenderSystem::VariantPolicy::ForceStandard;
+    }
+    if (mode == "force_full") {
+      return ModelRenderSystem::VariantPolicy::ForceFull;
+    }
+    return ModelRenderSystem::VariantPolicy::Auto;
+  }
+
+  if (value.is_number_integer()) {
+    const int raw = value.get<int>();
+    if (raw == static_cast<int>(ModelRenderSystem::VariantPolicy::ForceStandard)) {
+      return ModelRenderSystem::VariantPolicy::ForceStandard;
+    }
+    if (raw == static_cast<int>(ModelRenderSystem::VariantPolicy::ForceFull)) {
+      return ModelRenderSystem::VariantPolicy::ForceFull;
+    }
+  }
+
+  return ModelRenderSystem::VariantPolicy::Auto;
+}
+
+std::string logLevelToString(LogLevel level) {
+  switch (level) {
+    case LogLevel::Error:
+      return "error";
+    case LogLevel::Warn:
+      return "warn";
+    case LogLevel::Info:
+      return "info";
+    case LogLevel::Debug:
+      return "debug";
+    default:
+      return "info";
+  }
+}
+
+LogLevel logLevelFromJson(const nlohmann::json& value) {
+  if (value.is_string()) {
+    const std::string level = value.get<std::string>();
+    if (level == "error") {
+      return LogLevel::Error;
+    }
+    if (level == "warn") {
+      return LogLevel::Warn;
+    }
+    if (level == "debug") {
+      return LogLevel::Debug;
+    }
+    return LogLevel::Info;
+  }
+
+  if (value.is_number_integer()) {
+    const int raw = value.get<int>();
+    if (raw <= static_cast<int>(LogLevel::Error)) {
+      return LogLevel::Error;
+    }
+    if (raw == static_cast<int>(LogLevel::Warn)) {
+      return LogLevel::Warn;
+    }
+    if (raw >= static_cast<int>(LogLevel::Debug)) {
+      return LogLevel::Debug;
+    }
+  }
+
+  return LogLevel::Info;
+}
+
+void writePostProcessSettings(nlohmann::json& settingsJson, const PostProcessPushConstants& push) {
+  settingsJson["postProcess"] = {
+      {"exposure", push.exposure},
+      {"contrast", push.contrast},
+      {"saturation", push.saturation},
+      {"vignette", push.vignette},
+      {"toneMappingMode", push.toneMappingMode},
+      {"enableBloom", push.enableBloom},
+      {"bloomIntensity", push.bloomIntensity},
+      {"bloomThreshold", push.bloomThreshold},
+      {"enableFXAA", push.enableFXAA},
+      {"fxaaSpanMax", push.fxaaSpanMax},
+      {"fxaaReduceMul", push.fxaaReduceMul},
+      {"fxaaReduceMin", push.fxaaReduceMin},
+      {"enableSSAO", push.enableSSAO},
+      {"ssaoRadius", push.ssaoRadius},
+      {"ssaoBias", push.ssaoBias}};
+}
+
+void applyPostProcessSettings(const nlohmann::json& settingsJson, PostProcessPushConstants& push) {
+  push.exposure = settingsJson.value("exposure", push.exposure);
+  push.contrast = settingsJson.value("contrast", push.contrast);
+  push.saturation = settingsJson.value("saturation", push.saturation);
+  push.vignette = settingsJson.value("vignette", push.vignette);
+  push.toneMappingMode = settingsJson.value("toneMappingMode", push.toneMappingMode);
+  push.enableBloom = settingsJson.value("enableBloom", push.enableBloom);
+  push.bloomIntensity = settingsJson.value("bloomIntensity", push.bloomIntensity);
+  push.bloomThreshold = settingsJson.value("bloomThreshold", push.bloomThreshold);
+  push.enableFXAA = settingsJson.value("enableFXAA", push.enableFXAA);
+  push.fxaaSpanMax = settingsJson.value("fxaaSpanMax", push.fxaaSpanMax);
+  push.fxaaReduceMul = settingsJson.value("fxaaReduceMul", push.fxaaReduceMul);
+  push.fxaaReduceMin = settingsJson.value("fxaaReduceMin", push.fxaaReduceMin);
+  push.enableSSAO = settingsJson.value("enableSSAO", push.enableSSAO);
+  push.ssaoRadius = settingsJson.value("ssaoRadius", push.ssaoRadius);
+  push.ssaoBias = settingsJson.value("ssaoBias", push.ssaoBias);
+}
+
 void ensureDefaultDirectionalLight(Scene& scene) {
   auto& registry = scene.getRegistry();
 
@@ -106,9 +317,78 @@ void ensureDefaultDirectionalLight(Scene& scene) {
 
 SceneSerializer::SceneSerializer(Scene& scene, ResourceManager& resourceManager) : scene(scene), resourceManager(resourceManager) {}
 
+void SceneSerializer::setRuntimeSettingsBindings(const RuntimeSettingsBindings& bindings) {
+  settingsBindings_ = bindings;
+}
+
 void SceneSerializer::serialize(const std::string& filepath) {
   nlohmann::json sceneJson;
   sceneJson["objects"] = nlohmann::json::array();
+
+  if (settingsBindings_.showSkybox != nullptr) {
+    nlohmann::json settingsJson;
+
+    settingsJson["showSkybox"] = *settingsBindings_.showSkybox;
+    if (settingsBindings_.showGrid != nullptr) {
+      settingsJson["showGrid"] = *settingsBindings_.showGrid;
+    }
+    if (settingsBindings_.showDebugObjects != nullptr) {
+      settingsJson["showDebugObjects"] = *settingsBindings_.showDebugObjects;
+    }
+    if (settingsBindings_.physicsSimulationRunning != nullptr) {
+      settingsJson["physicsSimulationRunning"] = *settingsBindings_.physicsSimulationRunning;
+    }
+    if (settingsBindings_.skySettings != nullptr) {
+      settingsJson["sky"] = nlohmann::json{{"debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces}};
+    }
+
+    if (settingsBindings_.debugMode != nullptr) {
+      settingsJson["debugMode"] = *settingsBindings_.debugMode;
+    }
+
+    if (settingsBindings_.multithreadedRecordingEnabled != nullptr && settingsBindings_.multithreadedRecordingThreads != nullptr) {
+      settingsJson["performance"] = {
+          {"multithreadedRecordingEnabled", *settingsBindings_.multithreadedRecordingEnabled},
+          {"multithreadedRecordingThreads", *settingsBindings_.multithreadedRecordingThreads}};
+    }
+
+    if (settingsBindings_.postProcessPush != nullptr) {
+      writePostProcessSettings(settingsJson, *settingsBindings_.postProcessPush);
+    }
+
+    if (settingsBindings_.iblSystem != nullptr) {
+      const auto& iblSettings = settingsBindings_.iblSystem->getSettings();
+      settingsJson["ibl"] = {
+          {"irradianceSize", iblSettings.irradianceSize},
+          {"prefilterSize", iblSettings.prefilterSize},
+          {"prefilterMipLevels", iblSettings.prefilterMipLevels},
+          {"brdfLUTSize", iblSettings.brdfLUTSize},
+          {"prefilterSampleCount", iblSettings.prefilterSampleCount},
+          {"irradianceSampleDelta", iblSettings.irradianceSampleDelta}};
+    }
+
+        if (settingsBindings_.modelRenderSystem != nullptr) {
+      settingsJson["shaderVariants"] = {
+          {"variantPolicy", variantPolicyToString(settingsBindings_.modelRenderSystem->variantPolicy())},
+          {"shaderHotReloadEnabled", settingsBindings_.modelRenderSystem->shaderHotReloadEnabled()}};
+    }
+
+    if (settingsBindings_.getGpuProfilerEnabled) {
+      settingsJson["gpuProfiler"] = {{"enabled", settingsBindings_.getGpuProfilerEnabled()}};
+    }
+    settingsJson["logging"] = {
+        {"minimumLevel", logLevelToString(Logger::minimumLevel())},
+        {"channels",
+            {
+                {"general", Logger::isChannelEnabled(LogChannel::General)},
+                {"render", Logger::isChannelEnabled(LogChannel::Render)},
+                {"sync", Logger::isChannelEnabled(LogChannel::Sync)},
+                {"scene", Logger::isChannelEnabled(LogChannel::Scene)},
+                {"resource", Logger::isChannelEnabled(LogChannel::Resource)},
+            }}};
+
+    sceneJson["settings"] = settingsJson;
+  }
 
   auto view = scene.getRegistry().view<entt::entity>();
   for (auto entity : view) {
@@ -124,6 +404,17 @@ void SceneSerializer::serialize(const std::string& filepath) {
     if (scene.getRegistry().all_of<TransformComponent>(entity)) {
       auto& t = scene.getRegistry().get<TransformComponent>(entity);
       objJson["transform"] = {{"translation", t.translation}, {"rotation", t.rotation}, {"scale", t.scale}};
+    }
+
+    if (scene.getRegistry().all_of<CameraComponent>(entity)) {
+      const auto& camera = scene.getRegistry().get<CameraComponent>(entity);
+      objJson["camera"] = {
+          {"fovY", camera.fovY},
+          {"nearZ", camera.nearZ},
+          {"farZ", camera.farZ},
+          {"orthoSize", camera.orthoSize},
+          {"isOrthographic", camera.isOrthographic},
+          {"isPrimary", camera.isPrimary}};
     }
 
     // PBR Material & Model
@@ -173,6 +464,45 @@ void SceneSerializer::serialize(const std::string& filepath) {
       objJson["lodComponent"] = lodJson;
     }
 
+    // Optional physics components
+    if (scene.getRegistry().all_of<RigidBodyComponent>(entity)) {
+      const auto& rb = scene.getRegistry().get<RigidBodyComponent>(entity);
+      objJson["rigidBody"] = {
+          {"mass", rb.mass},
+          {"velocity", rb.velocity},
+          {"acceleration", rb.acceleration},
+          {"angularVelocity", rb.angularVelocity},
+          {"isStatic", rb.isStatic},
+          {"useGravity", rb.useGravity},
+          {"friction", rb.friction},
+          {"restitution", rb.restitution},
+          {"mode", physicsModeToString(rb.mode)}};
+    }
+
+    if (scene.getRegistry().all_of<ColliderComponent>(entity)) {
+      const auto& collider = scene.getRegistry().get<ColliderComponent>(entity);
+      objJson["collider"] = {
+          {"shape", colliderShapeToString(collider.shape)},
+          {"size", collider.size},
+          {"radius", collider.radius},
+          {"centerOffset", collider.centerOffset},
+          {"isTrigger", collider.isTrigger},
+          {"collisionGroup", collider.collisionGroup},
+          {"collisionMask", collider.collisionMask}};
+    }
+
+    if (scene.getRegistry().all_of<PhysicsMaterialComponent>(entity)) {
+      const auto& pm = scene.getRegistry().get<PhysicsMaterialComponent>(entity);
+      objJson["physicsMaterial"] = {
+          {"friction", pm.friction},
+          {"restitution", pm.restitution},
+          {"density", pm.density},
+          {"dynamicFriction", pm.dynamicFriction},
+          {"staticFriction", pm.staticFriction},
+          {"damping", pm.damping},
+          {"angularDamping", pm.angularDamping}};
+    }
+
     sceneJson["objects"].push_back(objJson);
   }
 
@@ -219,6 +549,17 @@ bool SceneSerializer::deserialize(const std::string& filepath) {
         transform.translation = t.value("translation", glm::vec3(0.0f));
         transform.rotation = t.value("rotation", glm::vec3(0.0f));
         transform.scale = t.value("scale", glm::vec3(1.0f));
+      }
+
+      if (objJson.contains("camera")) {
+        const auto& cameraJson = objJson["camera"];
+        auto& camera = scene.getRegistry().emplace<CameraComponent>(entity);
+        camera.fovY = cameraJson.value("fovY", camera.fovY);
+        camera.nearZ = cameraJson.value("nearZ", camera.nearZ);
+        camera.farZ = cameraJson.value("farZ", camera.farZ);
+        camera.orthoSize = cameraJson.value("orthoSize", camera.orthoSize);
+        camera.isOrthographic = cameraJson.value("isOrthographic", camera.isOrthographic);
+        camera.isPrimary = cameraJson.value("isPrimary", camera.isPrimary);
       }
 
       // Model & Material
@@ -280,6 +621,53 @@ bool SceneSerializer::deserialize(const std::string& filepath) {
           }
         }
       }
+
+      // Optional physics components
+      if (objJson.contains("rigidBody")) {
+        const auto& rbJson = objJson["rigidBody"];
+        auto& rb = scene.getRegistry().emplace<RigidBodyComponent>(entity);
+        rb.mass = rbJson.value("mass", 1.0f);
+        rb.velocity = rbJson.value("velocity", glm::vec3(0.0f));
+        rb.acceleration = rbJson.value("acceleration", glm::vec3(0.0f));
+        rb.angularVelocity = rbJson.value("angularVelocity", glm::vec3(0.0f));
+        rb.isStatic = rbJson.value("isStatic", false);
+        rb.useGravity = rbJson.value("useGravity", true);
+        rb.friction = rbJson.value("friction", 0.5f);
+        rb.restitution = rbJson.value("restitution", 0.3f);
+        if (rbJson.contains("mode")) {
+          rb.mode = physicsModeFromJson(rbJson["mode"]);
+        } else {
+          rb.mode = rb.isStatic ? RigidBodyComponent::PhysicsMode::Static : RigidBodyComponent::PhysicsMode::Dynamic;
+        }
+        rb.pendingBodyStateOverride = true;
+      }
+
+      if (objJson.contains("collider")) {
+        const auto& colliderJson = objJson["collider"];
+        auto& collider = scene.getRegistry().emplace<ColliderComponent>(entity);
+        if (colliderJson.contains("shape")) {
+          collider.shape = colliderShapeFromJson(colliderJson["shape"]);
+        }
+        collider.size = colliderJson.value("size", glm::vec3(1.0f));
+        collider.radius = colliderJson.value("radius", 0.5f);
+        collider.centerOffset = colliderJson.value("centerOffset", glm::vec3(0.0f));
+        collider.isTrigger = colliderJson.value("isTrigger", false);
+        collider.collisionGroup = colliderJson.value("collisionGroup", 0u);
+        collider.collisionMask = colliderJson.value("collisionMask", 0xFFFFFFFFu);
+        collider.pendingShapeRebuild = true;
+      }
+
+      if (objJson.contains("physicsMaterial")) {
+        const auto& pmJson = objJson["physicsMaterial"];
+        auto& pm = scene.getRegistry().emplace<PhysicsMaterialComponent>(entity);
+        pm.friction = pmJson.value("friction", 0.5f);
+        pm.restitution = pmJson.value("restitution", 0.3f);
+        pm.density = pmJson.value("density", 1.0f);
+        pm.dynamicFriction = pmJson.value("dynamicFriction", 0.4f);
+        pm.staticFriction = pmJson.value("staticFriction", 0.6f);
+        pm.damping = pmJson.value("damping", 0.0f);
+        pm.angularDamping = pmJson.value("angularDamping", 0.0f);
+      }
     }
   }
 
@@ -319,6 +707,90 @@ bool SceneSerializer::deserialize(const std::string& filepath) {
         spotLight.bake = lightJson.value("bake", false);
         spotLight.lightType = mobility_from_string(lightJson.value("lightType", std::string("static")));
         std::cout << "SceneSerializer: added SpotLightComponent id=" << id << " bake=" << spotLight.bake << "\n";
+      }
+    }
+  }
+
+  if (sceneJson.contains("settings") && settingsBindings_.showSkybox != nullptr) {
+    const auto& settingsJson = sceneJson["settings"];
+
+    *settingsBindings_.showSkybox = settingsJson.value("showSkybox", *settingsBindings_.showSkybox);
+    if (settingsBindings_.showGrid != nullptr) {
+      *settingsBindings_.showGrid = settingsJson.value("showGrid", *settingsBindings_.showGrid);
+    }
+    if (settingsBindings_.showDebugObjects != nullptr) {
+      *settingsBindings_.showDebugObjects = settingsJson.value("showDebugObjects", *settingsBindings_.showDebugObjects);
+    }
+    if (settingsBindings_.physicsSimulationRunning != nullptr) {
+      *settingsBindings_.physicsSimulationRunning = settingsJson.value("physicsSimulationRunning", *settingsBindings_.physicsSimulationRunning);
+    }
+
+    if (settingsJson.contains("sky") && settingsBindings_.skySettings != nullptr) {
+      const auto& skyJson = settingsJson["sky"];
+      settingsBindings_.skySettings->debugCubemapFaces = skyJson.value("debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces);
+    }
+
+    if (settingsBindings_.debugMode != nullptr) {
+      *settingsBindings_.debugMode = settingsJson.value("debugMode", *settingsBindings_.debugMode);
+    }
+
+    if (settingsJson.contains("performance") && settingsBindings_.multithreadedRecordingEnabled != nullptr && settingsBindings_.multithreadedRecordingThreads != nullptr) {
+      const auto& perfJson = settingsJson["performance"];
+      *settingsBindings_.multithreadedRecordingEnabled = perfJson.value("multithreadedRecordingEnabled", *settingsBindings_.multithreadedRecordingEnabled);
+      *settingsBindings_.multithreadedRecordingThreads = perfJson.value("multithreadedRecordingThreads", *settingsBindings_.multithreadedRecordingThreads);
+      if (settingsBindings_.modelRenderSystem != nullptr) {
+        settingsBindings_.modelRenderSystem->enableMultiThreadedRecording(
+            *settingsBindings_.multithreadedRecordingEnabled,
+            *settingsBindings_.multithreadedRecordingThreads);
+      }
+    }
+
+    if (settingsJson.contains("postProcess") && settingsBindings_.postProcessPush != nullptr) {
+      applyPostProcessSettings(settingsJson["postProcess"], *settingsBindings_.postProcessPush);
+    }
+
+    if (settingsJson.contains("ibl") && settingsBindings_.iblSystem != nullptr) {
+      auto iblSettings = settingsBindings_.iblSystem->getSettings();
+      const auto& iblJson = settingsJson["ibl"];
+      iblSettings.irradianceSize = iblJson.value("irradianceSize", iblSettings.irradianceSize);
+      iblSettings.prefilterSize = iblJson.value("prefilterSize", iblSettings.prefilterSize);
+      iblSettings.prefilterMipLevels = iblJson.value("prefilterMipLevels", iblSettings.prefilterMipLevels);
+      iblSettings.brdfLUTSize = iblJson.value("brdfLUTSize", iblSettings.brdfLUTSize);
+      iblSettings.prefilterSampleCount = iblJson.value("prefilterSampleCount", iblSettings.prefilterSampleCount);
+      iblSettings.irradianceSampleDelta = iblJson.value("irradianceSampleDelta", iblSettings.irradianceSampleDelta);
+      settingsBindings_.iblSystem->updateSettings(iblSettings);
+    }
+
+    if (settingsJson.contains("shaderVariants") && settingsBindings_.modelRenderSystem != nullptr) {
+      const auto& variantsJson = settingsJson["shaderVariants"];
+      if (variantsJson.contains("variantPolicy")) {
+        settingsBindings_.modelRenderSystem->setVariantPolicy(variantPolicyFromJson(variantsJson["variantPolicy"]));
+      }
+      settingsBindings_.modelRenderSystem->setShaderHotReloadEnabled(
+          variantsJson.value("shaderHotReloadEnabled", settingsBindings_.modelRenderSystem->shaderHotReloadEnabled()));
+    }
+
+    if (settingsJson.contains("gpuProfiler")) {
+      const auto& profilerJson = settingsJson["gpuProfiler"];
+      if (settingsBindings_.setGpuProfilerEnabled) {
+        bool const current = settingsBindings_.getGpuProfilerEnabled ? settingsBindings_.getGpuProfilerEnabled() : false;
+        settingsBindings_.setGpuProfilerEnabled(profilerJson.value("enabled", current));
+      }
+    }
+
+    if (settingsJson.contains("logging")) {
+      const auto& loggingJson = settingsJson["logging"];
+      if (loggingJson.contains("minimumLevel")) {
+        Logger::setMinimumLevel(logLevelFromJson(loggingJson["minimumLevel"]));
+      }
+
+      if (loggingJson.contains("channels")) {
+        const auto& channelsJson = loggingJson["channels"];
+        Logger::enableChannel(LogChannel::General, channelsJson.value("general", Logger::isChannelEnabled(LogChannel::General)));
+        Logger::enableChannel(LogChannel::Render, channelsJson.value("render", Logger::isChannelEnabled(LogChannel::Render)));
+        Logger::enableChannel(LogChannel::Sync, channelsJson.value("sync", Logger::isChannelEnabled(LogChannel::Sync)));
+        Logger::enableChannel(LogChannel::Scene, channelsJson.value("scene", Logger::isChannelEnabled(LogChannel::Scene)));
+        Logger::enableChannel(LogChannel::Resource, channelsJson.value("resource", Logger::isChannelEnabled(LogChannel::Resource)));
       }
     }
   }

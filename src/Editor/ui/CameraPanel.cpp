@@ -12,15 +12,24 @@ namespace engine {
 
 CameraPanel::CameraPanel(entt::entity cameraEntity, Scene* scene) : cameraEntity_(cameraEntity), scene_(scene) {}
 
-void CameraPanel::render(FrameInfo& /*frameInfo*/) {
-  if (scene_->getRegistry().valid(cameraEntity_)) {
-    if (scene_->getRegistry().all_of<TransformComponent>(cameraEntity_)) {
-      auto& pos = scene_->getRegistry().get<TransformComponent>(cameraEntity_).translation;
+void CameraPanel::render(FrameInfo& frameInfo) {
+  entt::entity currentCamera = cameraEntity_;
+  if (scene_ != nullptr) {
+    // Prefer the actively selected camera from frame state; fallback to cached one.
+    if (scene_->getRegistry().valid(frameInfo.cameraEntity)) {
+      currentCamera = frameInfo.cameraEntity;
+      cameraEntity_ = frameInfo.cameraEntity;
+    }
+  }
+
+  if (scene_->getRegistry().valid(currentCamera)) {
+    if (scene_->getRegistry().all_of<TransformComponent>(currentCamera)) {
+      auto& pos = scene_->getRegistry().get<TransformComponent>(currentCamera).translation;
       ImGui::DragFloat3("Position", &pos.x, 0.01f);
     }
 
-    if (scene_->getRegistry().all_of<CameraComponent>(cameraEntity_)) {
-      auto& camComp = scene_->getRegistry().get<CameraComponent>(cameraEntity_);
+    if (scene_->getRegistry().all_of<CameraComponent>(currentCamera)) {
+      auto& camComp = scene_->getRegistry().get<CameraComponent>(currentCamera);
 
       bool isOrtho = camComp.isOrthographic;
       if (ImGui::Checkbox("Orthographic", &isOrtho)) {

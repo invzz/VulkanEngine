@@ -11,31 +11,30 @@ using namespace engine;
 TEST(PointLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault) {
   PointLight light{};
 
-  EXPECT_FLOAT_EQ(light.position.x, 0.0f);
-  EXPECT_FLOAT_EQ(light.position.y, 0.0f);
-  EXPECT_FLOAT_EQ(light.position.z, 0.0f);
-  EXPECT_FLOAT_EQ(light.color.x, 0.0f);
-  EXPECT_FLOAT_EQ(light.color.y, 0.0f);
-  EXPECT_FLOAT_EQ(light.color.z, 0.0f);
-  EXPECT_FLOAT_EQ(light.radius2, 0.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.x, 0.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.y, 0.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.z, 0.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.w, 0.0f);
+  EXPECT_FLOAT_EQ(light.colorIntensity.x, 0.0f);
+  EXPECT_FLOAT_EQ(light.colorIntensity.y, 0.0f);
+  EXPECT_FLOAT_EQ(light.colorIntensity.z, 0.0f);
+  EXPECT_FLOAT_EQ(light.colorIntensity.w, 0.0f);
 }
 
 TEST(PointLight, GivenInitializedLight_WhenValuesSet_ThenValuesAreCorrect) {
   PointLight light;
-  light.position = glm::vec4(1.0f, 2.0f, 3.0f, 0.0f);
-  light.color = glm::vec4(1.0f, 0.5f, 0.0f, 10.0f);  // RGB + intensity in w
-  light.radius2 = 100.0f;                            // Squared radius
+  light.positionRadius2 = glm::vec4(1.0f, 2.0f, 3.0f, 100.0f);
+  light.colorIntensity = glm::vec4(1.0f, 0.5f, 0.0f, 10.0f);  // RGB + intensity in w
 
-  EXPECT_FLOAT_EQ(light.position.x, 1.0f);
-  EXPECT_FLOAT_EQ(light.position.y, 2.0f);
-  EXPECT_FLOAT_EQ(light.position.z, 3.0f);
-  EXPECT_FLOAT_EQ(light.color.w, 10.0f);  // intensity
-  EXPECT_FLOAT_EQ(light.radius2, 100.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.x, 1.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.y, 2.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.z, 3.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.w, 100.0f);
+  EXPECT_FLOAT_EQ(light.colorIntensity.w, 10.0f);  // intensity
 }
 
 TEST(PointLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU) {
-  // PointLight should be 48 bytes (3 vec4s + radius2 + 3 floats padding)
-  EXPECT_EQ(sizeof(PointLight), 48);
+  EXPECT_EQ(sizeof(PointLight), 32);
 }
 
 // =============================================================================
@@ -75,12 +74,10 @@ TEST(DirectionalLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU) {
 TEST(SpotLight, GivenDefaultConstructed_WhenInspected_ThenValuesAreZeroOrDefault) {
   SpotLight light{};
 
-  EXPECT_FLOAT_EQ(light.position.x, 0.0f);
-  EXPECT_FLOAT_EQ(light.direction.x, 0.0f);
-  EXPECT_FLOAT_EQ(light.color.x, 0.0f);
-  EXPECT_FLOAT_EQ(light.outerCutoff, 0.0f);
-  EXPECT_FLOAT_EQ(light.constantAtten, 0.0f);
-  EXPECT_FLOAT_EQ(light.radius2, 0.0f);
+  EXPECT_FLOAT_EQ(light.positionRadius2.x, 0.0f);
+  EXPECT_FLOAT_EQ(light.directionInner.x, 0.0f);
+  EXPECT_FLOAT_EQ(light.colorIntensity.x, 0.0f);
+  EXPECT_FLOAT_EQ(light.attenOuter.x, 0.0f);
 }
 
 TEST(SpotLight, GivenInitializedSpotLight_WhenCutoffSet_ThenInnerIsGreaterThanOuter) {
@@ -90,44 +87,15 @@ TEST(SpotLight, GivenInitializedSpotLight_WhenCutoffSet_ThenInnerIsGreaterThanOu
   float innerCutoffAngle = glm::radians(15.0f);
   float outerCutoffAngle = glm::radians(25.0f);
 
-  light.direction.w = glm::cos(innerCutoffAngle);
-  light.outerCutoff = glm::cos(outerCutoffAngle);
+  light.directionInner.w = glm::cos(innerCutoffAngle);
+  light.attenOuter.x = glm::cos(outerCutoffAngle);
 
   // cos(smaller angle) > cos(larger angle)
-  EXPECT_GT(light.direction.w, light.outerCutoff);
+  EXPECT_GT(light.directionInner.w, light.attenOuter.x);
 }
 
 TEST(SpotLight, GivenStructLayout_WhenSizeChecked_ThenIsExpectedForGPU) {
-  // SpotLight should be 80 bytes (3 vec4s + cutoff + 3 atten floats + radius2 + 3 pad)
-  // This may vary based on compiler padding - just verify it's reasonable
-  EXPECT_GE(sizeof(SpotLight), 64);
-  EXPECT_LE(sizeof(SpotLight), 96);
-}
-
-// =============================================================================
-// HZBSettings Tests
-// =============================================================================
-
-TEST(HZBSettings, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults) {
-  HZBSettings settings{};
-
-  EXPECT_EQ(settings.maxMipLevel, 10);
-  EXPECT_FLOAT_EQ(settings.minScreenPixels, 2.0f);
-  EXPECT_FLOAT_EQ(settings.screenSizeScale, 1.0f);
-  EXPECT_EQ(settings.enabled, 1);
-}
-
-TEST(HZBSettings, GivenCustomSettings_WhenModified_ThenValuesAreCorrect) {
-  HZBSettings settings;
-  settings.maxMipLevel = 8;
-  settings.minScreenPixels = 4.0f;
-  settings.screenSizeScale = 2.0f;
-  settings.enabled = 0;
-
-  EXPECT_EQ(settings.maxMipLevel, 8);
-  EXPECT_FLOAT_EQ(settings.minScreenPixels, 4.0f);
-  EXPECT_FLOAT_EQ(settings.screenSizeScale, 2.0f);
-  EXPECT_EQ(settings.enabled, 0);
+  EXPECT_EQ(sizeof(SpotLight), 64);
 }
 
 // =============================================================================
@@ -162,10 +130,6 @@ TEST(GlobalUbo, GivenDefaultConstructed_WhenInspected_ThenHasReasonableDefaults)
 
   // Debug mode off
   EXPECT_EQ(ubo.debugMode, 0);
-
-  // HZB settings have defaults
-  EXPECT_EQ(ubo.hzbEnabled, 1);
-  EXPECT_EQ(ubo.hzbMaxMipLevel, 10);
 }
 
 TEST(GlobalUbo, GivenUbo_WhenLightCountsModified_ThenCorrectValuesStored) {
@@ -197,27 +161,13 @@ TEST(GlobalUbo, GivenUbo_WhenFrustumPlanesSet_ThenCanBeRetrieved) {
   }
 }
 
-TEST(GlobalUbo, GivenUbo_WhenFogSettingsConfigured_ThenValuesAreCorrect) {
-  GlobalUbo ubo{};
-
-  ubo.fogColor = glm::vec4(0.5f, 0.6f, 0.7f, 0.01f);  // RGB + density
-  ubo.fogZenithColor = glm::vec4(0.8f, 0.9f, 1.0f, 0.0f);
-  ubo.fogHeight = 100.0f;
-  ubo.fogHeightDensity = 0.5f;
-
-  EXPECT_FLOAT_EQ(ubo.fogColor.x, 0.5f);
-  EXPECT_FLOAT_EQ(ubo.fogColor.w, 0.01f);  // density in w
-  EXPECT_FLOAT_EQ(ubo.fogHeight, 100.0f);
-  EXPECT_FLOAT_EQ(ubo.fogHeightDensity, 0.5f);
-}
-
 // =============================================================================
 // maxShadowLightCount Constant Tests
 // =============================================================================
 
 TEST(FrameInfoConstants, GivenMaxShadowLightCount_WhenChecked_ThenHasExpectedValue) {
   // Verify the constant is set to a reasonable value
-  EXPECT_EQ(maxShadowLightCount, 16);
+  EXPECT_EQ(maxShadowLightCount, 8);
 
   // GlobalUbo should have arrays sized to this constant
   GlobalUbo ubo{};

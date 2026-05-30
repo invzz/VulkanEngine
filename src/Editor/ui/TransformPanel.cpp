@@ -7,6 +7,7 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
+#include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/trigonometric.hpp"
@@ -22,6 +23,10 @@ void TransformPanel::render(FrameInfo& frameInfo) {
     if (frameInfo.selectedEntity != entt::null) {
       auto entity = frameInfo.selectedEntity;
       auto& registry = scene_.getRegistry();
+      if (!registry.valid(entity) || !registry.all_of<TransformComponent>(entity)) {
+        ImGui::TextDisabled("Selected object has no transform");
+        return;
+      }
       auto& transform = registry.get<TransformComponent>(entity);
 
       ImGui::Text("Selected: Object %u", (uint32_t)entity);
@@ -40,6 +45,13 @@ void TransformPanel::render(FrameInfo& frameInfo) {
           ImGui::Separator();
           if (ImGui::Button("Reset Position")) {
             transform.translation = glm::vec3(0.0f);
+            translationChanged = true;
+          }
+
+          if (translationChanged) {
+            if (auto* rigidBody = registry.try_get<RigidBodyComponent>(entity)) {
+              rigidBody->pendingBodyStateOverride = true;
+            }
           }
           ImGui::EndTabItem();
         }
@@ -49,20 +61,31 @@ void TransformPanel::render(FrameInfo& frameInfo) {
           ImGui::Spacing();
           ImGui::Text("Degrees:");
           float rotationDegrees[3] = {glm::degrees(transform.rotation.x), glm::degrees(transform.rotation.y), glm::degrees(transform.rotation.z)};
+          bool rotationChanged = false;
 
           if (ImGui::DragFloat("X", &rotationDegrees[0], 1.0f, -180.0f, 180.0f)) {
             transform.rotation.x = glm::radians(rotationDegrees[0]);
+            rotationChanged = true;
           }
           if (ImGui::DragFloat("Y", &rotationDegrees[1], 1.0f, -180.0f, 180.0f)) {
             transform.rotation.y = glm::radians(rotationDegrees[1]);
+            rotationChanged = true;
           }
           if (ImGui::DragFloat("Z", &rotationDegrees[2], 1.0f, -180.0f, 180.0f)) {
             transform.rotation.z = glm::radians(rotationDegrees[2]);
+            rotationChanged = true;
           }
 
           ImGui::Separator();
           if (ImGui::Button("Reset Rotation")) {
             transform.rotation = glm::vec3(0.0f);
+            rotationChanged = true;
+          }
+
+          if (rotationChanged) {
+            if (auto* rigidBody = registry.try_get<RigidBodyComponent>(entity)) {
+              rigidBody->pendingBodyStateOverride = true;
+            }
           }
           ImGui::EndTabItem();
         }

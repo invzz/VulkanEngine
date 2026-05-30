@@ -1,8 +1,11 @@
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
 
 #include <entt/entt.hpp>
+
+#include "Jolt/Physics/Collision/Shape/MeshShape.h"
 
 namespace Jolt = JPH;
 
@@ -56,14 +59,24 @@ JoltPhysicsSystem::JoltPhysicsSystem()
     broadPhaseLayerInterface_->MapObjectToBroadPhaseLayer(cNonMovingObjectLayer, Jolt::BroadPhaseLayer(0));
     broadPhaseLayerInterface_->MapObjectToBroadPhaseLayer(cMovingObjectLayer, Jolt::BroadPhaseLayer(1));
 
+    objectLayerPairFilter_->EnableCollision(cNonMovingObjectLayer, cNonMovingObjectLayer);
     objectLayerPairFilter_->EnableCollision(cNonMovingObjectLayer, cMovingObjectLayer);
+    objectLayerPairFilter_->EnableCollision(cMovingObjectLayer, cNonMovingObjectLayer);
     objectLayerPairFilter_->EnableCollision(cMovingObjectLayer, cMovingObjectLayer);
 
     physicsSystem_->Init(1024, 0, 1024, 1024,
                          *broadPhaseLayerInterface_,
                          *objectVsBroadPhaseLayerFilter_,
                          *objectLayerPairFilter_);
-    physicsSystem_->SetGravity(Jolt::Vec3(0.0f, -9.81f, 0.0f));
+
+    Jolt::PhysicsSettings physicsSettings = physicsSystem_->GetPhysicsSettings();
+    physicsSettings.mMinVelocityForRestitution = 0.0f;
+    physicsSystem_->SetPhysicsSettings(physicsSettings);
+
+    // Y-down convention: positive Y is downward.
+    physicsSystem_->SetGravity(Jolt::Vec3(0.0f, 9.81f, 0.0f));
+
+    createGroundBody();
 }
 
 JoltPhysicsSystem::~JoltPhysicsSystem() {
@@ -81,12 +94,26 @@ JoltPhysicsSystem::~JoltPhysicsSystem() {
     factory_.reset();
 }
 
-// ============================================================================
-// Registration
-// ============================================================================
+void JoltPhysicsSystem::createGroundBody() {
+    if (!physicsSystem_) {
+        return;
+    }
 
-static void registerJoltTypes() {
-    Jolt::RegisterTypes();
+    auto& bodyInterface = physicsSystem_->GetBodyInterface();
+
+    // Large static box aligned with the grid plane at Y = 0.
+    // In Y-down convention, floor thickness extends toward +Y (downward).
+    auto groundShape = std::make_unique<Jolt::BoxShape>(Jolt::Vec3(1000.0f, 10.0f, 1000.0f));
+    Jolt::BodyCreationSettings groundSettings(
+        groundShape.release(),
+        Jolt::RVec3(0.0, 10.0, 0.0),
+        Jolt::Quat::sIdentity(),
+        Jolt::EMotionType::Static,
+        cNonMovingObjectLayer);
+    groundSettings.mFriction = 1.0f;
+    groundSettings.mRestitution = 0.2f;
+
+    groundBodyID_ = bodyInterface.CreateAndAddBody(groundSettings, Jolt::EActivation::Activate);
 }
 
 // ============================================================================
@@ -94,8 +121,9 @@ static void registerJoltTypes() {
 // ============================================================================
 
 void JoltPhysicsSystem::update(float frameTime, int maxSubSteps, float subStepTime) {
-    if (!physicsSystem_)
+    if (!physicsSystem_) {
         return;
+    }
 
     // Step the physics world
     (void)subStepTime;
@@ -135,12 +163,17 @@ void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity
     const uint32_t entityKey = static_cast<uint32_t>(entt::to_integral(entity));
     Jolt::BodyInterface& mutableBodyInterface = physicsSystem_->GetBodyInterface();
 
-    const auto desiredMotionType = rigidBody.isStatic || rigidBody.mode == RigidBodyComponent::PhysicsMode::Static
-        ? Jolt::EMotionType::Static
-        : (rigidBody.mode == RigidBodyComponent::PhysicsMode::Kinematic ? Jolt::EMotionType::Kinematic : Jolt::EMotionType::Dynamic);
+    Jolt::EMotionType desiredMotionType = Jolt::EMotionType::Dynamic;
+    if (rigidBody.isStatic || rigidBody.mode == RigidBodyComponent::PhysicsMode::Static) {
+        desiredMotionType = Jolt::EMotionType::Static;
+    } else if (rigidBody.mode == RigidBodyComponent::PhysicsMode::Kinematic) {
+        desiredMotionType = Jolt::EMotionType::Kinematic;
+    }
 
     auto bodyIt = bodyMap_.find(entityKey);
-    const bool needsNewBody = collider == nullptr || bodyIt == bodyMap_.end() || bodyIt->second.shapeType != collider->shape;
+    const ColliderComponent::ShapeType desiredShapeType = (collider != nullptr) ? collider->shape : ColliderComponent::ShapeType::Box;
+    const bool colliderRequestsRebuild = collider != nullptr && collider->pendingShapeRebuild;
+    const bool needsNewBody = bodyIt == bodyMap_.end() || bodyIt->second.shapeType != desiredShapeType || colliderRequestsRebuild;
 
     if (needsNewBody) {
         if (bodyIt != bodyMap_.end()) {
@@ -151,27 +184,101 @@ void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity
             bodyMap_.erase(bodyIt);
         }
 
-        if (collider == nullptr) {
-            return;
+        std::unique_ptr<Jolt::BodyCreationSettings> bodySettings;
+        if (collider != nullptr) {
+            if (collider->shape == ColliderComponent::ShapeType::Mesh) {
+                auto* modelComp = registry.try_get<ModelComponent>(entity);
+                if (modelComp == nullptr || modelComp->model == nullptr) {
+                    return;
+                }
+
+                const auto& srcVertices = modelComp->model->getCollisionVertices();
+                const auto& srcIndices = modelComp->model->getCollisionIndices();
+                if (srcVertices.size() < 3 || srcIndices.size() < 3) {
+                    return;
+                }
+
+                Jolt::VertexList vertices;
+                vertices.reserve(srcVertices.size());
+                for (const auto& v : srcVertices) {
+                    vertices.emplace_back(
+                        v.x * transform.scale.x,
+                        v.y * transform.scale.y,
+                        v.z * transform.scale.z);
+                }
+
+                Jolt::IndexedTriangleList triangles;
+                triangles.reserve(srcIndices.size() / 3);
+                for (size_t i = 0; i + 2 < srcIndices.size(); i += 3) {
+                    triangles.emplace_back(srcIndices[i], srcIndices[i + 1], srcIndices[i + 2], 0);
+                }
+
+                Jolt::MeshShapeSettings meshSettings(std::move(vertices), std::move(triangles));
+                auto shapeResult = meshSettings.Create();
+                if (!shapeResult.IsValid()) {
+                    return;
+                }
+
+                bodySettings = std::make_unique<Jolt::BodyCreationSettings>(
+                    shapeResult.Get().GetPtr(),
+                    Jolt::RVec3(transform.translation.x, transform.translation.y, transform.translation.z),
+                    toJolt(glm::quat(transform.rotation)),
+                    desiredMotionType,
+                    desiredMotionType == Jolt::EMotionType::Static ? cNonMovingObjectLayer : cMovingObjectLayer);
+                if (desiredMotionType == Jolt::EMotionType::Dynamic) {
+                    bodySettings->mMotionQuality = Jolt::EMotionQuality::LinearCast;
+                }
+            } else {
+                bodySettings = createCollisionShape(transform, rigidBody, *collider, material);
+            }
+        } else {
+            auto const halfExtents = glm::max(transform.scale * 0.5f, glm::vec3(0.05f));
+            auto shape = std::make_unique<Jolt::BoxShape>(Jolt::Vec3(halfExtents.x, halfExtents.y, halfExtents.z));
+
+            bodySettings = std::make_unique<Jolt::BodyCreationSettings>(
+                shape.release(),
+                Jolt::RVec3(transform.translation.x, transform.translation.y, transform.translation.z),
+                toJolt(glm::quat(transform.rotation)),
+                desiredMotionType,
+                desiredMotionType == Jolt::EMotionType::Static ? cNonMovingObjectLayer : cMovingObjectLayer);
+            if (desiredMotionType == Jolt::EMotionType::Dynamic) {
+                bodySettings->mMotionQuality = Jolt::EMotionQuality::LinearCast;
+            }
+
+            bodySettings->mFriction = rigidBody.friction;
+            bodySettings->mRestitution = rigidBody.restitution;
+            bodySettings->mLinearDamping = 0.0f;
+            bodySettings->mAngularDamping = 0.0f;
+            bodySettings->mGravityFactor = rigidBody.useGravity ? 1.0f : 0.0f;
+            bodySettings->mIsSensor = false;
+            bodySettings->mUserData = static_cast<uint64_t>(entityKey);
         }
 
-        auto bodySettings = createCollisionShape(transform, rigidBody, *collider, material);
         if (!bodySettings) {
             return;
         }
 
-        bodySettings->mPosition = Jolt::RVec3(transform.translation.x, transform.translation.y, transform.translation.z);
+        glm::vec3 bodyPosition = transform.translation;
+        if (collider != nullptr) {
+            bodyPosition += glm::quat(transform.rotation) * collider->centerOffset;
+        }
+
+        bodySettings->mPosition = Jolt::RVec3(bodyPosition.x, bodyPosition.y, bodyPosition.z);
         bodySettings->mRotation = toJolt(glm::quat(transform.rotation));
         bodySettings->mMotionType = desiredMotionType;
         bodySettings->mObjectLayer = desiredMotionType == Jolt::EMotionType::Static ? cNonMovingObjectLayer : cMovingObjectLayer;
+        if (collider != nullptr && collider->shape == ColliderComponent::ShapeType::Mesh && desiredMotionType != Jolt::EMotionType::Static) {
+            bodySettings->mMotionType = Jolt::EMotionType::Static;
+            bodySettings->mObjectLayer = cNonMovingObjectLayer;
+        }
         bodySettings->mLinearVelocity = toJolt(rigidBody.velocity);
         bodySettings->mAngularVelocity = toJolt(rigidBody.angularVelocity);
         bodySettings->mGravityFactor = rigidBody.useGravity ? 1.0f : 0.0f;
-        bodySettings->mFriction = material ? material->friction : rigidBody.friction;
-        bodySettings->mRestitution = material ? material->restitution : rigidBody.restitution;
-        bodySettings->mLinearDamping = material ? material->damping : 0.0f;
-        bodySettings->mAngularDamping = material ? material->angularDamping : 0.0f;
-        bodySettings->mIsSensor = collider->isTrigger;
+        bodySettings->mFriction = material != nullptr ? material->friction : rigidBody.friction;
+        bodySettings->mRestitution = material != nullptr ? material->restitution : rigidBody.restitution;
+        bodySettings->mLinearDamping = material != nullptr ? material->damping : 0.0f;
+        bodySettings->mAngularDamping = material != nullptr ? material->angularDamping : 0.0f;
+        bodySettings->mIsSensor = collider != nullptr ? collider->isTrigger : false;
         bodySettings->mUserData = static_cast<uint64_t>(entityKey);
 
         Jolt::BodyID bodyID = mutableBodyInterface.CreateAndAddBody(*bodySettings, Jolt::EActivation::Activate);
@@ -179,8 +286,11 @@ void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity
             return;
         }
 
-        bodyMap_.emplace(entityKey, BodySyncInfo{bodyID, collider->shape});
+        bodyMap_.emplace(entityKey, BodySyncInfo{bodyID, desiredShapeType});
         bodyIt = bodyMap_.find(entityKey);
+        if (collider != nullptr) {
+            collider->pendingShapeRebuild = false;
+        }
     }
 
     if (bodyIt == bodyMap_.end()) {
@@ -188,28 +298,66 @@ void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity
     }
 
     const Jolt::BodyID bodyID = bodyIt->second.bodyID;
+    const Jolt::EMotionType effectiveMotionType =
+        (collider != nullptr && collider->shape == ColliderComponent::ShapeType::Mesh)
+            ? Jolt::EMotionType::Static
+            : desiredMotionType;
 
-    mutableBodyInterface.SetMotionType(bodyID, desiredMotionType, Jolt::EActivation::Activate);
-    mutableBodyInterface.SetObjectLayer(bodyID, desiredMotionType == Jolt::EMotionType::Static ? cNonMovingObjectLayer : cMovingObjectLayer);
+    const Jolt::ObjectLayer targetObjectLayer =
+        effectiveMotionType == Jolt::EMotionType::Static ? cNonMovingObjectLayer : cMovingObjectLayer;
+
+    if (mutableBodyInterface.GetMotionType(bodyID) != effectiveMotionType) {
+        mutableBodyInterface.SetMotionType(bodyID, effectiveMotionType, Jolt::EActivation::Activate);
+    }
+    if (mutableBodyInterface.GetObjectLayer(bodyID) != targetObjectLayer) {
+        mutableBodyInterface.SetObjectLayer(bodyID, targetObjectLayer);
+    }
+    if (effectiveMotionType == Jolt::EMotionType::Dynamic &&
+        mutableBodyInterface.GetMotionQuality(bodyID) != Jolt::EMotionQuality::LinearCast) {
+        mutableBodyInterface.SetMotionQuality(bodyID, Jolt::EMotionQuality::LinearCast);
+    }
     mutableBodyInterface.SetGravityFactor(bodyID, rigidBody.useGravity ? 1.0f : 0.0f);
-    mutableBodyInterface.SetFriction(bodyID, material ? material->friction : rigidBody.friction);
-    mutableBodyInterface.SetRestitution(bodyID, material ? material->restitution : rigidBody.restitution);
-    mutableBodyInterface.SetIsSensor(bodyID, collider->isTrigger);
+    mutableBodyInterface.SetFriction(bodyID, material != nullptr ? material->friction : rigidBody.friction);
+    mutableBodyInterface.SetRestitution(bodyID, material != nullptr ? material->restitution : rigidBody.restitution);
+    mutableBodyInterface.SetIsSensor(bodyID, collider != nullptr ? collider->isTrigger : false);
 
-    if (desiredMotionType == Jolt::EMotionType::Dynamic && !needsNewBody) {
-        // Keep dynamic body state authoritative in Jolt. Only apply one-shot ECS acceleration as force.
+    if (effectiveMotionType == Jolt::EMotionType::Dynamic && !needsNewBody) {
+        // Dynamic bodies are usually Jolt-authoritative, but explicit ECS edits from the UI
+        // (while simulation is paused) should be applied exactly once on resume.
+        if (rigidBody.pendingBodyStateOverride) {
+            glm::vec3 bodyPosition = transform.translation;
+            if (collider != nullptr) {
+                bodyPosition += glm::quat(transform.rotation) * collider->centerOffset;
+            }
+            mutableBodyInterface.SetPositionRotationAndVelocity(
+                bodyID,
+                Jolt::RVec3(bodyPosition.x, bodyPosition.y, bodyPosition.z),
+                toJolt(glm::quat(transform.rotation)),
+                toJolt(rigidBody.velocity),
+                toJolt(rigidBody.angularVelocity));
+            mutableBodyInterface.ActivateBody(bodyID);
+            rigidBody.pendingBodyStateOverride = false;
+        }
+
+        // Apply one-shot ECS acceleration as force.
         if (glm::dot(rigidBody.acceleration, rigidBody.acceleration) > 0.0f) {
             mutableBodyInterface.AddForce(bodyID, toJolt(rigidBody.acceleration * rigidBody.mass), Jolt::EActivation::Activate);
             rigidBody.acceleration = glm::vec3(0.0f);
         }
-    } else {
-        // Static/kinematic (and freshly-created bodies) are driven from ECS.
+    } else if (effectiveMotionType != Jolt::EMotionType::Static || needsNewBody || rigidBody.pendingBodyStateOverride) {
+        // Kinematic bodies are ECS-driven every frame. Static bodies are only
+        // re-driven when newly created or explicitly overridden by UI edits.
+        glm::vec3 bodyPosition = transform.translation;
+        if (collider != nullptr) {
+            bodyPosition += glm::quat(transform.rotation) * collider->centerOffset;
+        }
         mutableBodyInterface.SetPositionRotationAndVelocity(
             bodyID,
-            Jolt::RVec3(transform.translation.x, transform.translation.y, transform.translation.z),
+            Jolt::RVec3(bodyPosition.x, bodyPosition.y, bodyPosition.z),
             toJolt(glm::quat(transform.rotation)),
             toJolt(rigidBody.velocity),
             toJolt(rigidBody.angularVelocity));
+        rigidBody.pendingBodyStateOverride = false;
     }
 
     Jolt::RVec3 position = mutableBodyInterface.GetPosition(bodyID);
@@ -217,8 +365,12 @@ void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity
     Jolt::Vec3 linearVelocity = mutableBodyInterface.GetLinearVelocity(bodyID);
     Jolt::Vec3 angularVelocity = mutableBodyInterface.GetAngularVelocity(bodyID);
 
+    const glm::quat bodyRotation = toGlm(rotation);
+    transform.rotation = glm::eulerAngles(bodyRotation);
     transform.translation = toGlm(Jolt::Vec3(position.GetX(), position.GetY(), position.GetZ()));
-    transform.rotation = glm::eulerAngles(toGlm(rotation));
+    if (collider != nullptr) {
+        transform.translation -= bodyRotation * collider->centerOffset;
+    }
     rigidBody.velocity = toGlm(linearVelocity);
     rigidBody.angularVelocity = toGlm(angularVelocity);
 }
@@ -253,6 +405,13 @@ void JoltPhysicsSystem::removeEntity(entt::entity e) {
 void JoltPhysicsSystem::clear() {
     if (physicsSystem_) {
         auto& bodyInterface = physicsSystem_->GetBodyInterface();
+        if (!groundBodyID_.IsInvalid()) {
+            if (bodyInterface.IsAdded(groundBodyID_)) {
+                bodyInterface.RemoveBody(groundBodyID_);
+            }
+            bodyInterface.DestroyBody(groundBodyID_);
+            groundBodyID_ = Jolt::BodyID();
+        }
         for (const auto& [entityKey, syncInfo] : bodyMap_) {
             if (bodyInterface.IsAdded(syncInfo.bodyID)) {
                 bodyInterface.RemoveBody(syncInfo.bodyID);
@@ -294,7 +453,7 @@ std::unique_ptr<Jolt::BodyCreationSettings> JoltPhysicsSystem::createCollisionSh
     const TransformComponent& transform,
     const RigidBodyComponent& rigidBody,
     const ColliderComponent& collider,
-    const PhysicsMaterialComponent* material) const {
+    const PhysicsMaterialComponent* material) {
     (void)transform;
     (void)rigidBody;
     (void)material;
@@ -318,9 +477,12 @@ std::unique_ptr<Jolt::BodyCreationSettings> JoltPhysicsSystem::createCollisionSh
         return nullptr;
     }
 
-    const Jolt::EMotionType motionType = rigidBody.isStatic || rigidBody.mode == RigidBodyComponent::PhysicsMode::Static
-        ? Jolt::EMotionType::Static
-        : (rigidBody.mode == RigidBodyComponent::PhysicsMode::Kinematic ? Jolt::EMotionType::Kinematic : Jolt::EMotionType::Dynamic);
+    Jolt::EMotionType motionType = Jolt::EMotionType::Dynamic;
+    if (rigidBody.isStatic || rigidBody.mode == RigidBodyComponent::PhysicsMode::Static) {
+        motionType = Jolt::EMotionType::Static;
+    } else if (rigidBody.mode == RigidBodyComponent::PhysicsMode::Kinematic) {
+        motionType = Jolt::EMotionType::Kinematic;
+    }
 
     auto settings = std::make_unique<Jolt::BodyCreationSettings>(
         shape.release(),
@@ -328,11 +490,14 @@ std::unique_ptr<Jolt::BodyCreationSettings> JoltPhysicsSystem::createCollisionSh
         toJolt(glm::quat(transform.rotation)),
         motionType,
         motionType == Jolt::EMotionType::Static ? cNonMovingObjectLayer : cMovingObjectLayer);
+    if (motionType == Jolt::EMotionType::Dynamic) {
+        settings->mMotionQuality = Jolt::EMotionQuality::LinearCast;
+    }
 
-    settings->mFriction = material ? material->friction : rigidBody.friction;
-    settings->mRestitution = material ? material->restitution : rigidBody.restitution;
-    settings->mLinearDamping = material ? material->damping : 0.0f;
-    settings->mAngularDamping = material ? material->angularDamping : 0.0f;
+    settings->mFriction = material != nullptr ? material->friction : rigidBody.friction;
+    settings->mRestitution = material != nullptr ? material->restitution : rigidBody.restitution;
+    settings->mLinearDamping = material != nullptr ? material->damping : 0.0f;
+    settings->mAngularDamping = material != nullptr ? material->angularDamping : 0.0f;
     settings->mGravityFactor = rigidBody.useGravity ? 1.0f : 0.0f;
     settings->mIsSensor = collider.isTrigger;
     settings->mUserData = 0;

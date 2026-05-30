@@ -100,6 +100,8 @@ namespace engine {
         pipelineConfig.bindingDescriptions.clear();
         pipelineConfig.renderPass     = renderPass;
         pipelineConfig.pipelineLayout = pipelineLayout;
+        pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
+        pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
         pipeline                      = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(point_light.vert.spv)", std::string(SHADER_PATH) + R"(point_light.frag.spv)", pipelineConfig);
     }
 
@@ -134,9 +136,8 @@ namespace engine {
 
             // Create a model matrix that orients the arrow in the light direction
             auto modelMatrix = glm::mat4(1.0f);
-            modelMatrix      = glm::translate(modelMatrix, transform.translation);
 
-            // Apply rotation to orient arrow
+            // Apply rotation to orient arrow at the origin.
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -278,6 +279,8 @@ namespace engine {
         pipelineConfig.renderPass                 = renderPass;
         pipelineConfig.pipelineLayout             = directionalPipelineLayout;
         pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
+        pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
         directionalPipeline                       = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(directional_light.vert.spv)", std::string(SHADER_PATH) + R"(directional_light.frag.spv)", pipelineConfig);
     }
 
@@ -315,6 +318,7 @@ namespace engine {
         pipelineConfig.inputAssemblyInfo.topology        = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         pipelineConfig.rasterizationInfo.cullMode        = VK_CULL_MODE_NONE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
+        pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
 
         // Enable alpha blending for semi-transparent cone
         pipelineConfig.colorBlendAttachment.blendEnable         = VK_TRUE;

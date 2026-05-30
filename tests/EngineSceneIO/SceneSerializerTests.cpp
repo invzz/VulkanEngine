@@ -6,9 +6,11 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 
 using namespace engine;
@@ -275,4 +277,120 @@ TEST_F(SceneSerializerTest, GivenSceneWithMultipleLightTypes_WhenSerializedAndDe
   EXPECT_EQ(std::distance(pointView.begin(), pointView.end()), 1);
   EXPECT_EQ(std::distance(dirView.begin(), dirView.end()), 1);
   EXPECT_EQ(std::distance(spotView.begin(), spotView.end()), 1);
+}
+
+TEST_F(SceneSerializerTest, GivenCollisionReproScene_WhenDeserializedAndSimulated_ThenCubeBouncesOffStaticBody) {
+  std::string const path = "assets/scenes/test/collision_repro_scene.json";
+
+  if (!std::filesystem::exists(path)) {
+    GTEST_SKIP() << "Missing collision repro scene file: " << path;
+  }
+
+  Scene scene;
+  SceneSerializer serializer(scene, resourceManager());
+  ASSERT_TRUE(serializer.deserialize(path));
+
+  entt::entity staticEntity = entt::null;
+  entt::entity dynamicEntity = entt::null;
+
+  auto view = scene.getRegistry().view<RigidBodyComponent, ColliderComponent, TransformComponent>();
+  for (auto entity : view) {
+    auto& rb = scene.getRegistry().get<RigidBodyComponent>(entity);
+    if (rb.isStatic) {
+      staticEntity = entity;
+    } else if (rb.useGravity) {
+      dynamicEntity = entity;
+    }
+  }
+
+  ASSERT_TRUE(staticEntity != entt::null);
+  ASSERT_TRUE(dynamicEntity != entt::null);
+
+  auto& staticTransform = scene.getRegistry().get<TransformComponent>(staticEntity);
+  auto& dynamicTransform = scene.getRegistry().get<TransformComponent>(dynamicEntity);
+  auto& staticBody = scene.getRegistry().get<RigidBodyComponent>(staticEntity);
+  auto& dynamicBody = scene.getRegistry().get<RigidBodyComponent>(dynamicEntity);
+  auto& staticCollider = scene.getRegistry().get<ColliderComponent>(staticEntity);
+  auto& dynamicCollider = scene.getRegistry().get<ColliderComponent>(dynamicEntity);
+
+  // Move both cubes away from the built-in ground plane (Y = 0) so this test
+  // validates cube-vs-cube bounce instead of cube-vs-ground response.
+  staticTransform.translation.y = 40.0f;
+  dynamicTransform.translation.y = 35.0f;
+  staticBody.pendingBodyStateOverride = true;
+  dynamicBody.pendingBodyStateOverride = true;
+
+  // Force an elastic setup so the bounce signal is deterministic.
+  staticBody.restitution = 0.95f;
+  dynamicBody.restitution = 0.95f;
+  staticBody.friction = 0.0f;
+  dynamicBody.friction = 0.0f;
+  dynamicBody.useGravity = false;
+  dynamicBody.velocity = glm::vec3(0.0f, 10.0f, 0.0f);
+  dynamicBody.pendingBodyStateOverride = true;
+
+    printf("[setup] static isStatic=%d mode=%d trigger=%d size=(%.2f,%.2f,%.2f)\\n",
+      staticBody.isStatic ? 1 : 0,
+      static_cast<int>(staticBody.mode),
+      staticCollider.isTrigger ? 1 : 0,
+      staticCollider.size.x,
+      staticCollider.size.y,
+      staticCollider.size.z);
+    printf("[setup] dynamic isStatic=%d mode=%d trigger=%d size=(%.2f,%.2f,%.2f) vel=(%.2f,%.2f,%.2f)\\n",
+      dynamicBody.isStatic ? 1 : 0,
+      static_cast<int>(dynamicBody.mode),
+      dynamicCollider.isTrigger ? 1 : 0,
+      dynamicCollider.size.x,
+      dynamicCollider.size.y,
+      dynamicCollider.size.z,
+      dynamicBody.velocity.x,
+      dynamicBody.velocity.y,
+      dynamicBody.velocity.z);
+  float const startY = dynamicTransform.translation.y;
+
+  JoltPhysicsSystem physicsSystem;
+  bool sawDownwardVelocity = false;
+  bool sawContact = false;
+  bool sawUpwardReboundAfterContact = false;
+  float previousY = dynamicTransform.translation.y;
+
+  for (int i = 0; i < 120; ++i) {
+    physicsSystem.syncToEntities(&scene);
+    physicsSystem.update(1.0f / 60.0f);
+    physicsSystem.syncToEntities(&scene);
+
+    if (i < 40 || (i >= 20 && i <= 35)) {
+      printf("[step %3d] dynY=%.4f  staticY=%.4f  velY=%.4f\n",
+             i, dynamicTransform.translation.y, staticTransform.translation.y,
+             dynamicBody.velocity.y);
+    }
+
+    float const centerSeparationY = dynamicTransform.translation.y - staticTransform.translation.y;
+    float const absCenterSeparationY = std::abs(centerSeparationY);
+    if (dynamicBody.velocity.y > 0.2f) {
+      sawDownwardVelocity = true;
+    }
+    if (absCenterSeparationY < 1.25f) {
+      sawContact = true;
+    }
+    if (sawContact && dynamicBody.velocity.y < -0.05f) {
+      sawUpwardReboundAfterContact = true;
+      break;
+    }
+
+    if (sawContact && dynamicTransform.translation.y < previousY - 0.001f) {
+      sawUpwardReboundAfterContact = true;
+      break;
+    }
+
+    previousY = dynamicTransform.translation.y;
+  }
+
+  // Y+ is downward in this project, so a falling object's Y should increase.
+  EXPECT_GT(dynamicTransform.translation.y, startY);
+
+  // Assert a real bounce signature: fall, contact, then rebound upward.
+  EXPECT_TRUE(sawDownwardVelocity);
+  EXPECT_TRUE(sawContact);
+  EXPECT_TRUE(sawUpwardReboundAfterContact);
 }

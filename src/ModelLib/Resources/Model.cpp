@@ -311,6 +311,20 @@ Model::Model(Device& device, const Builder& builder)
   createVertexBuffers(builder.vertices);
   createIndexBuffers(builder.indices);
   generateMeshlets(builder.vertices, builder.indices);
+
+  collisionVertices_.reserve(builder.vertices.size());
+  for (const auto& v : builder.vertices) {
+    collisionVertices_.push_back(v.position);
+  }
+
+  if (!builder.indices.empty()) {
+    collisionIndices_ = builder.indices;
+  } else {
+    collisionIndices_.reserve(builder.vertices.size());
+    for (uint32_t i = 0; i < static_cast<uint32_t>(builder.vertices.size()); ++i) {
+      collisionIndices_.push_back(i);
+    }
+  }
 }
 
 Model::~Model() = default;
