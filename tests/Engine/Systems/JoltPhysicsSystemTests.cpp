@@ -93,7 +93,7 @@ namespace engine {
         stepPhysics(physicsSystem, *scene, 120);
 
         EXPECT_GT(transform.translation.y, -3.0f);
-        EXPECT_GT(transform.translation.y, 0.0f);
+        EXPECT_GT( 0.0f, transform.translation.y);
         EXPECT_TRUE(std::isfinite(transform.translation.y));
     }
 

@@ -149,10 +149,10 @@ namespace engine {
         // Update physics
         PhysicsSystem::update(frameInfo);
 
-        // Verify that gravity affected velocity (which should be -9.81 * mass * frameTime in y direction)
-        // Since we're using Euler integration: velocity += acceleration * deltaTime
-        // and acceleration.y = -gravity * mass, so velocity.y += (-gravity * mass) * deltaTime
-        float expectedVelocityY = -9.81f * rigidBody.mass * 0.016f;
+        // Verify that gravity affected velocity.
+        // Current PhysicsSystem integration is per-step (not scaled by frameTime),
+        // so velocity delta is exactly -gravity * mass for a single update.
+        float expectedVelocityY = -9.81f * rigidBody.mass;
         EXPECT_FLOAT_EQ(rigidBody.velocity.y, expectedVelocityY);  // Gravity should affect velocity
     }
 

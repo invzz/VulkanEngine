@@ -309,4 +309,13 @@ target("Tests")
                 os.cp(src, dst)
             end
         end
+
+        -- Test scene files
+        local scenes_src = path.join(projectdir, "assets/scenes/test")
+        local scenes_dst = path.join(targetdir, "assets/scenes/test")
+        if os.isdir(scenes_src) then
+            os.mkdir(path.join(targetdir, "assets/scenes"))
+            os.mkdir(scenes_dst)
+            os.cp(path.join(scenes_src, "*"), scenes_dst)
+        end
     end)

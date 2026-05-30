@@ -115,6 +115,9 @@ namespace engine {
             if (sceneSerializer.deserialize("scene.json")) {
                 std::cout << "[App] Loaded scene.json at startup" << '\n';
 
+                // Physics must always start paused; never auto-run after a scene load.
+                engineState.physicsSimulationRunning = false;
+
                 // Reset transient selection state to avoid dangling entt entity references
                 engineState.selectedEntity = entt::null;
                 selectedObjectId           = 0;
@@ -185,7 +188,15 @@ namespace engine {
         });
         engineState.uiManager->setOnLoadScene([this]() {
             std::cout << "Loading scene from scene.json..." << '\n';
+            // Purge stale Jolt bodies before loading a new scene so no invisible
+            // ghost colliders remain from the previous scene.
+            if (engineState.joltPhysicsSystem) {
+                engineState.joltPhysicsSystem->clear();
+            }
             if (sceneSerializer.deserialize("scene.json")) {
+                // Physics must always start paused; never auto-run after a scene load.
+                engineState.physicsSimulationRunning = false;
+
                 // Reset transient selection state to avoid dangling entt entity references
                 engineState.selectedEntity = entt::null;
                 selectedObjectId           = 0;

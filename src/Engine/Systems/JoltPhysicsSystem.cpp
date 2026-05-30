@@ -49,8 +49,6 @@ JoltPhysicsSystem::JoltPhysicsSystem()
     physicsSystem_ = std::make_unique<Jolt::PhysicsSystem>();
     broadPhaseLayerInterface_ = std::make_unique<Jolt::BroadPhaseLayerInterfaceTable>(cNumObjectLayers, cNumBroadPhaseLayers);
     objectLayerPairFilter_ = std::make_unique<Jolt::ObjectLayerPairFilterTable>(cNumObjectLayers);
-    objectVsBroadPhaseLayerFilter_ = std::make_unique<Jolt::ObjectVsBroadPhaseLayerFilterTable>(
-        *broadPhaseLayerInterface_, cNumBroadPhaseLayers, *objectLayerPairFilter_, cNumObjectLayers);
 
     Jolt::Factory::sInstance = factory_.get();
     Jolt::RegisterTypes();
@@ -63,6 +61,9 @@ JoltPhysicsSystem::JoltPhysicsSystem()
     objectLayerPairFilter_->EnableCollision(cNonMovingObjectLayer, cMovingObjectLayer);
     objectLayerPairFilter_->EnableCollision(cMovingObjectLayer, cNonMovingObjectLayer);
     objectLayerPairFilter_->EnableCollision(cMovingObjectLayer, cMovingObjectLayer);
+
+    objectVsBroadPhaseLayerFilter_ = std::make_unique<Jolt::ObjectVsBroadPhaseLayerFilterTable>(
+        *broadPhaseLayerInterface_, cNumBroadPhaseLayers, *objectLayerPairFilter_, cNumObjectLayers);
 
     physicsSystem_->Init(1024, 0, 1024, 1024,
                          *broadPhaseLayerInterface_,
@@ -321,10 +322,10 @@ void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity
     mutableBodyInterface.SetRestitution(bodyID, material != nullptr ? material->restitution : rigidBody.restitution);
     mutableBodyInterface.SetIsSensor(bodyID, collider != nullptr ? collider->isTrigger : false);
 
-    if (effectiveMotionType == Jolt::EMotionType::Dynamic && !needsNewBody) {
+    if (effectiveMotionType == Jolt::EMotionType::Dynamic) {
         // Dynamic bodies are usually Jolt-authoritative, but explicit ECS edits from the UI
         // (while simulation is paused) should be applied exactly once on resume.
-        if (rigidBody.pendingBodyStateOverride) {
+        if (!needsNewBody && rigidBody.pendingBodyStateOverride) {
             glm::vec3 bodyPosition = transform.translation;
             if (collider != nullptr) {
                 bodyPosition += glm::quat(transform.rotation) * collider->centerOffset;
