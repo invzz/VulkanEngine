@@ -26,8 +26,6 @@ TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAr
   EXPECT_EQ(pcd.vertexBufferAddress, 0u);
   EXPECT_EQ(pcd.meshletOffset, 0u);
   EXPECT_EQ(pcd.meshletCount, 0u);
-  EXPECT_EQ(pcd.screenSize, glm::vec2(0.0f, 0.0f));
-  EXPECT_EQ(pcd.cullingFlags, 0u);
 
   // Model and normal matrices should be identity
   glm::mat4 identity = glm::mat4(1.0f);
@@ -38,7 +36,7 @@ TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAr
 TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_ThenOffsetsMatchShaderExpectations) {
   // This test ensures the memory layout matches what the shader expects.
   // If this fails, the shader/CPU side is misaligned.
-  static_assert(sizeof(MeshPushConstantData) == 192, "Push constant size mismatch");
+  static_assert(sizeof(MeshPushConstantData) == 176, "Push constant size mismatch");
   static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0, "modelMatrix offset mismatch");
   static_assert(offsetof(MeshPushConstantData, normalMatrix) == 64, "normalMatrix offset mismatch");
   static_assert(offsetof(MeshPushConstantData, meshId) == 128, "meshId offset mismatch");
@@ -48,8 +46,6 @@ TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_Th
   static_assert(offsetof(MeshPushConstantData, vertexBufferAddress) == 160, "vertexBufferAddress offset mismatch");
   static_assert(offsetof(MeshPushConstantData, meshletOffset) == 168, "meshletOffset offset mismatch");
   static_assert(offsetof(MeshPushConstantData, meshletCount) == 172, "meshletCount offset mismatch");
-  static_assert(offsetof(MeshPushConstantData, screenSize) == 176, "screenSize offset mismatch");
-  static_assert(offsetof(MeshPushConstantData, cullingFlags) == 184, "cullingFlags offset mismatch");
   SUCCEED();
 }
 

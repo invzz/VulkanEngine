@@ -40,7 +40,6 @@
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
 #include "Engine/Graphics/Passes/ComputePass.hpp"
 #include "Engine/Graphics/Passes/DepthPrepass.hpp"
-#include "Engine/Graphics/Passes/HZBPass.hpp"
 #include "Engine/Graphics/Passes/OffscreenPass.hpp"
 #include "Engine/Graphics/Passes/ShadowPass.hpp"
 #include "Engine/Graphics/Passes/UpdatePass.hpp"
@@ -83,8 +82,7 @@ namespace engine {
         device.enableThreadLocalCommandPools();
 
         // 1. Setup Render Context (moved into EngineState)
-        VkDescriptorImageInfo const hzbInfo = renderer.getHzbImageInfo(0);
-        engineState.renderContext           = std::make_unique<RenderContext>(device, resourceManager.getMeshManager(), hzbInfo);
+        engineState.renderContext = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
 
         // 2. Setup Scene & Camera
         setupScene();
@@ -228,13 +226,10 @@ namespace engine {
         // 4. Depth Prepass (Offscreen Depth Only)
         graph->addPass(std::make_unique<DepthPrepass>(&engineState, renderer));
 
-        // 5. HZB Build (same frame, after Depth Prepass)
-        graph->addPass(std::make_unique<HZBPass>(&engineState, renderer));
-
-        // 6. Offscreen Pass (Main Scene - Load depth from prepass)
+        // 5. Offscreen Pass (Main Scene - Load depth from prepass)
         graph->addPass(std::make_unique<OffscreenPass>(renderer, &engineState, device, debugMode));
 
-        // 7. Composition Pass (PostProcess + UI)
+        // 6. Composition Pass (PostProcess + UI)
         graph->addPass(std::make_unique<CompositionPass>(renderer, &engineState, *camera, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
@@ -345,22 +340,6 @@ namespace engine {
             }
 
             int const frameIndex = renderer.getFrameIndex();
-
-            int const                   prevFrameIndex = (frameIndex - 1 + SwapChain::maxFramesInFlight()) % SwapChain::maxFramesInFlight();
-            VkDescriptorImageInfo const hzbInfo        = renderer.getHzbImageInfo(prevFrameIndex);
-            if (hzbInfo.imageView != VK_NULL_HANDLE && hzbInfo.sampler != VK_NULL_HANDLE) {
-                engineState.renderContext->updateHZBDescriptorPrev(frameIndex, hzbInfo);
-            } else {
-                std::cerr << "[App] Skipping updateHZBDescriptorPrev — HZB not ready (frame=" << prevFrameIndex << ")\n";
-            }
-
-            // Also pre-bind the descriptor that points to the current frame's HZB image view.
-            VkDescriptorImageInfo const hzbInfoCurrent = renderer.getHzbImageInfo(frameIndex);
-            if (hzbInfoCurrent.imageView != VK_NULL_HANDLE && hzbInfoCurrent.sampler != VK_NULL_HANDLE) {
-                engineState.renderContext->updateHZBDescriptorCurrent(frameIndex, hzbInfoCurrent);
-            } else {
-                std::cerr << "[App] Skipping updateHZBDescriptorCurrent — HZB not ready (frame=" << frameIndex << ")\n";
-            }
 
             FrameInfo frameInfo{
                 .frameIndex          = frameIndex,

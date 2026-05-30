@@ -30,9 +30,6 @@ namespace engine {
         uint64_t  vertexBufferAddress{0};
         uint32_t  meshletOffset{0};
         uint32_t  meshletCount{0};
-        glm::vec2 screenSize{0.0f, 0.0f};
-        uint32_t  cullingFlags{0};  // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
-        uint32_t  _pad_end{0u};
     };
 
     static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0u, "MeshPushConstantData layout mismatch: modelMatrix offset");
@@ -44,9 +41,7 @@ namespace engine {
     static_assert(offsetof(MeshPushConstantData, vertexBufferAddress) == 160u, "MeshPushConstantData layout mismatch: vertexBufferAddress offset");
     static_assert(offsetof(MeshPushConstantData, meshletOffset) == 168u, "MeshPushConstantData layout mismatch: meshletOffset offset");
     static_assert(offsetof(MeshPushConstantData, meshletCount) == 172u, "MeshPushConstantData layout mismatch: meshletCount offset");
-    static_assert(offsetof(MeshPushConstantData, screenSize) == 176u, "MeshPushConstantData layout mismatch: screenSize offset");
-    static_assert(offsetof(MeshPushConstantData, cullingFlags) == 184u, "MeshPushConstantData layout mismatch: cullingFlags offset");
-    static_assert(sizeof(MeshPushConstantData) == 192u, "MeshPushConstantData size mismatch");
+    static_assert(sizeof(MeshPushConstantData) == 176u, "MeshPushConstantData size mismatch");
 
     class MaterialRenderBindings;
     class LightingRenderBindings;

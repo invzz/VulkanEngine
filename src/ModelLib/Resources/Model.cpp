@@ -178,7 +178,7 @@ void createMeshletFromTriangles(const std::vector<unsigned int>& srcMeshletVerti
 }
 
 /**
- * @brief Compute bounding sphere and cone for a meshlet
+ * @brief Compute bounding sphere for a meshlet
  */
 void computeMeshletBounds(const std::vector<Model::Vertex>& vertices, const std::vector<unsigned int>& meshletVertices, const std::vector<unsigned char>& meshletTriangles, Model::Meshlet& meshlet) {
   meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshletVertices[meshlet.vertexOffset],
@@ -190,8 +190,6 @@ void computeMeshletBounds(const std::vector<Model::Vertex>& vertices, const std:
 
   memcpy(meshlet.center, bounds.center, sizeof(float) * 3);
   meshlet.radius = bounds.radius;
-  memcpy(meshlet.cone_axis, bounds.cone_axis, sizeof(float) * 3);
-  meshlet.cone_cutoff = bounds.cone_cutoff;
 }
 
 /**
@@ -260,8 +258,6 @@ void splitOversizedMeshlets(const std::vector<Model::Vertex>& vertices,
 
       memcpy(finalMeshlet.center, tempMeshlet.center, sizeof(float) * 3);
       finalMeshlet.radius = tempMeshlet.radius;
-      memcpy(finalMeshlet.cone_axis, tempMeshlet.cone_axis, sizeof(float) * 3);
-      finalMeshlet.cone_cutoff = tempMeshlet.cone_cutoff;
 
       outMeshletVertices.insert(outMeshletVertices.end(), item.meshletVertices.begin(), item.meshletVertices.end());
 
@@ -586,8 +582,6 @@ void Model::generateMeshlets(const std::vector<Vertex>& vertices, const std::vec
 
         memcpy(myMeshlet.center, bounds.center, sizeof(float) * 3);
         myMeshlet.radius = bounds.radius;
-        memcpy(myMeshlet.cone_axis, bounds.cone_axis, sizeof(float) * 3);
-        myMeshlet.cone_cutoff = bounds.cone_cutoff;
 
         meshlets.push_back(myMeshlet);
       }

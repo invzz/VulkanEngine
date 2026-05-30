@@ -17,11 +17,6 @@ struct Meshlet {
 
     float center[3];
     float radius;
-
-    float cone_axis[3];
-    float cone_cutoff;
-
-    uint padding[4];
 };
 
 layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
@@ -51,7 +46,7 @@ layout(buffer_reference, scalar) readonly buffer VertexBuffer {
 layout(push_constant) uniform Push {
     mat4 modelMatrix;
     mat4 lightSpaceMatrix;
-    vec4 lightPosAndFarPlane; // xyz = light position, w = far plane
+    vec4 lightPosAndFarPlane;  // xyz = light position, w = far plane
 
     uint64_t meshletBufferAddress;
     uint64_t meshletVerticesAddress;

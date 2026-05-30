@@ -33,16 +33,6 @@ struct SpotLight {
   glm::vec4 attenOuter;        // x = outer cutoff (cos), y = constant, z = linear, w = quadratic
 };
 
-/**
- * @brief HZB (Hierarchical Z-Buffer) occlusion culling settings
- */
-struct HZBSettings {
-  int maxMipLevel = 10;          // Maximum mip level to test against (limits coarse testing)
-  float minScreenPixels = 2.0f;  // Skip HZB test for objects smaller than this in pixels
-  float screenSizeScale = 1.0f;  // Mip selection bias (higher = use coarser mips = fewer tests)
-  int enabled = 1;               // 0 = disabled, 1 = enabled
-};
-
 struct GlobalUbo {
   glm::mat4 projection{1.0f};
   glm::mat4 view{1.0f};
@@ -68,11 +58,7 @@ struct GlobalUbo {
 };
 
 struct GlobalUboCold {
-  // HZB settings
-  int hzbMaxMipLevel = 10;          // Maximum mip level for HZB testing
-  float hzbMinScreenPixels = 2.0f;  // Skip HZB for objects smaller than this
-  float hzbScreenSizeScale = 1.0f;  // Mip selection bias
-  int hzbEnabled = 1;               // 0 = disabled, 1 = enabled
+  glm::vec4 reservedCold{0.0f};
 };
 
 static_assert(offsetof(GlobalUbo, frustumPlanes) % 16 == 0, "GlobalUbo::frustumPlanes must be 16-byte aligned for std140");

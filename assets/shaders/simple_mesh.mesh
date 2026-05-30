@@ -20,11 +20,6 @@ struct Meshlet {
 
     float center[3];
     float radius;
-
-    float cone_axis[3];
-    float cone_cutoff;
-
-    uint padding[4];
 };
 
 layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
@@ -62,7 +57,6 @@ layout(push_constant) uniform Push {
     uint64_t vertexBufferAddress;
     uint     meshletOffset;
     uint     meshletCount;
-    vec2     screenSize;
 }
 push;
 
@@ -71,7 +65,6 @@ layout(location = 1) out vec3 outWorldPos[];
 layout(location = 2) out vec3 outNormal[];
 layout(location = 3) out vec2 outUV[];
 layout(location = 4) out flat uint outMeshletId[];
-layout(location = 5) out flat vec3 outConeAxis[];
 
 struct TaskPayload {
     uint meshletIndices[32];
@@ -104,7 +97,6 @@ void main() {
         outNormal[i]    = normalize(normalMatrix * v.normal);
         outUV[i]        = v.uv;
         outMeshletId[i] = meshletId;
-        outConeAxis[i]  = vec3(meshlet.cone_axis[0], meshlet.cone_axis[1], meshlet.cone_axis[2]);
     }
 
     MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);

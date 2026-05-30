@@ -41,11 +41,7 @@ layout(set = 0, binding = 0, std140) uniform UBO {
 ubo;
 
 layout(set = 0, binding = 6, std140) uniform UBOCold {
-    // HZB occlusion culling settings
-    int   hzbMaxMipLevel;      // Maximum mip level for HZB testing
-    float hzbMinScreenPixels;  // Skip HZB for objects smaller than this in pixels
-    float hzbScreenSizeScale;  // Mip selection bias (higher = coarser mips)
-    int   hzbEnabled;          // 0 = disabled, 1 = enabled
+    vec4 reservedCold;
 }
 uboCold;
 

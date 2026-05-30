@@ -65,10 +65,6 @@ namespace engine {
             return static_cast<float>(extent.width) / static_cast<float>(extent.height);
         }
 
-        // Accessors for HZB
-        [[nodiscard]] VkImageView getDepthMipImageView(int frameIndex, int mipLevel) const {
-            return depthTargets[frameIndex].getMipView(static_cast<uint32_t>(mipLevel));
-        }
         [[nodiscard]] VkImageView getDepthImageView(int frameIndex) const {
             return depthTargets[frameIndex].getView();
         }
@@ -102,16 +98,6 @@ namespace engine {
         [[nodiscard]] VkImage getSceneColorImage(int frameIndex) const {
             return sceneColorTargets[frameIndex].getImage();
         }
-
-        // Accessors for HZB Texture (R32_SFLOAT) — bounds-checked in debug builds to help
-        // trace lifecycle issues where callers may read these while the FrameBuffer is
-        // being (re)created or cleaned up.
-        [[nodiscard]] VkImageView getHzbMipImageView(int frameIndex, int mipLevel) const;
-        [[nodiscard]] VkImageView getHzbImageView(int frameIndex) const;
-        [[nodiscard]] VkImage     getHzbImage(int frameIndex) const {
-            return hzbTargets[frameIndex].getImage();
-        }
-        [[nodiscard]] VkSampler getHzbSampler() const;
 
        private:
         void createRenderPass();
@@ -147,9 +133,6 @@ namespace engine {
 
         // Depth attachment
         std::vector<RenderTarget> depthTargets;
-
-        // HZB attachment (R32_SFLOAT)
-        std::vector<RenderTarget> hzbTargets;
 
         std::vector<VkFramebuffer> framebuffers;
         std::vector<VkFramebuffer> depthPrepassFramebuffers;

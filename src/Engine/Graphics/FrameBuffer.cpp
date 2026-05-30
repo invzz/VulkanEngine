@@ -5,7 +5,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 #include <stdexcept>
 
 #include "Engine/Graphics/Device.hpp"
@@ -105,10 +104,6 @@ namespace engine {
         }
         depthTargets.clear();
 
-        for (auto& target : hzbTargets) {
-            target.destroy(device);
-        }
-        hzbTargets.clear();
     }
 
     void FrameBuffer::resize(VkExtent2D newExtent) {
@@ -523,7 +518,6 @@ namespace engine {
         gbufferAlbedoTargets.resize(frameCount);
         gbufferMaterialTargets.resize(frameCount);
         depthTargets.resize(frameCount);
-        hzbTargets.resize(frameCount);
 
         VkFormat const colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
         VkFormat const depthFormat =
@@ -583,18 +577,9 @@ namespace engine {
             depthUsage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
 
-        constexpr VkFormat hzbFormat             = VK_FORMAT_R32_SFLOAT;
-
         for (uint32_t i = 0; i < frameCount; ++i) {
             makeTarget(colorTargets[i], colorFormat, mipLevels, colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, false, true, true, &linearSamplerInfo);
             makeTarget(depthTargets[i], depthFormat, mipLevels, depthUsage, VK_IMAGE_ASPECT_DEPTH_BIT, true, false, true, &nearestSamplerInfo);
-            makeTarget(hzbTargets[i], hzbFormat, mipLevels,
-                VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                VK_IMAGE_ASPECT_COLOR_BIT,
-                true,
-                false,
-                true,
-                &nearestSamplerInfo);
             makeTarget(sceneColorTargets[i], colorFormat, mipLevels,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 VK_IMAGE_ASPECT_COLOR_BIT,
@@ -624,45 +609,6 @@ namespace engine {
                 false,
                 nullptr);
         }
-    }
-
-    // --- Bounds-checked HZB accessors (implemented here so header remains lightweight) ---
-    VkImageView FrameBuffer::getHzbMipImageView(int frameIndex, int mipLevel) const {
-#ifndef NDEBUG
-        if (frameIndex < 0 || static_cast<size_t>(frameIndex) >= hzbTargets.size()) {
-            std::cerr << "[FrameBuffer] getHzbMipImageView: frameIndex out of range (" << frameIndex << ")\n";
-            return VK_NULL_HANDLE;
-        }
-        const auto& target = hzbTargets[static_cast<size_t>(frameIndex)];
-        if (mipLevel < 0 || static_cast<uint32_t>(mipLevel) >= target.getMipLevels()) {
-            std::cerr << "[FrameBuffer] getHzbMipImageView: mipLevel out of range (" << mipLevel << ", mipLevels=" << target.getMipLevels() << ")\n";
-            return VK_NULL_HANDLE;
-        }
-        return target.getMipView(static_cast<uint32_t>(mipLevel));
-#else
-        return hzbTargets[frameIndex].getMipView(static_cast<uint32_t>(mipLevel));
-#endif
-    }
-
-    VkImageView FrameBuffer::getHzbImageView(int frameIndex) const {
-#ifndef NDEBUG
-        if (frameIndex < 0 || static_cast<size_t>(frameIndex) >= hzbTargets.size()) {
-            std::cerr << "[FrameBuffer] getHzbImageView: frameIndex out of range (" << frameIndex << ")\n";
-            return VK_NULL_HANDLE;
-        }
-        return hzbTargets[static_cast<size_t>(frameIndex)].getView();
-#else
-        return hzbTargets[frameIndex].getView();
-#endif
-    }
-
-    VkSampler FrameBuffer::getHzbSampler() const {
-#ifndef NDEBUG
-        if (hzbTargets.empty() || hzbTargets.front().getSampler() == VK_NULL_HANDLE) {
-            std::cerr << "[FrameBuffer] getHzbSampler: sampler is VK_NULL_HANDLE\n";
-        }
-#endif
-        return hzbTargets.empty() ? VK_NULL_HANDLE : hzbTargets.front().getSampler();
     }
 
     void FrameBuffer::createFramebuffers() {

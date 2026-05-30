@@ -19,7 +19,7 @@
 namespace engine {
 
     Renderer::Renderer(Window& window, Device& device)
-        : window{window}, device{device}, hzbGenerator{device}, swapChainRecreationCoordinator{window, device} {
+        : window{window}, device{device}, swapChainRecreationCoordinator{window, device} {
         recreateSwapChain();
         createCommandBuffers();
     }
@@ -89,11 +89,8 @@ namespace engine {
             createOffscreenResources();
         }
 
-        createHZBPipeline();
-
         // Initialize offscreen image layouts after recreation.
-        // Depth prepass expects the depth image in DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        // and the HZB pass transitions it to/from SHADER_READ_ONLY_OPTIMAL internally.
+        // Depth prepass expects the depth image in DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
         VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
         for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
@@ -122,32 +119,6 @@ namespace engine {
                 nullptr,
                 1,
                 &barrier);
-
-            VkImageMemoryBarrier hzbBarrier{};
-            hzbBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            hzbBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-            hzbBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            hzbBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            hzbBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            hzbBarrier.image                           = offscreenFrameBuffer->getHzbImage(i);
-            hzbBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            hzbBarrier.subresourceRange.baseMipLevel   = 0;
-            hzbBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-            hzbBarrier.subresourceRange.baseArrayLayer = 0;
-            hzbBarrier.subresourceRange.layerCount     = 1;
-            hzbBarrier.srcAccessMask                   = 0;
-            hzbBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-
-            vkCmdPipelineBarrier(commandBuffer,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_TASK_SHADER_BIT_EXT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &hzbBarrier);
 
             // Initialize scene-color copy image layout for safe sampling/copying.
             VkImageMemoryBarrier sceneBarrier{};
@@ -498,14 +469,6 @@ namespace engine {
         return info;
     }
 
-    VkDescriptorImageInfo Renderer::getHzbImageInfo(int index) const {
-        VkDescriptorImageInfo info{};
-        info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        info.imageView   = offscreenFrameBuffer->getHzbImageView(index);
-        info.sampler     = offscreenFrameBuffer->getHzbSampler();
-        return info;
-    }
-
     void Renderer::copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer) {
         if (!offscreenFrameBuffer)
             return;
@@ -616,18 +579,6 @@ namespace engine {
 
     void Renderer::generateOffscreenMipmaps(VkCommandBuffer commandBuffer) {
         offscreenFrameBuffer->generateMipmaps(commandBuffer, currentFrameIndex);
-    }
-
-    void Renderer::createHZBPipeline() {
-        if (!offscreenFrameBuffer)
-            return;
-        hzbGenerator.recreateDescriptors(*offscreenFrameBuffer, swapChain->getSwapChainExtent(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
-    }
-
-    void Renderer::generateDepthPyramid(VkCommandBuffer commandBuffer) {
-        if (!offscreenFrameBuffer)
-            return;
-        hzbGenerator.generate(commandBuffer, *offscreenFrameBuffer, swapChain->getSwapChainExtent(), currentFrameIndex);
     }
 
 }  // namespace engine

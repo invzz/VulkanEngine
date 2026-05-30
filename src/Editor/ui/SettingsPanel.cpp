@@ -54,23 +54,6 @@ namespace engine {
             if (ImGui::CollapsingHeader("Post Processing")) {
                 postProcessPanel_->render(frameInfo);
             }
-            if (ImGui::CollapsingHeader("Occlusion Culling (HZB)")) {
-                bool enabled = (engineState_->hzbSettings.enabled != 0);
-                if (ImGui::Checkbox("Enable HZB", &enabled)) {
-                    engineState_->hzbSettings.enabled = enabled ? 1 : 0;
-                }
-
-                if (engineState_->hzbSettings.enabled != 0) {
-                    ImGui::SliderInt("Max Mip Level", &engineState_->hzbSettings.maxMipLevel, 1, 12);
-                    ImGui::SetItemTooltip("Higher = coarser testing. Limits the maximum mip level used.");
-
-                    ImGui::SliderFloat("Min Screen Pixels", &engineState_->hzbSettings.minScreenPixels, 0.5f, 32.0f, "%.1f");
-                    ImGui::SetItemTooltip("Objects smaller than this skip HZB (early-z handles them).");
-
-                    ImGui::SliderFloat("Mip Scale", &engineState_->hzbSettings.screenSizeScale, 0.5f, 2.0f, "%.2f");
-                    ImGui::SetItemTooltip("Bias for mip selection. Higher = coarser mips = faster but more false positives.");
-                }
-            }
             if (ImGui::CollapsingHeader("Debug")) {
                 debugPanel_->render(frameInfo);
             }

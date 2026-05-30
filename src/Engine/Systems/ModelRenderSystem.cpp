@@ -230,15 +230,7 @@ namespace engine {
             return baseMaterial;
         }
 
-        MeshPushConstantData makeMeshPush(FrameInfo const& frameInfo,
-            entt::entity                                   entity,
-            const ModelComponent&                          modelComp,
-            const Model::SubMesh&                          subMesh,
-            const glm::mat4&                               modelMatrix,
-            const PBRMaterial*                             pMaterial,
-            bool                                           doubleSided,
-            bool                                           isTransparent = false,
-            bool                                           skipHZB       = false) {
+        MeshPushConstantData makeMeshPush(const ModelComponent& modelComp, const Model::SubMesh& subMesh, const glm::mat4& modelMatrix) {
             MeshPushConstantData push{};
             push.modelMatrix             = modelMatrix;
             push.normalMatrix            = glm::transpose(glm::inverse(push.modelMatrix));
@@ -249,11 +241,6 @@ namespace engine {
             push.vertexBufferAddress     = modelComp.model->getVertexBufferAddress();
             push.meshletOffset           = subMesh.meshletOffset;
             push.meshletCount            = subMesh.meshletCount;
-            push.screenSize              = glm::vec2(frameInfo.extent.width, frameInfo.extent.height);
-            // Bit 0: double-sided (skip cone culling)
-            // Bit 1: transparent (skip cone culling - back faces may be visible)
-            // Bit 2: skip HZB occlusion culling (used for depth prepass)
-            push.cullingFlags = (doubleSided ? 1u : 0u) | (isTransparent ? 2u : 0u) | (skipHZB ? 4u : 0u);
 
             return push;
         }
@@ -615,7 +602,7 @@ namespace engine {
             // Serial replay of collected items - record directly to primary command buffer
             for (const auto& item : workItems) {
                 auto&                      modelComp = view.get<ModelComponent>(item.entity);
-                MeshPushConstantData const push      = makeMeshPush(frameInfo, item.entity, modelComp, *item.subMesh, item.modelMatrix, item.material, (item.material != nullptr) && item.material->doubleSided);
+                MeshPushConstantData const push      = makeMeshPush(modelComp, *item.subMesh, item.modelMatrix);
 
                 float const isSelected = ((uint32_t) item.entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
                 if (materialBindings_ != nullptr) {
@@ -713,7 +700,7 @@ namespace engine {
 
                     // Compute push constants and draw (pushConstantsAndDraw is thread-safe for recording)
                     auto&                      modelComp = view.get<ModelComponent>(item.entity);
-                    MeshPushConstantData const push      = makeMeshPush(frameInfo, item.entity, modelComp, *item.subMesh, item.modelMatrix, item.material, (item.material != nullptr) && item.material->doubleSided);
+                    MeshPushConstantData const push      = makeMeshPush(modelComp, *item.subMesh, item.modelMatrix);
                     pushConstantsAndDraw(device, sec, pipelineLayout, push, item.subMesh->meshletCount);
                 }
 
@@ -877,7 +864,7 @@ namespace engine {
         auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
             auto& modelComp = view.get<ModelComponent>(entity);
 
-            MeshPushConstantData const push = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, pMaterial, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
+            MeshPushConstantData const push = makeMeshPush(modelComp, subMesh, modelMatrix);
 
             float const isSelected = ((uint32_t) entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
             if (materialBindings_ != nullptr) {
@@ -960,7 +947,7 @@ namespace engine {
         auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
             auto& modelComp = view.get<ModelComponent>(entity);
 
-            MeshPushConstantData const push = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, pMaterial, (pMaterial != nullptr) && pMaterial->doubleSided, true /* isTransparent */);
+            MeshPushConstantData const push = makeMeshPush(modelComp, subMesh, modelMatrix);
 
             float const isSelected = ((uint32_t) entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f;
             if (materialBindings_ != nullptr) {
@@ -1054,7 +1041,7 @@ namespace engine {
             auto& modelComp = view.get<ModelComponent>(entity);
 
             // Depth prepass skips HZB culling (bit 2) to ensure complete depth buffer for HZB generation
-            MeshPushConstantData const push = makeMeshPush(frameInfo, entity, modelComp, subMesh, modelMatrix, nullptr, false, true);
+            MeshPushConstantData const push = makeMeshPush(modelComp, subMesh, modelMatrix);
 
             // Populate a default material record so the dynamic UBO binding is always valid.
             if (materialBindings_ != nullptr) {

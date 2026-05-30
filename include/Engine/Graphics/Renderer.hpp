@@ -7,7 +7,6 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameBuffer.hpp"
-#include "Engine/Graphics/HZBGenerator.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Graphics/SwapChainRecreationCoordinator.hpp"
 
@@ -36,7 +35,6 @@ namespace engine {
         void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer);
         void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
         void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
-        void generateDepthPyramid(VkCommandBuffer commandBuffer);
         void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
 
         // Accessors
@@ -64,7 +62,6 @@ namespace engine {
 
         [[nodiscard]] VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getDepthImageInfo(int index) const;
-        [[nodiscard]] VkDescriptorImageInfo getHzbImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getSceneColorImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
@@ -104,11 +101,9 @@ namespace engine {
         void freeCommandBuffers();
         void recreateSwapChain();
         void createOffscreenResources();
-        void createHZBPipeline();
 
         Window&                        window;
         Device&                        device;
-        HZBGenerator                   hzbGenerator;
         SwapChainRecreationCoordinator swapChainRecreationCoordinator;
         std::unique_ptr<SwapChain>     swapChain;
         std::vector<VkCommandBuffer>   commandBuffers;

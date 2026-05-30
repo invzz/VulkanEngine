@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -27,7 +26,7 @@
 
 namespace engine {
 
-    RenderContext::RenderContext(Device& device, MeshManager& meshManager, VkDescriptorImageInfo hzbImageInfo)
+    RenderContext::RenderContext(Device& device, MeshManager& meshManager)
         : device_{device},
           meshManager_{meshManager},
           uboBuffers_(SwapChain::maxFramesInFlight()),
@@ -38,28 +37,20 @@ namespace engine {
         createUBOBuffers();
         // Start with a conservative capacity and grow on demand.
         createLightBuffers(64, 16, 64);
-        createGlobalDescriptorSets(hzbImageInfo);
+        createGlobalDescriptorSets();
 
         for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
             updateLightDescriptorSets(i);
-        }
-
-        // Initialize with dummy or provided HZB info
-        for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
-            updateHZBDescriptorPrev(i, hzbImageInfo);
-            updateHZBDescriptorCurrent(i, hzbImageInfo);
         }
     }
 
     void RenderContext::createDescriptorPool() {
         globalPool_ = DescriptorPool::Builder(device_)
-                          // We allocate two global descriptor sets per frame: prev-HZB + current-HZB.
-                          .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
+                          .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
                           // Two UBO bindings (hot + cold) per set.
                           .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
                           // Storage buffers: mesh buffer + 3 light buffers per set.
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2 * 4))
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2))
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
                           .build();
     }
 
@@ -67,12 +58,11 @@ namespace engine {
         globalSetLayout_ = DescriptorSetLayout::Builder(device_)
                                .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
-                               .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_TASK_BIT_EXT)
                                // Dynamic lights
                                .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
-                               // Cold frame data (HZB knobs and other rarely changed values)
+                               // Cold frame data (rarely changed values)
                                .addBinding(6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .build();
     }
@@ -133,9 +123,7 @@ namespace engine {
         }
     }
 
-    void RenderContext::createGlobalDescriptorSets(VkDescriptorImageInfo hzbImageInfo) {
-        globalDescriptorSetsCurrentHzb_.resize(globalDescriptorSets_.size());
-
+    void RenderContext::createGlobalDescriptorSets() {
         for (size_t i = 0; i < globalDescriptorSets_.size(); i++) {
             auto bufferInfo = uboBuffers_[i]->descriptorInfo();
             auto coldBufferInfo = uboColdBuffers_[i]->descriptorInfo();
@@ -150,27 +138,13 @@ namespace engine {
             DescriptorWriter(*globalSetLayout_, *globalPool_)
                 .writeBuffer(0, &bufferInfo)
                 .writeBuffer(1, &meshInfo)
-                .writeImage(2, &hzbImageInfo)
                 .writeBuffer(3, &pointInfo)
                 .writeBuffer(4, &dirInfo)
                 .writeBuffer(5, &spotInfo)
                 .writeBuffer(6, &coldBufferInfo)
                 .build(globalDescriptorSets_[i]);
             if (globalDescriptorSets_[i] == VK_NULL_HANDLE) {
-                throw std::runtime_error("failed to allocate global descriptor set (prev HZB)");
-            }
-
-            DescriptorWriter(*globalSetLayout_, *globalPool_)
-                .writeBuffer(0, &bufferInfo)
-                .writeBuffer(1, &meshInfo)
-                .writeImage(2, &hzbImageInfo)
-                .writeBuffer(3, &pointInfo)
-                .writeBuffer(4, &dirInfo)
-                .writeBuffer(5, &spotInfo)
-                .writeBuffer(6, &coldBufferInfo)
-                .build(globalDescriptorSetsCurrentHzb_[i]);
-            if (globalDescriptorSetsCurrentHzb_[i] == VK_NULL_HANDLE) {
-                throw std::runtime_error("failed to allocate global descriptor set (current HZB)");
+                throw std::runtime_error("failed to allocate global descriptor set");
             }
         }
     }
@@ -192,42 +166,9 @@ namespace engine {
             vkUpdateDescriptorSets(device_.device(), 1, &write, 0, nullptr);
         };
 
-        // Prev-HZB set
         writeSet(globalDescriptorSets_[frameIndex], 3, pointInfo);
         writeSet(globalDescriptorSets_[frameIndex], 4, dirInfo);
         writeSet(globalDescriptorSets_[frameIndex], 5, spotInfo);
-
-        // Current-HZB set
-        writeSet(globalDescriptorSetsCurrentHzb_[frameIndex], 3, pointInfo);
-        writeSet(globalDescriptorSetsCurrentHzb_[frameIndex], 4, dirInfo);
-        writeSet(globalDescriptorSetsCurrentHzb_[frameIndex], 5, spotInfo);
-    }
-
-    namespace {
-        void updateHzbDescriptorSet(Device& device, VkDescriptorSet dstSet, VkDescriptorImageInfo const& hzbImageInfo) {
-            if (hzbImageInfo.imageView == VK_NULL_HANDLE || hzbImageInfo.sampler == VK_NULL_HANDLE) {
-                std::cerr << "[RenderContext] WARNING: updating HZB descriptor with null imageView/sampler (imageView=" << hzbImageInfo.imageView << ", sampler=" << hzbImageInfo.sampler << ")\n";
-            }
-
-            VkWriteDescriptorSet write{};
-            write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet          = dstSet;
-            write.dstBinding      = 2;
-            write.dstArrayElement = 0;
-            write.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            write.descriptorCount = 1;
-            write.pImageInfo      = &hzbImageInfo;
-
-            vkUpdateDescriptorSets(device.device(), 1, &write, 0, nullptr);
-        }
-    }  // namespace
-
-    void RenderContext::updateHZBDescriptorPrev(int frameIndex, VkDescriptorImageInfo hzbImageInfo) {
-        updateHzbDescriptorSet(device_, globalDescriptorSets_[frameIndex], hzbImageInfo);
-    }
-
-    void RenderContext::updateHZBDescriptorCurrent(int frameIndex, VkDescriptorImageInfo hzbImageInfo) {
-        updateHzbDescriptorSet(device_, globalDescriptorSetsCurrentHzb_[frameIndex], hzbImageInfo);
     }
 
     void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold) {

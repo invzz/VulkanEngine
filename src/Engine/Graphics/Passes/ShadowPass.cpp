@@ -39,12 +39,6 @@ namespace engine {
 
         ubo.shadowLightCount = engineState_->shadowSystem->getShadowLightCount();
 
-        // HZB settings copied into UBO
-        uboCold.hzbMaxMipLevel     = engineState_->hzbSettings.maxMipLevel;
-        uboCold.hzbMinScreenPixels = engineState_->hzbSettings.minScreenPixels;
-        uboCold.hzbScreenSizeScale = engineState_->hzbSettings.screenSizeScale;
-        uboCold.hzbEnabled         = engineState_->hzbSettings.enabled;
-
         // Frustum planes
         glm::mat4 const vp   = ubo.projection * ubo.view;
         glm::mat4       vpT  = glm::transpose(vp);

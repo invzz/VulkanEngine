@@ -63,7 +63,6 @@ namespace engine {
             entt::entity*   cameraEntity   = nullptr;
             Skybox*         skybox         = nullptr;
             SkyboxSettings* skySettings    = nullptr;
-            HZBSettings*    hzbSettings    = nullptr;
             ShadowSettings* shadowSettings = nullptr;
         };
 
@@ -120,7 +119,6 @@ namespace engine {
                 .cameraEntity   = &cameraEntity,
                 .skybox         = skybox.get(),
                 .skySettings    = &skySettings,
-                .hzbSettings    = &hzbSettings,
                 .shadowSettings = &shadowSettings,
             };
         }
@@ -297,7 +295,6 @@ namespace engine {
         // Scene resources
         std::unique_ptr<Skybox> skybox;
         SkyboxSettings          skySettings;
-        HZBSettings             hzbSettings;
         ShadowSettings          shadowSettings;
 
         // View toggles

@@ -63,9 +63,8 @@ namespace engine {
         // Refresh G-buffer descriptors every frame (images may change on resize)
         refreshGbufferDescriptors(frameInfo.frameIndex);
 
-        // Use the "current-frame HZB" global descriptor set for the main scene after the HZB pass.
         auto const prevGlobalSet      = frameInfo.globalDescriptorSet;
-        frameInfo.globalDescriptorSet = engineState_->renderContext->getGlobalDescriptorSetCurrentHzb(frameInfo.frameIndex);
+        frameInfo.globalDescriptorSet = engineState_->renderContext->getGlobalDescriptorSet(frameInfo.frameIndex);
 
         // Begin G-buffer with secondary command buffer support when model recording is multithreaded.
         renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, engineState_->modelRenderSystem->isMultiThreadedRecordingEnabled());
