@@ -7,6 +7,8 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/State/StateServices.hpp"
+#include "Engine/State/StateViews.hpp"
 #include "Engine/SystemRegistry.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
@@ -43,72 +45,6 @@ namespace engine {
        public:
         ~EngineState();
 
-        struct RenderingState {
-            ModelRenderSystem*      modelRenderSystem      = nullptr;
-            ShadowSystem*           shadowSystem           = nullptr;
-            LightSystem*            lightSystem            = nullptr;
-            SkyboxRenderSystem*     skyboxRenderSystem     = nullptr;
-            GridRenderSystem*       gridRenderSystem       = nullptr;
-            DeferredLightingSystem* deferredLightingSystem = nullptr;
-            PostProcessingSystem*   postProcessingSystem   = nullptr;
-            IBLSystem*              iblSystem              = nullptr;
-            RenderContext*          renderContext          = nullptr;
-            bool*                   showSkybox             = nullptr;
-            bool*                   showGrid               = nullptr;
-            bool*                   showDebugObjects       = nullptr;
-            bool*                   showColliderWireframes = nullptr;
-            bool*                   debugMode              = nullptr;
-        };
-
-        struct SceneState {
-            Scene*          scene          = nullptr;
-            entt::entity*   selectedEntity = nullptr;
-            entt::entity*   cameraEntity   = nullptr;
-            Skybox*         skybox         = nullptr;
-            SkyboxSettings* skySettings    = nullptr;
-            ShadowSettings* shadowSettings = nullptr;
-        };
-
-        struct InputState {
-            Keyboard*              keyboard              = nullptr;
-            Mouse*                 mouse                 = nullptr;
-            InputSystem*           inputSystem           = nullptr;
-            ObjectSelectionSystem* objectSelectionSystem = nullptr;
-            CameraSystem*          cameraSystem          = nullptr;
-        };
-
-        struct ResourceState {
-            ResourceManager*     resourceManager         = nullptr;
-            RenderContext*       renderContext           = nullptr;
-            DescriptorPool*      gbufferPool             = nullptr;
-            DescriptorSetLayout* gbufferSetLayout        = nullptr;
-            DescriptorPool*      deferredIblPool         = nullptr;
-            DescriptorSetLayout* deferredIblSetLayout    = nullptr;
-            DescriptorPool*      deferredShadowPool      = nullptr;
-            DescriptorSetLayout* deferredShadowSetLayout = nullptr;
-            DescriptorPool*      postProcessPool         = nullptr;
-            DescriptorSetLayout* postProcessSetLayout    = nullptr;
-        };
-
-        struct SystemServices {
-            ObjectSelectionSystem*    objectSelection = nullptr;
-            InputSystem*              input           = nullptr;
-            CameraSystem*             camera          = nullptr;
-            ColliderDebugRenderSystem* colliderDebug  = nullptr;
-            AnimationSystem*          animation       = nullptr;
-            LODSystem*                lod             = nullptr;
-            ModelRenderSystem*        modelRender     = nullptr;
-            ShadowSystem*             shadow          = nullptr;
-            LightSystem*              light           = nullptr;
-            SkyboxRenderSystem*       skyboxRender    = nullptr;
-            GridRenderSystem*         gridRender      = nullptr;
-            DeferredLightingSystem*   deferredLighting = nullptr;
-            PostProcessingSystem*     postProcessing  = nullptr;
-            IBLSystem*                ibl             = nullptr;
-            PhysicsSystem*            physics         = nullptr;
-            JoltPhysicsSystem*        joltPhysics     = nullptr;
-        };
-
         // lifecycle
         void initialize(Device& device,
             Renderer&           renderer,
@@ -118,8 +54,8 @@ namespace engine {
             bool                multithreadedRecordingEnabled,
             uint32_t            multithreadedRecordingThreads);
 
-        [[nodiscard]] RenderingState renderingState() {
-            return RenderingState{
+        [[nodiscard]] RenderingStateView renderingState() {
+            return RenderingStateView{
                 .modelRenderSystem      = modelRenderSystem.get(),
                 .shadowSystem           = shadowSystem.get(),
                 .lightSystem            = lightSystem.get(),
@@ -137,8 +73,8 @@ namespace engine {
             };
         }
 
-        [[nodiscard]] SceneState sceneState() {
-            return SceneState{
+        [[nodiscard]] SceneRuntimeStateView sceneState() {
+            return SceneRuntimeStateView{
                 .scene          = &scene,
                 .selectedEntity = &selectedEntity,
                 .cameraEntity   = &cameraEntity,
@@ -148,8 +84,8 @@ namespace engine {
             };
         }
 
-        [[nodiscard]] InputState inputState() {
-            return InputState{
+        [[nodiscard]] InputStateView inputState() {
+            return InputStateView{
                 .keyboard              = keyboard.get(),
                 .mouse                 = mouse.get(),
                 .inputSystem           = inputSystem.get(),
@@ -158,8 +94,8 @@ namespace engine {
             };
         }
 
-        [[nodiscard]] ResourceState resourceState() {
-            return ResourceState{
+        [[nodiscard]] ResourceStateView resourceState() {
+            return ResourceStateView{
                 .resourceManager         = resourceManager,
                 .renderContext           = renderContext,
                 .gbufferPool             = gbufferPool.get(),
@@ -173,8 +109,8 @@ namespace engine {
             };
         }
 
-        [[nodiscard]] SystemServices systemServices() {
-            return SystemServices{
+        [[nodiscard]] SystemServicesView systemServices() {
+            return SystemServicesView{
                 .objectSelection = objectSelectionSystem.get(),
                 .input = inputSystem.get(),
                 .camera = cameraSystem.get(),
@@ -192,6 +128,22 @@ namespace engine {
                 .physics = physicsSystem.get(),
                 .joltPhysics = joltPhysicsSystem.get(),
             };
+        }
+
+        [[nodiscard]] RenderingStateService renderingService() {
+            return RenderingStateService{*this};
+        }
+
+        [[nodiscard]] SceneRuntimeService sceneRuntimeService() {
+            return SceneRuntimeService{*this};
+        }
+
+        [[nodiscard]] InputStateService inputService() {
+            return InputStateService{*this};
+        }
+
+        [[nodiscard]] ResourceStateService resourceService() {
+            return ResourceStateService{*this};
         }
 
         [[nodiscard]] const std::vector<std::string>& initializedSystemOrder() const {

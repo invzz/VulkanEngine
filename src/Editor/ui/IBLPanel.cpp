@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <string>
 
 #include "Engine/EngineState.hpp"
@@ -13,7 +14,12 @@
 namespace engine {
 
 IBLPanel::IBLPanel(EngineState* engineState) : engineState_(engineState) {
-  if ((engineState_ != nullptr) && engineState_->getIBLSystem() != nullptr) settings_ = engineState_->getIBLSystem()->getSettings();
+  if (engineState_ != nullptr) {
+    auto rendering = engineState_->renderingService().view();
+    if (rendering.iblSystem != nullptr) {
+      settings_ = rendering.iblSystem->getSettings();
+    }
+  }
 }
 
 void IBLPanel::render(FrameInfo& /*frameInfo*/) {
@@ -51,10 +57,11 @@ void IBLPanel::render(FrameInfo& /*frameInfo*/) {
   if (ImGui::SliderInt("Prefilter Mip Levels", &settings_.prefilterMipLevels, 1, 10)) changed = true;
 
   // Sample Count
-  int sampleCount = static_cast<int>(settings_.prefilterSampleCount);
+  int sampleCount = static_cast<int>(
+      std::min<uint32_t>(settings_.prefilterSampleCount, static_cast<uint32_t>(std::numeric_limits<int>::max())));
   if (ImGui::InputInt("Prefilter Samples", &sampleCount)) {
-    sampleCount = std::max(sampleCount, 1);
-    settings_.prefilterSampleCount = static_cast<uint32_t>(sampleCount);
+    sampleCount = std::clamp(sampleCount, 1, std::numeric_limits<int>::max());
+    settings_.prefilterSampleCount = sampleCount;
     changed = true;
   }
 
@@ -62,12 +69,21 @@ void IBLPanel::render(FrameInfo& /*frameInfo*/) {
   if (ImGui::InputFloat("Irradiance Delta", &settings_.irradianceSampleDelta, 0.001f, 0.01f, "%.4f")) changed = true;
 
   if (ImGui::Button("Regenerate IBL")) {
-    if ((engineState_ != nullptr) && (engineState_->getSkybox() != nullptr) && (engineState_->getIBLSystem() != nullptr)) {
-      engineState_->getIBLSystem()->requestRegeneration(settings_, *engineState_->getSkybox());
+    if (engineState_ != nullptr) {
+      auto rendering = engineState_->renderingService().view();
+      auto sceneState = engineState_->sceneRuntimeService().view();
+      if ((sceneState.skybox != nullptr) && (rendering.iblSystem != nullptr)) {
+        rendering.iblSystem->requestRegeneration(settings_, *sceneState.skybox);
+      }
     }
   }
 
-  if (engineState_ == nullptr || engineState_->getSkybox() == nullptr) {
+  bool hasSkybox = false;
+  if (engineState_ != nullptr) {
+    hasSkybox = (engineState_->sceneRuntimeService().view().skybox != nullptr);
+  }
+
+  if (!hasSkybox) {
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Load/enable a skybox to generate IBL");
     ImGui::TextDisabled("No skybox loaded; IBL regeneration disabled");
   }

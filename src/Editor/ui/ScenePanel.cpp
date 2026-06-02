@@ -75,20 +75,33 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             return;
         }
 
+        if (engineState_ == nullptr) {
+            return;
+        }
+
+        auto sceneState = engineState_->sceneRuntimeService().view();
+        if (sceneState.scene == nullptr) {
+            return;
+        }
+
+        Scene& scene = *sceneState.scene;
+        auto& registry = scene.getRegistry();
+        auto resources = engineState_->resourceService().view();
+
         if (ImGui::Begin("Scene Objects", &visible_)) {
-            if ((engineState_ != nullptr) && (engineState_->getResourceManager() != nullptr)) {
-                engineState_->getResourceManager()->updateAsyncCallbacks();
+            if (resources.resourceManager != nullptr) {
+                resources.resourceManager->updateAsyncCallbacks();
             }
 
             auto enqueueModelLoad = [&](const std::string& fullPath,
                                         const std::string& name,
                                         const engine::ModelInsertionOptions& opts,
                                         StaticColliderImportMode colliderMode) {
-                if ((engineState_ == nullptr) || (engineState_->getResourceManager() == nullptr)) {
+                if ((engineState_ == nullptr) || (resources.resourceManager == nullptr)) {
                     return;
                 }
 
-                AsyncLoadId const id = engineState_->getResourceManager()->enqueueModelLoad(
+                AsyncLoadId const id = resources.resourceManager->enqueueModelLoad(
                     fullPath,
                     opts.enableTextures,
                     opts.loadMaterials,
@@ -100,29 +113,38 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                             return;
                         }
 
-                        auto entity = engineState_->getScene().createEntity();
-                        engineState_->getScene().getRegistry().emplace<TransformComponent>(entity);
-                        engineState_->getScene().getRegistry().emplace<ModelComponent>(entity, modelPtr);
-                        engineState_->getScene().getRegistry().emplace<NameComponent>(entity, name);
+                        auto sceneState = engineState_->sceneRuntimeService().view();
+                        if (sceneState.scene == nullptr) {
+                            std::cerr << "[Model] Scene runtime state unavailable for async insertion: " << fullPath << "\n";
+                            return;
+                        }
+
+                        Scene& scene = *sceneState.scene;
+                        auto& registry = scene.getRegistry();
+
+                        auto entity = scene.createEntity();
+                        registry.emplace<TransformComponent>(entity);
+                        registry.emplace<ModelComponent>(entity, modelPtr);
+                        registry.emplace<NameComponent>(entity, name);
 
                         if (shouldCreateStaticCollider(fullPath, name, colliderMode)) {
-                            auto& rigidBody = engineState_->getScene().getRegistry().emplace<RigidBodyComponent>(entity);
+                            auto& rigidBody = registry.emplace<RigidBodyComponent>(entity);
                             rigidBody.isStatic = true;
                             rigidBody.mode = RigidBodyComponent::PhysicsMode::Static;
                             rigidBody.useGravity = false;
 
-                            auto& collider = engineState_->getScene().getRegistry().emplace<ColliderComponent>(entity);
+                            auto& collider = registry.emplace<ColliderComponent>(entity);
                             collider.shape = ColliderComponent::ShapeType::Mesh;
                             collider.isTrigger = false;
                         }
 
-                        auto& modelComp = engineState_->getScene().getRegistry().get<ModelComponent>(entity);
+                        auto& modelComp = registry.get<ModelComponent>(entity);
                         if (modelComp.model->hasAnimations()) {
-                            engineState_->getScene().getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
+                            registry.emplace<AnimationComponent>(entity, modelComp.model);
                         }
                         if (modelComp.model->hasMorphTargets()) {
-                            if (!engineState_->getScene().getRegistry().all_of<AnimationComponent>(entity)) {
-                                engineState_->getScene().getRegistry().emplace<AnimationComponent>(entity, modelComp.model);
+                            if (!registry.all_of<AnimationComponent>(entity)) {
+                                registry.emplace<AnimationComponent>(entity, modelComp.model);
                             }
                         }
 
@@ -145,8 +167,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
 
             if (!pendingLoads_.empty()) {
                 std::unordered_map<AsyncLoadId, AsyncLoadSnapshot> snapshotById;
-                if ((engineState_ != nullptr) && (engineState_->getResourceManager() != nullptr)) {
-                    auto snapshots = engineState_->getResourceManager()->getAsyncLoadSnapshots();
+                if ((engineState_ != nullptr) && (resources.resourceManager != nullptr)) {
+                    auto snapshots = resources.resourceManager->getAsyncLoadSnapshots();
                     for (const auto& snapshot : snapshots) {
                         snapshotById[snapshot.id] = snapshot;
                     }
@@ -182,8 +204,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
 
                     if (ImGui::SmallButton((std::string("Cancel##") + std::to_string(i)).c_str())) {
                         p.cancelled = true;
-                        if ((engineState_ != nullptr) && (engineState_->getResourceManager() != nullptr)) {
-                            engineState_->getResourceManager()->cancelModelLoad(p.id);
+                        if ((engineState_ != nullptr) && (resources.resourceManager != nullptr)) {
+                            resources.resourceManager->cancelModelLoad(p.id);
                         }
                     }
                 }
@@ -204,7 +226,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::Separator();
             }
 
-            auto view = engineState_->getScene().getRegistry().view<entt::entity>();
+            auto view = registry.view<entt::entity>();
             ImGui::Text("Total: %zu", view.size());
 
             std::vector<entt::entity> cameras;
@@ -220,23 +242,23 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             models.reserve(view.size());
 
             for (auto entity : view) {
-                if (engineState_->getScene().getRegistry().all_of<CameraComponent>(entity)) {
+                if (registry.all_of<CameraComponent>(entity)) {
                     cameras.push_back(entity);
                     continue;
                 }
-                if (engineState_->getScene().getRegistry().all_of<DirectionalLightComponent>(entity)) {
+                if (registry.all_of<DirectionalLightComponent>(entity)) {
                     dirLights.push_back(entity);
                     continue;
                 }
-                if (engineState_->getScene().getRegistry().all_of<PointLightComponent>(entity)) {
+                if (registry.all_of<PointLightComponent>(entity)) {
                     pointLights.push_back(entity);
                     continue;
                 }
-                if (engineState_->getScene().getRegistry().all_of<SpotLightComponent>(entity)) {
+                if (registry.all_of<SpotLightComponent>(entity)) {
                     spotLights.push_back(entity);
                     continue;
                 }
-                if (engineState_->getScene().getRegistry().all_of<ModelComponent>(entity)) {
+                if (registry.all_of<ModelComponent>(entity)) {
                     models.push_back(entity);
                     continue;
                 }
@@ -261,8 +283,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID(static_cast<int>(id));
 
                 std::string label = "Object " + std::to_string(id);
-                if (engineState_->getScene().getRegistry().all_of<NameComponent>(entity)) {
-                    label = engineState_->getScene().getRegistry().get<NameComponent>(entity).name + " " + std::to_string(id);
+                if (registry.all_of<NameComponent>(entity)) {
+                    label = registry.get<NameComponent>(entity).name + " " + std::to_string(id);
                 }
 
                 bool const isSelected = (frameInfo.selectedEntity == entity);
@@ -276,7 +298,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 auto actionWidthForText = [&](const char* text) { return ImGui::CalcTextSize(text).x + (style.FramePadding.x * 2.0f); };
 
                 // Reserve space for per-row actions so the label becomes a clickable row.
-                if (engineState_->getScene().getRegistry().all_of<CameraComponent>(entity)) {
+                if (registry.all_of<CameraComponent>(entity)) {
                     if (entity == frameInfo.cameraEntity) {
                         actionsWidth += ImGui::CalcTextSize("Active").x;
                     } else {
@@ -298,7 +320,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 }
                 ImGui::SameLine();
 
-                if (engineState_->getScene().getRegistry().all_of<CameraComponent>(entity)) {
+                if (registry.all_of<CameraComponent>(entity)) {
                     if (entity == frameInfo.cameraEntity) {
                         ImGui::TextDisabled("Active");
                     } else {
@@ -333,10 +355,10 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 bool const        open  = ImGui::TreeNodeEx("##cameras", rootFlags, "%s", header.c_str());
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
                 if (ImGui::SmallButton("+##add_camera")) {
-                    auto entity = engineState_->getScene().createEntity();
-                    engineState_->getScene().getRegistry().emplace<TransformComponent>(entity);
-                    engineState_->getScene().getRegistry().emplace<CameraComponent>(entity);
-                    engineState_->getScene().getRegistry().emplace<NameComponent>(entity, "Camera");
+                    auto entity = scene.createEntity();
+                    registry.emplace<TransformComponent>(entity);
+                    registry.emplace<CameraComponent>(entity);
+                    registry.emplace<NameComponent>(entity, "Camera");
                 }
                 ImGui::PopID();
                 if (open) {
@@ -365,10 +387,10 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                     }
                     if (ImGui::Selectable("Add Directional")) {
                         if (canAddDirectional) {
-                            auto entity = engineState_->getScene().createEntity();
-                            engineState_->getScene().getRegistry().emplace<TransformComponent>(entity);
-                            engineState_->getScene().getRegistry().emplace<DirectionalLightComponent>(entity);
-                            engineState_->getScene().getRegistry().emplace<NameComponent>(entity, "Directional Light");
+                            auto entity = scene.createEntity();
+                            registry.emplace<TransformComponent>(entity);
+                            registry.emplace<DirectionalLightComponent>(entity);
+                            registry.emplace<NameComponent>(entity, "Directional Light");
                         }
                         ImGui::CloseCurrentPopup();
                     }
@@ -379,17 +401,17 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                         ImGui::EndDisabled();
                     }
                     if (ImGui::Selectable("Add Point")) {
-                        auto entity = engineState_->getScene().createEntity();
-                        engineState_->getScene().getRegistry().emplace<TransformComponent>(entity);
-                        engineState_->getScene().getRegistry().emplace<PointLightComponent>(entity);
-                        engineState_->getScene().getRegistry().emplace<NameComponent>(entity, "Point Light");
+                        auto entity = scene.createEntity();
+                        registry.emplace<TransformComponent>(entity);
+                        registry.emplace<PointLightComponent>(entity);
+                        registry.emplace<NameComponent>(entity, "Point Light");
                         ImGui::CloseCurrentPopup();
                     }
                     if (ImGui::Selectable("Add Spot")) {
-                        auto entity = engineState_->getScene().createEntity();
-                        engineState_->getScene().getRegistry().emplace<TransformComponent>(entity);
-                        engineState_->getScene().getRegistry().emplace<SpotLightComponent>(entity);
-                        engineState_->getScene().getRegistry().emplace<NameComponent>(entity, "Spot Light");
+                        auto entity = scene.createEntity();
+                        registry.emplace<TransformComponent>(entity);
+                        registry.emplace<SpotLightComponent>(entity);
+                        registry.emplace<NameComponent>(entity, "Spot Light");
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::EndPopup();
@@ -523,14 +545,27 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             return;
         }
 
+        if (engineState_ == nullptr) {
+            toDelete_.clear();
+            return;
+        }
+
+        auto sceneState = engineState_->sceneRuntimeService().view();
+        if (sceneState.scene == nullptr) {
+            toDelete_.clear();
+            return;
+        }
+
         vkDeviceWaitIdle(device_.device());
+
+        Scene& scene = *sceneState.scene;
 
         for (auto entity : toDelete_) {
             if (entity == selectedEntity) {
                 selectedEntity   = entt::null;
                 selectedObjectId = 0;
             }
-            engineState_->getScene().destroyEntity(entity);
+            scene.destroyEntity(entity);
         }
         toDelete_.clear();
     }

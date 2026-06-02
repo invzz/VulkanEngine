@@ -70,6 +70,51 @@ std::vector<std::string> findIncludeViolations(
     return violations;
 }
 
+std::vector<std::string> findTokenViolations(
+    const fs::path& root,
+    const fs::path& relativeDir,
+    const std::vector<std::string>& forbiddenTokens) {
+    std::vector<std::string> violations;
+    const fs::path scanRoot = root / relativeDir;
+
+    if (!fs::exists(scanRoot)) {
+        violations.push_back("Missing expected directory: " + scanRoot.string());
+        return violations;
+    }
+
+    for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+
+        const fs::path& path = entry.path();
+        const auto ext = path.extension().string();
+        if (ext != ".hpp" && ext != ".h" && ext != ".cpp" && ext != ".cc" && ext != ".cxx") {
+            continue;
+        }
+
+        std::ifstream in(path);
+        if (!in.is_open()) {
+            violations.push_back("Could not open file: " + path.string());
+            continue;
+        }
+
+        std::string line;
+        size_t lineNo = 0;
+        while (std::getline(in, line)) {
+            ++lineNo;
+            for (const auto& token : forbiddenTokens) {
+                if (line.find(token) != std::string::npos) {
+                    violations.push_back(path.lexically_relative(root).string() + ":" + std::to_string(lineNo) + " -> " + line);
+                    break;
+                }
+            }
+        }
+    }
+
+    return violations;
+}
+
 std::string joinViolations(const std::vector<std::string>& violations) {
     std::string out;
     for (const auto& violation : violations) {
@@ -90,6 +135,14 @@ std::vector<std::string> filterUnknownViolations(
         }
     }
     return unknown;
+}
+
+std::string readWholeFile(const fs::path& path) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        return {};
+    }
+    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
 }
 
 }  // namespace
@@ -243,4 +296,100 @@ TEST(ArchitectureDependencyRules, RuntimeSystemsMustNotDependOnApplicationLayer)
         {"Engine/Application/"});
     EXPECT_TRUE(sourceViolations.empty())
         << "Runtime system sources must not depend on Application layer:" << joinViolations(sourceViolations);
+}
+
+TEST(ArchitectureDependencyRules, DeliveryAppMustNotPerformPostLoadCameraReconciliation) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string appSource = readWholeFile(repoRoot / "src/Editor/app.cpp");
+    ASSERT_FALSE(appSource.empty()) << "Failed to read src/Editor/app.cpp";
+
+    EXPECT_EQ(appSource.find("if (pendingUpdateCameraAfterSceneLoad)"), std::string::npos)
+        << "Delivery should not own post-load camera reconciliation branching";
+    EXPECT_EQ(appSource.find("registry.view<engine::CameraComponent>()"), std::string::npos)
+        << "Delivery should not scan CameraComponent views for post-load reconciliation";
+    EXPECT_NE(appSource.find("reconcileSceneLoadUseCase->execute(runtimeState)"), std::string::npos)
+        << "Delivery should delegate post-load camera reconciliation through Application use case";
+}
+
+TEST(ArchitectureDependencyRules, DeliveryAppMustNotPerformEnvironmentLightingOrDescriptorOrchestration) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string appSource = readWholeFile(repoRoot / "src/Editor/app.cpp");
+    ASSERT_FALSE(appSource.empty()) << "Failed to read src/Editor/app.cpp";
+
+    EXPECT_EQ(appSource.find("Skybox::loadFromFolder"), std::string::npos)
+        << "Delivery should not load skybox resources directly in update flow";
+    EXPECT_EQ(appSource.find("DescriptorWriter("), std::string::npos)
+        << "Delivery should not rewrite deferred IBL descriptor sets directly in update flow";
+    EXPECT_EQ(appSource.find("deferredIblDescriptorSetsRef()"), std::string::npos)
+        << "Delivery should not manipulate deferred IBL descriptor set state directly";
+    EXPECT_NE(appSource.find("syncEnvironmentLightingUseCase->execute(showSkyboxEnabled)"), std::string::npos)
+        << "Delivery should delegate environment lighting sync through Application use case";
+}
+
+TEST(ArchitectureDependencyRules, GroupedStateAccessorsShouldBeReplacedByNarrowStateServices) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const auto violations = findTokenViolations(
+        repoRoot,
+        fs::path{"src"},
+        {
+            "->renderingState(",
+            "->sceneState(",
+            "->inputState(",
+            "->resourceState(",
+            "->systemServices(",
+        });
+
+    const std::set<std::string> allowedFiles = {
+        "src/Engine/State/StateServices.cpp",
+    };
+
+    const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
+    EXPECT_TRUE(unknownViolations.empty())
+        << "Found direct grouped-state accessor usages outside allowed migration shims:" << joinViolations(unknownViolations);
+}
+
+TEST(ArchitectureDependencyRules, MigratedPanelsShouldUseStateServicesForRuntimeQueries) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string settingsPanel = readWholeFile(repoRoot / "src/Editor/ui/SettingsPanel.cpp");
+    const std::string iblPanel = readWholeFile(repoRoot / "src/Editor/ui/IBLPanel.cpp");
+
+    ASSERT_FALSE(settingsPanel.empty()) << "Failed to read src/Editor/ui/SettingsPanel.cpp";
+    ASSERT_FALSE(iblPanel.empty()) << "Failed to read src/Editor/ui/IBLPanel.cpp";
+
+    EXPECT_EQ(settingsPanel.find("getModelRenderSystem("), std::string::npos)
+        << "SettingsPanel should use renderingService().view().modelRenderSystem instead of getModelRenderSystem()";
+    EXPECT_EQ(settingsPanel.find("cameraEntityValue("), std::string::npos)
+        << "SettingsPanel should use sceneRuntimeService().view().cameraEntity instead of cameraEntityValue()";
+    EXPECT_EQ(settingsPanel.find("getScene("), std::string::npos)
+        << "SettingsPanel should use sceneRuntimeService().view().scene instead of getScene()";
+    EXPECT_EQ(settingsPanel.find("getResourceManager("), std::string::npos)
+        << "SettingsPanel should use resourceService().view().resourceManager instead of getResourceManager()";
+
+    EXPECT_EQ(iblPanel.find("getIBLSystem("), std::string::npos)
+        << "IBLPanel should use renderingService().view().iblSystem instead of getIBLSystem()";
+    EXPECT_EQ(iblPanel.find("getSkybox("), std::string::npos)
+        << "IBLPanel should use sceneRuntimeService().view().skybox instead of getSkybox()";
+}
+
+TEST(ArchitectureDependencyRules, ScenePanelShouldUseSceneRuntimeServiceForSceneAccess) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string scenePanel = readWholeFile(repoRoot / "src/Editor/ui/ScenePanel.cpp");
+    ASSERT_FALSE(scenePanel.empty()) << "Failed to read src/Editor/ui/ScenePanel.cpp";
+
+    EXPECT_EQ(scenePanel.find("getScene("), std::string::npos)
+        << "ScenePanel should query scene through sceneRuntimeService().view().scene instead of getScene()";
+    EXPECT_EQ(scenePanel.find("getResourceManager("), std::string::npos)
+        << "ScenePanel should use resourceService().view().resourceManager instead of getResourceManager()";
+    EXPECT_NE(scenePanel.find("sceneRuntimeService().view()"), std::string::npos)
+        << "ScenePanel should use sceneRuntimeService().view() for runtime scene access";
 }

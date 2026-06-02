@@ -88,18 +88,34 @@ TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
         << "App should construct ScenePersistenceAdapter as Infrastructure implementation of persistence port";
     EXPECT_NE(appSource.find("std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem())"), std::string::npos)
         << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port";
+    EXPECT_NE(appSource.find("std::make_unique<EnvironmentLightingAdapter>(device, engineState)"), std::string::npos)
+        << "App should construct EnvironmentLightingAdapter as Infrastructure implementation of environment lighting port";
     EXPECT_NE(appSource.find("std::make_unique<LoadSceneUseCase>(engineState.getScene(), *scenePersistencePort, physicsRuntimePort.get())"), std::string::npos)
         << "App should construct LoadSceneUseCase in Application layer";
+    EXPECT_NE(appSource.find("std::make_unique<SceneSelectionMaintenanceAdapter>(*uiManager)"), std::string::npos)
+        << "App should construct SceneSelectionMaintenanceAdapter as Delivery implementation of selection maintenance port";
+    EXPECT_NE(appSource.find("std::make_unique<ReconcileSceneLoadUseCase>(engineState.getScene())"), std::string::npos)
+        << "App should construct ReconcileSceneLoadUseCase in Application layer";
+    EXPECT_NE(appSource.find("std::make_unique<ProcessSceneSelectionMaintenanceUseCase>(*sceneSelectionMaintenancePort)"), std::string::npos)
+        << "App should construct ProcessSceneSelectionMaintenanceUseCase in Application layer";
     EXPECT_NE(appSource.find("std::make_unique<SaveSceneUseCase>(*scenePersistencePort)"), std::string::npos)
         << "App should construct SaveSceneUseCase in Application layer";
+    EXPECT_NE(appSource.find("std::make_unique<SyncEnvironmentLightingUseCase>(*environmentLightingPort)"), std::string::npos)
+        << "App should construct SyncEnvironmentLightingUseCase in Application layer";
     EXPECT_NE(appSource.find("SceneRuntimeState App::sceneRuntimeState()"), std::string::npos)
         << "App should expose a shared SceneRuntimeState builder for application use cases";
     EXPECT_NE(appSource.find("auto loadRefs = sceneRuntimeState();"), std::string::npos)
         << "App should build runtime state through SceneRuntimeState helper";
     EXPECT_NE(appSource.find("loadSceneUseCase->execute(\"scene.json\", loadRefs)"), std::string::npos)
         << "App should execute scene loading through LoadSceneUseCase";
+    EXPECT_NE(appSource.find("reconcileSceneLoadUseCase->execute(runtimeState)"), std::string::npos)
+        << "App should execute post-load reconciliation through Application use case";
+    EXPECT_NE(appSource.find("processSceneSelectionMaintenanceUseCase->execute(runtimeState)"), std::string::npos)
+        << "App should execute selection maintenance through Application use case";
     EXPECT_NE(appSource.find("saveSceneUseCase->execute(\"scene.json\")"), std::string::npos)
         << "App should execute scene saving through SaveSceneUseCase";
+    EXPECT_NE(appSource.find("syncEnvironmentLightingUseCase->execute(showSkyboxEnabled)"), std::string::npos)
+        << "App should execute environment-lighting sync through Application use case";
 }
 
 TEST(EngineLifecycleContracts, EngineStateNoLongerOwnsEditorUiObjects) {
@@ -120,12 +136,23 @@ TEST(EngineLifecycleContracts, EngineStateProvidesGroupedSystemServicesAccessor)
     ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
 
     const std::string header = readWholeFile(root / "include/Engine/EngineState.hpp");
+    const std::string stateViewsHeader = readWholeFile(root / "include/Engine/State/StateViews.hpp");
     ASSERT_FALSE(header.empty()) << "Failed to read include/Engine/EngineState.hpp";
+    ASSERT_FALSE(stateViewsHeader.empty()) << "Failed to read include/Engine/State/StateViews.hpp";
 
-    EXPECT_NE(header.find("struct SystemServices"), std::string::npos)
-        << "EngineState should expose grouped system service view";
-    EXPECT_NE(header.find("SystemServices systemServices()"), std::string::npos)
+    EXPECT_NE(stateViewsHeader.find("struct SystemServicesView"), std::string::npos)
+        << "Engine state view module should expose grouped system service view";
+    EXPECT_NE(header.find("SystemServicesView systemServices()"), std::string::npos)
         << "EngineState should provide systemServices() accessor";
+
+    EXPECT_NE(header.find("RenderingStateService renderingService()"), std::string::npos)
+        << "EngineState should provide renderingService() accessor for narrower rendering state service";
+    EXPECT_NE(header.find("SceneRuntimeService sceneRuntimeService()"), std::string::npos)
+        << "EngineState should provide sceneRuntimeService() accessor for narrower scene runtime service";
+    EXPECT_NE(header.find("InputStateService inputService()"), std::string::npos)
+        << "EngineState should provide inputService() accessor for narrower input state service";
+    EXPECT_NE(header.find("ResourceStateService resourceService()"), std::string::npos)
+        << "EngineState should provide resourceService() accessor for narrower resource state service";
 }
 
 TEST(EngineLifecycleContracts, HotPathsUseEngineStateSystemAccessorsNotDirectMembers) {

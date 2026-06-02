@@ -12,14 +12,12 @@
 #include <vector>
 
 #include "Engine/Core/Window.hpp"
-#include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
@@ -32,8 +30,6 @@
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 #include "Engine/Graphics/GpuProfiler.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
-#include "Engine/Systems/IBLSystem.hpp"
-#include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 
 // Render Passes
@@ -46,6 +42,7 @@
 
 // Demo specific
 #include "Editor/RenderContext.hpp"
+#include "Editor/Infrastructure/EnvironmentLightingAdapter.hpp"
 #include "Editor/Infrastructure/PhysicsRuntimeAdapter.hpp"
 #include "Editor/Infrastructure/ScenePersistenceAdapter.hpp"
 
@@ -56,6 +53,25 @@
 #include "Editor/ui/UIManager.hpp"
 
 namespace engine {
+
+namespace {
+
+class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenancePort {
+ public:
+    explicit SceneSelectionMaintenanceAdapter(UIManager& uiManager)
+        : uiManager_(uiManager) {}
+
+    void processSelectionMaintenance(SceneRuntimeState& runtimeState) override {
+        if (auto* scenePanel = uiManager_.getPanel<ScenePanel>()) {
+            scenePanel->processDelayedDeletions(runtimeState.selectedEntity, runtimeState.selectedObjectId);
+        }
+    }
+
+ private:
+    UIManager& uiManager_;
+};
+
+}  // namespace
 
     App::App(bool fullscreen)
         : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device), sceneSerializer(engineState.getScene(), resourceManager) {
@@ -110,11 +126,17 @@ namespace engine {
 
         scenePersistencePort = std::make_unique<ScenePersistenceAdapter>(sceneSerializer);
         physicsRuntimePort   = std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem());
+        environmentLightingPort = std::make_unique<EnvironmentLightingAdapter>(device, engineState);
         loadSceneUseCase     = std::make_unique<LoadSceneUseCase>(engineState.getScene(), *scenePersistencePort, physicsRuntimePort.get());
+        reconcileSceneLoadUseCase = std::make_unique<ReconcileSceneLoadUseCase>(engineState.getScene());
         saveSceneUseCase     = std::make_unique<SaveSceneUseCase>(*scenePersistencePort);
+        syncEnvironmentLightingUseCase = std::make_unique<SyncEnvironmentLightingUseCase>(*environmentLightingPort);
 
         // 4. Setup UI
         setupUI();
+
+        sceneSelectionMaintenancePort = std::make_unique<SceneSelectionMaintenanceAdapter>(*uiManager);
+        processSceneSelectionMaintenanceUseCase = std::make_unique<ProcessSceneSelectionMaintenanceUseCase>(*sceneSelectionMaintenancePort);
 
         // If a scene file exists in the working directory, load it at startup
         if (std::filesystem::exists("scene.json")) {
@@ -144,7 +166,7 @@ namespace engine {
 
     void App::setupScene() {
         camera                   = std::make_unique<Camera>();
-        auto sceneState          = engineState.sceneState();
+        auto sceneState          = engineState.sceneRuntimeService().view();
         *sceneState.cameraEntity = sceneState.scene->createEntity();
         sceneState.scene->getRegistry().emplace<TransformComponent>(*sceneState.cameraEntity);
         sceneState.scene->getRegistry().emplace<NameComponent>(*sceneState.cameraEntity, "Camera");
@@ -245,75 +267,34 @@ namespace engine {
     }
 
     void App::update(float /*frameTime*/) {
-        auto resources = engineState.resourceState();
+        auto resources = engineState.resourceService().view();
         if (resources.resourceManager != nullptr) {
             resources.resourceManager->updateAsyncCallbacks();
         }
 
-        if (pendingUpdateCameraAfterSceneLoad) {
-            pendingUpdateCameraAfterSceneLoad = false;
+        auto runtimeState = sceneRuntimeState();
 
-            // After a scene load, assign to engineState.cameraEntity the CameraComponent of the first found camera entity in the loaded scene.
-            auto sceneState          = engineState.sceneState();
-            *sceneState.cameraEntity = entt::null;
-            auto const& registry     = sceneState.scene->getRegistry();
-            auto        view         = registry.view<engine::CameraComponent>();
-            for (auto entity : view) {
-                *sceneState.cameraEntity = entity;
-                break;
-            }
+        if (reconcileSceneLoadUseCase != nullptr) {
+            reconcileSceneLoadUseCase->execute(runtimeState);
         }
 
-        if (uiManager != nullptr) {
-            if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {
-                scenePanel->processDelayedDeletions(engineState.selectedEntityRef(), selectedObjectId);
-            }
+        if (processSceneSelectionMaintenanceUseCase != nullptr) {
+            processSceneSelectionMaintenanceUseCase->execute(runtimeState);
         }
 
-        // On-demand environment: only load skybox + generate IBL when the user enables skybox display.
-        auto rendering  = engineState.renderingState();
-        auto sceneState = engineState.sceneState();
-
-        if ((rendering.showSkybox != nullptr) && *rendering.showSkybox && (sceneState.skybox == nullptr)) {
-            std::cout << "[App] Loading skybox..." << '\n';
-            engineState.skyboxRef() = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
-
-            // Preferred path: load prebaked IBL (offline-generated) instead of regenerating at runtime.
-            if (!rendering.iblSystem->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama")) {
-                std::cout << "[App] No prebaked IBL found for Yokohama (assets/textures/ibl/Yokohama). Using fallback until you regenerate/bake." << '\n';
-            }
-        }
-
-        // If the user turns off the skybox, also drop IBL back to fallback.
-        if ((rendering.showSkybox != nullptr) && !*rendering.showSkybox && (sceneState.skybox != nullptr)) {
-            std::cout << "[App] Skybox disabled. Resetting IBL to fallback." << '\n';
-            engineState.skyboxRef().reset();
-            rendering.iblSystem->resetToFallback();
-        }
-
-        rendering.iblSystem->update();
-
-        // If IBL images/samplers changed (fallback -> generated, or regeneration), refresh descriptor sets.
-        uint64_t const newGen = rendering.iblSystem->getGenerationCounter();
-        if (newGen != iblGenerationCounter) {
-            auto irradianceInfo = rendering.iblSystem->getIrradianceDescriptorInfo();
-            auto prefilterInfo  = rendering.iblSystem->getPrefilteredDescriptorInfo();
-            auto brdfInfo       = rendering.iblSystem->getBRDFLUTDescriptorInfo();
-
-            auto& deferredIblSets = engineState.deferredIblDescriptorSetsRef();
-            for (auto& deferredIblDescriptorSet : deferredIblSets) {
-                DescriptorWriter(engineState.deferredIblSetLayoutRef(), engineState.deferredIblPoolRef()).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).overwrite(deferredIblDescriptorSet);
-            }
-
-            iblGenerationCounter = newGen;
+        if (syncEnvironmentLightingUseCase != nullptr) {
+            auto rendering = engineState.renderingService().view();
+            bool const showSkyboxEnabled = (rendering.showSkybox != nullptr) && *rendering.showSkybox;
+            syncEnvironmentLightingUseCase->execute(showSkyboxEnabled);
         }
     }
 
     SceneRuntimeState App::sceneRuntimeState() {
+        auto sceneRuntime = engineState.sceneRuntimeService().view();
         return SceneRuntimeState{
             .physicsSimulationRunning = engineState.physicsSimulationRunningRef(),
-            .selectedEntity = engineState.selectedEntityRef(),
-            .cameraEntity = engineState.cameraEntityRef(),
+            .selectedEntity = *sceneRuntime.selectedEntity,
+            .cameraEntity = *sceneRuntime.cameraEntity,
             .selectedObjectId = selectedObjectId,
             .pendingUpdateCameraAfterSceneLoad = pendingUpdateCameraAfterSceneLoad,
             .solidGroundEnabled = engineState.solidGroundEnabledRef(),
@@ -328,18 +309,20 @@ namespace engine {
             }
 
             int const frameIndex = renderer.getFrameIndex();
+            auto renderingState = engineState.renderingService().view();
+            auto sceneRuntime = engineState.sceneRuntimeService().view();
 
             FrameInfo frameInfo{
                 .frameIndex          = frameIndex,
                 .frameTime           = frameTime,
                 .commandBuffer       = commandBuffer,
                 .camera              = *camera,
-                .globalDescriptorSet = engineState.getRenderContext().getGlobalDescriptorSet(frameIndex),
+                .globalDescriptorSet = renderingState.renderContext->getGlobalDescriptorSet(frameIndex),
                 .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-                .scene               = &engineState.getScene(),
+                .scene               = sceneRuntime.scene,
                 .selectedObjectId    = selectedObjectId,
-                .selectedEntity      = engineState.selectedEntityValue(),
-                .cameraEntity        = engineState.cameraEntityValue(),
+                .selectedEntity      = *sceneRuntime.selectedEntity,
+                .cameraEntity        = *sceneRuntime.cameraEntity,
                 .morphManager        = engineState.getAnimationSystem()->getMorphManager(),
                 .extent              = renderer.getSwapChainExtent(),
                 .debugMode           = debugMode,
@@ -348,8 +331,8 @@ namespace engine {
             renderPipeline->execute(frameInfo);
 
             selectedObjectId           = frameInfo.selectedObjectId;
-            engineState.selectedEntityRef() = frameInfo.selectedEntity;
-            engineState.cameraEntityRef()   = frameInfo.cameraEntity;
+            *sceneRuntime.selectedEntity = frameInfo.selectedEntity;
+            *sceneRuntime.cameraEntity   = frameInfo.cameraEntity;
 
             renderer.endFrame();
         }

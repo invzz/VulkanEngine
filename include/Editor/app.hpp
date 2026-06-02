@@ -9,9 +9,14 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Application/Ports/IPhysicsRuntimePort.hpp"
 #include "Engine/Application/Ports/IScenePersistencePort.hpp"
+#include "Engine/Application/Ports/ISceneSelectionMaintenancePort.hpp"
+#include "Engine/Application/Ports/IEnvironmentLightingPort.hpp"
 #include "Engine/Application/SceneRuntimeState.hpp"
 #include "Engine/Application/UseCases/LoadSceneUseCase.hpp"
+#include "Engine/Application/UseCases/ProcessSceneSelectionMaintenanceUseCase.hpp"
+#include "Engine/Application/UseCases/ReconcileSceneLoadUseCase.hpp"
 #include "Engine/Application/UseCases/SaveSceneUseCase.hpp"
+#include "Engine/Application/UseCases/SyncEnvironmentLightingUseCase.hpp"
 #include "Engine/EngineState.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
@@ -108,8 +113,13 @@ class App {
   // Clean architecture wiring (Delivery -> Application via Ports).
   std::unique_ptr<IScenePersistencePort> scenePersistencePort;
   std::unique_ptr<IPhysicsRuntimePort> physicsRuntimePort;
+  std::unique_ptr<ISceneSelectionMaintenancePort> sceneSelectionMaintenancePort;
+  std::unique_ptr<IEnvironmentLightingPort> environmentLightingPort;
   std::unique_ptr<LoadSceneUseCase> loadSceneUseCase;
+  std::unique_ptr<ProcessSceneSelectionMaintenanceUseCase> processSceneSelectionMaintenanceUseCase;
+  std::unique_ptr<ReconcileSceneLoadUseCase> reconcileSceneLoadUseCase;
   std::unique_ptr<SaveSceneUseCase> saveSceneUseCase;
+  std::unique_ptr<SyncEnvironmentLightingUseCase> syncEnvironmentLightingUseCase;
 
   // Input & Camera
   std::unique_ptr<Camera> camera;
@@ -118,8 +128,6 @@ class App {
   // Uses thread-local command pools and secondary command buffers for G-buffer recording.
   bool multithreadedRecordingEnabled = true;
   uint32_t multithreadedRecordingThreads = 0;
-
-  uint64_t iblGenerationCounter = 0;
 
   // Render Graph
   std::unique_ptr<RenderPipeline> renderPipeline;

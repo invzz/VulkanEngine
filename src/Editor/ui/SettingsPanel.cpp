@@ -21,8 +21,17 @@ namespace engine {
     SettingsPanel::SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled, uint32_t& multithreadedRecordingThreads, int& debugMode)
         : engineState_(engineState), multithreadedRecordingEnabled_(multithreadedRecordingEnabled), multithreadedRecordingThreads_(multithreadedRecordingThreads) {
         // CameraPanel still expects entt::entity + Scene*
-        entt::entity camEntity = ((engineState_ != nullptr) ? engineState_->cameraEntityValue() : entt::null);
-        cameraPanel_           = std::make_unique<CameraPanel>(camEntity, &engineState_->getScene());
+        entt::entity camEntity = entt::null;
+        Scene* scene = nullptr;
+        if (engineState_ != nullptr) {
+            auto sceneState = engineState_->sceneRuntimeService().view();
+            if (sceneState.cameraEntity != nullptr) {
+                camEntity = *sceneState.cameraEntity;
+            }
+            scene = sceneState.scene;
+        }
+
+        cameraPanel_           = std::make_unique<CameraPanel>(camEntity, scene);
         iblPanel_              = std::make_unique<IBLPanel>(engineState_);
         postProcessPanel_      = std::make_unique<PostProcessPanel>(engineState_->postProcessPushRef());
         debugPanel_            = std::make_unique<DebugPanel>(debugMode);
@@ -33,21 +42,29 @@ namespace engine {
             return;
         }
 
+        if (engineState_ == nullptr) {
+            return;
+        }
+
+        auto rendering = engineState_->renderingService().view();
+        auto sceneState = engineState_->sceneRuntimeService().view();
+        auto resources = engineState_->resourceService().view();
+
         if (ImGui::Begin("Settings", &visible_)) {
-            ImGui::Checkbox("Show Skybox", &engineState_->showSkyboxRef());
+            ImGui::Checkbox("Show Skybox", rendering.showSkybox);
             ImGui::SameLine();
-            ImGui::Checkbox("Show Grid", &engineState_->showGridRef());
+            ImGui::Checkbox("Show Grid", rendering.showGrid);
             ImGui::SameLine();
-            if (ImGui::Button(engineState_->showDebugObjectsRef() ? "Hide Debug Objects" : "Show Debug Objects")) {
-                engineState_->showDebugObjectsRef() = !engineState_->showDebugObjectsRef();
+            if (ImGui::Button((*rendering.showDebugObjects) ? "Hide Debug Objects" : "Show Debug Objects")) {
+                *rendering.showDebugObjects = !(*rendering.showDebugObjects);
             }
-            if (engineState_->showSkyboxRef() && engineState_->getSkybox() == nullptr) {
+            if ((*rendering.showSkybox) && (sceneState.skybox == nullptr)) {
                 ImGui::TextDisabled("(Skybox will load next frame)");
             }
             ImGui::Separator();
 
             if (ImGui::CollapsingHeader("Sky")) {
-                ImGui::Checkbox("Debug Cubemap Faces", &engineState_->skySettingsRef().debugCubemapFaces);
+                ImGui::Checkbox("Debug Cubemap Faces", &sceneState.skySettings->debugCubemapFaces);
             }
             if (ImGui::CollapsingHeader("Camera")) {
                 cameraPanel_->render(frameInfo);
@@ -78,8 +95,8 @@ namespace engine {
                 ImGui::Separator();
                 ImGui::Text("Cache Metrics");
 
-                if (engineState_->getModelRenderSystem() != nullptr) {
-                    auto const     stats   = engineState_->getModelRenderSystem()->getMaterialDescriptorCacheStats();
+                if (rendering.modelRenderSystem != nullptr) {
+                    auto const     stats   = rendering.modelRenderSystem->getMaterialDescriptorCacheStats();
                     uint64_t const total   = stats.cacheHits + stats.cacheMisses;
                     double const   hitRate = (total > 0) ? (100.0 * static_cast<double>(stats.cacheHits) / static_cast<double>(total)) : 0.0;
 
@@ -88,8 +105,8 @@ namespace engine {
                     ImGui::Text("  Buffer Writes: %llu", static_cast<unsigned long long>(stats.bufferWrites));
                 }
 
-                if (engineState_->getResourceManager() != nullptr) {
-                    auto const     samplerStats = engineState_->getResourceManager()->getDevice().getSamplerCacheStats();
+                if (resources.resourceManager != nullptr) {
+                    auto const     samplerStats = resources.resourceManager->getDevice().getSamplerCacheStats();
                     uint64_t const total        = samplerStats.cacheHits + samplerStats.cacheMisses;
                     double const   hitRate      = (total > 0) ? (100.0 * static_cast<double>(samplerStats.cacheHits) / static_cast<double>(total)) : 0.0;
 
@@ -98,31 +115,31 @@ namespace engine {
                     ImGui::Text("  Cached Samplers: %llu", static_cast<unsigned long long>(samplerStats.cachedSamplers));
                 }
 
-                if (engineState_->getModelRenderSystem() != nullptr && ImGui::Button("Reset Material Cache Stats")) {
-                    engineState_->getModelRenderSystem()->resetMaterialDescriptorCacheStats();
+                if ((rendering.modelRenderSystem != nullptr) && ImGui::Button("Reset Material Cache Stats")) {
+                    rendering.modelRenderSystem->resetMaterialDescriptorCacheStats();
                 }
             }
 
             if (ImGui::CollapsingHeader("Shader Variants (Week 10)")) {
-                if (engineState_->getModelRenderSystem() == nullptr) {
+                if (rendering.modelRenderSystem == nullptr) {
                     ImGui::TextDisabled("ModelRenderSystem is not available.");
                 } else {
-                    int                          variantPolicy = static_cast<int>(engineState_->getModelRenderSystem()->variantPolicy());
+                    int                          variantPolicy = static_cast<int>(rendering.modelRenderSystem->variantPolicy());
                     static constexpr const char* variantItems  = "Auto\0Force Standard\0Force Full\0";
                     if (ImGui::Combo("Variant Policy", &variantPolicy, variantItems)) {
                         variantPolicy = std::clamp(variantPolicy, 0, 2);
-                        engineState_->getModelRenderSystem()->setVariantPolicy(static_cast<ModelRenderSystem::VariantPolicy>(variantPolicy));
+                        rendering.modelRenderSystem->setVariantPolicy(static_cast<ModelRenderSystem::VariantPolicy>(variantPolicy));
                     }
                     ImGui::SetItemTooltip("Auto chooses per-material; forced modes pin all transparent/transmission rendering to one variant.");
 
-                    bool hotReloadEnabled = engineState_->getModelRenderSystem()->shaderHotReloadEnabled();
+                    bool hotReloadEnabled = rendering.modelRenderSystem->shaderHotReloadEnabled();
                     if (ImGui::Checkbox("Shader Hot Reload", &hotReloadEnabled)) {
-                        engineState_->getModelRenderSystem()->setShaderHotReloadEnabled(hotReloadEnabled);
+                        rendering.modelRenderSystem->setShaderHotReloadEnabled(hotReloadEnabled);
                     }
 
-                    if (engineState_->getModelRenderSystem()->standardVariantFallbackActive()) {
+                    if (rendering.modelRenderSystem->standardVariantFallbackActive()) {
                         ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "Standard variant fallback active");
-                        ImGui::TextWrapped("%s", engineState_->getModelRenderSystem()->standardVariantFallbackReason().c_str());
+                        ImGui::TextWrapped("%s", rendering.modelRenderSystem->standardVariantFallbackReason().c_str());
                     } else {
                         ImGui::TextDisabled("Standard variant is available.");
                     }
