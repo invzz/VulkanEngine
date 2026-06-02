@@ -46,6 +46,8 @@
 
 // Demo specific
 #include "Editor/RenderContext.hpp"
+#include "Editor/Infrastructure/PhysicsRuntimeAdapter.hpp"
+#include "Editor/Infrastructure/ScenePersistenceAdapter.hpp"
 
 // UI Panels
 #include "Editor/ui/InspectorPanel.hpp"
@@ -106,42 +108,21 @@ namespace engine {
             .debugMode = &debugMode,
         });
 
+        scenePersistencePort = std::make_unique<ScenePersistenceAdapter>(sceneSerializer);
+        physicsRuntimePort   = std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem());
+        loadSceneUseCase     = std::make_unique<LoadSceneUseCase>(engineState.getScene(), *scenePersistencePort, physicsRuntimePort.get());
+        saveSceneUseCase     = std::make_unique<SaveSceneUseCase>(*scenePersistencePort);
+
         // 4. Setup UI
         setupUI();
 
         // If a scene file exists in the working directory, load it at startup
         if (std::filesystem::exists("scene.json")) {
             std::cout << "[App] Found scene.json, loading at startup..." << '\n';
-            if (sceneSerializer.deserialize("scene.json")) {
+            auto loadRefs = sceneRuntimeState();
+
+            if (loadSceneUseCase->execute("scene.json", loadRefs)) {
                 std::cout << "[App] Loaded scene.json at startup" << '\n';
-
-                // Physics must always start paused; never auto-run after a scene load.
-                engineState.physicsSimulationRunningRef() = false;
-
-                // Reset transient selection state to avoid dangling entt entity references
-                engineState.selectedEntityRef() = entt::null;
-                selectedObjectId           = 0;
-                engineState.cameraEntityRef() = entt::null;
-
-                // Find the first camera entity in the loaded scene
-                auto const& registry = engineState.getScene().getRegistry();
-                auto        view     = registry.view<engine::CameraComponent>();
-                for (auto entity : view) {
-                    std::cout << "[App] Found camera entity in loaded scene" << '\n';
-                    engineState.cameraEntityRef() = entity;
-                    break;
-                }
-
-                // If there is no camera, create a default one
-                if (engineState.cameraEntityValue() == entt::null) {
-                    std::cout << "[App] Creating default camera for the scene" << '\n';
-                    engineState.cameraEntityRef() = engineState.getScene().createEntity();
-                    engineState.getScene().getRegistry().emplace<TransformComponent>(engineState.cameraEntityValue());
-                    engineState.getScene().getRegistry().emplace<NameComponent>(engineState.cameraEntityValue(), "Camera");
-                    engineState.getScene().getRegistry().emplace<CameraComponent>(engineState.cameraEntityValue());
-                }
-
-                pendingUpdateCameraAfterSceneLoad = true;
             } else {
                 std::cout << "[App] Failed to deserialize scene.json at startup" << '\n';
             }
@@ -184,51 +165,19 @@ namespace engine {
 
         uiManager->setOnSaveScene([this]() {
             std::cout << "Saving scene to scene.json..." << '\n';
-            sceneSerializer.serialize("scene.json");
+            if (!saveSceneUseCase->execute("scene.json")) {
+                std::cout << "[App] Failed to serialize scene.json\n";
+            }
         });
         uiManager->setOnLoadScene([this]() {
             std::cout << "Loading scene from scene.json..." << '\n';
-            // Purge stale Jolt bodies before loading a new scene so no invisible
-            // ghost colliders remain from the previous scene.
-            if (engineState.getJoltPhysicsSystem() != nullptr) {
-                engineState.getJoltPhysicsSystem()->clear();
-                engineState.getJoltPhysicsSystem()->setGroundEnabled(engineState.solidGroundEnabledRef());
-            }
-            if (sceneSerializer.deserialize("scene.json")) {
-                // Physics must always start paused; never auto-run after a scene load.
-                engineState.physicsSimulationRunningRef() = false;
+            auto loadRefs = sceneRuntimeState();
 
-                // Reset transient selection state to avoid dangling entt entity references
-                engineState.selectedEntityRef() = entt::null;
-                selectedObjectId           = 0;
-                engineState.cameraEntityRef() = entt::null;
-
-                // get the first camera entity in the loaded scene
-                auto const& registry = engineState.getScene().getRegistry();
-                auto        view     = registry.view<engine::CameraComponent>();
-                for (auto entity : view) {
-                    std::cout << "[App] Found camera entity in loaded scene\n";
-                    engineState.cameraEntityRef() = entity;
-                    break;
-                }
-
-                // if there is no camera, create a default one
-                if (engineState.cameraEntityValue() == entt::null) {
-                    std::cout << "[App] Creating default camera for the scene\n";
-                    engineState.cameraEntityRef() = engineState.getScene().createEntity();
-                    engineState.getScene().getRegistry().emplace<TransformComponent>(engineState.cameraEntityValue());
-                    engineState.getScene().getRegistry().emplace<NameComponent>(engineState.cameraEntityValue(), "Camera");
-                    engineState.getScene().getRegistry().emplace<CameraComponent>(engineState.cameraEntityValue());
-                }
-
-                std::cout << "[App] Setting loaded camera as active camera\n";
-
+            if (loadSceneUseCase->execute("scene.json", loadRefs)) {
                 std::cout << "[App] Successfully deserialized scene.json\n";
             } else {
                 std::cout << "[App] Failed to deserialize scene.json\n";
             }
-
-            pendingUpdateCameraAfterSceneLoad = true;
         });
         uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
         uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunningRef(),
@@ -358,6 +307,17 @@ namespace engine {
 
             iblGenerationCounter = newGen;
         }
+    }
+
+    SceneRuntimeState App::sceneRuntimeState() {
+        return SceneRuntimeState{
+            .physicsSimulationRunning = engineState.physicsSimulationRunningRef(),
+            .selectedEntity = engineState.selectedEntityRef(),
+            .cameraEntity = engineState.cameraEntityRef(),
+            .selectedObjectId = selectedObjectId,
+            .pendingUpdateCameraAfterSceneLoad = pendingUpdateCameraAfterSceneLoad,
+            .solidGroundEnabled = engineState.solidGroundEnabledRef(),
+        };
     }
 
     void App::render(float frameTime) {

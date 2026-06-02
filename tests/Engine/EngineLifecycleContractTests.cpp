@@ -77,6 +77,31 @@ TEST(EngineLifecycleContracts, AppRecreatesPostProcessingSystemAfterSwapchainRec
         << "App::render should recreate post-processing system through EngineState on swapchain recreation";
 }
 
+TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
+    const fs::path root = findRepoRoot();
+    ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string appSource = readWholeFile(root / "src/Editor/app.cpp");
+    ASSERT_FALSE(appSource.empty()) << "Failed to read src/Editor/app.cpp";
+
+    EXPECT_NE(appSource.find("std::make_unique<ScenePersistenceAdapter>(sceneSerializer)"), std::string::npos)
+        << "App should construct ScenePersistenceAdapter as Infrastructure implementation of persistence port";
+    EXPECT_NE(appSource.find("std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem())"), std::string::npos)
+        << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port";
+    EXPECT_NE(appSource.find("std::make_unique<LoadSceneUseCase>(engineState.getScene(), *scenePersistencePort, physicsRuntimePort.get())"), std::string::npos)
+        << "App should construct LoadSceneUseCase in Application layer";
+    EXPECT_NE(appSource.find("std::make_unique<SaveSceneUseCase>(*scenePersistencePort)"), std::string::npos)
+        << "App should construct SaveSceneUseCase in Application layer";
+    EXPECT_NE(appSource.find("SceneRuntimeState App::sceneRuntimeState()"), std::string::npos)
+        << "App should expose a shared SceneRuntimeState builder for application use cases";
+    EXPECT_NE(appSource.find("auto loadRefs = sceneRuntimeState();"), std::string::npos)
+        << "App should build runtime state through SceneRuntimeState helper";
+    EXPECT_NE(appSource.find("loadSceneUseCase->execute(\"scene.json\", loadRefs)"), std::string::npos)
+        << "App should execute scene loading through LoadSceneUseCase";
+    EXPECT_NE(appSource.find("saveSceneUseCase->execute(\"scene.json\")"), std::string::npos)
+        << "App should execute scene saving through SaveSceneUseCase";
+}
+
 TEST(EngineLifecycleContracts, EngineStateNoLongerOwnsEditorUiObjects) {
     const fs::path root = findRepoRoot();
     ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();

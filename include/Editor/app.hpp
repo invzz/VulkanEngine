@@ -7,6 +7,11 @@
 #include <memory>
 
 #include "Engine/Core/Window.hpp"
+#include "Engine/Application/Ports/IPhysicsRuntimePort.hpp"
+#include "Engine/Application/Ports/IScenePersistencePort.hpp"
+#include "Engine/Application/SceneRuntimeState.hpp"
+#include "Engine/Application/UseCases/LoadSceneUseCase.hpp"
+#include "Engine/Application/UseCases/SaveSceneUseCase.hpp"
 #include "Engine/EngineState.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
@@ -80,6 +85,7 @@ class App {
   void setupScene();
   void setupUI();
   void setupRenderGraph();
+  SceneRuntimeState sceneRuntimeState();
 
   void update(float frameTime);
   void render(float frameTime);
@@ -98,6 +104,12 @@ class App {
   std::unique_ptr<RenderContext> renderContext;
   std::unique_ptr<ImGuiManager> imguiManager;
   std::unique_ptr<UIManager> uiManager;
+
+  // Clean architecture wiring (Delivery -> Application via Ports).
+  std::unique_ptr<IScenePersistencePort> scenePersistencePort;
+  std::unique_ptr<IPhysicsRuntimePort> physicsRuntimePort;
+  std::unique_ptr<LoadSceneUseCase> loadSceneUseCase;
+  std::unique_ptr<SaveSceneUseCase> saveSceneUseCase;
 
   // Input & Camera
   std::unique_ptr<Camera> camera;

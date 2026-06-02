@@ -176,6 +176,24 @@ xmake run Tests -- --gtest_filter=ArchitectureDependencyRules.*
 xmake run Tests -- --gtest_filter=EngineLifecycleContracts.*
 ```
 
+## Clean Architecture
+
+The project is being migrated to a layered architecture:
+
+- Delivery (`Editor`, tools) composes dependencies
+- Application (`include/Engine/Application`, `src/Engine/Application`) hosts use cases
+- Domain (`include/Engine/Scene` and core domain models) stays framework-agnostic
+- Ports (`include/Engine/Application/Ports`) define required capabilities
+- Infrastructure (`Graphics`, `EngineSceneIO`, `ModelLib`, and adapters) implements ports
+
+See `docs/clean-architecture.md` for the current mapping and migration plan.
+
+Current implemented slices include:
+
+- `LoadSceneUseCase` + infrastructure adapters for scene load orchestration
+- `SaveSceneUseCase` for scene save orchestration
+- shared `SceneRuntimeState` object used by Application scene workflows
+
 ## Code Quality
 
 ```bash
