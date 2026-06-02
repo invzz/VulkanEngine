@@ -6,12 +6,14 @@
 
 namespace engine {
 
+class JoltPhysicsSystem;
+
 /**
  * @brief UI panel for managing physics components on entities
  */
 class PhysicsPanel : public UIPanel {
 public:
-    PhysicsPanel(Scene& scene, bool* simulationRunning, bool* showColliderWireframes);
+    PhysicsPanel(Scene& scene, bool* simulationRunning, bool* showColliderWireframes, bool* solidGroundEnabled, JoltPhysicsSystem* joltPhysicsSystem);
 
     void render(FrameInfo& frameInfo) override;
 
@@ -23,6 +25,8 @@ private:
     Scene& scene_;
     bool* simulationRunning_ = nullptr;
     bool* showColliderWireframes_ = nullptr;
+    bool* solidGroundEnabled_ = nullptr;
+    JoltPhysicsSystem* joltPhysicsSystem_ = nullptr;
 
     /**
      * @brief Add physics component to selected entity

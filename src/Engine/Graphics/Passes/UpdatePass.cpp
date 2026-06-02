@@ -12,17 +12,17 @@ namespace engine {
 
 void UpdatePass::execute(FrameInfo& frameInfo) {
   // forward update calls to systems owned by EngineState
-  if (engineState_->objectSelectionSystem) engineState_->objectSelectionSystem->update(frameInfo);
-  if (engineState_->inputSystem) engineState_->inputSystem->update(frameInfo);
+  if (engineState_->getObjectSelectionSystem() != nullptr) engineState_->getObjectSelectionSystem()->update(frameInfo);
+  if (engineState_->getInputSystem() != nullptr) engineState_->getInputSystem()->update(frameInfo);
   LODSystem::update(frameInfo);
   CameraSystem::update(frameInfo, renderer.getAspectRatio());
 
     // --- Physics (requires explicit Play from UI) ---
-    if (engineState_->physicsSimulationRunning) {
-      if (engineState_->joltPhysicsSystem) {
-        engineState_->joltPhysicsSystem->syncToEntities(frameInfo.scene);
-        engineState_->joltPhysicsSystem->update(frameInfo.frameTime, 8, 1.0f / 120.0f);
-        engineState_->joltPhysicsSystem->syncToEntities(frameInfo.scene);
+    if (engineState_->physicsSimulationRunningRef()) {
+      if (engineState_->getJoltPhysicsSystem() != nullptr) {
+        engineState_->getJoltPhysicsSystem()->syncToEntities(frameInfo.scene);
+        engineState_->getJoltPhysicsSystem()->update(frameInfo.frameTime, 8, 1.0f / 120.0f);
+        engineState_->getJoltPhysicsSystem()->syncToEntities(frameInfo.scene);
       } else {
         // legacy PhysicsSystem::update (kept for compatibility)
         PhysicsSystem::update(frameInfo);

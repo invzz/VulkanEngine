@@ -81,24 +81,24 @@ namespace engine {
         // main thread performs single-time commands (e.g., texture uploads).
         device.enableThreadLocalCommandPools();
 
-        // 1. Setup Render Context (moved into EngineState)
-        engineState.renderContext = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
+        // 1. Setup explicit RenderContext dependency for EngineState.
+        renderContext = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
 
         // 2. Setup Scene & Camera
         setupScene();
 
         // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
-        engineState.initialize(device, renderer, resourceManager, &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
+        engineState.initialize(device, renderer, resourceManager, renderContext.get(), &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
 
         sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
-            .showSkybox = &engineState.showSkybox,
-            .showGrid = &engineState.showGrid,
-            .showDebugObjects = &engineState.showDebugObjects,
-            .physicsSimulationRunning = &engineState.physicsSimulationRunning,
-            .skySettings = &engineState.skySettings,
-            .postProcessPush = &engineState.postProcessPush,
-            .iblSystem = engineState.iblSystem.get(),
-            .modelRenderSystem = engineState.modelRenderSystem.get(),
+            .showSkybox = &engineState.showSkyboxRef(),
+            .showGrid = &engineState.showGridRef(),
+            .showDebugObjects = &engineState.showDebugObjectsRef(),
+            .physicsSimulationRunning = &engineState.physicsSimulationRunningRef(),
+            .skySettings = &engineState.skySettingsRef(),
+            .postProcessPush = &engineState.postProcessPushRef(),
+            .iblSystem = engineState.getIBLSystem(),
+            .modelRenderSystem = engineState.getModelRenderSystem(),
             .getGpuProfilerEnabled = []() { return GpuProfiler::instance().isEnabled(); },
             .setGpuProfilerEnabled = [](bool enabled) { GpuProfiler::instance().setEnabled(enabled); },
             .multithreadedRecordingEnabled = &multithreadedRecordingEnabled,
@@ -116,29 +116,29 @@ namespace engine {
                 std::cout << "[App] Loaded scene.json at startup" << '\n';
 
                 // Physics must always start paused; never auto-run after a scene load.
-                engineState.physicsSimulationRunning = false;
+                engineState.physicsSimulationRunningRef() = false;
 
                 // Reset transient selection state to avoid dangling entt entity references
-                engineState.selectedEntity = entt::null;
+                engineState.selectedEntityRef() = entt::null;
                 selectedObjectId           = 0;
-                engineState.cameraEntity   = entt::null;
+                engineState.cameraEntityRef() = entt::null;
 
                 // Find the first camera entity in the loaded scene
-                auto const& registry = engineState.scene.getRegistry();
+                auto const& registry = engineState.getScene().getRegistry();
                 auto        view     = registry.view<engine::CameraComponent>();
                 for (auto entity : view) {
                     std::cout << "[App] Found camera entity in loaded scene" << '\n';
-                    engineState.cameraEntity = entity;
+                    engineState.cameraEntityRef() = entity;
                     break;
                 }
 
                 // If there is no camera, create a default one
-                if (engineState.cameraEntity == entt::null) {
+                if (engineState.cameraEntityValue() == entt::null) {
                     std::cout << "[App] Creating default camera for the scene" << '\n';
-                    engineState.cameraEntity = engineState.scene.createEntity();
-                    engineState.scene.getRegistry().emplace<TransformComponent>(engineState.cameraEntity);
-                    engineState.scene.getRegistry().emplace<NameComponent>(engineState.cameraEntity, "Camera");
-                    engineState.scene.getRegistry().emplace<CameraComponent>(engineState.cameraEntity);
+                    engineState.cameraEntityRef() = engineState.getScene().createEntity();
+                    engineState.getScene().getRegistry().emplace<TransformComponent>(engineState.cameraEntityValue());
+                    engineState.getScene().getRegistry().emplace<NameComponent>(engineState.cameraEntityValue(), "Camera");
+                    engineState.getScene().getRegistry().emplace<CameraComponent>(engineState.cameraEntityValue());
                 }
 
                 pendingUpdateCameraAfterSceneLoad = true;
@@ -179,45 +179,46 @@ namespace engine {
     }
 
     void App::setupUI() {
-        engineState.imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
-        engineState.uiManager    = std::make_unique<UIManager>(*engineState.imguiManager);
+        imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
+        uiManager    = std::make_unique<UIManager>(*imguiManager);
 
-        engineState.uiManager->setOnSaveScene([this]() {
+        uiManager->setOnSaveScene([this]() {
             std::cout << "Saving scene to scene.json..." << '\n';
             sceneSerializer.serialize("scene.json");
         });
-        engineState.uiManager->setOnLoadScene([this]() {
+        uiManager->setOnLoadScene([this]() {
             std::cout << "Loading scene from scene.json..." << '\n';
             // Purge stale Jolt bodies before loading a new scene so no invisible
             // ghost colliders remain from the previous scene.
-            if (engineState.joltPhysicsSystem) {
-                engineState.joltPhysicsSystem->clear();
+            if (engineState.getJoltPhysicsSystem() != nullptr) {
+                engineState.getJoltPhysicsSystem()->clear();
+                engineState.getJoltPhysicsSystem()->setGroundEnabled(engineState.solidGroundEnabledRef());
             }
             if (sceneSerializer.deserialize("scene.json")) {
                 // Physics must always start paused; never auto-run after a scene load.
-                engineState.physicsSimulationRunning = false;
+                engineState.physicsSimulationRunningRef() = false;
 
                 // Reset transient selection state to avoid dangling entt entity references
-                engineState.selectedEntity = entt::null;
+                engineState.selectedEntityRef() = entt::null;
                 selectedObjectId           = 0;
-                engineState.cameraEntity   = entt::null;
+                engineState.cameraEntityRef() = entt::null;
 
                 // get the first camera entity in the loaded scene
-                auto const& registry = engineState.scene.getRegistry();
+                auto const& registry = engineState.getScene().getRegistry();
                 auto        view     = registry.view<engine::CameraComponent>();
                 for (auto entity : view) {
                     std::cout << "[App] Found camera entity in loaded scene\n";
-                    engineState.cameraEntity = entity;
+                    engineState.cameraEntityRef() = entity;
                     break;
                 }
 
                 // if there is no camera, create a default one
-                if (engineState.cameraEntity == entt::null) {
+                if (engineState.cameraEntityValue() == entt::null) {
                     std::cout << "[App] Creating default camera for the scene\n";
-                    engineState.cameraEntity = engineState.scene.createEntity();
-                    engineState.scene.getRegistry().emplace<TransformComponent>(engineState.cameraEntity);
-                    engineState.scene.getRegistry().emplace<NameComponent>(engineState.cameraEntity, "Camera");
-                    engineState.scene.getRegistry().emplace<CameraComponent>(engineState.cameraEntity);
+                    engineState.cameraEntityRef() = engineState.getScene().createEntity();
+                    engineState.getScene().getRegistry().emplace<TransformComponent>(engineState.cameraEntityValue());
+                    engineState.getScene().getRegistry().emplace<NameComponent>(engineState.cameraEntityValue(), "Camera");
+                    engineState.getScene().getRegistry().emplace<CameraComponent>(engineState.cameraEntityValue());
                 }
 
                 std::cout << "[App] Setting loaded camera as active camera\n";
@@ -229,9 +230,11 @@ namespace engine {
 
             pendingUpdateCameraAfterSceneLoad = true;
         });
-        engineState.uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
-        engineState.uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunning, &engineState.showColliderWireframes));
-        engineState.uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
+        uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
+        uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunningRef(),
+                                         &engineState.showColliderWireframesRef(), &engineState.solidGroundEnabledRef(),
+                                         engineState.getJoltPhysicsSystem()));
+        uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
     }
 
     void App::setupRenderGraph() {
@@ -253,7 +256,7 @@ namespace engine {
         graph->addPass(std::make_unique<OffscreenPass>(renderer, &engineState, device, debugMode));
 
         // 6. Composition Pass (PostProcess + UI)
-        graph->addPass(std::make_unique<CompositionPass>(renderer, &engineState, *camera, window));
+        graph->addPass(std::make_unique<CompositionPass>(renderer, &engineState, uiManager.get(), *camera, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
@@ -312,8 +315,10 @@ namespace engine {
             }
         }
 
-        if (auto* scenePanel = engineState.uiManager->getPanel<ScenePanel>()) {
-            scenePanel->processDelayedDeletions(engineState.selectedEntity, selectedObjectId);
+        if (uiManager != nullptr) {
+            if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {
+                scenePanel->processDelayedDeletions(engineState.selectedEntityRef(), selectedObjectId);
+            }
         }
 
         // On-demand environment: only load skybox + generate IBL when the user enables skybox display.
@@ -322,7 +327,7 @@ namespace engine {
 
         if ((rendering.showSkybox != nullptr) && *rendering.showSkybox && (sceneState.skybox == nullptr)) {
             std::cout << "[App] Loading skybox..." << '\n';
-            engineState.skybox = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
+            engineState.skyboxRef() = Skybox::loadFromFolder(device, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
 
             // Preferred path: load prebaked IBL (offline-generated) instead of regenerating at runtime.
             if (!rendering.iblSystem->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama")) {
@@ -333,7 +338,7 @@ namespace engine {
         // If the user turns off the skybox, also drop IBL back to fallback.
         if ((rendering.showSkybox != nullptr) && !*rendering.showSkybox && (sceneState.skybox != nullptr)) {
             std::cout << "[App] Skybox disabled. Resetting IBL to fallback." << '\n';
-            engineState.skybox.reset();
+            engineState.skyboxRef().reset();
             rendering.iblSystem->resetToFallback();
         }
 
@@ -348,7 +353,7 @@ namespace engine {
 
             auto& deferredIblSets = engineState.deferredIblDescriptorSetsRef();
             for (auto& deferredIblDescriptorSet : deferredIblSets) {
-                DescriptorWriter(*engineState.deferredIblSetLayout, *engineState.deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).overwrite(deferredIblDescriptorSet);
+                DescriptorWriter(engineState.deferredIblSetLayoutRef(), engineState.deferredIblPoolRef()).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).overwrite(deferredIblDescriptorSet);
             }
 
             iblGenerationCounter = newGen;
@@ -359,7 +364,7 @@ namespace engine {
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
                 // PostProcessingSystem lives in EngineState — recreate via EngineState if needed.
-                engineState.postProcessingSystem = std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{engineState.postProcessSetLayoutRef().getDescriptorSetLayout()});
+                engineState.setPostProcessingSystem(std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{engineState.postProcessSetLayoutRef().getDescriptorSetLayout()}));
             }
 
             int const frameIndex = renderer.getFrameIndex();
@@ -369,13 +374,13 @@ namespace engine {
                 .frameTime           = frameTime,
                 .commandBuffer       = commandBuffer,
                 .camera              = *camera,
-                .globalDescriptorSet = engineState.renderContext->getGlobalDescriptorSet(frameIndex),
+                .globalDescriptorSet = engineState.getRenderContext().getGlobalDescriptorSet(frameIndex),
                 .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-                .scene               = &engineState.scene,
+                .scene               = &engineState.getScene(),
                 .selectedObjectId    = selectedObjectId,
-                .selectedEntity      = engineState.selectedEntity,
-                .cameraEntity        = engineState.cameraEntity,
-                .morphManager        = engineState.animationSystem->getMorphManager(),
+                .selectedEntity      = engineState.selectedEntityValue(),
+                .cameraEntity        = engineState.cameraEntityValue(),
+                .morphManager        = engineState.getAnimationSystem()->getMorphManager(),
                 .extent              = renderer.getSwapChainExtent(),
                 .debugMode           = debugMode,
             };
@@ -383,8 +388,8 @@ namespace engine {
             renderPipeline->execute(frameInfo);
 
             selectedObjectId           = frameInfo.selectedObjectId;
-            engineState.selectedEntity = frameInfo.selectedEntity;
-            engineState.cameraEntity   = frameInfo.cameraEntity;
+            engineState.selectedEntityRef() = frameInfo.selectedEntity;
+            engineState.cameraEntityRef()   = frameInfo.cameraEntity;
 
             renderer.endFrame();
         }

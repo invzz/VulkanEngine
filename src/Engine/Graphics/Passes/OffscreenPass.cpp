@@ -12,23 +12,23 @@
 namespace {
     void updateShadowDescriptors(engine::EngineState* engineState, engine::Device& device, int frameIndex) {
         // Shadow descriptors update
-        int const shadowCount     = engineState->shadowSystem->getShadowLightCount();
-        int const cubeShadowCount = engineState->shadowSystem->getCubeShadowLightCount();
+        int const shadowCount     = engineState->getShadowSystem()->getShadowLightCount();
+        int const cubeShadowCount = engineState->getShadowSystem()->getCubeShadowLightCount();
 
         std::array<VkDescriptorImageInfo, engine::ShadowSystem::MAX_SHADOW_MAPS> shadowInfos{};
         for (int i = 0; i < shadowCount && i < engine::ShadowSystem::MAX_SHADOW_MAPS; i++) {
-            shadowInfos[i] = engineState->shadowSystem->getShadowMapDescriptorInfo(i);
+            shadowInfos[i] = engineState->getShadowSystem()->getShadowMapDescriptorInfo(i);
         }
         for (int i = shadowCount; i < engine::ShadowSystem::MAX_SHADOW_MAPS; i++) {
-            shadowInfos[i] = engineState->shadowSystem->getShadowMapDescriptorInfo(0);
+            shadowInfos[i] = engineState->getShadowSystem()->getShadowMapDescriptorInfo(0);
         }
 
         std::array<VkDescriptorImageInfo, engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS> cubeShadowInfos{};
         for (int i = 0; i < cubeShadowCount && i < engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
-            cubeShadowInfos[i] = engineState->shadowSystem->getCubeShadowMapDescriptorInfo(i);
+            cubeShadowInfos[i] = engineState->getShadowSystem()->getCubeShadowMapDescriptorInfo(i);
         }
         for (int i = cubeShadowCount; i < engine::ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
-            cubeShadowInfos[i] = engineState->shadowSystem->getCubeShadowMapDescriptorInfo(0);
+            cubeShadowInfos[i] = engineState->getShadowSystem()->getCubeShadowMapDescriptorInfo(0);
         }
 
         std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
@@ -57,25 +57,25 @@ namespace engine {
 
     void OffscreenPass::execute(FrameInfo& frameInfo) {
         // Reset per-frame dynamic offsets before any mesh passes.
-        engineState_->modelRenderSystem->beginFrame(frameInfo.frameIndex);
-        engineState_->modelRenderSystem->updateSceneColorDescriptor(frameInfo.frameIndex, renderer_.getSceneColorImageInfo(frameInfo.frameIndex));
+        engineState_->getModelRenderSystem()->beginFrame(frameInfo.frameIndex);
+        engineState_->getModelRenderSystem()->updateSceneColorDescriptor(frameInfo.frameIndex, renderer_.getSceneColorImageInfo(frameInfo.frameIndex));
 
         // Refresh G-buffer descriptors every frame (images may change on resize)
         refreshGbufferDescriptors(frameInfo.frameIndex);
 
         auto const prevGlobalSet      = frameInfo.globalDescriptorSet;
-        frameInfo.globalDescriptorSet = engineState_->renderContext->getGlobalDescriptorSet(frameInfo.frameIndex);
+        frameInfo.globalDescriptorSet = engineState_->getRenderContext().getGlobalDescriptorSet(frameInfo.frameIndex);
 
         // Begin G-buffer with secondary command buffer support when model recording is multithreaded.
-        renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, engineState_->modelRenderSystem->isMultiThreadedRecordingEnabled());
-        engineState_->modelRenderSystem->renderGbuffer(frameInfo);
+        renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, engineState_->getModelRenderSystem()->isMultiThreadedRecordingEnabled());
+        engineState_->getModelRenderSystem()->renderGbuffer(frameInfo);
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
         renderer_.beginDeferredLightingRenderPass(frameInfo.commandBuffer);
 
         // Update shadow descriptors
         updateShadowDescriptors(engineState_, device_, frameInfo.frameIndex);
 
-        engineState_->deferredLightingSystem->render(frameInfo,
+        engineState_->getDeferredLightingSystem()->render(frameInfo,
             frameInfo.globalDescriptorSet,
             engineState_->getGbufferDescriptorSet(frameInfo.frameIndex),
             engineState_->getDeferredShadowDescriptorSet(frameInfo.frameIndex),
@@ -87,19 +87,19 @@ namespace engine {
             renderer_.copyOffscreenColorToSceneColor(frameInfo.commandBuffer);
 
             renderer_.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
-            if ((engineState_->gridRenderSystem != nullptr) && engineState_->showGrid) {
-                engineState_->gridRenderSystem->render(frameInfo);
+            if ((engineState_->getGridRenderSystem() != nullptr) && engineState_->showGridRef()) {
+                engineState_->getGridRenderSystem()->render(frameInfo);
             }
-            engineState_->modelRenderSystem->renderTransmission(frameInfo);
-            engineState_->modelRenderSystem->renderAlphaBlend(frameInfo);
-            if ((engineState_->showDebugObjects) && (engineState_->lightSystem != nullptr)) {
-                engineState_->lightSystem->render(frameInfo);
+            engineState_->getModelRenderSystem()->renderTransmission(frameInfo);
+            engineState_->getModelRenderSystem()->renderAlphaBlend(frameInfo);
+            if ((engineState_->showDebugObjectsRef()) && (engineState_->getLightSystem() != nullptr)) {
+                engineState_->getLightSystem()->render(frameInfo);
             }
-            if ((engineState_->showDebugObjects) && (engineState_->cameraSystem != nullptr)) {
-                engineState_->cameraSystem->render(frameInfo);
+            if ((engineState_->showDebugObjectsRef()) && (engineState_->getCameraSystem() != nullptr)) {
+                engineState_->getCameraSystem()->render(frameInfo);
             }
-            if ((engineState_->showColliderWireframes) && (engineState_->colliderDebugRenderSystem != nullptr)) {
-                engineState_->colliderDebugRenderSystem->render(frameInfo);
+            if ((engineState_->showColliderWireframesRef()) && (engineState_->getColliderDebugRenderSystem() != nullptr)) {
+                engineState_->getColliderDebugRenderSystem()->render(frameInfo);
             }
 
             renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);

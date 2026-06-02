@@ -9,12 +9,15 @@
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Scene/components/PhysicsComponents.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "entt/entity/entity.hpp"
 
 namespace engine {
 
-PhysicsPanel::PhysicsPanel(Scene& scene, bool* simulationRunning, bool* showColliderWireframes)
-    : scene_(scene), simulationRunning_(simulationRunning), showColliderWireframes_(showColliderWireframes) {}
+PhysicsPanel::PhysicsPanel(Scene& scene, bool* simulationRunning, bool* showColliderWireframes, bool* solidGroundEnabled,
+                                                     JoltPhysicsSystem* joltPhysicsSystem)
+        : scene_(scene), simulationRunning_(simulationRunning), showColliderWireframes_(showColliderWireframes),
+            solidGroundEnabled_(solidGroundEnabled), joltPhysicsSystem_(joltPhysicsSystem) {}
 
 void PhysicsPanel::render(FrameInfo& frameInfo) {
     if (!visible_) return;
@@ -41,6 +44,18 @@ void PhysicsPanel::render(FrameInfo& frameInfo) {
             }
             ImGui::SameLine();
             ImGui::TextDisabled("Collider Debug: %s", *showColliderWireframes_ ? "On" : "Off");
+            ImGui::Separator();
+        }
+
+        if (solidGroundEnabled_ != nullptr) {
+            if (ImGui::Button(*solidGroundEnabled_ ? "Disable Solid Ground" : "Enable Solid Ground")) {
+                *solidGroundEnabled_ = !*solidGroundEnabled_;
+                if (joltPhysicsSystem_ != nullptr) {
+                    joltPhysicsSystem_->setGroundEnabled(*solidGroundEnabled_);
+                }
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("Ground Plane: %s", *solidGroundEnabled_ ? "On" : "Off");
             ImGui::Separator();
         }
 

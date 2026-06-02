@@ -7,17 +7,20 @@
 #include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/LightsPanel.hpp"
 #include "Editor/ui/TransformPanel.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "entt/entity/entity.hpp"
 
 namespace engine {
 
-InspectorPanel::InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes) {
+InspectorPanel::InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes,
+                               bool* solidGroundEnabled, JoltPhysicsSystem* joltPhysicsSystem) {
   transformPanel_ = std::make_unique<TransformPanel>(scene);
   lightsPanel_ = std::make_unique<LightsPanel>(scene);
   animationPanel_ = std::make_unique<AnimationPanel>(scene);
-  physicsPanel_ = std::make_unique<PhysicsPanel>(scene, physicsSimulationRunning, showColliderWireframes);
+  physicsPanel_ = std::make_unique<PhysicsPanel>(scene, physicsSimulationRunning, showColliderWireframes,
+                                                 solidGroundEnabled, joltPhysicsSystem);
 }
 
 void InspectorPanel::render(FrameInfo& frameInfo) {

@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 
@@ -12,7 +13,7 @@
 namespace engine {
 
 IBLPanel::IBLPanel(EngineState* engineState) : engineState_(engineState) {
-  if ((engineState_ != nullptr) && engineState_->iblSystem) settings_ = engineState_->iblSystem->getSettings();
+  if ((engineState_ != nullptr) && engineState_->getIBLSystem() != nullptr) settings_ = engineState_->getIBLSystem()->getSettings();
 }
 
 void IBLPanel::render(FrameInfo& /*frameInfo*/) {
@@ -50,8 +51,9 @@ void IBLPanel::render(FrameInfo& /*frameInfo*/) {
   if (ImGui::SliderInt("Prefilter Mip Levels", &settings_.prefilterMipLevels, 1, 10)) changed = true;
 
   // Sample Count
-  int sampleCount = settings_.prefilterSampleCount;
+  int sampleCount = static_cast<int>(settings_.prefilterSampleCount);
   if (ImGui::InputInt("Prefilter Samples", &sampleCount)) {
+    sampleCount = std::max(sampleCount, 1);
     settings_.prefilterSampleCount = static_cast<uint32_t>(sampleCount);
     changed = true;
   }
@@ -60,12 +62,12 @@ void IBLPanel::render(FrameInfo& /*frameInfo*/) {
   if (ImGui::InputFloat("Irradiance Delta", &settings_.irradianceSampleDelta, 0.001f, 0.01f, "%.4f")) changed = true;
 
   if (ImGui::Button("Regenerate IBL")) {
-    if ((engineState_ != nullptr) && engineState_->skybox && engineState_->iblSystem) {
-      engineState_->iblSystem->requestRegeneration(settings_, *engineState_->skybox);
+    if ((engineState_ != nullptr) && (engineState_->getSkybox() != nullptr) && (engineState_->getIBLSystem() != nullptr)) {
+      engineState_->getIBLSystem()->requestRegeneration(settings_, *engineState_->getSkybox());
     }
   }
 
-  if (engineState_ == nullptr || engineState_->skybox == nullptr) {
+  if (engineState_ == nullptr || engineState_->getSkybox() == nullptr) {
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Load/enable a skybox to generate IBL");
     ImGui::TextDisabled("No skybox loaded; IBL regeneration disabled");
   }

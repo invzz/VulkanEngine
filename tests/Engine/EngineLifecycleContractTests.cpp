@@ -1,0 +1,135 @@
+#include <gtest/gtest.h>
+
+#include <filesystem>
+#include <fstream>
+#include <initializer_list>
+#include <string>
+
+namespace {
+
+namespace fs = std::filesystem;
+
+fs::path findRepoRoot() {
+    fs::path current = fs::current_path();
+    while (!current.empty()) {
+        if (fs::exists(current / "xmake.lua") && fs::exists(current / "include" / "Engine") && fs::exists(current / "src" / "Engine")) {
+            return current;
+        }
+        auto parent = current.parent_path();
+        if (parent == current) {
+            break;
+        }
+        current = parent;
+    }
+    return {};
+}
+
+std::string readWholeFile(const fs::path& path) {
+    std::ifstream in(path);
+    if (!in.is_open()) {
+        return {};
+    }
+    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+void expectNoDirectSystemMemberAccess(const std::string& source,
+    std::initializer_list<const char*> forbiddenTokens,
+    const std::string& context) {
+    for (const char* token : forbiddenTokens) {
+        EXPECT_EQ(source.find(token), std::string::npos)
+            << context << " should use EngineState accessors/services instead of direct member access: " << token;
+    }
+}
+
+}  // namespace
+
+TEST(EngineLifecycleContracts, InitializeRequiresExplicitRenderContextParameterAndGuard) {
+    const fs::path root = findRepoRoot();
+    ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string header = readWholeFile(root / "include/Engine/EngineState.hpp");
+    const std::string source = readWholeFile(root / "src/Engine/EngineState.cpp");
+
+    ASSERT_FALSE(header.empty()) << "Failed to read include/Engine/EngineState.hpp";
+    ASSERT_FALSE(source.empty()) << "Failed to read src/Engine/EngineState.cpp";
+
+    EXPECT_NE(header.find("RenderContext*      requiredRenderContext"), std::string::npos)
+        << "EngineState::initialize must declare explicit RenderContext dependency in the public API";
+
+    EXPECT_NE(source.find("requiredRenderContext == nullptr"), std::string::npos)
+        << "EngineState::initialize must validate non-null RenderContext";
+
+    EXPECT_NE(source.find("EngineState::initialize requires a non-null RenderContext"), std::string::npos)
+        << "EngineState::initialize should fail with a clear contract violation message";
+}
+
+TEST(EngineLifecycleContracts, AppRecreatesPostProcessingSystemAfterSwapchainRecreation) {
+    const fs::path root = findRepoRoot();
+    ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string appSource = readWholeFile(root / "src/Editor/app.cpp");
+    ASSERT_FALSE(appSource.empty()) << "Failed to read src/Editor/app.cpp";
+
+    EXPECT_NE(appSource.find("renderer.wasSwapChainRecreated()"), std::string::npos)
+        << "App::render should react to swapchain recreation events";
+
+    EXPECT_NE(appSource.find("setPostProcessingSystem(std::make_unique<PostProcessingSystem>"), std::string::npos)
+        << "App::render should recreate post-processing system through EngineState on swapchain recreation";
+}
+
+TEST(EngineLifecycleContracts, EngineStateNoLongerOwnsEditorUiObjects) {
+    const fs::path root = findRepoRoot();
+    ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string header = readWholeFile(root / "include/Engine/EngineState.hpp");
+    ASSERT_FALSE(header.empty()) << "Failed to read include/Engine/EngineState.hpp";
+
+    EXPECT_EQ(header.find("std::unique_ptr<UIManager>"), std::string::npos)
+        << "EngineState should not own editor UI manager";
+    EXPECT_EQ(header.find("std::unique_ptr<ImGuiManager>"), std::string::npos)
+        << "EngineState should not own editor ImGui manager";
+}
+
+TEST(EngineLifecycleContracts, EngineStateProvidesGroupedSystemServicesAccessor) {
+    const fs::path root = findRepoRoot();
+    ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string header = readWholeFile(root / "include/Engine/EngineState.hpp");
+    ASSERT_FALSE(header.empty()) << "Failed to read include/Engine/EngineState.hpp";
+
+    EXPECT_NE(header.find("struct SystemServices"), std::string::npos)
+        << "EngineState should expose grouped system service view";
+    EXPECT_NE(header.find("SystemServices systemServices()"), std::string::npos)
+        << "EngineState should provide systemServices() accessor";
+}
+
+TEST(EngineLifecycleContracts, HotPathsUseEngineStateSystemAccessorsNotDirectMembers) {
+    const fs::path root = findRepoRoot();
+    ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const std::string updatePass = readWholeFile(root / "src/Engine/Graphics/Passes/UpdatePass.cpp");
+    const std::string offscreenPass = readWholeFile(root / "src/Engine/Graphics/Passes/OffscreenPass.cpp");
+    const std::string shadowPass = readWholeFile(root / "src/Engine/Graphics/Passes/ShadowPass.cpp");
+    const std::string settingsPanel = readWholeFile(root / "src/Editor/ui/SettingsPanel.cpp");
+
+    ASSERT_FALSE(updatePass.empty()) << "Failed to read src/Engine/Graphics/Passes/UpdatePass.cpp";
+    ASSERT_FALSE(offscreenPass.empty()) << "Failed to read src/Engine/Graphics/Passes/OffscreenPass.cpp";
+    ASSERT_FALSE(shadowPass.empty()) << "Failed to read src/Engine/Graphics/Passes/ShadowPass.cpp";
+    ASSERT_FALSE(settingsPanel.empty()) << "Failed to read src/Editor/ui/SettingsPanel.cpp";
+
+    expectNoDirectSystemMemberAccess(updatePass,
+        {"->objectSelectionSystem", "->inputSystem", "->joltPhysicsSystem"},
+        "UpdatePass");
+
+    expectNoDirectSystemMemberAccess(offscreenPass,
+        {"->modelRenderSystem", "->deferredLightingSystem", "->gridRenderSystem", "->lightSystem", "->cameraSystem", "->colliderDebugRenderSystem", "->shadowSystem"},
+        "OffscreenPass");
+
+    expectNoDirectSystemMemberAccess(shadowPass,
+        {"->shadowSystem"},
+        "ShadowPass");
+
+    expectNoDirectSystemMemberAccess(settingsPanel,
+        {"->modelRenderSystem"},
+        "SettingsPanel");
+}

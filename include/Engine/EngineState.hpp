@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "Engine/Graphics/Descriptors.hpp"
-#include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/SystemRegistry.hpp"
@@ -26,8 +25,6 @@
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
-#include "Editor/RenderContext.hpp"
-#include "Editor/ui/UIManager.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine {
@@ -36,6 +33,7 @@ namespace engine {
     class Renderer;
     class Keyboard;
     class Mouse;
+    class RenderContext;
     class Window;
 
     // EngineState is the single source-of-truth for owned systems, scene and
@@ -43,6 +41,8 @@ namespace engine {
     // so they can access the current runtime state without long parameter lists.
     class EngineState {
        public:
+        ~EngineState();
+
         struct RenderingState {
             ModelRenderSystem*      modelRenderSystem      = nullptr;
             ShadowSystem*           shadowSystem           = nullptr;
@@ -90,10 +90,30 @@ namespace engine {
             DescriptorSetLayout* postProcessSetLayout    = nullptr;
         };
 
+        struct SystemServices {
+            ObjectSelectionSystem*    objectSelection = nullptr;
+            InputSystem*              input           = nullptr;
+            CameraSystem*             camera          = nullptr;
+            ColliderDebugRenderSystem* colliderDebug  = nullptr;
+            AnimationSystem*          animation       = nullptr;
+            LODSystem*                lod             = nullptr;
+            ModelRenderSystem*        modelRender     = nullptr;
+            ShadowSystem*             shadow          = nullptr;
+            LightSystem*              light           = nullptr;
+            SkyboxRenderSystem*       skyboxRender    = nullptr;
+            GridRenderSystem*         gridRender      = nullptr;
+            DeferredLightingSystem*   deferredLighting = nullptr;
+            PostProcessingSystem*     postProcessing  = nullptr;
+            IBLSystem*                ibl             = nullptr;
+            PhysicsSystem*            physics         = nullptr;
+            JoltPhysicsSystem*        joltPhysics     = nullptr;
+        };
+
         // lifecycle
         void initialize(Device& device,
             Renderer&           renderer,
             ResourceManager&    resourceManager,
+            RenderContext*      requiredRenderContext,
             Window*             window,
             bool                multithreadedRecordingEnabled,
             uint32_t            multithreadedRecordingThreads);
@@ -108,7 +128,7 @@ namespace engine {
                 .deferredLightingSystem = deferredLightingSystem.get(),
                 .postProcessingSystem   = postProcessingSystem.get(),
                 .iblSystem              = iblSystem.get(),
-                .renderContext          = renderContext.get(),
+                .renderContext          = renderContext,
                 .showSkybox             = &showSkybox,
                 .showGrid               = &showGrid,
                 .showDebugObjects       = &showDebugObjects,
@@ -141,7 +161,7 @@ namespace engine {
         [[nodiscard]] ResourceState resourceState() {
             return ResourceState{
                 .resourceManager         = resourceManager,
-                .renderContext           = renderContext.get(),
+                .renderContext           = renderContext,
                 .gbufferPool             = gbufferPool.get(),
                 .gbufferSetLayout        = gbufferSetLayout.get(),
                 .deferredIblPool         = deferredIblPool.get(),
@@ -150,6 +170,27 @@ namespace engine {
                 .deferredShadowSetLayout = deferredShadowSetLayout.get(),
                 .postProcessPool         = postProcessPool.get(),
                 .postProcessSetLayout    = postProcessSetLayout.get(),
+            };
+        }
+
+        [[nodiscard]] SystemServices systemServices() {
+            return SystemServices{
+                .objectSelection = objectSelectionSystem.get(),
+                .input = inputSystem.get(),
+                .camera = cameraSystem.get(),
+                .colliderDebug = colliderDebugRenderSystem.get(),
+                .animation = animationSystem.get(),
+                .lod = lodSystem.get(),
+                .modelRender = modelRenderSystem.get(),
+                .shadow = shadowSystem.get(),
+                .light = lightSystem.get(),
+                .skyboxRender = skyboxRenderSystem.get(),
+                .gridRender = gridRenderSystem.get(),
+                .deferredLighting = deferredLightingSystem.get(),
+                .postProcessing = postProcessingSystem.get(),
+                .ibl = iblSystem.get(),
+                .physics = physicsSystem.get(),
+                .joltPhysics = joltPhysicsSystem.get(),
             };
         }
 
@@ -163,6 +204,134 @@ namespace engine {
 
         [[nodiscard]] const Scene& getScene() const {
             return scene;
+        }
+
+        [[nodiscard]] RenderContext& getRenderContext() {
+            return *renderContext;
+        }
+
+        [[nodiscard]] const RenderContext& getRenderContext() const {
+            return *renderContext;
+        }
+
+        [[nodiscard]] ResourceManager* getResourceManager() const {
+            return resourceManager;
+        }
+
+        [[nodiscard]] entt::entity& selectedEntityRef() {
+            return selectedEntity;
+        }
+
+        [[nodiscard]] entt::entity selectedEntityValue() const {
+            return selectedEntity;
+        }
+
+        [[nodiscard]] entt::entity& cameraEntityRef() {
+            return cameraEntity;
+        }
+
+        [[nodiscard]] entt::entity cameraEntityValue() const {
+            return cameraEntity;
+        }
+
+        [[nodiscard]] std::unique_ptr<Skybox>& skyboxRef() {
+            return skybox;
+        }
+
+        [[nodiscard]] Skybox* getSkybox() const {
+            return skybox.get();
+        }
+
+        [[nodiscard]] SkyboxSettings& skySettingsRef() {
+            return skySettings;
+        }
+
+        [[nodiscard]] ShadowSettings& shadowSettingsRef() {
+            return shadowSettings;
+        }
+
+        [[nodiscard]] PostProcessPushConstants& postProcessPushRef() {
+            return postProcessPush;
+        }
+
+        [[nodiscard]] bool& showSkyboxRef() {
+            return showSkybox;
+        }
+
+        [[nodiscard]] bool& showGridRef() {
+            return showGrid;
+        }
+
+        [[nodiscard]] bool& showDebugObjectsRef() {
+            return showDebugObjects;
+        }
+
+        [[nodiscard]] bool& showColliderWireframesRef() {
+            return showColliderWireframes;
+        }
+
+        [[nodiscard]] bool& physicsSimulationRunningRef() {
+            return physicsSimulationRunning;
+        }
+
+        [[nodiscard]] bool& solidGroundEnabledRef() {
+            return solidGroundEnabled;
+        }
+
+        [[nodiscard]] IBLSystem* getIBLSystem() const {
+            return iblSystem.get();
+        }
+
+        [[nodiscard]] ModelRenderSystem* getModelRenderSystem() const {
+            return modelRenderSystem.get();
+        }
+
+        [[nodiscard]] AnimationSystem* getAnimationSystem() const {
+            return animationSystem.get();
+        }
+
+        [[nodiscard]] ObjectSelectionSystem* getObjectSelectionSystem() const {
+            return objectSelectionSystem.get();
+        }
+
+        [[nodiscard]] InputSystem* getInputSystem() const {
+            return inputSystem.get();
+        }
+
+        [[nodiscard]] CameraSystem* getCameraSystem() const {
+            return cameraSystem.get();
+        }
+
+        [[nodiscard]] ColliderDebugRenderSystem* getColliderDebugRenderSystem() const {
+            return colliderDebugRenderSystem.get();
+        }
+
+        [[nodiscard]] ShadowSystem* getShadowSystem() const {
+            return shadowSystem.get();
+        }
+
+        [[nodiscard]] LightSystem* getLightSystem() const {
+            return lightSystem.get();
+        }
+
+        [[nodiscard]] GridRenderSystem* getGridRenderSystem() const {
+            return gridRenderSystem.get();
+        }
+
+        [[nodiscard]] DeferredLightingSystem* getDeferredLightingSystem() const {
+            return deferredLightingSystem.get();
+        }
+
+        [[nodiscard]] JoltPhysicsSystem* getJoltPhysicsSystem() const {
+            return joltPhysicsSystem.get();
+        }
+
+        [[nodiscard]] PostProcessingSystem* getPostProcessingSystem() const {
+            return postProcessingSystem.get();
+        }
+
+        void setPostProcessingSystem(std::unique_ptr<PostProcessingSystem> system) {
+            postProcessingSystem = std::move(system);
         }
 
         [[nodiscard]] VkDescriptorSet getGbufferDescriptorSet(int frameIndex) const {
@@ -225,6 +394,14 @@ namespace engine {
             return *postProcessPool;
         }
 
+        [[nodiscard]] DescriptorSetLayout& deferredIblSetLayoutRef() {
+            return *deferredIblSetLayout;
+        }
+
+        [[nodiscard]] DescriptorPool& deferredIblPoolRef() {
+            return *deferredIblPool;
+        }
+
        private:
         // initialization helpers - keep initialize() high-level and explicit
         void createInputDevices(Window* window);
@@ -244,7 +421,6 @@ namespace engine {
 
         SystemRegistry systemRegistry;
 
-       public:
         // Systems
         std::unique_ptr<ObjectSelectionSystem>  objectSelectionSystem;
         std::unique_ptr<InputSystem>            inputSystem;
@@ -263,22 +439,9 @@ namespace engine {
         std::unique_ptr<PhysicsSystem>          physicsSystem;
         std::unique_ptr<JoltPhysicsSystem>      joltPhysicsSystem;
 
-        // Resources
-        std::unique_ptr<RenderContext> renderContext;
-        ResourceManager*               resourceManager = nullptr;  // not owned here
-
         // Input devices (owned by EngineState)
         std::unique_ptr<Keyboard> keyboard;
         std::unique_ptr<Mouse>    mouse;
-
-        // Scene & entities
-        Scene        scene;
-        entt::entity selectedEntity = entt::null;
-        entt::entity cameraEntity   = entt::null;
-
-        // UI
-        std::unique_ptr<UIManager>    uiManager;
-        std::unique_ptr<ImGuiManager> imguiManager;
 
         // Descriptor/layout state used by several passes
         std::unique_ptr<DescriptorPool>      gbufferPool;
@@ -296,22 +459,29 @@ namespace engine {
         std::unique_ptr<DescriptorPool>      postProcessPool;
         std::unique_ptr<DescriptorSetLayout> postProcessSetLayout;
         std::vector<VkDescriptorSet>         postProcessDescriptorSets;
-        PostProcessPushConstants             postProcessPush{};
 
-        // Scene resources
+        // Non-owned dependencies passed during initialize().
+        RenderContext*   renderContext   = nullptr;
+        ResourceManager* resourceManager = nullptr;
+
+        // Scene & transient selection state.
+        Scene        scene;
+        entt::entity selectedEntity = entt::null;
+        entt::entity cameraEntity   = entt::null;
+
+        // Scene resources and runtime rendering controls.
         std::unique_ptr<Skybox> skybox;
         SkyboxSettings          skySettings;
         ShadowSettings          shadowSettings;
+        PostProcessPushConstants postProcessPush{};
 
-        // View toggles
-        bool showSkybox = false;
-        bool showGrid   = false;
-        bool showDebugObjects = false;
+        bool showSkybox             = false;
+        bool showGrid               = false;
+        bool showDebugObjects       = false;
         bool showColliderWireframes = false;
-        bool debugMode  = false;
-
-        // Runtime controls
+        bool debugMode              = false;
         bool physicsSimulationRunning = false;
+        bool solidGroundEnabled       = true;
     };
 
 }  // namespace engine

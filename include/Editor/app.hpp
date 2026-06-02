@@ -94,6 +94,11 @@ class App {
   EngineState engineState;
   SceneSerializer sceneSerializer;  // initialized in ctor using engineState
 
+  // Explicitly owned by App and injected into EngineState during initialize().
+  std::unique_ptr<RenderContext> renderContext;
+  std::unique_ptr<ImGuiManager> imguiManager;
+  std::unique_ptr<UIManager> uiManager;
+
   // Input & Camera
   std::unique_ptr<Camera> camera;
 

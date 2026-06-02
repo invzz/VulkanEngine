@@ -11,9 +11,12 @@
 
 namespace engine {
 
+class JoltPhysicsSystem;
+
 class InspectorPanel : public UIPanel {
  public:
-  InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes);
+  InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes,
+                 bool* solidGroundEnabled, JoltPhysicsSystem* joltPhysicsSystem);
 
   void render(FrameInfo& frameInfo) override;
   [[nodiscard]] bool isSeparateWindow() const override {

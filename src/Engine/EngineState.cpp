@@ -1,5 +1,6 @@
 #include "Engine/EngineState.hpp"
 
+#include "Editor/RenderContext.hpp"
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
@@ -11,14 +12,22 @@
 
 namespace engine {
 
+    EngineState::~EngineState() = default;
+
     void EngineState::initialize(Device& device,
         Renderer&                        renderer,
         ResourceManager&                 resourceManagerRef,
+        RenderContext*                   requiredRenderContext,
         Window*                          window,
         bool                             multithreadedRecordingEnabled,
         uint32_t                         multithreadedRecordingThreads) {
+        if (requiredRenderContext == nullptr) {
+            throw RuntimeException("EngineState::initialize requires a non-null RenderContext");
+        }
+
         // store non-owned resource pointer
         this->resourceManager = &resourceManagerRef;
+        this->renderContext   = requiredRenderContext;
 
         // input devices are optional and can be initialized directly
         createInputDevices(window);
@@ -122,6 +131,10 @@ namespace engine {
     }
 
     void EngineState::initCoreSystems(Device& device, Renderer& renderer, bool multithreadedRecordingEnabled, uint32_t multithreadedRecordingThreads) {
+        if (renderContext == nullptr) {
+            throw RuntimeException("EngineState::initCoreSystems called with null RenderContext");
+        }
+
         // Camera system depends on render context already being created by caller
         cameraSystem = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
         colliderDebugRenderSystem = std::make_unique<ColliderDebugRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());

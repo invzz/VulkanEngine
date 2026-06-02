@@ -168,6 +168,12 @@ xmake run Tests -- --gtest_filter=Engine.*
 
 # Run specific test
 xmake run Tests -- --gtest_filter=ModelRenderSystemTests.*
+
+# Run architecture dependency guard tests (ArchUnit-like)
+xmake run Tests -- --gtest_filter=ArchitectureDependencyRules.*
+
+# Run lifecycle contract tests (initialize + swapchain recreation guards)
+xmake run Tests -- --gtest_filter=EngineLifecycleContracts.*
 ```
 
 ## Code Quality

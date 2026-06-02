@@ -33,7 +33,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace Jolt = JPH;
 
 namespace engine {
 
@@ -77,6 +76,16 @@ public:
     void clear();
 
     /**
+     * @brief Enable or disable the solid ground body at y = 0.
+     */
+    void setGroundEnabled(bool enabled);
+
+    /**
+     * @brief Check whether the solid ground body is currently enabled.
+     */
+    [[nodiscard]] bool isGroundEnabled() const { return groundEnabled_; }
+
+    /**
      * @brief Raycast against the physics world.
      * @param origin Start point
      * @param direction Normalized direction
@@ -86,9 +95,9 @@ public:
     glm::vec3 raycast(const glm::vec3& origin, const glm::vec3& direction, float maxDistance) const;
 
     /**
-     * @brief Get the underlying Jolt::PhysicsSystem pointer.
+     * @brief Get the underlying JPH::PhysicsSystem pointer.
      */
-    Jolt::PhysicsSystem* getPhysicsSystem() { return physicsSystem_.get(); }
+    JPH::PhysicsSystem* getPhysicsSystem() { return physicsSystem_.get(); }
 
 private:
     void createGroundBody();
@@ -96,46 +105,47 @@ private:
     /**
      * @brief Create a Jolt collision shape from ColliderComponent.
      */
-    static std::unique_ptr<Jolt::BodyCreationSettings> createCollisionShape(
+    static std::unique_ptr<JPH::BodyCreationSettings> createCollisionShape(
         const TransformComponent& transform,
         const RigidBodyComponent& rigidBody,
         const ColliderComponent& collider,
         const PhysicsMaterialComponent* material);
 
     /**
-    * @brief Convert glm::vec3 to Jolt::Vec3.
+    * @brief Convert glm::vec3 to JPH::Vec3.
      */
-    static Jolt::Vec3 toJolt(const glm::vec3& v);
-    static glm::vec3 toGlm(const Jolt::Vec3& v);
-    static glm::quat toGlm(const Jolt::Quat& q);
-    static Jolt::Quat toJolt(const glm::quat& q);
+    static JPH::Vec3 toJolt(const glm::vec3& v);
+    static glm::vec3 toGlm(const JPH::Vec3& v);
+    static glm::quat toGlm(const JPH::Quat& q);
+    static JPH::Quat toJolt(const glm::quat& q);
 
-    static constexpr Jolt::ObjectLayer cNonMovingObjectLayer = 0;
-    static constexpr Jolt::ObjectLayer cMovingObjectLayer = 1;
+    static constexpr JPH::ObjectLayer cNonMovingObjectLayer = 0;
+    static constexpr JPH::ObjectLayer cMovingObjectLayer = 1;
     static constexpr uint32_t cNumObjectLayers = 2;
     static constexpr uint32_t cNumBroadPhaseLayers = 2;
 
     // Jolt core objects
-    std::unique_ptr<Jolt::Factory> factory_;
-    std::unique_ptr<Jolt::TempAllocatorImpl> tempAllocator_;
-    std::unique_ptr<Jolt::JobSystemThreadPool> jobSystem_;
-    std::unique_ptr<Jolt::PhysicsSystem> physicsSystem_;
+    std::unique_ptr<JPH::Factory> factory_;
+    std::unique_ptr<JPH::TempAllocatorImpl> tempAllocator_;
+    std::unique_ptr<JPH::JobSystemThreadPool> jobSystem_;
+    std::unique_ptr<JPH::PhysicsSystem> physicsSystem_;
 
     // Collision layer routing used by PhysicsSystem::Init.
-    std::unique_ptr<Jolt::BroadPhaseLayerInterfaceTable> broadPhaseLayerInterface_;
-    std::unique_ptr<Jolt::ObjectLayerPairFilterTable> objectLayerPairFilter_;
-    std::unique_ptr<Jolt::ObjectVsBroadPhaseLayerFilterTable> objectVsBroadPhaseLayerFilter_;
+    std::unique_ptr<JPH::BroadPhaseLayerInterfaceTable> broadPhaseLayerInterface_;
+    std::unique_ptr<JPH::ObjectLayerPairFilterTable> objectLayerPairFilter_;
+    std::unique_ptr<JPH::ObjectVsBroadPhaseLayerFilterTable> objectVsBroadPhaseLayerFilter_;
 
     // Registered types flag
     bool typesRegistered_{false};
 
     // Map entity ID → Jolt body ID for sync
     struct BodySyncInfo {
-        Jolt::BodyID bodyID;
+        JPH::BodyID bodyID;
         ColliderComponent::ShapeType shapeType{ColliderComponent::ShapeType::Sphere};
     };
     std::unordered_map<uint32_t, BodySyncInfo> bodyMap_;
-    Jolt::BodyID groundBodyID_;
+    JPH::BodyID groundBodyID_;
+    bool groundEnabled_{true};
 };
 
 } // namespace engine

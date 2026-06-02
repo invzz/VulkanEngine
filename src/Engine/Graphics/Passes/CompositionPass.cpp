@@ -49,16 +49,19 @@ namespace engine {
         // Refresh the post-process descriptor set each frame (image/depth views may change on resize)
         DescriptorWriter(engineState_->postProcessSetLayoutRef(), engineState_->postProcessPoolRef()).writeImage(0, &imageInfo).writeImage(1, &depthInfo).overwrite(engineState_->postProcessDescriptorSetRef(frameInfo.frameIndex));
 
-        engineState_->postProcessPush.inverseProjection = glm::inverse(camera_.getProjection());
-        engineState_->postProcessPush.projection        = camera_.getProjection();
+        auto& postProcessPush = engineState_->postProcessPushRef();
+        postProcessPush.inverseProjection = glm::inverse(camera_.getProjection());
+        postProcessPush.projection        = camera_.getProjection();
 
-        engineState_->postProcessPush.debugMode = frameInfo.debugMode;
+        postProcessPush.debugMode = frameInfo.debugMode;
 
         // Begin swapchain render pass for composition + UI (swapchain render pass is not active elsewhere)
         renderer_.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
-        engineState_->postProcessingSystem->render(frameInfo, engineState_->getPostProcessDescriptorSet(frameInfo.frameIndex), engineState_->postProcessPush);
-        engineState_->uiManager->render(frameInfo, frameInfo.commandBuffer, true);
+        engineState_->getPostProcessingSystem()->render(frameInfo, engineState_->getPostProcessDescriptorSet(frameInfo.frameIndex), postProcessPush);
+        if (uiManager_ != nullptr) {
+            uiManager_->render(frameInfo, frameInfo.commandBuffer, true);
+        }
 
         // End swapchain render pass started above
         renderer_.endSwapChainRenderPass(frameInfo.commandBuffer);
