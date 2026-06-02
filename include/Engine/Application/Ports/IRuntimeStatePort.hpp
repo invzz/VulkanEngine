@@ -10,6 +10,9 @@ class IRuntimeStatePort {
   virtual ~IRuntimeStatePort() = default;
 
   [[nodiscard]] virtual bool& showGridRef() = 0;
+  [[nodiscard]] virtual bool& showDebugObjectsRef() = 0;
+  [[nodiscard]] virtual bool& showColliderWireframesRef() = 0;
+  [[nodiscard]] virtual bool& physicsSimulationRunningRef() = 0;
   [[nodiscard]] virtual PostProcessPushConstants& postProcessPushRef() = 0;
 };
 

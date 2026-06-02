@@ -1,32 +1,33 @@
 #include "Editor/Infrastructure/PhysicsRuntimeAdapter.hpp"
 
+#include "Engine/EngineState.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 
 namespace engine {
 
-PhysicsRuntimeAdapter::PhysicsRuntimeAdapter(JoltPhysicsSystem* physicsSystem)
-    : physicsSystem_(physicsSystem) {}
+PhysicsRuntimeAdapter::PhysicsRuntimeAdapter(EngineState& engineState)
+    : engineState_(engineState) {}
 
 bool& PhysicsRuntimeAdapter::physicsSimulationRunningRef() {
-  // This is a placeholder - in reality this would reference EngineState's state
-  static bool physicsSimulationRunning = false;
-  return physicsSimulationRunning;
+  return engineState_.physicsSimulationRunningRef();
 }
 
 void PhysicsRuntimeAdapter::clearSceneBodies() {
-  if (physicsSystem_ != nullptr) {
-    physicsSystem_->clear();
+  auto* jolt = engineState_.getJoltPhysicsSystem();
+  if (jolt != nullptr) {
+    jolt->clear();
   }
 }
 
 void PhysicsRuntimeAdapter::setGroundEnabled(bool enabled) {
-  if (physicsSystem_ != nullptr) {
-    physicsSystem_->setGroundEnabled(enabled);
+  auto* jolt = engineState_.getJoltPhysicsSystem();
+  if (jolt != nullptr) {
+    jolt->setGroundEnabled(enabled);
   }
 }
 
 JoltPhysicsSystem* PhysicsRuntimeAdapter::joltPhysicsSystem() const {
-  return physicsSystem_;
+  return engineState_.getJoltPhysicsSystem();
 }
 
 }  // namespace engine

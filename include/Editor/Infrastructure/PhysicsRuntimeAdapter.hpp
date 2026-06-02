@@ -5,10 +5,11 @@
 namespace engine {
 
 class JoltPhysicsSystem;
+class EngineState;
 
 class PhysicsRuntimeAdapter final : public IPhysicsRuntimePort {
  public:
-  explicit PhysicsRuntimeAdapter(JoltPhysicsSystem* physicsSystem);
+  explicit PhysicsRuntimeAdapter(EngineState& engineState);
 
   [[nodiscard]] bool& physicsSimulationRunningRef() override;
   void clearSceneBodies() override;
@@ -16,7 +17,7 @@ class PhysicsRuntimeAdapter final : public IPhysicsRuntimePort {
   [[nodiscard]] JoltPhysicsSystem* joltPhysicsSystem() const override;
 
  private:
-  JoltPhysicsSystem* physicsSystem_ = nullptr;
+  EngineState& engineState_;
 };
 
 }  // namespace engine

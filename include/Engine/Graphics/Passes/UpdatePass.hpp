@@ -1,14 +1,16 @@
+#include "Engine/Application/Ports/IPhysicsRuntimePort.hpp"
+#include "Engine/Application/StateViews/InputStateView.hpp"
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
-class EngineState;
 class Renderer;
 class FrameInfo;
 
 class UpdatePass : public IRenderPass {
  public:
-  UpdatePass(EngineState* engineState, Renderer& renderer) : engineState_(engineState), renderer(renderer) {}
+  UpdatePass(InputStateView inputState, IPhysicsRuntimePort* physicsPort, Renderer& renderer)
+      : inputState_(inputState), physicsPort_(physicsPort), renderer(renderer) {}
 
   [[nodiscard]] const std::string& getName() const override {
     static const std::string name = "Update";
@@ -17,7 +19,8 @@ class UpdatePass : public IRenderPass {
   void execute(FrameInfo& frameInfo) override;
 
  private:
-  EngineState* engineState_ = nullptr;
+  InputStateView inputState_;
+  IPhysicsRuntimePort* physicsPort_ = nullptr;
   Renderer& renderer;
 };
 

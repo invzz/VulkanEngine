@@ -13,14 +13,11 @@
 namespace engine {
 
     void ShadowPass::execute(FrameInfo& frameInfo) {
-        auto rendering = engineState_->renderingService().view();
-        auto sceneRuntime = engineState_->sceneRuntimeService().view();
-
         // Keep target-locked directional/spot lights oriented correctly for this frame.
         LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
 
         // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
-        auto const lightCounts = rendering.renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
+        auto const lightCounts = renderContext_->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
         GlobalUbo     ubo{};
         GlobalUboCold uboCold{};
         ubo.pointLightCount       = lightCounts.point;
@@ -28,19 +25,19 @@ namespace engine {
         ubo.spotLightCount        = lightCounts.spot;
 
         // Render shadow maps for all shadow-casting lights
-        rendering.shadowSystem->renderShadowMaps(frameInfo, *sceneRuntime.shadowSettings);
+        rendering_.shadowSystem->renderShadowMaps(frameInfo, *sceneRuntime_.shadowSettings);
 
         ubo.projection    = frameInfo.camera.getProjection();
         ubo.view          = frameInfo.camera.getView();
         ubo.invProjection = glm::inverse(ubo.projection);
         ubo.invView       = glm::inverse(ubo.view);
-        if (frameInfo.scene->getRegistry().valid(frameInfo.cameraEntity) && frameInfo.scene->getRegistry().all_of<TransformComponent>(frameInfo.cameraEntity)) {
-            ubo.cameraPosition = glm::vec4(frameInfo.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
+        if (sceneRuntime_.scene->getRegistry().valid(frameInfo.cameraEntity) && sceneRuntime_.scene->getRegistry().all_of<TransformComponent>(frameInfo.cameraEntity)) {
+            ubo.cameraPosition = glm::vec4(sceneRuntime_.scene->getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
         } else {
             ubo.cameraPosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         }
 
-        ubo.shadowLightCount = rendering.shadowSystem->getShadowLightCount();
+        ubo.shadowLightCount = rendering_.shadowSystem->getShadowLightCount();
 
         // Frustum planes
         glm::mat4 const vp   = ubo.projection * ubo.view;
@@ -63,18 +60,18 @@ namespace engine {
         }
 
         for (int i = 0; i < ubo.shadowLightCount; i++) {
-            ubo.lightSpaceMatrices[i] = rendering.shadowSystem->getLightSpaceMatrix(i);
+            ubo.lightSpaceMatrices[i] = rendering_.shadowSystem->getLightSpaceMatrix(i);
         }
 
-        ubo.cubeShadowLightCount = rendering.shadowSystem->getCubeShadowLightCount();
+        ubo.cubeShadowLightCount = rendering_.shadowSystem->getCubeShadowLightCount();
         for (int i = 0; i < ubo.cubeShadowLightCount && i < 4; i++) {
-            ubo.pointLightShadowData[i] = glm::vec4(rendering.shadowSystem->getPointLightPosition(i), rendering.shadowSystem->getPointLightRange(i));
+            ubo.pointLightShadowData[i] = glm::vec4(rendering_.shadowSystem->getPointLightPosition(i), rendering_.shadowSystem->getPointLightRange(i));
         }
 
         // Copy editor/debug selection into GPU UBO so shaders can react to debugMode changes.
         ubo.debugMode = frameInfo.debugMode;
 
-        rendering.renderContext->updateUBO(frameInfo.frameIndex, ubo, uboCold);
+        renderContext_->updateUBO(frameInfo.frameIndex, ubo, uboCold);
     }
 
 }  // namespace engine

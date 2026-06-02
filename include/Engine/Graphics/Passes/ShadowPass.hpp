@@ -1,17 +1,17 @@
 #pragma once
 
-#include "Engine/EngineState.hpp"
+#include "Engine/Application/StateViews/RenderingStateView.hpp"
+#include "Engine/Application/StateViews/SceneRuntimeStateView.hpp"
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
-class ShadowSystem;
 class RenderContext;
 
 class ShadowPass : public IRenderPass {
  public:
-  // Accept the central EngineState so the pass can access systems/settings.
-  explicit ShadowPass(EngineState* engineState) : engineState_(engineState) {}
+  ShadowPass(RenderingStateView rendering, SceneRuntimeStateView sceneRuntime, RenderContext* renderContext)
+      : rendering_(rendering), sceneRuntime_(sceneRuntime), renderContext_(renderContext) {}
 
   void execute(FrameInfo& frameInfo) override;
   [[nodiscard]] const std::string& getName() const override {
@@ -20,7 +20,9 @@ class ShadowPass : public IRenderPass {
   }
 
  private:
-  EngineState* engineState_ = nullptr;
+  RenderingStateView rendering_;
+  SceneRuntimeStateView sceneRuntime_;
+  RenderContext* renderContext_ = nullptr;
 };
 
 }  // namespace engine

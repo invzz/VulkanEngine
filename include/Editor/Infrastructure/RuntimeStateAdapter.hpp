@@ -13,6 +13,9 @@ class RuntimeStateAdapter final : public IRuntimeStatePort {
   explicit RuntimeStateAdapter(EngineState& engineState);
 
   [[nodiscard]] bool& showGridRef() override;
+  [[nodiscard]] bool& showDebugObjectsRef() override;
+  [[nodiscard]] bool& showColliderWireframesRef() override;
+  [[nodiscard]] bool& physicsSimulationRunningRef() override;
   [[nodiscard]] PostProcessPushConstants& postProcessPushRef() override;
 
  private:

@@ -18,6 +18,9 @@
 #include "Engine/Application/UseCases/SaveSceneUseCase.hpp"
 #include "Engine/Application/UseCases/SyncEnvironmentLightingUseCase.hpp"
 #include "Engine/EngineState.hpp"
+#include "Editor/Infrastructure/DescriptorAccessAdapter.hpp"
+#include "Editor/Infrastructure/RuntimeStateAdapter.hpp"
+#include "Editor/Infrastructure/AnimationAccessAdapter.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -120,6 +123,11 @@ class App {
   std::unique_ptr<ReconcileSceneLoadUseCase> reconcileSceneLoadUseCase;
   std::unique_ptr<SaveSceneUseCase> saveSceneUseCase;
   std::unique_ptr<SyncEnvironmentLightingUseCase> syncEnvironmentLightingUseCase;
+
+  // Infrastructure adapters for render pass state views.
+  std::unique_ptr<DescriptorAccessAdapter> descriptorAccessAdapter;
+  std::unique_ptr<RuntimeStateAdapter> runtimeStateAdapter;
+  std::unique_ptr<AnimationAccessAdapter> animationAccessAdapter;
 
   // Input & Camera
   std::unique_ptr<Camera> camera;

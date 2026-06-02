@@ -1,15 +1,16 @@
 #pragma once
 
+#include "Engine/Application/StateViews/RenderingStateView.hpp"
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
-class EngineState;
 class Renderer;
 
 class DepthPrepass : public IRenderPass {
  public:
-  DepthPrepass(EngineState* engineState, Renderer& renderer) : engineState_(engineState), renderer_(renderer) {}
+  DepthPrepass(RenderingStateView rendering, Renderer& renderer)
+      : rendering_(rendering), renderer_(renderer) {}
 
   void execute(FrameInfo& frameInfo) override;
   [[nodiscard]] const std::string& getName() const override {
@@ -18,7 +19,7 @@ class DepthPrepass : public IRenderPass {
   }
 
  private:
-  EngineState* engineState_ = nullptr;
+  RenderingStateView rendering_;
   Renderer& renderer_;
 };
 

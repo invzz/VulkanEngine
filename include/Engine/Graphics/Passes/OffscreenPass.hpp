@@ -1,24 +1,19 @@
 #pragma once
 
-#include "Engine/EngineState.hpp"
+#include "Engine/Application/Ports/IDescriptorAccessPort.hpp"
+#include "Engine/Application/Ports/IRuntimeStatePort.hpp"
+#include "Engine/Application/StateViews/RenderingStateView.hpp"
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
 class Renderer;
-class ModelRenderSystem;
-class DeferredLightingSystem;
-class ShadowSystem;
-class RenderContext;
 class Device;
-class DescriptorPool;
-class DescriptorSetLayout;
 
 class OffscreenPass : public IRenderPass {
  public:
-  // Renderer remains external; all other resources are read from EngineState.
-  OffscreenPass(Renderer& renderer, EngineState* engineState, Device& device, int& debugMode)
-      : renderer_(renderer), engineState_(engineState), device_(device), debugMode_(debugMode) {}
+  OffscreenPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, Device& device, int& debugMode)
+      : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), device_(device), debugMode_(debugMode) {}
 
   void execute(FrameInfo& frameInfo) override;
   [[nodiscard]] const std::string& getName() const override {
@@ -30,7 +25,9 @@ class OffscreenPass : public IRenderPass {
   void refreshGbufferDescriptors(int frameIndex);
 
   Renderer& renderer_;
-  EngineState* engineState_ = nullptr;
+  RenderingStateView rendering_;
+  IDescriptorAccessPort& descriptorAccess_;
+  IRuntimeStatePort& runtimeState_;
   Device& device_;
   int& debugMode_;
 };

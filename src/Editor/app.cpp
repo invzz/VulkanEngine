@@ -129,12 +129,16 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         });
 
         scenePersistencePort = std::make_unique<ScenePersistenceAdapter>(sceneSerializer);
-        physicsRuntimePort   = std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem());
+        physicsRuntimePort   = std::make_unique<PhysicsRuntimeAdapter>(engineState);
         environmentLightingPort = std::make_unique<EnvironmentLightingAdapter>(device, engineState);
         loadSceneUseCase     = std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get());
         reconcileSceneLoadUseCase = std::make_unique<ReconcileSceneLoadUseCase>(*sceneRuntime.scene);
         saveSceneUseCase     = std::make_unique<SaveSceneUseCase>(*scenePersistencePort);
         syncEnvironmentLightingUseCase = std::make_unique<SyncEnvironmentLightingUseCase>(*environmentLightingPort);
+
+        // Infrastructure adapters for render pass state views.
+        descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
+        runtimeStateAdapter = std::make_unique<RuntimeStateAdapter>(engineState);
 
         // 4. Setup UI
         setupUI();
@@ -215,23 +219,33 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
     void App::setupRenderGraph() {
         auto graph = std::make_unique<RenderGraph>();
 
+        // Create infrastructure adapters for render pass state views.
+        descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
+        runtimeStateAdapter = std::make_unique<RuntimeStateAdapter>(engineState);
+        animationAccessAdapter = std::make_unique<AnimationAccessAdapter>(engineState.animationRuntimeService().animation());
+
+        // Build state views from adapters for pass injection.
+        RenderingStateView renderingView = engineState.renderingService().view();
+        SceneRuntimeStateView sceneRuntimeView = engineState.sceneRuntimeService().view();
+        InputStateView inputView = engineState.inputService().view();
+
         // 1. Update Pass
-        graph->addPass(std::make_unique<UpdatePass>(&engineState, renderer));
+        graph->addPass(std::make_unique<UpdatePass>(inputView, physicsRuntimePort.get(), renderer));
 
         // 2. Compute Pass
-        graph->addPass(std::make_unique<ComputePass>(&engineState));
+        graph->addPass(std::make_unique<ComputePass>(animationAccessAdapter.get()));
 
-        // 3. Shadow Pass (EngineState-driven)
-        graph->addPass(std::make_unique<ShadowPass>(&engineState));
+        // 3. Shadow Pass (state views)
+        graph->addPass(std::make_unique<ShadowPass>(renderingView, sceneRuntimeView, renderingView.renderContext));
 
         // 4. Depth Prepass (Offscreen Depth Only)
-        graph->addPass(std::make_unique<DepthPrepass>(&engineState, renderer));
+        graph->addPass(std::make_unique<DepthPrepass>(renderingView, renderer));
 
         // 5. Offscreen Pass (Main Scene - Load depth from prepass)
-        graph->addPass(std::make_unique<OffscreenPass>(renderer, &engineState, device, debugMode));
+        graph->addPass(std::make_unique<OffscreenPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, device, debugMode));
 
         // 6. Composition Pass (PostProcess + UI)
-        graph->addPass(std::make_unique<CompositionPass>(renderer, &engineState, uiManager.get(), *camera, window));
+        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, uiManager.get(), *camera, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
