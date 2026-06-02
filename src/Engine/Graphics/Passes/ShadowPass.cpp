@@ -13,11 +13,14 @@
 namespace engine {
 
     void ShadowPass::execute(FrameInfo& frameInfo) {
+        auto rendering = engineState_->renderingService().view();
+        auto sceneRuntime = engineState_->sceneRuntimeService().view();
+
         // Keep target-locked directional/spot lights oriented correctly for this frame.
         LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
 
         // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
-        auto const lightCounts = engineState_->getRenderContext().updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
+        auto const lightCounts = rendering.renderContext->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
         GlobalUbo     ubo{};
         GlobalUboCold uboCold{};
         ubo.pointLightCount       = lightCounts.point;
@@ -25,7 +28,7 @@ namespace engine {
         ubo.spotLightCount        = lightCounts.spot;
 
         // Render shadow maps for all shadow-casting lights
-        engineState_->getShadowSystem()->renderShadowMaps(frameInfo, engineState_->shadowSettingsRef());
+        rendering.shadowSystem->renderShadowMaps(frameInfo, *sceneRuntime.shadowSettings);
 
         ubo.projection    = frameInfo.camera.getProjection();
         ubo.view          = frameInfo.camera.getView();
@@ -37,7 +40,7 @@ namespace engine {
             ubo.cameraPosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         }
 
-        ubo.shadowLightCount = engineState_->getShadowSystem()->getShadowLightCount();
+        ubo.shadowLightCount = rendering.shadowSystem->getShadowLightCount();
 
         // Frustum planes
         glm::mat4 const vp   = ubo.projection * ubo.view;
@@ -60,18 +63,18 @@ namespace engine {
         }
 
         for (int i = 0; i < ubo.shadowLightCount; i++) {
-            ubo.lightSpaceMatrices[i] = engineState_->getShadowSystem()->getLightSpaceMatrix(i);
+            ubo.lightSpaceMatrices[i] = rendering.shadowSystem->getLightSpaceMatrix(i);
         }
 
-        ubo.cubeShadowLightCount = engineState_->getShadowSystem()->getCubeShadowLightCount();
+        ubo.cubeShadowLightCount = rendering.shadowSystem->getCubeShadowLightCount();
         for (int i = 0; i < ubo.cubeShadowLightCount && i < 4; i++) {
-            ubo.pointLightShadowData[i] = glm::vec4(engineState_->getShadowSystem()->getPointLightPosition(i), engineState_->getShadowSystem()->getPointLightRange(i));
+            ubo.pointLightShadowData[i] = glm::vec4(rendering.shadowSystem->getPointLightPosition(i), rendering.shadowSystem->getPointLightRange(i));
         }
 
         // Copy editor/debug selection into GPU UBO so shaders can react to debugMode changes.
         ubo.debugMode = frameInfo.debugMode;
 
-        engineState_->getRenderContext().updateUBO(frameInfo.frameIndex, ubo, uboCold);
+        rendering.renderContext->updateUBO(frameInfo.frameIndex, ubo, uboCold);
     }
 
 }  // namespace engine

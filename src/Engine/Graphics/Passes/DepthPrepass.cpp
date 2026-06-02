@@ -6,8 +6,10 @@
 namespace engine {
 
 void DepthPrepass::execute(FrameInfo& frameInfo) {
+  auto rendering = engineState_->renderingService().view();
+
   renderer_.beginOffscreenDepthPrepassRenderPass(frameInfo.commandBuffer);
-  if (engineState_ != nullptr && engineState_->getModelRenderSystem() != nullptr) engineState_->getModelRenderSystem()->renderDepthPrepass(frameInfo);
+  if (engineState_ != nullptr && rendering.modelRenderSystem != nullptr) rendering.modelRenderSystem->renderDepthPrepass(frameInfo);
   renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
 }
 

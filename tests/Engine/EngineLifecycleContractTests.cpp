@@ -90,11 +90,11 @@ TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
         << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port";
     EXPECT_NE(appSource.find("std::make_unique<EnvironmentLightingAdapter>(device, engineState)"), std::string::npos)
         << "App should construct EnvironmentLightingAdapter as Infrastructure implementation of environment lighting port";
-    EXPECT_NE(appSource.find("std::make_unique<LoadSceneUseCase>(engineState.getScene(), *scenePersistencePort, physicsRuntimePort.get())"), std::string::npos)
+    EXPECT_NE(appSource.find("std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get())"), std::string::npos)
         << "App should construct LoadSceneUseCase in Application layer";
     EXPECT_NE(appSource.find("std::make_unique<SceneSelectionMaintenanceAdapter>(*uiManager)"), std::string::npos)
         << "App should construct SceneSelectionMaintenanceAdapter as Delivery implementation of selection maintenance port";
-    EXPECT_NE(appSource.find("std::make_unique<ReconcileSceneLoadUseCase>(engineState.getScene())"), std::string::npos)
+    EXPECT_NE(appSource.find("std::make_unique<ReconcileSceneLoadUseCase>(*sceneRuntime.scene)"), std::string::npos)
         << "App should construct ReconcileSceneLoadUseCase in Application layer";
     EXPECT_NE(appSource.find("std::make_unique<ProcessSceneSelectionMaintenanceUseCase>(*sceneSelectionMaintenancePort)"), std::string::npos)
         << "App should construct ProcessSceneSelectionMaintenanceUseCase in Application layer";

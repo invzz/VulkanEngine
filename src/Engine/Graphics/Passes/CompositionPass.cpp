@@ -42,6 +42,8 @@ namespace {
 namespace engine {
 
     void CompositionPass::execute(FrameInfo& frameInfo) {
+        auto rendering = engineState_->renderingService().view();
+
         // Update post-process descriptors
         auto imageInfo = renderer_.getOffscreenImageInfo(frameInfo.frameIndex);
         auto depthInfo = renderer_.getDepthImageInfo(frameInfo.frameIndex);
@@ -58,7 +60,7 @@ namespace engine {
         // Begin swapchain render pass for composition + UI (swapchain render pass is not active elsewhere)
         renderer_.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
-        engineState_->getPostProcessingSystem()->render(frameInfo, engineState_->getPostProcessDescriptorSet(frameInfo.frameIndex), postProcessPush);
+        rendering.postProcessingSystem->render(frameInfo, engineState_->getPostProcessDescriptorSet(frameInfo.frameIndex), postProcessPush);
         if (uiManager_ != nullptr) {
             uiManager_->render(frameInfo, frameInfo.commandBuffer, true);
         }

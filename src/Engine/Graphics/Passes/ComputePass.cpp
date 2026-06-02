@@ -6,7 +6,8 @@
 namespace engine {
 
 void ComputePass::execute(FrameInfo& frameInfo) {
-  if (engineState_ != nullptr && engineState_->getAnimationSystem() != nullptr) engineState_->getAnimationSystem()->update(frameInfo);
+  auto systems = engineState_->systemServices();
+  if (engineState_ != nullptr && systems.animation != nullptr) systems.animation->update(frameInfo);
 }
 
 }  // namespace engine

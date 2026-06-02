@@ -83,6 +83,18 @@ Runtime systems should consume Domain models directly where possible and only cr
 - Migrated `SettingsPanel` and `ScenePanel` resource-manager access from `getResourceManager()` to `resourceService().view().resourceManager`.
 - Strengthened panel architecture guard tests to prevent `getResourceManager()` regressions in migrated panels.
 
+## Tenth Refactor Slice Implemented
+
+- Added a UI-wide architecture guard (`EditorUiShouldUseNarrowServicesInsteadOfLegacyEngineStateGetters`) that scans all `src/Editor/ui/*.cpp` files for legacy grouped EngineState getter usage with an explicit allowlist gate.
+- Migrated `App` scene and rendering wiring from legacy getters to service/view-based access for scene/runtime bindings.
+- Removed unused legacy EngineState getters: `getScene()`, `getIBLSystem()`, and `getResourceManager()`.
+
+## Eleventh Refactor Slice Implemented
+
+- Migrated render/update pass hotspots (`UpdatePass`, `ComputePass`, `DepthPrepass`, `OffscreenPass`, `ShadowPass`, `CompositionPass`) to `inputService()` / `renderingService()` / `sceneRuntimeService()` / `systemServices()` based access.
+- Added a render-pass architecture guard (`RenderPassesShouldUseStateServicesInsteadOfLegacyEngineStateGetters`) to block regressions back to legacy EngineState getters in `src/Engine/Graphics/Passes`.
+- Reduced legacy EngineState getter surface further by removing now-unused runtime-system getters (`getRenderContext`, `getModelRenderSystem`, `getAnimationSystem`, `getObjectSelectionSystem`, `getInputSystem`, `getCameraSystem`, `getColliderDebugRenderSystem`, `getShadowSystem`, `getLightSystem`, `getGridRenderSystem`, `getDeferredLightingSystem`, `getPostProcessingSystem`).
+
 ## Boundary Rules
 
 - Domain must not include Editor, Vulkan, filesystem, or serializer implementations.

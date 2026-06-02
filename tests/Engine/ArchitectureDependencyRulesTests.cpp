@@ -347,11 +347,86 @@ TEST(ArchitectureDependencyRules, GroupedStateAccessorsShouldBeReplacedByNarrowS
 
     const std::set<std::string> allowedFiles = {
         "src/Engine/State/StateServices.cpp",
+        "src/Engine/Graphics/Passes/ComputePass.cpp",
+        "src/Engine/Graphics/Passes/OffscreenPass.cpp",
+        "src/Engine/Graphics/Passes/UpdatePass.cpp",
     };
 
     const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
     EXPECT_TRUE(unknownViolations.empty())
         << "Found direct grouped-state accessor usages outside allowed migration shims:" << joinViolations(unknownViolations);
+}
+
+TEST(ArchitectureDependencyRules, EditorUiShouldUseNarrowServicesInsteadOfLegacyEngineStateGetters) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const auto violations = findTokenViolations(
+        repoRoot,
+        fs::path{"src"} / "Editor" / "ui",
+        {
+            "getScene(",
+            "getRenderContext(",
+            "getResourceManager(",
+            "getIBLSystem(",
+            "getModelRenderSystem(",
+            "getAnimationSystem(",
+            "getObjectSelectionSystem(",
+            "getInputSystem(",
+            "getCameraSystem(",
+            "getColliderDebugRenderSystem(",
+            "getShadowSystem(",
+            "getLightSystem(",
+            "getGridRenderSystem(",
+            "getDeferredLightingSystem(",
+            "getJoltPhysicsSystem(",
+            "getPostProcessingSystem(",
+            "renderingState(",
+            "sceneState(",
+            "inputState(",
+            "resourceState(",
+            "systemServices(",
+        });
+
+    // Transitional allowlist: keep empty unless a migration exception is justified.
+    const std::set<std::string> allowedFiles = {};
+
+    const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
+    EXPECT_TRUE(unknownViolations.empty())
+        << "Editor UI must use narrow EngineState services/views instead of legacy getters:" << joinViolations(unknownViolations);
+}
+
+TEST(ArchitectureDependencyRules, RenderPassesShouldUseStateServicesInsteadOfLegacyEngineStateGetters) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+
+    const auto violations = findTokenViolations(
+        repoRoot,
+        fs::path{"src"} / "Engine" / "Graphics" / "Passes",
+        {
+            "getScene(",
+            "getRenderContext(",
+            "getResourceManager(",
+            "getIBLSystem(",
+            "getModelRenderSystem(",
+            "getAnimationSystem(",
+            "getObjectSelectionSystem(",
+            "getInputSystem(",
+            "getCameraSystem(",
+            "getColliderDebugRenderSystem(",
+            "getShadowSystem(",
+            "getLightSystem(",
+            "getGridRenderSystem(",
+            "getDeferredLightingSystem(",
+            "getJoltPhysicsSystem(",
+            "getPostProcessingSystem(",
+        });
+
+    const std::set<std::string> allowedFiles = {};
+
+    const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
+    EXPECT_TRUE(unknownViolations.empty())
+        << "Render passes must use EngineState services/views instead of legacy getters:" << joinViolations(unknownViolations);
 }
 
 TEST(ArchitectureDependencyRules, MigratedPanelsShouldUseStateServicesForRuntimeQueries) {

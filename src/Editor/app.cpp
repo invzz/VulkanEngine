@@ -74,7 +74,8 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
 }  // namespace
 
     App::App(bool fullscreen)
-        : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device), sceneSerializer(engineState.getScene(), resourceManager) {
+        : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device),
+          sceneSerializer(*engineState.sceneRuntimeService().view().scene, resourceManager) {
         init();
     }
 
@@ -108,6 +109,9 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
         engineState.initialize(device, renderer, resourceManager, renderContext.get(), &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
 
+        auto rendering = engineState.renderingService().view();
+        auto sceneRuntime = engineState.sceneRuntimeService().view();
+
         sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
             .showSkybox = &engineState.showSkyboxRef(),
             .showGrid = &engineState.showGridRef(),
@@ -115,8 +119,8 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
             .physicsSimulationRunning = &engineState.physicsSimulationRunningRef(),
             .skySettings = &engineState.skySettingsRef(),
             .postProcessPush = &engineState.postProcessPushRef(),
-            .iblSystem = engineState.getIBLSystem(),
-            .modelRenderSystem = engineState.getModelRenderSystem(),
+            .iblSystem = rendering.iblSystem,
+            .modelRenderSystem = rendering.modelRenderSystem,
             .getGpuProfilerEnabled = []() { return GpuProfiler::instance().isEnabled(); },
             .setGpuProfilerEnabled = [](bool enabled) { GpuProfiler::instance().setEnabled(enabled); },
             .multithreadedRecordingEnabled = &multithreadedRecordingEnabled,
@@ -127,8 +131,8 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         scenePersistencePort = std::make_unique<ScenePersistenceAdapter>(sceneSerializer);
         physicsRuntimePort   = std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem());
         environmentLightingPort = std::make_unique<EnvironmentLightingAdapter>(device, engineState);
-        loadSceneUseCase     = std::make_unique<LoadSceneUseCase>(engineState.getScene(), *scenePersistencePort, physicsRuntimePort.get());
-        reconcileSceneLoadUseCase = std::make_unique<ReconcileSceneLoadUseCase>(engineState.getScene());
+        loadSceneUseCase     = std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get());
+        reconcileSceneLoadUseCase = std::make_unique<ReconcileSceneLoadUseCase>(*sceneRuntime.scene);
         saveSceneUseCase     = std::make_unique<SaveSceneUseCase>(*scenePersistencePort);
         syncEnvironmentLightingUseCase = std::make_unique<SyncEnvironmentLightingUseCase>(*environmentLightingPort);
 
@@ -202,7 +206,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
             }
         });
         uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
-        uiManager->addPanel(std::make_unique<InspectorPanel>(engineState.getScene(), &engineState.physicsSimulationRunningRef(),
+        uiManager->addPanel(std::make_unique<InspectorPanel>(*engineState.sceneRuntimeService().view().scene, &engineState.physicsSimulationRunningRef(),
                                          &engineState.showColliderWireframesRef(), &engineState.solidGroundEnabledRef(),
                                          engineState.getJoltPhysicsSystem()));
         uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
@@ -311,6 +315,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
             int const frameIndex = renderer.getFrameIndex();
             auto renderingState = engineState.renderingService().view();
             auto sceneRuntime = engineState.sceneRuntimeService().view();
+            auto systems = engineState.systemServices();
 
             FrameInfo frameInfo{
                 .frameIndex          = frameIndex,
@@ -323,7 +328,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
                 .selectedObjectId    = selectedObjectId,
                 .selectedEntity      = *sceneRuntime.selectedEntity,
                 .cameraEntity        = *sceneRuntime.cameraEntity,
-                .morphManager        = engineState.getAnimationSystem()->getMorphManager(),
+                .morphManager        = systems.animation->getMorphManager(),
                 .extent              = renderer.getSwapChainExtent(),
                 .debugMode           = debugMode,
             };

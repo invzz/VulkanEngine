@@ -54,6 +54,12 @@ namespace engine {
             bool                multithreadedRecordingEnabled,
             uint32_t            multithreadedRecordingThreads);
 
+       private:
+        friend class RenderingStateService;
+        friend class SceneRuntimeService;
+        friend class InputStateService;
+        friend class ResourceStateService;
+
         [[nodiscard]] RenderingStateView renderingState() {
             return RenderingStateView{
                 .modelRenderSystem      = modelRenderSystem.get(),
@@ -109,6 +115,8 @@ namespace engine {
             };
         }
 
+       public:
+
         [[nodiscard]] SystemServicesView systemServices() {
             return SystemServicesView{
                 .objectSelection = objectSelectionSystem.get(),
@@ -148,26 +156,6 @@ namespace engine {
 
         [[nodiscard]] const std::vector<std::string>& initializedSystemOrder() const {
             return systemRegistry.initializationOrder();
-        }
-
-        [[nodiscard]] Scene& getScene() {
-            return scene;
-        }
-
-        [[nodiscard]] const Scene& getScene() const {
-            return scene;
-        }
-
-        [[nodiscard]] RenderContext& getRenderContext() {
-            return *renderContext;
-        }
-
-        [[nodiscard]] const RenderContext& getRenderContext() const {
-            return *renderContext;
-        }
-
-        [[nodiscard]] ResourceManager* getResourceManager() const {
-            return resourceManager;
         }
 
         [[nodiscard]] entt::entity& selectedEntityRef() {
@@ -230,56 +218,8 @@ namespace engine {
             return solidGroundEnabled;
         }
 
-        [[nodiscard]] IBLSystem* getIBLSystem() const {
-            return iblSystem.get();
-        }
-
-        [[nodiscard]] ModelRenderSystem* getModelRenderSystem() const {
-            return modelRenderSystem.get();
-        }
-
-        [[nodiscard]] AnimationSystem* getAnimationSystem() const {
-            return animationSystem.get();
-        }
-
-        [[nodiscard]] ObjectSelectionSystem* getObjectSelectionSystem() const {
-            return objectSelectionSystem.get();
-        }
-
-        [[nodiscard]] InputSystem* getInputSystem() const {
-            return inputSystem.get();
-        }
-
-        [[nodiscard]] CameraSystem* getCameraSystem() const {
-            return cameraSystem.get();
-        }
-
-        [[nodiscard]] ColliderDebugRenderSystem* getColliderDebugRenderSystem() const {
-            return colliderDebugRenderSystem.get();
-        }
-
-        [[nodiscard]] ShadowSystem* getShadowSystem() const {
-            return shadowSystem.get();
-        }
-
-        [[nodiscard]] LightSystem* getLightSystem() const {
-            return lightSystem.get();
-        }
-
-        [[nodiscard]] GridRenderSystem* getGridRenderSystem() const {
-            return gridRenderSystem.get();
-        }
-
-        [[nodiscard]] DeferredLightingSystem* getDeferredLightingSystem() const {
-            return deferredLightingSystem.get();
-        }
-
         [[nodiscard]] JoltPhysicsSystem* getJoltPhysicsSystem() const {
             return joltPhysicsSystem.get();
-        }
-
-        [[nodiscard]] PostProcessingSystem* getPostProcessingSystem() const {
-            return postProcessingSystem.get();
         }
 
         void setPostProcessingSystem(std::unique_ptr<PostProcessingSystem> system) {
