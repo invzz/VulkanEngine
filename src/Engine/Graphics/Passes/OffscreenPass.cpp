@@ -63,7 +63,6 @@ namespace engine {
 
     void OffscreenPass::execute(FrameInfo& frameInfo) {
         auto rendering = engineState_->renderingService().view();
-        auto systems = engineState_->systemServices();
 
         // Reset per-frame dynamic offsets before any mesh passes.
         rendering.modelRenderSystem->beginFrame(frameInfo.frameIndex);
@@ -104,11 +103,11 @@ namespace engine {
             if ((engineState_->showDebugObjectsRef()) && (rendering.lightSystem != nullptr)) {
                 rendering.lightSystem->render(frameInfo);
             }
-            if ((engineState_->showDebugObjectsRef()) && (systems.camera != nullptr)) {
-                systems.camera->render(frameInfo);
+            if ((engineState_->showDebugObjectsRef()) && (rendering.camera != nullptr)) {
+                rendering.camera->render(frameInfo);
             }
-            if ((engineState_->showColliderWireframesRef()) && (systems.colliderDebug != nullptr)) {
-                systems.colliderDebug->render(frameInfo);
+            if ((engineState_->showColliderWireframesRef()) && (rendering.colliderDebug != nullptr)) {
+                rendering.colliderDebug->render(frameInfo);
             }
 
             renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);

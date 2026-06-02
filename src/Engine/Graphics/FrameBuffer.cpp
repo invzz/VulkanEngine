@@ -579,7 +579,7 @@ namespace engine {
 
         for (uint32_t i = 0; i < frameCount; ++i) {
             makeTarget(colorTargets[i], colorFormat, mipLevels, colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, false, true, true, &linearSamplerInfo);
-            makeTarget(depthTargets[i], depthFormat, mipLevels, depthUsage, VK_IMAGE_ASPECT_DEPTH_BIT, true, false, true, &nearestSamplerInfo);
+            makeTarget(depthTargets[i], depthFormat, mipLevels, depthUsage, VK_IMAGE_ASPECT_DEPTH_BIT, true, true, true, &nearestSamplerInfo);
             makeTarget(sceneColorTargets[i], colorFormat, mipLevels,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 VK_IMAGE_ASPECT_COLOR_BIT,
@@ -620,7 +620,7 @@ namespace engine {
         deferredLightingFramebuffers.resize(frameCount);
 
         for (size_t i = 0; i < frameCount; i++) {
-            std::array<VkImageView, 2> attachments = {colorTargets[i].getAttachmentView(), depthTargets[i].getView()};
+            std::array<VkImageView, 2> attachments = {colorTargets[i].getAttachmentView(), depthTargets[i].getAttachmentView()};
 
             VkFramebufferCreateInfo framebufferInfo{};
             framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -659,7 +659,7 @@ namespace engine {
                     gbufferAlbedoTargets[i].getView(),
                     gbufferMaterialTargets[i].getView(),
                     colorTargets[i].getAttachmentView(),
-                    depthTargets[i].getView()};
+                    depthTargets[i].getAttachmentView()};
             VkFramebufferCreateInfo gbufferFbInfo{};
             gbufferFbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             gbufferFbInfo.renderPass      = gbufferRenderPass;

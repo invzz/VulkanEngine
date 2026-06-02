@@ -1,6 +1,9 @@
 #include "Engine/State/StateServices.hpp"
 
 #include "Engine/EngineState.hpp"
+#include "Engine/Systems/AnimationSystem.hpp"
+#include "Engine/Systems/PhysicsSystem.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
 
 namespace engine {
 
@@ -30,6 +33,24 @@ ResourceStateService::ResourceStateService(EngineState& engineState)
 
 ResourceStateView ResourceStateService::view() const {
   return engineState_.resourceState();
+}
+
+AnimationRuntimeService::AnimationRuntimeService(EngineState& engineState)
+    : engineState_(engineState) {}
+
+AnimationSystem* AnimationRuntimeService::animation() const {
+  return engineState_.animationSystem.get();
+}
+
+PhysicsRuntimeService::PhysicsRuntimeService(EngineState& engineState)
+    : engineState_(engineState) {}
+
+JoltPhysicsSystem* PhysicsRuntimeService::joltPhysics() const {
+  return engineState_.joltPhysicsSystem.get();
+}
+
+PhysicsSystem* PhysicsRuntimeService::physics() const {
+  return engineState_.physicsSystem.get();
 }
 
 }  // namespace engine

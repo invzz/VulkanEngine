@@ -73,8 +73,9 @@ TEST(EngineLifecycleContracts, AppRecreatesPostProcessingSystemAfterSwapchainRec
     EXPECT_NE(appSource.find("renderer.wasSwapChainRecreated()"), std::string::npos)
         << "App::render should react to swapchain recreation events";
 
-    EXPECT_NE(appSource.find("setPostProcessingSystem(std::make_unique<PostProcessingSystem>"), std::string::npos)
-        << "App::render should recreate post-processing system through EngineState on swapchain recreation";
+    // Post-processing recreation is now delegated through the port abstraction.
+    EXPECT_NE(appSource.find("postProcessingAccessPort->recreatePostProcessingSystem("), std::string::npos)
+        << "App::render should recreate post-processing system through postProcessingAccessPort on swapchain recreation";
 }
 
 TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
@@ -86,8 +87,8 @@ TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
 
     EXPECT_NE(appSource.find("std::make_unique<ScenePersistenceAdapter>(sceneSerializer)"), std::string::npos)
         << "App should construct ScenePersistenceAdapter as Infrastructure implementation of persistence port";
-    EXPECT_NE(appSource.find("std::make_unique<PhysicsRuntimeAdapter>(engineState.getJoltPhysicsSystem())"), std::string::npos)
-        << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port";
+    EXPECT_NE(appSource.find("std::make_unique<PhysicsRuntimeAdapter>(engineState.physicsRuntimeService().joltPhysics())"), std::string::npos)
+        << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port using physicsRuntimeService().joltPhysics()";
     EXPECT_NE(appSource.find("std::make_unique<EnvironmentLightingAdapter>(device, engineState)"), std::string::npos)
         << "App should construct EnvironmentLightingAdapter as Infrastructure implementation of environment lighting port";
     EXPECT_NE(appSource.find("std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get())"), std::string::npos)
@@ -142,8 +143,13 @@ TEST(EngineLifecycleContracts, EngineStateProvidesGroupedSystemServicesAccessor)
 
     EXPECT_NE(stateViewsHeader.find("struct SystemServicesView"), std::string::npos)
         << "Engine state view module should expose grouped system service view";
-    EXPECT_NE(header.find("SystemServicesView systemServices()"), std::string::npos)
-        << "EngineState should provide systemServices() accessor";
+    EXPECT_NE(header.find("systemServices()"), std::string::npos)
+        << "EngineState should still provide systemServices() (now private for internal use only)";
+
+    // Verify systemServices() is NOT public - it was moved to private in Phase 2
+    const auto publicSection = header.substr(0, header.find("private:"));
+    EXPECT_EQ(publicSection.find("systemServices()"), std::string::npos)
+        << "systemServices() should be private, not public";
 
     EXPECT_NE(header.find("RenderingStateService renderingService()"), std::string::npos)
         << "EngineState should provide renderingService() accessor for narrower rendering state service";

@@ -10,8 +10,10 @@ class PhysicsRuntimeAdapter final : public IPhysicsRuntimePort {
  public:
   explicit PhysicsRuntimeAdapter(JoltPhysicsSystem* physicsSystem);
 
+  [[nodiscard]] bool& physicsSimulationRunningRef() override;
   void clearSceneBodies() override;
   void setGroundEnabled(bool enabled) override;
+  [[nodiscard]] JoltPhysicsSystem* joltPhysicsSystem() const override;
 
  private:
   JoltPhysicsSystem* physicsSystem_ = nullptr;

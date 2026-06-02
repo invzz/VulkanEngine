@@ -79,6 +79,8 @@ struct FrameInfo {
   MorphTargetManager* morphManager;  // Manager for morph target animations (nullptr if not used)
   VkExtent2D extent;                 // Screen extent
   int debugMode{0};                  // Mirrors GlobalUbo::debugMode for pipeline selection
+  class ModelRenderSystem* modelRenderSystem{nullptr};  // Model rendering system
+  class ShadowSystem* shadowSystem{nullptr};             // Shadow rendering system
 };
 
 }  // namespace engine

@@ -42,4 +42,23 @@ class ResourceStateService {
   EngineState& engineState_;
 };
 
+class AnimationRuntimeService {
+ public:
+  explicit AnimationRuntimeService(EngineState& engineState);
+  [[nodiscard]] AnimationSystem* animation() const;
+
+ private:
+  EngineState& engineState_;
+};
+
+class PhysicsRuntimeService {
+ public:
+  explicit PhysicsRuntimeService(EngineState& engineState);
+  [[nodiscard]] JoltPhysicsSystem* joltPhysics() const;
+  [[nodiscard]] PhysicsSystem* physics() const;
+
+ private:
+  EngineState& engineState_;
+};
+
 }  // namespace engine

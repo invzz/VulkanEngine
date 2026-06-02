@@ -65,6 +65,7 @@ layout(location = 1) out vec3 outWorldPos[];
 layout(location = 2) out vec3 outNormal[];
 layout(location = 3) out vec2 outUV[];
 layout(location = 4) out flat uint outMeshletId[];
+layout(location = 5) out flat vec3 outConeAxis[];
 
 struct TaskPayload {
     uint meshletIndices[32];
@@ -97,6 +98,7 @@ void main() {
         outNormal[i]    = normalize(normalMatrix * v.normal);
         outUV[i]        = v.uv;
         outMeshletId[i] = meshletId;
+        outConeAxis[i]  = vec3(0.0);
     }
 
     MeshletTrianglesBuffer meshletTriangles = MeshletTrianglesBuffer(push.meshletTrianglesAddress);

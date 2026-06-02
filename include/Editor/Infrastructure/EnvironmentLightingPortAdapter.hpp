@@ -1,22 +1,18 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
-#include <vulkan/vulkan_core.h>
-
 #include "Engine/Application/Ports/IEnvironmentLightingPort.hpp"
 
 namespace engine {
 
-class Device;
 class EngineState;
+class Device;
 
-// Legacy adapter that implements the expanded IEnvironmentLightingPort.
-// This class bridges EngineState to the environment lighting port interface.
-// Consider migrating to EnvironmentLightingPortAdapter for cleaner separation.
-class EnvironmentLightingAdapter final : public IEnvironmentLightingPort {
+// Adapter that bridges EngineState to the expanded environment lighting port.
+// This adapter implements all the operations that EnvironmentLightingAdapter
+// currently performs directly on EngineState.
+class EnvironmentLightingPortAdapter final : public IEnvironmentLightingPort {
  public:
-  EnvironmentLightingAdapter(Device& device, EngineState& engineState);
+  EnvironmentLightingPortAdapter(Device& device, EngineState& engineState);
 
   // Core environment lighting sync
   void syncEnvironmentLighting(bool showSkyboxEnabled) override;

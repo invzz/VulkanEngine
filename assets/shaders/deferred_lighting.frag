@@ -44,7 +44,7 @@ layout(set = 3, binding = 1) uniform samplerCube prefilterMap;
 layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
 
 /* Shadows */
-layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[8];
+layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[4];
 layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 
 #include "includes/shadows.glsl"

@@ -21,11 +21,11 @@ void UpdatePass::execute(FrameInfo& frameInfo) {
 
     // --- Physics (requires explicit Play from UI) ---
     if (engineState_->physicsSimulationRunningRef()) {
-      auto systems = engineState_->systemServices();
-      if (systems.joltPhysics != nullptr) {
-        systems.joltPhysics->syncToEntities(frameInfo.scene);
-        systems.joltPhysics->update(frameInfo.frameTime, 8, 1.0f / 120.0f);
-        systems.joltPhysics->syncToEntities(frameInfo.scene);
+      auto* joltPhysics = engineState_->physicsRuntimeService().joltPhysics();
+      if (joltPhysics != nullptr) {
+        joltPhysics->syncToEntities(frameInfo.scene);
+        joltPhysics->update(frameInfo.frameTime, 8, 1.0f / 120.0f);
+        joltPhysics->syncToEntities(frameInfo.scene);
       } else {
         // legacy PhysicsSystem::update (kept for compatibility)
         PhysicsSystem::update(frameInfo);

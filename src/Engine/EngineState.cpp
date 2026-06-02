@@ -146,6 +146,7 @@ namespace engine {
         // Shadow & IBL
         shadowSystem = std::make_unique<ShadowSystem>(device, 4096);
         iblSystem    = std::make_unique<IBLSystem>(device);
+        morphTargetManager = std::make_unique<MorphTargetManager>(device);
 
         // Render systems
         skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth());

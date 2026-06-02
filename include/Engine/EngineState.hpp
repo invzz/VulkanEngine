@@ -59,6 +59,8 @@ namespace engine {
         friend class SceneRuntimeService;
         friend class InputStateService;
         friend class ResourceStateService;
+        friend class AnimationRuntimeService;
+        friend class PhysicsRuntimeService;
 
         [[nodiscard]] RenderingStateView renderingState() {
             return RenderingStateView{
@@ -70,12 +72,15 @@ namespace engine {
                 .deferredLightingSystem = deferredLightingSystem.get(),
                 .postProcessingSystem   = postProcessingSystem.get(),
                 .iblSystem              = iblSystem.get(),
+                .camera                 = cameraSystem.get(),
+                .colliderDebug          = colliderDebugRenderSystem.get(),
                 .renderContext          = renderContext,
                 .showSkybox             = &showSkybox,
                 .showGrid               = &showGrid,
                 .showDebugObjects       = &showDebugObjects,
                 .showColliderWireframes = &showColliderWireframes,
                 .debugMode              = &debugMode,
+                .morphTargetManager     = morphTargetManager.get(),
             };
         }
 
@@ -117,27 +122,6 @@ namespace engine {
 
        public:
 
-        [[nodiscard]] SystemServicesView systemServices() {
-            return SystemServicesView{
-                .objectSelection = objectSelectionSystem.get(),
-                .input = inputSystem.get(),
-                .camera = cameraSystem.get(),
-                .colliderDebug = colliderDebugRenderSystem.get(),
-                .animation = animationSystem.get(),
-                .lod = lodSystem.get(),
-                .modelRender = modelRenderSystem.get(),
-                .shadow = shadowSystem.get(),
-                .light = lightSystem.get(),
-                .skyboxRender = skyboxRenderSystem.get(),
-                .gridRender = gridRenderSystem.get(),
-                .deferredLighting = deferredLightingSystem.get(),
-                .postProcessing = postProcessingSystem.get(),
-                .ibl = iblSystem.get(),
-                .physics = physicsSystem.get(),
-                .joltPhysics = joltPhysicsSystem.get(),
-            };
-        }
-
         [[nodiscard]] RenderingStateService renderingService() {
             return RenderingStateService{*this};
         }
@@ -154,32 +138,20 @@ namespace engine {
             return ResourceStateService{*this};
         }
 
+        [[nodiscard]] AnimationRuntimeService animationRuntimeService() {
+            return AnimationRuntimeService{*this};
+        }
+
+        [[nodiscard]] PhysicsRuntimeService physicsRuntimeService() {
+            return PhysicsRuntimeService{*this};
+        }
+
         [[nodiscard]] const std::vector<std::string>& initializedSystemOrder() const {
             return systemRegistry.initializationOrder();
         }
 
-        [[nodiscard]] entt::entity& selectedEntityRef() {
-            return selectedEntity;
-        }
-
-        [[nodiscard]] entt::entity selectedEntityValue() const {
-            return selectedEntity;
-        }
-
-        [[nodiscard]] entt::entity& cameraEntityRef() {
-            return cameraEntity;
-        }
-
-        [[nodiscard]] entt::entity cameraEntityValue() const {
-            return cameraEntity;
-        }
-
         [[nodiscard]] std::unique_ptr<Skybox>& skyboxRef() {
             return skybox;
-        }
-
-        [[nodiscard]] Skybox* getSkybox() const {
-            return skybox.get();
         }
 
         [[nodiscard]] SkyboxSettings& skySettingsRef() {
@@ -311,6 +283,27 @@ namespace engine {
         bool registerPostProcessing(std::string& error);
         bool registerInputSystems(std::string& error);
 
+        [[nodiscard]] SystemServicesView systemServices() const {
+            return SystemServicesView{
+                .objectSelection = objectSelectionSystem.get(),
+                .input = inputSystem.get(),
+                .camera = cameraSystem.get(),
+                .colliderDebug = colliderDebugRenderSystem.get(),
+                .animation = animationSystem.get(),
+                .lod = lodSystem.get(),
+                .modelRender = modelRenderSystem.get(),
+                .shadow = shadowSystem.get(),
+                .light = lightSystem.get(),
+                .skyboxRender = skyboxRenderSystem.get(),
+                .gridRender = gridRenderSystem.get(),
+                .deferredLighting = deferredLightingSystem.get(),
+                .postProcessing = postProcessingSystem.get(),
+                .ibl = iblSystem.get(),
+                .physics = physicsSystem.get(),
+                .joltPhysics = joltPhysicsSystem.get(),
+            };
+        }
+
         SystemRegistry systemRegistry;
 
         // Systems
@@ -330,6 +323,7 @@ namespace engine {
         std::unique_ptr<IBLSystem>              iblSystem;
         std::unique_ptr<PhysicsSystem>          physicsSystem;
         std::unique_ptr<JoltPhysicsSystem>      joltPhysicsSystem;
+        std::unique_ptr<MorphTargetManager>     morphTargetManager;
 
         // Input devices (owned by EngineState)
         std::unique_ptr<Keyboard> keyboard;

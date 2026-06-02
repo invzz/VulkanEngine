@@ -347,9 +347,6 @@ TEST(ArchitectureDependencyRules, GroupedStateAccessorsShouldBeReplacedByNarrowS
 
     const std::set<std::string> allowedFiles = {
         "src/Engine/State/StateServices.cpp",
-        "src/Engine/Graphics/Passes/ComputePass.cpp",
-        "src/Engine/Graphics/Passes/OffscreenPass.cpp",
-        "src/Engine/Graphics/Passes/UpdatePass.cpp",
     };
 
     const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
@@ -468,3 +465,55 @@ TEST(ArchitectureDependencyRules, ScenePanelShouldUseSceneRuntimeServiceForScene
     EXPECT_NE(scenePanel.find("sceneRuntimeService().view()"), std::string::npos)
         << "ScenePanel should use sceneRuntimeService().view() for runtime scene access";
 }
+
+TEST(ArchitectureDependencyRules, RenderPassesShouldNotDependOnEngineState) {
+    // Verify that render passes no longer depend on EngineState directly.
+    // This test checks that the pass interfaces use ports instead.
+    
+    const std::vector<std::string> passFiles = {
+        "src/Engine/Graphics/Passes/UpdatePass.hpp",
+        "src/Engine/Graphics/Passes/ComputePass.hpp",
+        "src/Engine/Graphics/Passes/ShadowPass.hpp",
+        "src/Engine/Graphics/Passes/DepthPrepass.hpp",
+        "src/Engine/Graphics/Passes/OffscreenPass.hpp",
+        "src/Engine/Graphics/Passes/CompositionPass.hpp"
+    };
+    
+    for (const auto& passFile : passFiles) {
+        const fs::path root = findRepoRoot();
+        ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+        
+        const std::string passContent = readWholeFile(root / passFile);
+        ASSERT_FALSE(passContent.empty()) << "Failed to read " << passFile;
+        
+        // Should not contain direct EngineState* dependencies
+        EXPECT_EQ(passContent.find("EngineState*"), std::string::npos)
+            << passFile << " should not contain EngineState* dependency";
+    }
+}
+
+TEST(ArchitectureDependencyRules, EnvironmentLightingAdapterShouldNotDependOnEngineState) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+    
+    // Check that EnvironmentLightingAdapter includes the port, not EngineState directly
+    const std::string adapterContent = readWholeFile(repoRoot / "src/Editor/Infrastructure/EnvironmentLightingAdapter.cpp");
+    ASSERT_FALSE(adapterContent.empty()) << "Failed to read EnvironmentLightingAdapter.cpp";
+    
+    // The adapter should include the port header
+    EXPECT_NE(adapterContent.find("IEnvironmentLightingPort"), std::string::npos)
+        << "EnvironmentLightingAdapter should include IEnvironmentLightingPort";
+}
+
+TEST(ArchitectureDependencyRules, SceneAccessAdapterShouldNotDependOnEngineState) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+    
+    const std::string adapterContent = readWholeFile(repoRoot / "src/Editor/Infrastructure/SceneAccessAdapter.cpp");
+    ASSERT_FALSE(adapterContent.empty()) << "Failed to read SceneAccessAdapter.cpp";
+    
+    EXPECT_NE(adapterContent.find("ISceneAccessPort"), std::string::npos)
+        << "SceneAccessAdapter should include ISceneAccessPort";
+}
+
+

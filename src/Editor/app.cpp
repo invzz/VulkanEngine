@@ -315,7 +315,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
             int const frameIndex = renderer.getFrameIndex();
             auto renderingState = engineState.renderingService().view();
             auto sceneRuntime = engineState.sceneRuntimeService().view();
-            auto systems = engineState.systemServices();
+            auto* animationSystem = engineState.animationRuntimeService().animation();
 
             FrameInfo frameInfo{
                 .frameIndex          = frameIndex,
@@ -328,7 +328,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
                 .selectedObjectId    = selectedObjectId,
                 .selectedEntity      = *sceneRuntime.selectedEntity,
                 .cameraEntity        = *sceneRuntime.cameraEntity,
-                .morphManager        = systems.animation->getMorphManager(),
+                .morphManager        = animationSystem ? animationSystem->getMorphManager() : nullptr,
                 .extent              = renderer.getSwapChainExtent(),
                 .debugMode           = debugMode,
             };
