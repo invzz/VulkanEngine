@@ -16,6 +16,9 @@ class PostProcessingAccessAdapter final : public IPostProcessingAccessPort {
                                     VkRenderPass renderPass,
                                     std::vector<VkDescriptorSetLayout> setLayouts) override;
 
+  void recreatePostProcessingSystemWithExistingLayout(Device& device,
+                                                      VkRenderPass renderPass) override;
+
  private:
   EngineState& engineState_;
 };

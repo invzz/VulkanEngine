@@ -79,7 +79,8 @@ std::vector<std::string> findIncludeViolations(
 std::vector<std::string> findTokenViolations(
     const fs::path& root,
     const fs::path& relativeDir,
-    const std::vector<std::string>& forbiddenTokens) {
+    const std::vector<std::string>& forbiddenTokens,
+    const std::set<std::string>& allowedFiles = {}) {
     std::vector<std::string> violations;
     const fs::path scanRoot = root / relativeDir;
 

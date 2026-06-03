@@ -17,6 +17,11 @@ class IPostProcessingAccessPort {
   virtual void recreatePostProcessingSystem(Device& device,
                                             VkRenderPass renderPass,
                                             std::vector<VkDescriptorSetLayout> setLayouts) = 0;
+
+  // Recreate using the existing post-process set layout from EngineState.
+  // Convenience method so delivery doesn't need to access postProcessSetLayoutRef().
+  virtual void recreatePostProcessingSystemWithExistingLayout(Device& device,
+                                                              VkRenderPass renderPass) = 0;
 };
 
 }  // namespace engine

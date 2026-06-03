@@ -45,6 +45,10 @@
 #include "Editor/Infrastructure/EnvironmentLightingAdapter.hpp"
 #include "Editor/Infrastructure/PhysicsRuntimeAdapter.hpp"
 #include "Editor/Infrastructure/ScenePersistenceAdapter.hpp"
+#include "Editor/Infrastructure/SceneEntityAdapter.hpp"
+#include "Editor/Infrastructure/CameraAdapter.hpp"
+#include "Editor/Infrastructure/TransformAdapter.hpp"
+#include "Editor/Infrastructure/SceneSettingsAdapter.hpp"
 
 // UI Panels
 #include "Editor/ui/InspectorPanel.hpp"
@@ -113,13 +117,17 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         auto rendering = engineState.renderingService().view();
         auto sceneRuntime = engineState.sceneRuntimeService().view();
 
+        // Wire infrastructure adapters for runtime state access.
+        sceneRuntimeAccessAdapter = std::make_unique<SceneRuntimeAccessAdapter>(engineState);
+        postProcessingAccessAdapter = std::make_unique<PostProcessingAccessAdapter>(engineState);
+
         sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
-            .showSkybox = &engineState.showSkyboxRef(),
-            .showGrid = &engineState.showGridRef(),
-            .showDebugObjects = &engineState.showDebugObjectsRef(),
-            .physicsSimulationRunning = &engineState.physicsSimulationRunningRef(),
-            .skySettings = &engineState.skySettingsRef(),
-            .postProcessPush = &engineState.postProcessPushRef(),
+            .showSkybox = sceneRuntimeAccessAdapter->showSkybox(),
+            .showGrid = sceneRuntimeAccessAdapter->showGrid(),
+            .showDebugObjects = sceneRuntimeAccessAdapter->showDebugObjects(),
+            .physicsSimulationRunning = sceneRuntimeAccessAdapter->physicsSimulationRunning(),
+            .skySettings = sceneRuntimeAccessAdapter->skySettings(),
+            .postProcessPush = sceneRuntimeAccessAdapter->postProcessPush(),
             .iblSystem = rendering.iblSystem,
             .modelRenderSystem = rendering.modelRenderSystem,
             .getGpuProfilerEnabled = []() { return GpuProfiler::instance().isEnabled(); },
@@ -132,10 +140,18 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         scenePersistencePort = std::make_unique<ScenePersistenceAdapter>(sceneSerializer);
         physicsRuntimePort   = std::make_unique<PhysicsRuntimeAdapter>(engineState);
         environmentLightingPort = std::make_unique<EnvironmentLightingAdapter>(device, engineState);
+        sceneEntityPort = std::make_unique<SceneEntityAdapter>(engineState);
+        cameraPort = std::make_unique<CameraAdapter>(engineState);
+        transformPort = std::make_unique<TransformAdapter>(engineState);
+        sceneSettingsPort = std::make_unique<SceneSettingsAdapter>(engineState);
         loadSceneUseCase     = std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get());
         reconcileSceneLoadUseCase = std::make_unique<ReconcileSceneLoadUseCase>(*sceneRuntime.scene);
         saveSceneUseCase     = std::make_unique<SaveSceneUseCase>(*scenePersistencePort);
         syncEnvironmentLightingUseCase = std::make_unique<SyncEnvironmentLightingUseCase>(*environmentLightingPort);
+        sceneEntityManagementUseCase = std::make_unique<SceneEntityManagementUseCase>(*sceneEntityPort);
+        cameraManagementUseCase = std::make_unique<CameraManagementUseCase>(*cameraPort);
+        transformManipulationUseCase = std::make_unique<TransformManipulationUseCase>(*transformPort);
+        sceneSettingsManagementUseCase = std::make_unique<SceneSettingsManagementUseCase>(*sceneSettingsPort, *physicsRuntimePort);
 
         // Infrastructure adapters for render pass state views.
         descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
@@ -211,9 +227,11 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
             }
         });
         uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
-        uiManager->addPanel(std::make_unique<InspectorPanel>(*engineState.sceneRuntimeService().view().scene, &engineState.physicsSimulationRunningRef(),
-                                         &engineState.showColliderWireframesRef(), &engineState.solidGroundEnabledRef(),
-                                         engineState.getJoltPhysicsSystem()));
+        uiManager->addPanel(std::make_unique<InspectorPanel>(*sceneRuntimeAccessAdapter->scene(),
+                                         sceneRuntimeAccessAdapter->physicsSimulationRunning(),
+                                         sceneRuntimeAccessAdapter->showColliderWireframes(),
+                                         sceneRuntimeAccessAdapter->solidGroundEnabled(),
+                                         physicsRuntimePort->joltPhysicsSystem()));
         uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
     }
 
@@ -312,26 +330,26 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
     SceneRuntimeState App::sceneRuntimeState() {
         auto sceneRuntime = engineState.sceneRuntimeService().view();
         return SceneRuntimeState{
-            .physicsSimulationRunning = engineState.physicsSimulationRunningRef(),
+            .physicsSimulationRunning = *sceneRuntimeAccessAdapter->physicsSimulationRunning(),
             .selectedEntity = *sceneRuntime.selectedEntity,
             .cameraEntity = *sceneRuntime.cameraEntity,
             .selectedObjectId = selectedObjectId,
             .pendingUpdateCameraAfterSceneLoad = pendingUpdateCameraAfterSceneLoad,
-            .solidGroundEnabled = engineState.solidGroundEnabledRef(),
+            .solidGroundEnabled = *sceneRuntimeAccessAdapter->solidGroundEnabled(),
         };
     }
 
     void App::render(float frameTime) {
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
-                // PostProcessingSystem lives in EngineState — recreate via EngineState if needed.
-                engineState.setPostProcessingSystem(std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{engineState.postProcessSetLayoutRef().getDescriptorSetLayout()}));
+                // PostProcessingSystem lives in EngineState — recreate via port adapter.
+                postProcessingAccessAdapter->recreatePostProcessingSystemWithExistingLayout(device, renderer.getSwapChainRenderPass());
             }
 
             int const frameIndex = renderer.getFrameIndex();
             auto renderingState = engineState.renderingService().view();
             auto sceneRuntime = engineState.sceneRuntimeService().view();
-            auto* animationSystem = engineState.animationRuntimeService().animation();
+            auto* animationSystem = animationAccessAdapter->getAnimationSystem();
 
             FrameInfo frameInfo{
                 .frameIndex          = frameIndex,

@@ -12,6 +12,9 @@ class SceneRuntimeAccessAdapter final : public ISceneRuntimeAccessPort {
   explicit SceneRuntimeAccessAdapter(EngineState& engineState);
 
   [[nodiscard]] Scene* scene() override;
+  [[nodiscard]] bool* showSkybox() override;
+  [[nodiscard]] bool* showGrid() override;
+  [[nodiscard]] bool* showDebugObjects() override;
   [[nodiscard]] bool* physicsSimulationRunning() override;
   [[nodiscard]] bool* showColliderWireframes() override;
   [[nodiscard]] bool* solidGroundEnabled() override;

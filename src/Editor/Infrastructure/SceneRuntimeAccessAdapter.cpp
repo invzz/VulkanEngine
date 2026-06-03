@@ -11,6 +11,18 @@ Scene* SceneRuntimeAccessAdapter::scene() {
   return engineState_.sceneRuntimeService().view().scene;
 }
 
+bool* SceneRuntimeAccessAdapter::showSkybox() {
+  return &engineState_.showSkyboxRef();
+}
+
+bool* SceneRuntimeAccessAdapter::showGrid() {
+  return &engineState_.showGridRef();
+}
+
+bool* SceneRuntimeAccessAdapter::showDebugObjects() {
+  return &engineState_.showDebugObjectsRef();
+}
+
 bool* SceneRuntimeAccessAdapter::physicsSimulationRunning() {
   return &engineState_.physicsSimulationRunningRef();
 }

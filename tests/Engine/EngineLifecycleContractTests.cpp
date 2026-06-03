@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
+#include <set>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -33,10 +35,28 @@ std::string readWholeFile(const fs::path& path) {
 }
 
 void expectNoDirectSystemMemberAccess(const std::string& source,
-    std::initializer_list<const char*> forbiddenTokens,
-    const std::string& context) {
-    for (const char* token : forbiddenTokens) {
-        EXPECT_EQ(source.find(token), std::string::npos)
+    const std::vector<std::string>& forbiddenTokens,
+    const std::string& context,
+    const std::set<std::string>& portPrefixes = {}) {
+    for (const auto& token : forbiddenTokens) {
+        size_t pos = 0;
+        bool found = false;
+        while ((pos = source.find(token, pos)) != std::string::npos) {
+            // Check if this is a port-based call (e.g., physicsPort_->joltPhysicsSystem())
+            bool isPortCall = false;
+            for (const auto& prefix : portPrefixes) {
+                if (pos >= prefix.size() && source.substr(pos - prefix.size(), prefix.size()) == prefix) {
+                    isPortCall = true;
+                    break;
+                }
+            }
+            if (!isPortCall) {
+                found = true;
+                break;
+            }
+            ++pos;
+        }
+        EXPECT_FALSE(found)
             << context << " should use EngineState accessors/services instead of direct member access: " << token;
     }
 }
@@ -53,13 +73,13 @@ TEST(EngineLifecycleContracts, InitializeRequiresExplicitRenderContextParameterA
     ASSERT_FALSE(header.empty()) << "Failed to read include/Engine/EngineState.hpp";
     ASSERT_FALSE(source.empty()) << "Failed to read src/Engine/EngineState.cpp";
 
-    EXPECT_NE(header.find("RenderContext*      requiredRenderContext"), std::string::npos)
-        << "EngineState::initialize must declare explicit RenderContext dependency in the public API";
+    EXPECT_NE(header.find("IRenderContextPort* renderContextPort"), std::string::npos)
+        << "EngineState::initialize must declare explicit IRenderContextPort dependency in the public API";
 
-    EXPECT_NE(source.find("requiredRenderContext == nullptr"), std::string::npos)
-        << "EngineState::initialize must validate non-null RenderContext";
+    EXPECT_NE(source.find("renderContextPort == nullptr"), std::string::npos)
+        << "EngineState::initialize must validate non-null IRenderContextPort";
 
-    EXPECT_NE(source.find("EngineState::initialize requires a non-null RenderContext"), std::string::npos)
+    EXPECT_NE(source.find("EngineState::initialize requires a non-null IRenderContextPort"), std::string::npos)
         << "EngineState::initialize should fail with a clear contract violation message";
 }
 
@@ -73,9 +93,10 @@ TEST(EngineLifecycleContracts, AppRecreatesPostProcessingSystemAfterSwapchainRec
     EXPECT_NE(appSource.find("renderer.wasSwapChainRecreated()"), std::string::npos)
         << "App::render should react to swapchain recreation events";
 
-    // Post-processing recreation is now delegated through the port abstraction.
-    EXPECT_NE(appSource.find("postProcessingAccessPort->recreatePostProcessingSystem("), std::string::npos)
-        << "App::render should recreate post-processing system through postProcessingAccessPort on swapchain recreation";
+    // Post-processing recreation is now done via the IPostProcessingAccessPort adapter,
+    // not directly through EngineState.
+    EXPECT_NE(appSource.find("postProcessingAccessAdapter->recreatePostProcessingSystemWithExistingLayout("), std::string::npos)
+        << "App::render should recreate post-processing system via IPostProcessingAccessPort on swapchain recreation";
 }
 
 TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
@@ -87,8 +108,8 @@ TEST(EngineLifecycleContracts, AppWiresSceneLoadingThroughApplicationUseCase) {
 
     EXPECT_NE(appSource.find("std::make_unique<ScenePersistenceAdapter>(sceneSerializer)"), std::string::npos)
         << "App should construct ScenePersistenceAdapter as Infrastructure implementation of persistence port";
-    EXPECT_NE(appSource.find("std::make_unique<PhysicsRuntimeAdapter>(engineState.physicsRuntimeService().joltPhysics())"), std::string::npos)
-        << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port using physicsRuntimeService().joltPhysics()";
+    EXPECT_NE(appSource.find("std::make_unique<PhysicsRuntimeAdapter>(engineState)"), std::string::npos)
+        << "App should construct PhysicsRuntimeAdapter as Infrastructure implementation of physics port";
     EXPECT_NE(appSource.find("std::make_unique<EnvironmentLightingAdapter>(device, engineState)"), std::string::npos)
         << "App should construct EnvironmentLightingAdapter as Infrastructure implementation of environment lighting port";
     EXPECT_NE(appSource.find("std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get())"), std::string::npos)
@@ -176,18 +197,19 @@ TEST(EngineLifecycleContracts, HotPathsUseEngineStateSystemAccessorsNotDirectMem
     ASSERT_FALSE(settingsPanel.empty()) << "Failed to read src/Editor/ui/SettingsPanel.cpp";
 
     expectNoDirectSystemMemberAccess(updatePass,
-        {"->objectSelectionSystem", "->inputSystem", "->joltPhysicsSystem"},
-        "UpdatePass");
+        {{"->objectSelectionSystem", "->inputSystem", "->joltPhysicsSystem"}},
+        "UpdatePass",
+        {"physicsPort_"});
 
     expectNoDirectSystemMemberAccess(offscreenPass,
-        {"->modelRenderSystem", "->deferredLightingSystem", "->gridRenderSystem", "->lightSystem", "->cameraSystem", "->colliderDebugRenderSystem", "->shadowSystem"},
+        {{"->modelRenderSystem", "->deferredLightingSystem", "->gridRenderSystem", "->lightSystem", "->cameraSystem", "->colliderDebugRenderSystem", "->shadowSystem"}},
         "OffscreenPass");
 
     expectNoDirectSystemMemberAccess(shadowPass,
-        {"->shadowSystem"},
+        {{"->shadowSystem"}},
         "ShadowPass");
 
     expectNoDirectSystemMemberAccess(settingsPanel,
-        {"->modelRenderSystem"},
+        {{"->modelRenderSystem"}},
         "SettingsPanel");
 }

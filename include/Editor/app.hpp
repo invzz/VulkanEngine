@@ -17,12 +17,18 @@
 #include "Engine/Application/UseCases/ReconcileSceneLoadUseCase.hpp"
 #include "Engine/Application/UseCases/SaveSceneUseCase.hpp"
 #include "Engine/Application/UseCases/SyncEnvironmentLightingUseCase.hpp"
+#include "Engine/Application/UseCases/SceneEntityManagementUseCase.hpp"
+#include "Engine/Application/UseCases/CameraManagementUseCase.hpp"
+#include "Engine/Application/UseCases/TransformManipulationUseCase.hpp"
+#include "Engine/Application/UseCases/SceneSettingsManagementUseCase.hpp"
 #include "Engine/EngineState.hpp"
 #include "Editor/Infrastructure/DescriptorAccessAdapter.hpp"
 #include "Editor/Infrastructure/RuntimeStateAdapter.hpp"
 #include "Editor/Infrastructure/AnimationAccessAdapter.hpp"
 #include "Editor/Infrastructure/RenderContextAdapter.hpp"
 #include "Editor/Infrastructure/CompositionAdapter.hpp"
+#include "Editor/Infrastructure/SceneRuntimeAccessAdapter.hpp"
+#include "Editor/Infrastructure/PostProcessingAccessAdapter.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -120,11 +126,19 @@ class App {
   std::unique_ptr<IPhysicsRuntimePort> physicsRuntimePort;
   std::unique_ptr<ISceneSelectionMaintenancePort> sceneSelectionMaintenancePort;
   std::unique_ptr<IEnvironmentLightingPort> environmentLightingPort;
+  std::unique_ptr<ISceneEntityPort> sceneEntityPort;
+  std::unique_ptr<ICameraPort> cameraPort;
+  std::unique_ptr<ITransformPort> transformPort;
+  std::unique_ptr<ISceneSettingsPort> sceneSettingsPort;
   std::unique_ptr<LoadSceneUseCase> loadSceneUseCase;
   std::unique_ptr<ProcessSceneSelectionMaintenanceUseCase> processSceneSelectionMaintenanceUseCase;
   std::unique_ptr<ReconcileSceneLoadUseCase> reconcileSceneLoadUseCase;
   std::unique_ptr<SaveSceneUseCase> saveSceneUseCase;
   std::unique_ptr<SyncEnvironmentLightingUseCase> syncEnvironmentLightingUseCase;
+  std::unique_ptr<SceneEntityManagementUseCase> sceneEntityManagementUseCase;
+  std::unique_ptr<CameraManagementUseCase> cameraManagementUseCase;
+  std::unique_ptr<TransformManipulationUseCase> transformManipulationUseCase;
+  std::unique_ptr<SceneSettingsManagementUseCase> sceneSettingsManagementUseCase;
 
   // Infrastructure adapters for render pass state views.
   std::unique_ptr<DescriptorAccessAdapter> descriptorAccessAdapter;
@@ -132,6 +146,8 @@ class App {
   std::unique_ptr<AnimationAccessAdapter> animationAccessAdapter;
   std::unique_ptr<RenderContextAdapter> renderContextAdapter;
   std::unique_ptr<CompositionAdapter> compositionAdapter;
+  std::unique_ptr<SceneRuntimeAccessAdapter> sceneRuntimeAccessAdapter;
+  std::unique_ptr<PostProcessingAccessAdapter> postProcessingAccessAdapter;
 
   // Input & Camera
   std::unique_ptr<Camera> camera;

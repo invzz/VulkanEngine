@@ -161,6 +161,10 @@ namespace engine {
             return shadowSettings;
         }
 
+        [[nodiscard]] Scene& sceneRef() {
+            return scene;
+        }
+
         [[nodiscard]] PostProcessPushConstants& postProcessPushRef() {
             return postProcessPush;
         }

@@ -7,6 +7,10 @@ namespace engine {
 RuntimeStateAdapter::RuntimeStateAdapter(EngineState& engineState)
     : engineState_(engineState) {}
 
+bool& RuntimeStateAdapter::showSkyboxRef() {
+  return engineState_.showSkyboxRef();
+}
+
 bool& RuntimeStateAdapter::showGridRef() {
   return engineState_.showGridRef();
 }
@@ -21,6 +25,18 @@ bool& RuntimeStateAdapter::showColliderWireframesRef() {
 
 bool& RuntimeStateAdapter::physicsSimulationRunningRef() {
   return engineState_.physicsSimulationRunningRef();
+}
+
+bool& RuntimeStateAdapter::solidGroundEnabledRef() {
+  return engineState_.solidGroundEnabledRef();
+}
+
+SkyboxSettings& RuntimeStateAdapter::skySettingsRef() {
+  return engineState_.skySettingsRef();
+}
+
+ShadowSettings& RuntimeStateAdapter::shadowSettingsRef() {
+  return engineState_.shadowSettingsRef();
 }
 
 PostProcessPushConstants& RuntimeStateAdapter::postProcessPushRef() {

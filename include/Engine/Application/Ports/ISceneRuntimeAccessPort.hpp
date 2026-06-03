@@ -15,6 +15,9 @@ class ISceneRuntimeAccessPort {
   virtual ~ISceneRuntimeAccessPort() = default;
 
   [[nodiscard]] virtual Scene* scene() = 0;
+  [[nodiscard]] virtual bool* showSkybox() = 0;
+  [[nodiscard]] virtual bool* showGrid() = 0;
+  [[nodiscard]] virtual bool* showDebugObjects() = 0;
   [[nodiscard]] virtual bool* physicsSimulationRunning() = 0;
   [[nodiscard]] virtual bool* showColliderWireframes() = 0;
   [[nodiscard]] virtual bool* solidGroundEnabled() = 0;

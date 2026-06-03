@@ -1,9 +1,0 @@
-[0m[38;2;0;255;0;1m[ 85%]:[0m [38;2;255;0;255;1marchiving.release EngineImporters.lib[0m
-[0m[38;2;0;255;0;1m[ 85%]:[0m [38;2;255;0;255;1marchiving.release Engine.lib[0m
-[0m[38;2;0;255;0;1m[ 86%]:[0m [38;2;255;0;255;1marchiving.release CubeUI.lib[0m
-[0m[38;2;0;255;0;1m[ 86%]:[0m [38;2;255;0;255;1mlinking.release IBLBaker.exe[0m
-[0m[38;2;0;255;0;1m[ 86%]:[0m [38;2;255;0;255;1marchiving.release LightmapBakerLib.lib[0m
-[0m[38;2;0;255;0;1m[ 87%]:[0m [38;2;255;0;255;1mlinking.release Tests.exe[0m
-[Shader Compilation] Starting shader compilation...
-[0m[1;38;2;255;0;0;1merror: [0mLINK : fatal error LNK1561: entry point must be defined
-[0m
