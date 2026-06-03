@@ -6,7 +6,6 @@
 #include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
-#include "Editor/RenderContext.hpp"
 #include "glm/geometric.hpp"
 // #include "glm/gtc/matrix_inverse.hpp"
 
@@ -17,7 +16,7 @@ namespace engine {
         LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
 
         // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
-        auto const lightCounts = renderContext_->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
+        auto const lightCounts = renderContextPort_->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
         GlobalUbo     ubo{};
         GlobalUboCold uboCold{};
         ubo.pointLightCount       = lightCounts.point;
@@ -71,7 +70,7 @@ namespace engine {
         // Copy editor/debug selection into GPU UBO so shaders can react to debugMode changes.
         ubo.debugMode = frameInfo.debugMode;
 
-        renderContext_->updateUBO(frameInfo.frameIndex, ubo, uboCold);
+        renderContextPort_->updateUBO(frameInfo.frameIndex, ubo, uboCold);
     }
 
 }  // namespace engine

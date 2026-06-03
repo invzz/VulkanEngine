@@ -11,8 +11,6 @@
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
 
-#include "Editor/RenderContext.hpp"
-
 namespace {
     void updateShadowDescriptors(engine::RenderingStateView rendering, engine::IDescriptorAccessPort& descriptorAccess, engine::Device& device, int frameIndex) {
         auto* shadowSystem = rendering.shadowSystem;
@@ -75,7 +73,7 @@ namespace engine {
         refreshGbufferDescriptors(frameInfo.frameIndex);
 
         auto const prevGlobalSet      = frameInfo.globalDescriptorSet;
-        frameInfo.globalDescriptorSet = rendering_.renderContext->getGlobalDescriptorSet(frameInfo.frameIndex);
+        frameInfo.globalDescriptorSet = rendering_.renderContextPort->getGlobalDescriptorSet(frameInfo.frameIndex);
 
         // Begin G-buffer with secondary command buffer support when model recording is multithreaded.
         renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, rendering_.modelRenderSystem->isMultiThreadedRecordingEnabled());

@@ -1,15 +1,14 @@
 #include "Editor/Infrastructure/CompositionAdapter.hpp"
 
+#include "Editor/ui/UIManager.hpp"
 #include "Engine/EngineState.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 
-#include "Editor/ui/UIManager.hpp"
-
 namespace engine {
 
-CompositionAdapter::CompositionAdapter(EngineState& engineState)
-    : engineState_(engineState) {}
+CompositionAdapter::CompositionAdapter(EngineState& engineState, UIManager* uiManager)
+    : engineState_(engineState), uiManager_(uiManager) {}
 
 PostProcessingSystem* CompositionAdapter::getPostProcessingSystem() {
   return engineState_.renderingService().view().postProcessingSystem;
@@ -31,11 +30,9 @@ void CompositionAdapter::renderPostProcessing(FrameInfo& frameInfo, VkDescriptor
 }
 
 void CompositionAdapter::renderUI(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool enabled) {
-  // UI rendering is handled by the UIManager which is passed separately.
-  // This method is a placeholder for future UI abstraction.
-  (void)frameInfo;
-  (void)commandBuffer;
-  (void)enabled;
+  if (uiManager_ != nullptr) {
+    uiManager_->render(frameInfo, commandBuffer, enabled);
+  }
 }
 
 }  // namespace engine

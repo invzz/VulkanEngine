@@ -102,12 +102,13 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
 
         // 1. Setup explicit RenderContext dependency for EngineState.
         renderContext = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
+        renderContextAdapter = std::make_unique<RenderContextAdapter>(renderContext.get());
 
         // 2. Setup Scene & Camera
         setupScene();
 
         // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
-        engineState.initialize(device, renderer, resourceManager, renderContext.get(), &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
+        engineState.initialize(device, renderer, resourceManager, renderContextAdapter.get(), &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
 
         auto rendering = engineState.renderingService().view();
         auto sceneRuntime = engineState.sceneRuntimeService().view();
@@ -223,6 +224,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
         runtimeStateAdapter = std::make_unique<RuntimeStateAdapter>(engineState);
         animationAccessAdapter = std::make_unique<AnimationAccessAdapter>(engineState.animationRuntimeService().animation());
+        compositionAdapter = std::make_unique<CompositionAdapter>(engineState, uiManager.get());
 
         // Build state views from adapters for pass injection.
         RenderingStateView renderingView = engineState.renderingService().view();
@@ -236,7 +238,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         graph->addPass(std::make_unique<ComputePass>(animationAccessAdapter.get()));
 
         // 3. Shadow Pass (state views)
-        graph->addPass(std::make_unique<ShadowPass>(renderingView, sceneRuntimeView, renderingView.renderContext));
+        graph->addPass(std::make_unique<ShadowPass>(renderingView, sceneRuntimeView, renderContextAdapter.get()));
 
         // 4. Depth Prepass (Offscreen Depth Only)
         graph->addPass(std::make_unique<DepthPrepass>(renderingView, renderer));
@@ -245,7 +247,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         graph->addPass(std::make_unique<OffscreenPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, device, debugMode));
 
         // 6. Composition Pass (PostProcess + UI)
-        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, uiManager.get(), *camera, window));
+        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
@@ -336,7 +338,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
                 .frameTime           = frameTime,
                 .commandBuffer       = commandBuffer,
                 .camera              = *camera,
-                .globalDescriptorSet = renderingState.renderContext->getGlobalDescriptorSet(frameIndex),
+                .globalDescriptorSet = renderingState.renderContextPort->getGlobalDescriptorSet(frameIndex),
                 .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
                 .scene               = sceneRuntime.scene,
                 .selectedObjectId    = selectedObjectId,

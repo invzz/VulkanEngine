@@ -5,12 +5,12 @@
 namespace engine {
 
 class EngineState;
-class PostProcessPushConstants;
+class UIManager;
 
 // Adapter that bridges EngineState to the composition port.
 class CompositionAdapter final : public ICompositionPort {
  public:
-  explicit CompositionAdapter(EngineState& engineState);
+  CompositionAdapter(EngineState& engineState, UIManager* uiManager);
 
   [[nodiscard]] PostProcessingSystem* getPostProcessingSystem() override;
   [[nodiscard]] PostProcessPushConstants& getPostProcessPush() override;
@@ -20,6 +20,7 @@ class CompositionAdapter final : public ICompositionPort {
 
  private:
   EngineState& engineState_;
+  UIManager* uiManager_ = nullptr;
 };
 
 }  // namespace engine

@@ -21,6 +21,8 @@
 #include "Editor/Infrastructure/DescriptorAccessAdapter.hpp"
 #include "Editor/Infrastructure/RuntimeStateAdapter.hpp"
 #include "Editor/Infrastructure/AnimationAccessAdapter.hpp"
+#include "Editor/Infrastructure/RenderContextAdapter.hpp"
+#include "Editor/Infrastructure/CompositionAdapter.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -128,6 +130,8 @@ class App {
   std::unique_ptr<DescriptorAccessAdapter> descriptorAccessAdapter;
   std::unique_ptr<RuntimeStateAdapter> runtimeStateAdapter;
   std::unique_ptr<AnimationAccessAdapter> animationAccessAdapter;
+  std::unique_ptr<RenderContextAdapter> renderContextAdapter;
+  std::unique_ptr<CompositionAdapter> compositionAdapter;
 
   // Input & Camera
   std::unique_ptr<Camera> camera;

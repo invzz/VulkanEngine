@@ -35,7 +35,6 @@ namespace engine {
     class Renderer;
     class Keyboard;
     class Mouse;
-    class RenderContext;
     class Window;
 
     // EngineState is the single source-of-truth for owned systems, scene and
@@ -47,12 +46,12 @@ namespace engine {
 
         // lifecycle
         void initialize(Device& device,
-            Renderer&           renderer,
-            ResourceManager&    resourceManager,
-            RenderContext*      requiredRenderContext,
-            Window*             window,
-            bool                multithreadedRecordingEnabled,
-            uint32_t            multithreadedRecordingThreads);
+            Renderer&                     renderer,
+            ResourceManager&              resourceManager,
+            IRenderContextPort*           requiredRenderContextPort,
+            Window*                       window,
+            bool                          multithreadedRecordingEnabled,
+            uint32_t                      multithreadedRecordingThreads);
 
        private:
         friend class RenderingStateService;
@@ -74,7 +73,7 @@ namespace engine {
                 .iblSystem              = iblSystem.get(),
                 .camera                 = cameraSystem.get(),
                 .colliderDebug          = colliderDebugRenderSystem.get(),
-                .renderContext          = renderContext,
+                .renderContextPort      = renderContextPort,
                 .showSkybox             = &showSkybox,
                 .showGrid               = &showGrid,
                 .showDebugObjects       = &showDebugObjects,
@@ -108,7 +107,7 @@ namespace engine {
         [[nodiscard]] ResourceStateView resourceState() {
             return ResourceStateView{
                 .resourceManager         = resourceManager,
-                .renderContext           = renderContext,
+                .renderContextPort       = renderContextPort,
                 .gbufferPool             = gbufferPool.get(),
                 .gbufferSetLayout        = gbufferSetLayout.get(),
                 .deferredIblPool         = deferredIblPool.get(),
@@ -347,8 +346,8 @@ namespace engine {
         std::vector<VkDescriptorSet>         postProcessDescriptorSets;
 
         // Non-owned dependencies passed during initialize().
-        RenderContext*   renderContext   = nullptr;
-        ResourceManager* resourceManager = nullptr;
+        IRenderContextPort* renderContextPort = nullptr;
+        ResourceManager*    resourceManager   = nullptr;
 
         // Scene & transient selection state.
         Scene        scene;

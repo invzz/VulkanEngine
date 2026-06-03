@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "Engine/Application/Ports/IRenderContextPort.hpp"
+
 namespace engine {
 
 class ModelRenderSystem;
@@ -12,7 +14,6 @@ class GridRenderSystem;
 class DeferredLightingSystem;
 class PostProcessingSystem;
 class IBLSystem;
-class RenderContext;
 class ColliderDebugRenderSystem;
 class MorphTargetManager;
 class CameraSystem;
@@ -28,7 +29,7 @@ struct RenderingStateView {
   IBLSystem* iblSystem = nullptr;
   CameraSystem* camera = nullptr;
   ColliderDebugRenderSystem* colliderDebug = nullptr;
-  RenderContext* renderContext = nullptr;
+  IRenderContextPort* renderContextPort = nullptr;
   bool* showSkybox = nullptr;
   bool* showGrid = nullptr;
   bool* showDebugObjects = nullptr;

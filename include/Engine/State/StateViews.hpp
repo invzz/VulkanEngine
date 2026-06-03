@@ -2,6 +2,7 @@
 
 #include "entt/entity/fwd.hpp"
 
+#include "Engine/Application/Ports/IRenderContextPort.hpp"
 #include "Engine/Application/StateViews/RenderingStateView.hpp"
 #include "Engine/Application/StateViews/SceneRuntimeStateView.hpp"
 #include "Engine/Application/StateViews/InputStateView.hpp"
@@ -21,7 +22,7 @@ struct ShadowSettings;
 
 struct ResourceStateView {
   ResourceManager* resourceManager = nullptr;
-  RenderContext* renderContext = nullptr;
+  IRenderContextPort* renderContextPort = nullptr;
   DescriptorPool* gbufferPool = nullptr;
   DescriptorSetLayout* gbufferSetLayout = nullptr;
   DescriptorPool* deferredIblPool = nullptr;

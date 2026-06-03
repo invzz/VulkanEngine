@@ -8,8 +8,6 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
 
-#include "Editor/ui/UIManager.hpp"
-
 namespace {
     struct SunInfo {
         glm::vec3 directionToSun{0.0f, 1.0f, 0.0f};
@@ -59,8 +57,8 @@ namespace engine {
         renderer_.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
         rendering_.postProcessingSystem->render(frameInfo, descriptorAccess_.postProcessDescriptorSetRef(frameInfo.frameIndex), postProcessPush);
-        if (uiManager_ != nullptr) {
-            uiManager_->render(frameInfo, frameInfo.commandBuffer, true);
+        if (compositionPort_ != nullptr) {
+            compositionPort_->renderUI(frameInfo, frameInfo.commandBuffer, true);
         }
 
         // End swapchain render pass started above

@@ -1,6 +1,5 @@
 #include "Engine/EngineState.hpp"
 
-#include "Editor/RenderContext.hpp"
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
@@ -17,17 +16,17 @@ namespace engine {
     void EngineState::initialize(Device& device,
         Renderer&                        renderer,
         ResourceManager&                 resourceManagerRef,
-        RenderContext*                   requiredRenderContext,
+        IRenderContextPort*              requiredRenderContextPort,
         Window*                          window,
         bool                             multithreadedRecordingEnabled,
         uint32_t                         multithreadedRecordingThreads) {
-        if (requiredRenderContext == nullptr) {
-            throw RuntimeException("EngineState::initialize requires a non-null RenderContext");
+        if (requiredRenderContextPort == nullptr) {
+            throw RuntimeException("EngineState::initialize requires a non-null IRenderContextPort");
         }
 
         // store non-owned resource pointer
         this->resourceManager = &resourceManagerRef;
-        this->renderContext   = requiredRenderContext;
+        this->renderContextPort = requiredRenderContextPort;
 
         // input devices are optional and can be initialized directly
         createInputDevices(window);
@@ -131,13 +130,13 @@ namespace engine {
     }
 
     void EngineState::initCoreSystems(Device& device, Renderer& renderer, bool multithreadedRecordingEnabled, uint32_t multithreadedRecordingThreads) {
-        if (renderContext == nullptr) {
-            throw RuntimeException("EngineState::initCoreSystems called with null RenderContext");
+        if (renderContextPort == nullptr) {
+            throw RuntimeException("EngineState::initCoreSystems called with null IRenderContextPort");
         }
 
         // Camera system depends on render context already being created by caller
-        cameraSystem = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
-        colliderDebugRenderSystem = std::make_unique<ColliderDebugRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
+        cameraSystem = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
+        colliderDebugRenderSystem = std::make_unique<ColliderDebugRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
 
         // Compute / utility systems
         animationSystem = std::make_unique<AnimationSystem>(device);
@@ -150,14 +149,14 @@ namespace engine {
 
         // Render systems
         skyboxRenderSystem = std::make_unique<SkyboxRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth());
-        gridRenderSystem   = std::make_unique<GridRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
+        gridRenderSystem   = std::make_unique<GridRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
         modelRenderSystem  = std::make_unique<ModelRenderSystem>(device,
             renderer.getOffscreenRenderPassLoadColorDepth(),
-            renderContext->getGlobalSetLayout(),
+            renderContextPort->getGlobalSetLayout(),
             this->resourceManager->getTextureManager().getDescriptorSetLayout());
 
         modelRenderSystem->enableMultiThreadedRecording(multithreadedRecordingEnabled, multithreadedRecordingThreads);
-        lightSystem = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContext->getGlobalSetLayout());
+        lightSystem = std::make_unique<LightSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
     }
 
     void EngineState::initDescriptorResources(Device& device, Renderer& renderer) {
@@ -194,7 +193,7 @@ namespace engine {
         // Note: Shadow set must be placed before IBL set to match LightingRenderBindings indices
         deferredLightingSystem = std::make_unique<DeferredLightingSystem>(device,
             renderer.getDeferredLightingRenderPass(),
-            std::vector<VkDescriptorSetLayout>{renderContext->getGlobalSetLayout(),
+            std::vector<VkDescriptorSetLayout>{renderContextPort->getGlobalSetLayout(),
                 gbufferSetLayout->getDescriptorSetLayout(),
                 deferredShadowSetLayout->getDescriptorSetLayout(),
                 deferredIblSetLayout->getDescriptorSetLayout()});
