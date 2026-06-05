@@ -15,8 +15,8 @@ class Window;
 
 class CompositionPass : public IRenderPass {
  public:
-  CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window, const bool* drawUI = nullptr)
-      : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), compositionPort_(compositionPort), camera_(camera), window_(window), drawUI_(drawUI) {}
+  CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window)
+      : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), compositionPort_(compositionPort), camera_(camera), window_(window) {}
 
   void execute(FrameInfo& frameInfo) override;
   [[nodiscard]] const std::string& getName() const override {
@@ -32,7 +32,6 @@ class CompositionPass : public IRenderPass {
   ICompositionPort* compositionPort_ = nullptr;
   Camera& camera_;
   Window& window_;
-  const bool* drawUI_ = nullptr;
 };
 
 }  // namespace engine

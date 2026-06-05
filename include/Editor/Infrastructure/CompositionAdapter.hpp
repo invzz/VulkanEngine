@@ -10,7 +10,7 @@ class UIManager;
 // Adapter that bridges EngineState to the composition port.
 class CompositionAdapter final : public ICompositionPort {
  public:
-  CompositionAdapter(EngineState& engineState, UIManager* uiManager, const bool* drawUI = nullptr);
+  CompositionAdapter(EngineState& engineState, UIManager* uiManager);
 
   [[nodiscard]] PostProcessingSystem* getPostProcessingSystem() override;
   [[nodiscard]] PostProcessPushConstants& getPostProcessPush() override;
@@ -21,7 +21,6 @@ class CompositionAdapter final : public ICompositionPort {
  private:
   EngineState& engineState_;
   UIManager* uiManager_ = nullptr;
-  const bool* drawUI_ = nullptr;
 };
 
 }  // namespace engine
