@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <memory>
 
+#include "Editor/UI/UI.hpp"
 #include "Engine/Core/ErrorCodes.hpp"
 #include "Engine/Core/Logger.hpp"
 #include "Engine/EngineState.hpp"
@@ -46,63 +47,75 @@ namespace engine {
             return;
         }
 
+        // Push theme style
+        ui::UI::PushThemeStyle();
+
         auto rendering = engineState_->renderingService().view();
         auto sceneState = engineState_->sceneRuntimeService().view();
         auto resources = engineState_->resourceService().view();
 
         if (ImGui::Begin("Settings", &visible_)) {
-            ImGui::Checkbox("Show Skybox", rendering.showSkybox);
+            // Top-level checkboxes
+            ui::UI::Checkbox("Show Skybox##settings_skybox", rendering.showSkybox);
             ImGui::SameLine();
-            ImGui::Checkbox("Show Grid", rendering.showGrid);
+            ui::UI::Checkbox("Show Grid##settings_grid", rendering.showGrid);
             ImGui::SameLine();
-            if (ImGui::Button((*rendering.showDebugObjects) ? "Hide Debug Objects" : "Show Debug Objects")) {
+            std::string btnLabel = (*rendering.showDebugObjects) ? "Hide Debug Objects" : "Show Debug Objects";
+            if (ui::UI::Button(btnLabel.c_str())) {
                 *rendering.showDebugObjects = !(*rendering.showDebugObjects);
             }
             if ((*rendering.showSkybox) && (sceneState.skybox == nullptr)) {
-                ImGui::TextDisabled("(Skybox will load next frame)");
+                ui::UI::TextDisabled("(Skybox will load next frame)");
             }
-            ImGui::Separator();
+            ui::UI::Separator();
 
-            if (ImGui::CollapsingHeader("Sky")) {
-                ImGui::Checkbox("Debug Cubemap Faces", &sceneState.skySettings->debugCubemapFaces);
+            // Collapsing sections
+            if (ui::UI::Section("Sky")) {
+                ui::UI::Checkbox("Debug Cubemap Faces##sky_cubemap", &sceneState.skySettings->debugCubemapFaces);
             }
-            if (ImGui::CollapsingHeader("Camera")) {
+
+            if (ui::UI::Section("Camera")) {
                 cameraPanel_->render(frameInfo);
             }
-            if (ImGui::CollapsingHeader("Environment (IBL)")) {
+
+            if (ui::UI::Section("Environment (IBL)")) {
                 iblPanel_->render(frameInfo);
             }
-            if (ImGui::CollapsingHeader("Post Processing")) {
+
+            if (ui::UI::Section("Post Processing")) {
                 postProcessPanel_->render(frameInfo);
             }
-            if (ImGui::CollapsingHeader("Debug")) {
+
+            if (ui::UI::Section("Debug")) {
                 debugPanel_->render(frameInfo);
             }
 
-            if (ImGui::CollapsingHeader("Performance")) {
+            if (ui::UI::Section("Performance")) {
                 // Multithreaded recording control (opt-in pilot)
-                if (ImGui::Checkbox("Multithreaded recording (secondary CB)", &multithreadedRecordingEnabled_)) {
-                    ImGui::SetItemTooltip("When enabled, draw-recording is partitioned across worker threads into secondary command buffers.");
-                }
+                ui::UI::Checkbox("Multithreaded recording (secondary CB)##perf_mt", &multithreadedRecordingEnabled_);
+                ui::UI::InfoTooltip("When enabled, draw-recording is partitioned across worker threads into secondary command buffers.");
 
                 int tmpThreads = static_cast<int>(multithreadedRecordingThreads_);
-                if (ImGui::InputInt("Recording threads (0 = auto)", &tmpThreads)) {
+                if (ImGui::InputInt("Recording threads (0 = auto)##perf_threads", &tmpThreads)) {
                     tmpThreads                     = std::max(tmpThreads, 0);
                     multithreadedRecordingThreads_ = static_cast<uint32_t>(tmpThreads);
                 }
-                ImGui::SetItemTooltip("0 = auto (HW threads - 1); set to 1 to force single-threaded serial recording.");
+                ui::UI::InfoTooltip("0 = auto (HW threads - 1); set to 1 to force single-threaded serial recording.");
 
-                ImGui::Separator();
-                ImGui::Text("Cache Metrics");
+                ui::UI::Separator();
+                ui::UI::TextDisabled("Cache Metrics");
 
                 if (rendering.modelRenderSystem != nullptr) {
                     auto const     stats   = rendering.modelRenderSystem->getMaterialDescriptorCacheStats();
                     uint64_t const total   = stats.cacheHits + stats.cacheMisses;
                     double const   hitRate = (total > 0) ? (100.0 * static_cast<double>(stats.cacheHits) / static_cast<double>(total)) : 0.0;
 
-                    ImGui::Text("Material Descriptor Cache");
-                    ImGui::Text("  Hits: %llu  Misses: %llu  Hit Rate: %.1f%%", static_cast<unsigned long long>(stats.cacheHits), static_cast<unsigned long long>(stats.cacheMisses), hitRate);
-                    ImGui::Text("  Buffer Writes: %llu", static_cast<unsigned long long>(stats.bufferWrites));
+                    std::string matText = "Material Descriptor Cache";
+                    ui::UI::TextColored(matText.c_str(), ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
+                    std::string hitText = "  Hits: " + std::to_string(stats.cacheHits) + "  Misses: " + std::to_string(stats.cacheMisses) + "  Hit Rate: " + std::to_string(hitRate).substr(0, 5) + "%";
+                    ui::UI::TextDisabled(hitText.c_str());
+                    std::string bufText = "  Buffer Writes: " + std::to_string(stats.bufferWrites);
+                    ui::UI::TextDisabled(bufText.c_str());
                 }
 
                 if (resources.resourceManager != nullptr) {
@@ -110,67 +123,76 @@ namespace engine {
                     uint64_t const total        = samplerStats.cacheHits + samplerStats.cacheMisses;
                     double const   hitRate      = (total > 0) ? (100.0 * static_cast<double>(samplerStats.cacheHits) / static_cast<double>(total)) : 0.0;
 
-                    ImGui::Text("Sampler Cache");
-                    ImGui::Text("  Hits: %llu  Misses: %llu  Hit Rate: %.1f%%", static_cast<unsigned long long>(samplerStats.cacheHits), static_cast<unsigned long long>(samplerStats.cacheMisses), hitRate);
-                    ImGui::Text("  Cached Samplers: %llu", static_cast<unsigned long long>(samplerStats.cachedSamplers));
+                    std::string samplerText = "Sampler Cache";
+                    ui::UI::TextColored(samplerText.c_str(), ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
+                    std::string hitText2 = "  Hits: " + std::to_string(samplerStats.cacheHits) + "  Misses: " + std::to_string(samplerStats.cacheMisses) + "  Hit Rate: " + std::to_string(hitRate).substr(0, 5) + "%";
+                    ui::UI::TextDisabled(hitText2.c_str());
+                    std::string cachedText = "  Cached Samplers: " + std::to_string(samplerStats.cachedSamplers);
+                    ui::UI::TextDisabled(cachedText.c_str());
                 }
 
-                if ((rendering.modelRenderSystem != nullptr) && ImGui::Button("Reset Material Cache Stats")) {
+                if ((rendering.modelRenderSystem != nullptr) && ui::UI::Button("Reset Material Cache Stats##perf_reset")) {
                     rendering.modelRenderSystem->resetMaterialDescriptorCacheStats();
                 }
             }
 
-            if (ImGui::CollapsingHeader("Shader Variants (Week 10)")) {
+            if (ui::UI::Section("Shader Variants (Week 10)")) {
                 if (rendering.modelRenderSystem == nullptr) {
-                    ImGui::TextDisabled("ModelRenderSystem is not available.");
+                    ui::UI::TextDisabled("ModelRenderSystem is not available.");
                 } else {
                     int                          variantPolicy = static_cast<int>(rendering.modelRenderSystem->variantPolicy());
                     static constexpr const char* variantItems  = "Auto\0Force Standard\0Force Full\0";
-                    if (ImGui::Combo("Variant Policy", &variantPolicy, variantItems)) {
+                    if (ImGui::Combo("Variant Policy##shader_variant", &variantPolicy, variantItems)) {
                         variantPolicy = std::clamp(variantPolicy, 0, 2);
                         rendering.modelRenderSystem->setVariantPolicy(static_cast<ModelRenderSystem::VariantPolicy>(variantPolicy));
                     }
-                    ImGui::SetItemTooltip("Auto chooses per-material; forced modes pin all transparent/transmission rendering to one variant.");
+                    ui::UI::InfoTooltip("Auto chooses per-material; forced modes pin all transparent/transmission rendering to one variant.");
 
                     bool hotReloadEnabled = rendering.modelRenderSystem->shaderHotReloadEnabled();
-                    if (ImGui::Checkbox("Shader Hot Reload", &hotReloadEnabled)) {
+                    if (ui::UI::Checkbox("Shader Hot Reload##shader_hotreload", &hotReloadEnabled)) {
                         rendering.modelRenderSystem->setShaderHotReloadEnabled(hotReloadEnabled);
                     }
 
                     if (rendering.modelRenderSystem->standardVariantFallbackActive()) {
-                        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.2f, 1.0f), "Standard variant fallback active");
-                        ImGui::TextWrapped("%s", rendering.modelRenderSystem->standardVariantFallbackReason().c_str());
+                        ui::UI::TextColored("Standard variant fallback active", ImVec4(1.0f, 0.75f, 0.2f, 1.0f));
+                        std::string reasonText = rendering.modelRenderSystem->standardVariantFallbackReason();
+                        ui::UI::TextDisabled(reasonText.c_str());
                     } else {
-                        ImGui::TextDisabled("Standard variant is available.");
+                        ui::UI::TextDisabled("Standard variant is available.");
                     }
                 }
             }
 
-            if (ImGui::CollapsingHeader("GPU Profiler")) {
+            if (ui::UI::Section("GPU Profiler")) {
                 auto& profiler = GpuProfiler::instance();
                 bool  enabled  = profiler.isEnabled();
-                if (ImGui::Checkbox("Enable Profiling", &enabled)) {
+                if (ui::UI::Checkbox("Enable Profiling##prof_enable", &enabled)) {
                     profiler.setEnabled(enabled);
                 }
 
-                ImGui::Text("Last Frame: %llu", static_cast<unsigned long long>(profiler.lastFrameIndex()));
-                ImGui::Text("Frame CPU: %.3f ms", profiler.lastFrameCpuMs());
+                std::string frameText = "Last Frame: " + std::to_string(profiler.lastFrameIndex());
+                ui::UI::TextDisabled(frameText.c_str());
+                std::string cpuText = "Frame CPU: " + std::to_string(profiler.lastFrameCpuMs()).substr(0, 6) + " ms";
+                ui::UI::TextDisabled(cpuText.c_str());
                 if (profiler.lastFrameGpuMs() >= 0.0) {
-                    ImGui::Text("Frame GPU (sum pass): %.3f ms", profiler.lastFrameGpuMs());
+                    std::string gpuText = "Frame GPU (sum pass): " + std::to_string(profiler.lastFrameGpuMs()).substr(0, 6) + " ms";
+                    ui::UI::TextDisabled(gpuText.c_str());
                 } else {
-                    ImGui::Text("Frame GPU (sum pass): n/a");
+                    ui::UI::TextDisabled("Frame GPU (sum pass): n/a");
                 }
-                ImGui::Separator();
+                ui::UI::Separator();
 
                 for (const auto& timing : profiler.lastFramePassTimings()) {
                     if (timing.gpuMs >= 0.0) {
-                        ImGui::Text("%s  CPU: %.3f ms  GPU: %.3f ms", timing.passName.c_str(), timing.cpuMs, timing.gpuMs);
+                        std::string passText = timing.passName + "  CPU: " + std::to_string(timing.cpuMs).substr(0, 6) + " ms  GPU: " + std::to_string(timing.gpuMs).substr(0, 6) + " ms";
+                        ui::UI::TextDisabled(passText.c_str());
                     } else {
-                        ImGui::Text("%s  CPU: %.3f ms  GPU: n/a", timing.passName.c_str(), timing.cpuMs);
+                        std::string passText = timing.passName + "  CPU: " + std::to_string(timing.cpuMs).substr(0, 6) + " ms  GPU: n/a";
+                        ui::UI::TextDisabled(passText.c_str());
                     }
                 }
 
-                if (ImGui::Button("Export Last Frame CSV")) {
+                if (ui::UI::Button("Export Last Frame CSV##prof_csv")) {
                     std::string error;
                     if (!profiler.exportLastFrameCsv("gpu_profile_last_frame.csv", &error)) {
                         Logger::warn(LogChannel::Resource, "Failed to export GPU profiler snapshot: ", error);
@@ -180,7 +202,7 @@ namespace engine {
                 }
 
                 ImGui::SameLine();
-                if (ImGui::Button("Export Last Frame JSON")) {
+                if (ui::UI::Button("Export Last Frame JSON##prof_json")) {
                     std::string error;
                     if (!profiler.exportLastFrameJson("gpu_profile_last_frame.json", &error)) {
                         Logger::warn(LogChannel::Resource, "Failed to export GPU profiler JSON snapshot: ", error);
@@ -190,10 +212,10 @@ namespace engine {
                 }
             }
 
-            if (ImGui::CollapsingHeader("Logging")) {
+            if (ui::UI::Section("Logging")) {
                 int                          minLevel   = static_cast<int>(Logger::minimumLevel());
                 static constexpr const char* levelItems = "Error\0Warn\0Info\0Debug\0";
-                if (ImGui::Combo("Minimum Level", &minLevel, levelItems)) {
+                if (ImGui::Combo("Minimum Level##log_level", &minLevel, levelItems)) {
                     minLevel = std::clamp(minLevel, 0, 3);
                     Logger::setMinimumLevel(static_cast<LogLevel>(minLevel));
                 }
@@ -204,53 +226,58 @@ namespace engine {
                 bool sceneEnabled    = Logger::isChannelEnabled(LogChannel::Scene);
                 bool resourceEnabled = Logger::isChannelEnabled(LogChannel::Resource);
 
-                if (ImGui::Checkbox("General", &generalEnabled)) {
+                if (ui::UI::Checkbox("General##log_general", &generalEnabled)) {
                     Logger::enableChannel(LogChannel::General, generalEnabled);
                 }
                 ImGui::SameLine();
-                if (ImGui::Checkbox("Render", &renderEnabled)) {
+                if (ui::UI::Checkbox("Render##log_render", &renderEnabled)) {
                     Logger::enableChannel(LogChannel::Render, renderEnabled);
                 }
                 ImGui::SameLine();
-                if (ImGui::Checkbox("Sync", &syncEnabled)) {
+                if (ui::UI::Checkbox("Sync##log_sync", &syncEnabled)) {
                     Logger::enableChannel(LogChannel::Sync, syncEnabled);
                 }
 
-                if (ImGui::Checkbox("Scene", &sceneEnabled)) {
+                if (ui::UI::Checkbox("Scene##log_scene", &sceneEnabled)) {
                     Logger::enableChannel(LogChannel::Scene, sceneEnabled);
                 }
                 ImGui::SameLine();
-                if (ImGui::Checkbox("Resource", &resourceEnabled)) {
+                if (ui::UI::Checkbox("Resource##log_resource", &resourceEnabled)) {
                     Logger::enableChannel(LogChannel::Resource, resourceEnabled);
                 }
             }
 
-            if (ImGui::CollapsingHeader("Error Boundaries (Week 8)")) {
+            if (ui::UI::Section("Error Boundaries (Week 8)")) {
                 uint64_t const recoverableCount = ErrorState::countByBoundary(ErrorBoundary::Recoverable);
                 uint64_t const fatalCount       = ErrorState::countByBoundary(ErrorBoundary::Fatal);
 
-                ImGui::Text("Recoverable events: %llu", static_cast<unsigned long long>(recoverableCount));
-                ImGui::Text("Fatal events: %llu", static_cast<unsigned long long>(fatalCount));
+                std::string recText = "Recoverable events: " + std::to_string(recoverableCount);
+                ui::UI::TextDisabled(recText.c_str());
+                std::string fatalText = "Fatal events: " + std::to_string(fatalCount);
+                ui::UI::TextDisabled(fatalText.c_str());
 
-                if (ImGui::Button("Clear Error Events")) {
+                if (ui::UI::Button("Clear Error Events##errors_clear")) {
                     ErrorState::clear();
                 }
 
                 auto const recent = ErrorState::recentEvents(12);
                 if (recent.empty()) {
-                    ImGui::TextDisabled("No error or fallback events recorded.");
+                    ui::UI::TextDisabled("No error or fallback events recorded.");
                 } else {
-                    ImGui::Separator();
+                    ui::UI::Separator();
                     for (const auto& event : recent) {
                         const char* boundaryLabel = (event.boundary == ErrorBoundary::Recoverable) ? "Recoverable" : "Fatal";
                         ImVec4      color         = (event.boundary == ErrorBoundary::Recoverable) ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-                        ImGui::TextColored(color, "[%s] code=%u count=%llu", boundaryLabel, static_cast<unsigned>(event.code), static_cast<unsigned long long>(event.count));
-                        ImGui::TextWrapped("%s", event.message.c_str());
+                        std::string eventText = "[`" + std::string(boundaryLabel) + "] code=" + std::to_string(static_cast<unsigned long long>(event.code)) + " count=" + std::to_string(static_cast<unsigned long long>(event.count));
+                        ui::UI::TextColored(eventText.c_str(), color);
+                        ui::UI::TextDisabled(event.message.c_str());
                     }
                 }
             }
         }
         ImGui::End();
+
+        ui::UI::PopThemeStyle();
     }
 
 }  // namespace engine

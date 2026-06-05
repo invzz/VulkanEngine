@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Editor/UI/UI.hpp"
 #include "Engine/EngineState.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
@@ -85,6 +86,9 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             return;
         }
 
+        // Push theme style
+        ui::UI::PushThemeStyle();
+
         Scene& scene = *sceneState.scene;
         auto& registry = scene.getRegistry();
         auto resources = engineState_->resourceService().view();
@@ -97,8 +101,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             // --- Search filter ---
             static char searchFilter[128] = "";
             ImGui::SetNextItemWidth(-1);
-            ImGui::InputTextWithHint("##search", "Search entities...", searchFilter, sizeof(searchFilter));
-            ImGui::Separator();
+            ui::UI::InputText("##search", searchFilter, sizeof(searchFilter));
+            ui::UI::Separator();
 
             auto enqueueModelLoad = [&](const std::string& fullPath,
                                         const std::string& name,
@@ -170,7 +174,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 pendingLoads_.emplace_back(std::move(pending));
             };
 
-            ImGui::Separator();
+            ui::UI::Separator();
 
             if (!pendingLoads_.empty()) {
                 std::unordered_map<AsyncLoadId, AsyncLoadSnapshot> snapshotById;
@@ -181,35 +185,38 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                     }
                 }
 
-                ImGui::Text("Pending loads: %zu", pendingLoads_.size());
+                std::string loadText = "Pending loads: " + std::to_string(pendingLoads_.size());
+                ui::UI::TextDisabled(loadText.c_str());
                 for (size_t i = 0; i < pendingLoads_.size(); ++i) {
                     auto& p = pendingLoads_[i];
-                    ImGui::Text("%s", p.name.c_str());
+                    std::string nameText = p.name;
+                    ui::UI::TextDisabled(nameText.c_str());
                     ImGui::SameLine();
 
                     auto snapshotIt = snapshotById.find(p.id);
                     if (snapshotIt != snapshotById.end()) {
                         auto const& snapshot = snapshotIt->second;
-                        ImGui::ProgressBar(snapshot.progress, ImVec2(120.0f, 0.0f));
+                        ui::UI::ProgressBar(snapshot.progress, ImVec2(120.0f, 0.0f));
                         ImGui::SameLine();
                         switch (snapshot.status) {
                             case LoadStatus::PENDING:
-                                ImGui::TextUnformatted("Pending");
+                                ui::UI::TextDisabled("Pending");
                                 break;
                             case LoadStatus::LOADING:
-                                ImGui::TextUnformatted("Loading");
+                                ui::UI::TextDisabled("Loading");
                                 break;
                             case LoadStatus::COMPLETE:
-                                ImGui::TextUnformatted("Done");
+                                ui::UI::TextDisabled("Done");
                                 break;
                             case LoadStatus::FAILED:
-                                ImGui::TextUnformatted("Failed");
+                                ui::UI::TextDisabled("Failed");
                                 break;
                         }
                         ImGui::SameLine();
                     }
 
-                    if (ImGui::SmallButton((std::string("Cancel##") + std::to_string(i)).c_str())) {
+                    std::string cancelBtn = "Cancel##" + std::to_string(i);
+                    if (ui::UI::SmallButton(cancelBtn.c_str())) {
                         p.cancelled = true;
                         if ((engineState_ != nullptr) && (resources.resourceManager != nullptr)) {
                             resources.resourceManager->cancelModelLoad(p.id);
@@ -217,25 +224,13 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                     }
                 }
 
-                pendingLoads_.erase(
-                    std::remove_if(pendingLoads_.begin(), pendingLoads_.end(), [&](const PendingModelLoad& pending) {
-                        if (pending.cancelled) {
-                            return true;
-                        }
-                        auto it = snapshotById.find(pending.id);
-                        if (it == snapshotById.end()) {
-                            return false;
-                        }
-                        return it->second.status == LoadStatus::COMPLETE || it->second.status == LoadStatus::FAILED;
-                    }),
-                    pendingLoads_.end());
-
-                ImGui::Separator();
+                ui::UI::Separator();
             }
 
             auto view = registry.view<entt::entity>();
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.7f, 1.0f), "Entities: %zu", view.size());
-            ImGui::Separator();
+            std::string entityText = "Entities: " + std::to_string(view.size());
+            ui::UI::TextColored(entityText.c_str(), ImVec4(0.6f, 0.6f, 0.7f, 1.0f));
+            ui::UI::Separator();
 
             std::vector<entt::entity> cameras;
             std::vector<entt::entity> dirLights;
@@ -297,7 +292,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
 
                 bool const isSelected = (frameInfo.selectedEntity == entity);
 
-                ImGui::TextColored(color, "%s", icon);
+                ui::UI::TextColored(icon, color);
                 ImGui::SameLine();
 
                 ImGuiStyle const& style        = ImGui::GetStyle();
@@ -322,7 +317,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 }
 
                 float const selectableWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - actionsWidth);
-                if (ImGui::Selectable(label.c_str(), isSelected, ImGuiSelectableFlags_None, ImVec2(selectableWidth, 0.0f))) {
+                if (ui::UI::Selectable(label.c_str(), isSelected)) {
                     frameInfo.selectedObjectId = id;
                     frameInfo.selectedEntity   = entity;
                 }
@@ -330,9 +325,10 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
 
                 if (registry.all_of<CameraComponent>(entity)) {
                     if (entity == frameInfo.cameraEntity) {
-                        ImGui::TextDisabled("Active");
+                        ui::UI::TextDisabled("Active");
                     } else {
-                        if (ImGui::SmallButton("Set Active")) {
+                        std::string activeBtn = "Set Active##cam_" + std::to_string(id);
+                        if (ui::UI::SmallButton(activeBtn.c_str())) {
                             frameInfo.cameraEntity = entity;
                         }
                     }
@@ -340,12 +336,13 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 }
 
                 if (entity == frameInfo.cameraEntity) {
-                    ImGui::TextDisabled("Delete");
+                    ui::UI::TextDisabled("Delete");
                     if (ImGui::IsItemHovered()) {
                         ImGui::SetTooltip("Cannot delete the active camera");
                     }
                 } else {
-                    if (ImGui::SmallButton("Delete")) {
+                    std::string delBtn = "Delete##del_" + std::to_string(id);
+                    if (ui::UI::SmallButton(delBtn.c_str())) {
                         toDelete_.push_back(entity);
                     }
                 }
@@ -380,9 +377,9 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID("cameras_header");
                 ImGuiStyle const& style = ImGui::GetStyle();
                 float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
-                bool const        open  = ImGui::TreeNodeEx("##cameras", rootFlags, "%s", header.c_str());
+                bool const        open  = ui::UI::TreeNode("▶", header.c_str(), rootFlags);
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-                if (ImGui::SmallButton("+##add_camera")) {
+                if (ui::UI::SmallButton("+##add_camera")) {
                     auto entity = scene.createEntity();
                     registry.emplace<TransformComponent>(entity);
                     registry.emplace<CameraComponent>(entity);
@@ -405,9 +402,9 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID("lights_header");
                 ImGuiStyle const& style = ImGui::GetStyle();
                 float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
-                bool const        open  = ImGui::TreeNodeEx("##lights", rootFlags, "%s", header.c_str());
+                bool const        open  = ui::UI::TreeNode("▶", header.c_str(), rootFlags);
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-                if (ImGui::SmallButton("+##add_light")) {
+                if (ui::UI::SmallButton("+##add_light")) {
                     ImGui::OpenPopup("AddLightPopup");
                 }
                 if (ImGui::BeginPopup("AddLightPopup")) {
@@ -448,7 +445,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 }
                 ImGui::PopID();
                 if (open) {
-                    if (ImGui::TreeNodeEx("##dirlights", rootFlags, "Directional (%zu)", dirLights.size())) {
+                    std::string dirHeader = "Directional (" + std::to_string(dirLights.size()) + ")";
+                    if (ui::UI::TreeNode("  ▶", dirHeader.c_str())) {
                         for (auto entity : dirLights) {
                             if (matchesFilter(entity)) {
                                 drawEntityRow(entity, "[DIR]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
@@ -456,7 +454,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                         }
                         ImGui::TreePop();
                     }
-                    if (ImGui::TreeNodeEx("##pointlights", rootFlags, "Point (%zu)", pointLights.size())) {
+                    std::string pntHeader = "Point (" + std::to_string(pointLights.size()) + ")";
+                    if (ui::UI::TreeNode("  ▶", pntHeader.c_str())) {
                         for (auto entity : pointLights) {
                             if (matchesFilter(entity)) {
                                 drawEntityRow(entity, "[PNT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
@@ -464,7 +463,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                         }
                         ImGui::TreePop();
                     }
-                    if (ImGui::TreeNodeEx("##spotlights", rootFlags, "Spot (%zu)", spotLights.size())) {
+                    std::string sptHeader = "Spot (" + std::to_string(spotLights.size()) + ")";
+                    if (ui::UI::TreeNode("  ▶", sptHeader.c_str())) {
                         for (auto entity : spotLights) {
                             if (matchesFilter(entity)) {
                                 drawEntityRow(entity, "[SPT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
@@ -481,32 +481,34 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID("models_header");
                 ImGuiStyle const& style = ImGui::GetStyle();
                 float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
-                bool const        open  = ImGui::TreeNodeEx("##models", rootFlags, "%s", header.c_str());
+                bool const        open  = ui::UI::TreeNode("▶", header.c_str(), rootFlags);
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-                if (ImGui::SmallButton("+##add_model")) {
+                if (ui::UI::SmallButton("+##add_model")) {
                     ImGui::OpenPopup("AddModelPopup");
                 }
 
                 if (ImGui::BeginPopup("AddModelPopup")) {
                     static char filter[128] = "";
-                    ImGui::InputText("Filter", filter, sizeof(filter));
+                    ui::UI::InputText("Filter", filter, sizeof(filter));
 
                     int colliderModeIndex = static_cast<int>(colliderImportMode_);
                     static const char* modeLabels[] = {"Auto Detect", "Force On", "Force Off"};
-                    if (ImGui::Combo("Static Mesh Collider", &colliderModeIndex, modeLabels, IM_ARRAYSIZE(modeLabels))) {
+                    if (ui::UI::Combo("Static Mesh Collider", &colliderModeIndex, modeLabels, 3)) {
                         colliderImportMode_ = static_cast<StaticColliderImportMode>(colliderModeIndex);
                     }
 
                     if (colliderImportMode_ == StaticColliderImportMode::AutoDetect) {
-                        ImGui::TextDisabled("Auto tokens: col_, ucx_, collision, collider, wall, floor, ground, world, level, static");
+                        std::string autoText = "Auto tokens: col_, ucx_, collision, collider, wall, floor, ground, world, level, static";
+                        ui::UI::TextDisabled(autoText.c_str());
                     }
-                    ImGui::Separator();
+                    ui::UI::Separator();
 
                     std::string const indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
                     try {
                         std::ifstream f(indexPath);
                         if (!f.is_open()) {
-                            ImGui::Text("Failed to open model index: %s", indexPath.c_str());
+                            std::string errText = "Failed to open model index: " + indexPath;
+                            ui::UI::TextDisabled(errText.c_str());
                         } else {
                             nlohmann::json j;
                             f >> j;
@@ -532,34 +534,36 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                                     }
                                 }
 
-                                ImGui::Selectable(name.c_str());
-                                if (ImGui::IsItemActivated()) {
-                                    std::string fullPath;
-                                    if (relativePath.empty()) {
-                                        fullPath.append(MODEL_PATH);
-                                        fullPath.append("/glTF/");
-                                        fullPath.append(name);
-                                        fullPath.append("/glTF/");
-                                        fullPath.append(name);
-                                        fullPath.append(".gltf");
-                                    } else {
-                                        fullPath.append(MODEL_PATH);
-                                        fullPath.append("/");
-                                        fullPath.append(relativePath);
+                                if (ui::UI::Selectable(name.c_str())) {
+                                    if (ImGui::IsItemActivated()) {
+                                        std::string fullPath;
+                                        if (relativePath.empty()) {
+                                            fullPath.append(MODEL_PATH);
+                                            fullPath.append("/glTF/");
+                                            fullPath.append(name);
+                                            fullPath.append("/glTF/");
+                                            fullPath.append(name);
+                                            fullPath.append(".gltf");
+                                        } else {
+                                            fullPath.append(MODEL_PATH);
+                                            fullPath.append("/");
+                                            fullPath.append(relativePath);
+                                        }
+
+                                        engine::ModelInsertionOptions opts;
+                                        opts.enableTextures     = true;
+                                        opts.loadMaterials      = true;
+                                        opts.enableMorphTargets = true;
+
+                                        enqueueModelLoad(fullPath, name, opts, colliderImportMode_);
+                                        ImGui::CloseCurrentPopup();
                                     }
-
-                                    engine::ModelInsertionOptions opts;
-                                    opts.enableTextures     = true;
-                                    opts.loadMaterials      = true;
-                                    opts.enableMorphTargets = true;
-
-                                    enqueueModelLoad(fullPath, name, opts, colliderImportMode_);
-                                    ImGui::CloseCurrentPopup();
                                 }
                             }
                         }
                     } catch (const std::exception& e) {
-                        ImGui::Text("Error parsing model index: %s", e.what());
+                        std::string errText = "Error parsing model index: " + std::string(e.what());
+                        ui::UI::TextDisabled(errText.c_str());
                     }
 
                     ImGui::EndPopup();
@@ -576,6 +580,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             }
         }
         ImGui::End();
+
+        ui::UI::PopThemeStyle();
     }
 
     void ScenePanel::processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId) {
