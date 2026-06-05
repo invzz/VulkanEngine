@@ -72,6 +72,10 @@ namespace engine {
             return offscreenFrameBuffer->getColorImage(index);
         }
 
+        [[nodiscard]] VkImage getOffscreenDepthImage(int index) const {
+            return offscreenFrameBuffer->getDepthImage(index);
+        }
+
         [[nodiscard]] bool isFrameInProgress() const {
             return isFrameStarted;
         }

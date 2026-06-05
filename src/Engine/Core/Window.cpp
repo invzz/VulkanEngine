@@ -20,8 +20,10 @@
 // Forward ImGui GLFW callbacks so the app can choose to install or forward
 // events instead of relying on the backend to auto-install them.
 
-// Small helpers to keep initWindow simple and readable.
+// Global GLFW init guard: protects against double-init when multiple Window
+// objects are constructed (e.g., static/global objects, test fixtures).
 namespace {
+bool g_glfwInitialized = false;
 
 #ifdef __linux__
 // Try to get the global cursor position via X11 (useful for XWayland).
@@ -122,10 +124,10 @@ Window::~Window() {
     glfwDestroyWindow(window);
     window = nullptr;
   }
-  if (glfwInitialized) {
-    glfwTerminate();
-    glfwInitialized = false;
-  }
+  // Note: we do NOT call glfwTerminate() here. GLFW is a global resource
+  // and we cannot safely determine whether this is the last Window. The
+  // process cleanup handles termination. If explicit shutdown is needed,
+  // call glfwTerminate() in main() after all Windows are destroyed.
 }
 
 void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -143,12 +145,43 @@ void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height
 }
 
 void Window::initWindow() {
-  if (glfwInitialized) return;
+  if (g_glfwInitialized) return;
+
+  // Pre-check: on Linux, GLFW needs X11 or Wayland.
+  // Check for Wayland first (preferred on modern Linux), then X11.
+#ifdef __linux__
+  if (getenv("WAYLAND_DISPLAY") != nullptr) {
+    // Wayland display detected — let GLFW handle it.
+  } else if (getenv("DISPLAY") == nullptr) {
+    throw WindowInitializationException(
+        "GLFW initialization failed: no display server found. "
+        "Set WAYLAND_DISPLAY (Wayland) or DISPLAY (X11). "
+        "For headless mode, set GLFW_PLATFORM to GLFW_PLATFORM_EGL or "
+        "use a virtual framebuffer (xvfb-run).");
+  } else {
+    // X11 display set — verify connectivity.
+    ::Display* dpy = XOpenDisplay(nullptr);
+    if (dpy == nullptr) {
+      throw WindowInitializationException(
+          "GLFW initialization failed: cannot connect to X11 display '" +
+          std::string(getenv("DISPLAY")) + "'. Verify the display server is "
+          "running (e.g., 'xset q' or 'xdpyinfo').");
+    }
+    XCloseDisplay(dpy);
+  }
+#endif
+
+  // Prefer Wayland over X11 on Linux if both are available.
+#ifdef __linux__
+  if (getenv("WAYLAND_DISPLAY") != nullptr) {
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+  }
+#endif
 
   if (glfwInit() == 0) {
     throw WindowInitializationException("GLFW initialization failed");
   }
-  glfwInitialized = true;
+  g_glfwInitialized = true;
 
   // Basic GLFW hints: no GL context, resizable, create hidden so we can
   // position before showing.

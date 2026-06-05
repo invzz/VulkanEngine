@@ -49,6 +49,7 @@
 #include "Editor/Infrastructure/CameraAdapter.hpp"
 #include "Editor/Infrastructure/TransformAdapter.hpp"
 #include "Editor/Infrastructure/SceneSettingsAdapter.hpp"
+#include "Engine/EngineFacade.hpp"
 
 // UI Panels
 #include "Editor/ui/InspectorPanel.hpp"
@@ -249,8 +250,11 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         SceneRuntimeStateView sceneRuntimeView = engineState.sceneRuntimeService().view();
         InputStateView inputView = engineState.inputService().view();
 
+        // EngineFacade — single accessor for all pass state needs.
+        EngineFacade engineFacade(engineState);
+
         // 1. Update Pass
-        graph->addPass(std::make_unique<UpdatePass>(inputView, physicsRuntimePort.get(), renderer));
+        graph->addPass(std::make_unique<UpdatePass>(engineFacade, physicsRuntimePort.get(), renderer));
 
         // 2. Compute Pass
         graph->addPass(std::make_unique<ComputePass>(animationAccessAdapter.get()));

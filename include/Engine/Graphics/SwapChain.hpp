@@ -110,8 +110,7 @@ namespace engine {
 
         std::shared_ptr<SwapChain> oldSwapChain;
 
-        // Synchronization objects - one set per frame in flight.
-        // All arrays have size = maxFramesInFlight for consistency.
+        // Synchronization objects - one set per swapchain image to prevent reuse hazards.
         std::vector<VkSemaphore> imageAvailableSemaphores;  // Signaled by vkAcquireNextImageKHR
         std::vector<VkSemaphore> renderFinishedSemaphores;  // Signaled when frame finishes, waited by present
         std::vector<VkFence>     inFlightFences;            // CPU waits before reusing frame resources

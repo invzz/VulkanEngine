@@ -13,8 +13,8 @@ namespace engine {
 
 void UpdatePass::execute(FrameInfo& frameInfo) {
   // forward update calls to systems owned by EngineState
-  if (inputState_.objectSelectionSystem != nullptr) inputState_.objectSelectionSystem->update(frameInfo);
-  if (inputState_.inputSystem != nullptr) inputState_.inputSystem->update(frameInfo);
+  if (engine_.objectSelection() != nullptr) engine_.objectSelection()->update(frameInfo);
+  if (engine_.input() != nullptr) engine_.input()->update(frameInfo);
   LODSystem::update(frameInfo);
   CameraSystem::update(frameInfo, renderer.getAspectRatio());
 

@@ -36,6 +36,26 @@ struct RenderingStateView {
   bool* showColliderWireframes = nullptr;
   bool* debugMode = nullptr;
   MorphTargetManager* morphTargetManager = nullptr;
+
+  /**
+   * @brief Check if all required pointers are non-null.
+   * Nullable fields (showSkybox, showGrid, etc.) are excluded — they may
+   * legitimately be null when the corresponding runtime toggle isn't bound.
+   */
+  [[nodiscard]] bool isValid() const {
+    return modelRenderSystem != nullptr
+        && shadowSystem != nullptr
+        && lightSystem != nullptr
+        && skyboxRenderSystem != nullptr
+        && gridRenderSystem != nullptr
+        && deferredLightingSystem != nullptr
+        && postProcessingSystem != nullptr
+        && iblSystem != nullptr
+        && camera != nullptr
+        && colliderDebug != nullptr
+        && renderContextPort != nullptr
+        && morphTargetManager != nullptr;
+  }
 };
 
 }  // namespace engine

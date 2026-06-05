@@ -16,6 +16,17 @@ struct SceneRuntimeStateView {
   Skybox* skybox = nullptr;
   SkyboxSettings* skySettings = nullptr;
   ShadowSettings* shadowSettings = nullptr;
+
+  /**
+   * @brief Check if all required pointers are non-null.
+   * Nullable fields (skybox, skySettings, shadowSettings) are excluded —
+   * they may be null before a scene is loaded or settings are initialized.
+   */
+  [[nodiscard]] bool isValid() const {
+    return scene != nullptr
+        && selectedEntity != nullptr
+        && cameraEntity != nullptr;
+  }
 };
 
 }  // namespace engine

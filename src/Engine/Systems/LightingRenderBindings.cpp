@@ -159,6 +159,12 @@ void LightingRenderBindings::bindShadow(FrameInfo& frameInfo, VkPipelineLayout p
     return;
   }
 
+  if (shadowDescriptorSets_.empty() ||
+      frameInfo.frameIndex < 0 || frameInfo.frameIndex >= static_cast<int>(shadowDescriptorSets_.size()) ||
+      shadowDescriptorSets_[frameInfo.frameIndex] == VK_NULL_HANDLE) {
+    return;
+  }
+
   int const shadowCount = shadowSystem_->getShadowLightCount();
   int const cubeShadowCount = shadowSystem_->getCubeShadowLightCount();
 
@@ -202,6 +208,12 @@ void LightingRenderBindings::bindShadow(FrameInfo& frameInfo, VkPipelineLayout p
 
 void LightingRenderBindings::bindIBL(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout) {
   if (iblSystem_ == nullptr) {
+    return;
+  }
+
+  if (iblDescriptorSets_.empty() ||
+      frameInfo.frameIndex < 0 || frameInfo.frameIndex >= static_cast<int>(iblDescriptorSets_.size()) ||
+      iblDescriptorSets_[frameInfo.frameIndex] == VK_NULL_HANDLE) {
     return;
   }
 

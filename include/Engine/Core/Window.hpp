@@ -88,9 +88,6 @@ class Window {
 
   GLFWwindow* window;
 
-  // Track if GLFW has been initialized
-  bool glfwInitialized = false;
-
   // Flag to indicate if the framebuffer has been resized (atomic for callback/thread-safety)
   std::atomic<bool> framebufferResized{false};
 

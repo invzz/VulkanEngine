@@ -31,6 +31,22 @@ struct ResourceStateView {
   DescriptorSetLayout* deferredShadowSetLayout = nullptr;
   DescriptorPool* postProcessPool = nullptr;
   DescriptorSetLayout* postProcessSetLayout = nullptr;
+
+  /**
+   * @brief Check if all required pointers are non-null.
+   */
+  [[nodiscard]] bool isValid() const {
+    return resourceManager != nullptr
+        && renderContextPort != nullptr
+        && gbufferPool != nullptr
+        && gbufferSetLayout != nullptr
+        && deferredIblPool != nullptr
+        && deferredIblSetLayout != nullptr
+        && deferredShadowPool != nullptr
+        && deferredShadowSetLayout != nullptr
+        && postProcessPool != nullptr
+        && postProcessSetLayout != nullptr;
+  }
 };
 
 struct SystemServicesView {
@@ -50,6 +66,28 @@ struct SystemServicesView {
   IBLSystem* ibl = nullptr;
   PhysicsSystem* physics = nullptr;
   JoltPhysicsSystem* joltPhysics = nullptr;
+
+  /**
+   * @brief Check if all required pointers are non-null.
+   */
+  [[nodiscard]] bool isValid() const {
+    return objectSelection != nullptr
+        && input != nullptr
+        && camera != nullptr
+        && colliderDebug != nullptr
+        && animation != nullptr
+        && lod != nullptr
+        && modelRender != nullptr
+        && shadow != nullptr
+        && light != nullptr
+        && skyboxRender != nullptr
+        && gridRender != nullptr
+        && deferredLighting != nullptr
+        && postProcessing != nullptr
+        && ibl != nullptr
+        && physics != nullptr
+        && joltPhysics != nullptr;
+  }
 };
 
 }  // namespace engine

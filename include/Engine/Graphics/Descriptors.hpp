@@ -53,6 +53,8 @@ class DescriptorPool {
     // Opt-in: allow the pool to create overflow pools when allocation
     // requests cannot be satisfied due to fragmentation or size limits.
     Builder& setAllowOverflow(bool allow);
+    // Require the pool to be created successfully. Defaults to true.
+    Builder& setRequireSuccess(bool require);
     [[nodiscard]] std::unique_ptr<DescriptorPool> build() const;
 
    private:
@@ -61,6 +63,7 @@ class DescriptorPool {
     uint32_t maxSets = 1000;
     VkDescriptorPoolCreateFlags poolFlags = 0;
     bool allowOverflow = false;
+    bool requireSuccess = true;
   };
 
   DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes, bool allowOverflow = false);
@@ -111,6 +114,7 @@ class DescriptorWriter {
   // allocation fails (helps callers decide whether to grow pools, retry,
   // or fail fast). Backwards-compatible default keeps existing call sites OK.
   bool build(VkDescriptorSet& set, VkResult* outResult = nullptr);
+  void buildOrThrow(VkDescriptorSet& set);
   void overwrite(VkDescriptorSet& set);
 
  private:

@@ -1,5 +1,5 @@
 #include "Engine/Application/Ports/IPhysicsRuntimePort.hpp"
-#include "Engine/Application/StateViews/InputStateView.hpp"
+#include "Engine/EngineFacade.hpp"
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
@@ -9,8 +9,8 @@ class FrameInfo;
 
 class UpdatePass : public IRenderPass {
  public:
-  UpdatePass(InputStateView inputState, IPhysicsRuntimePort* physicsPort, Renderer& renderer)
-      : inputState_(inputState), physicsPort_(physicsPort), renderer(renderer) {}
+  UpdatePass(EngineFacade& engine, IPhysicsRuntimePort* physicsPort, Renderer& renderer)
+      : engine_(engine), physicsPort_(physicsPort), renderer(renderer) {}
 
   [[nodiscard]] const std::string& getName() const override {
     static const std::string name = "Update";
@@ -19,7 +19,7 @@ class UpdatePass : public IRenderPass {
   void execute(FrameInfo& frameInfo) override;
 
  private:
-  InputStateView inputState_;
+  EngineFacade& engine_;
   IPhysicsRuntimePort* physicsPort_ = nullptr;
   Renderer& renderer;
 };

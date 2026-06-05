@@ -122,8 +122,17 @@ namespace engine {
         return *this;
     }
 
+    DescriptorPool::Builder& DescriptorPool::Builder::setRequireSuccess(bool require) {
+        requireSuccess = require;
+        return *this;
+    }
+
     std::unique_ptr<DescriptorPool> DescriptorPool::Builder::build() const {
-        return std::make_unique<DescriptorPool>(device, maxSets, poolFlags, poolSizes, allowOverflow);
+        auto pool = std::make_unique<DescriptorPool>(device, maxSets, poolFlags, poolSizes, allowOverflow);
+        if (requireSuccess && pool->descriptorPool == VK_NULL_HANDLE) {
+            throw std::runtime_error("DescriptorPool::Builder::build failed to create pool");
+        }
+        return pool;
     }
 
     DescriptorPool::DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes, bool allowOverflow)
@@ -353,10 +362,18 @@ namespace engine {
         return true;
     }
 
+    void DescriptorWriter::buildOrThrow(VkDescriptorSet& set) {
+        VkResult outResult = VK_ERROR_INITIALIZATION_FAILED;
+        if (!build(set, &outResult)) {
+            throw std::runtime_error(std::string("DescriptorWriter::build failed (VkResult=") + std::to_string(outResult) + ")");
+        }
+    }
+
     void DescriptorWriter::overwrite(VkDescriptorSet& set) {
         for (auto& write : writes) {
             write.dstSet = set;
         }
         vkUpdateDescriptorSets(pool.device.device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+        writes.clear(); // Prevent stale/duplicate writes on subsequent calls
     }
 }  // namespace engine

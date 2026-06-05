@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "Engine/Graphics/DescriptorManager.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
@@ -40,6 +41,9 @@ namespace engine {
     // EngineState is the single source-of-truth for owned systems, scene and
     // runtime settings. Pass a pointer/reference to render passes and systems
     // so they can access the current runtime state without long parameter lists.
+    class EngineFacade;
+    class DescriptorManager;
+
     class EngineState {
        public:
         ~EngineState();
@@ -54,6 +58,7 @@ namespace engine {
             uint32_t                      multithreadedRecordingThreads);
 
        private:
+        friend class EngineFacade;
         friend class RenderingStateService;
         friend class SceneRuntimeService;
         friend class InputStateService;
@@ -108,14 +113,14 @@ namespace engine {
             return ResourceStateView{
                 .resourceManager         = resourceManager,
                 .renderContextPort       = renderContextPort,
-                .gbufferPool             = gbufferPool.get(),
-                .gbufferSetLayout        = gbufferSetLayout.get(),
-                .deferredIblPool         = deferredIblPool.get(),
-                .deferredIblSetLayout    = deferredIblSetLayout.get(),
-                .deferredShadowPool      = deferredShadowPool.get(),
-                .deferredShadowSetLayout = deferredShadowSetLayout.get(),
-                .postProcessPool         = postProcessPool.get(),
-                .postProcessSetLayout    = postProcessSetLayout.get(),
+                .gbufferPool             = &descriptorManager->gbufferPool(),
+                .gbufferSetLayout        = &descriptorManager->gbufferSetLayout(),
+                .deferredIblPool         = &descriptorManager->deferredIblPool(),
+                .deferredIblSetLayout    = &descriptorManager->deferredIblSetLayout(),
+                .deferredShadowPool      = &descriptorManager->deferredShadowPool(),
+                .deferredShadowSetLayout = &descriptorManager->deferredShadowSetLayout(),
+                .postProcessPool         = &descriptorManager->postProcessPool(),
+                .postProcessSetLayout    = &descriptorManager->postProcessSetLayout(),
             };
         }
 
@@ -193,6 +198,14 @@ namespace engine {
             return solidGroundEnabled;
         }
 
+        [[nodiscard]] entt::entity& selectedEntityRef() {
+            return selectedEntity;
+        }
+
+        [[nodiscard]] entt::entity& cameraEntityRef() {
+            return cameraEntity;
+        }
+
         [[nodiscard]] JoltPhysicsSystem* getJoltPhysicsSystem() const {
             return joltPhysicsSystem.get();
         }
@@ -202,71 +215,67 @@ namespace engine {
         }
 
         [[nodiscard]] VkDescriptorSet getGbufferDescriptorSet(int frameIndex) const {
-            if (frameIndex < 0 || frameIndex >= static_cast<int>(gbufferDescriptorSets.size())) {
-                return VK_NULL_HANDLE;
-            }
-            return gbufferDescriptorSets[frameIndex];
+            return descriptorManager->gbufferDescriptorSet(frameIndex);
         }
 
         [[nodiscard]] VkDescriptorSet& gbufferDescriptorSetRef(int frameIndex) {
-            return gbufferDescriptorSets.at(static_cast<size_t>(frameIndex));
+            return descriptorManager->gbufferDescriptorSetRef(frameIndex);
         }
 
         [[nodiscard]] VkDescriptorSet getDeferredIblDescriptorSet(int frameIndex) const {
-            if (frameIndex < 0 || frameIndex >= static_cast<int>(deferredIblDescriptorSets.size())) {
-                return VK_NULL_HANDLE;
-            }
-            return deferredIblDescriptorSets[frameIndex];
+            return descriptorManager->deferredIblDescriptorSet(frameIndex);
         }
 
         [[nodiscard]] VkDescriptorSet getDeferredShadowDescriptorSet(int frameIndex) const {
-            if (frameIndex < 0 || frameIndex >= static_cast<int>(deferredShadowDescriptorSets.size())) {
-                return VK_NULL_HANDLE;
-            }
-            return deferredShadowDescriptorSets[frameIndex];
+            return descriptorManager->deferredShadowDescriptorSet(frameIndex);
         }
 
         [[nodiscard]] VkDescriptorSet& deferredShadowDescriptorSetRef(int frameIndex) {
-            return deferredShadowDescriptorSets.at(static_cast<size_t>(frameIndex));
+            return descriptorManager->deferredShadowDescriptorSetRef(frameIndex);
         }
 
         [[nodiscard]] VkDescriptorSet getPostProcessDescriptorSet(int frameIndex) const {
-            if (frameIndex < 0 || frameIndex >= static_cast<int>(postProcessDescriptorSets.size())) {
-                return VK_NULL_HANDLE;
-            }
-            return postProcessDescriptorSets[frameIndex];
+            return descriptorManager->postProcessDescriptorSet(frameIndex);
         }
 
         [[nodiscard]] VkDescriptorSet& postProcessDescriptorSetRef(int frameIndex) {
-            return postProcessDescriptorSets.at(static_cast<size_t>(frameIndex));
+            return descriptorManager->postProcessDescriptorSetRef(frameIndex);
         }
 
         [[nodiscard]] std::vector<VkDescriptorSet>& deferredIblDescriptorSetsRef() {
-            return deferredIblDescriptorSets;
+            return descriptorManager->deferredIblDescriptorSets();
         }
 
         [[nodiscard]] DescriptorSetLayout& gbufferSetLayoutRef() {
-            return *gbufferSetLayout;
+            return descriptorManager->gbufferSetLayout();
         }
 
         [[nodiscard]] DescriptorPool& gbufferPoolRef() {
-            return *gbufferPool;
+            return descriptorManager->gbufferPool();
         }
 
         [[nodiscard]] DescriptorSetLayout& postProcessSetLayoutRef() {
-            return *postProcessSetLayout;
+            return descriptorManager->postProcessSetLayout();
         }
 
         [[nodiscard]] DescriptorPool& postProcessPoolRef() {
-            return *postProcessPool;
+            return descriptorManager->postProcessPool();
         }
 
         [[nodiscard]] DescriptorSetLayout& deferredIblSetLayoutRef() {
-            return *deferredIblSetLayout;
+            return descriptorManager->deferredIblSetLayout();
         }
 
         [[nodiscard]] DescriptorPool& deferredIblPoolRef() {
-            return *deferredIblPool;
+            return descriptorManager->deferredIblPool();
+        }
+
+        [[nodiscard]] DescriptorSetLayout& deferredShadowSetLayoutRef() {
+            return descriptorManager->deferredShadowSetLayout();
+        }
+
+        [[nodiscard]] DescriptorPool& deferredShadowPoolRef() {
+            return descriptorManager->deferredShadowPool();
         }
 
        private:
@@ -332,22 +341,8 @@ namespace engine {
         std::unique_ptr<Keyboard> keyboard;
         std::unique_ptr<Mouse>    mouse;
 
-        // Descriptor/layout state used by several passes
-        std::unique_ptr<DescriptorPool>      gbufferPool;
-        std::unique_ptr<DescriptorSetLayout> gbufferSetLayout;
-        std::vector<VkDescriptorSet>         gbufferDescriptorSets;
-
-        std::unique_ptr<DescriptorPool>      deferredIblPool;
-        std::unique_ptr<DescriptorSetLayout> deferredIblSetLayout;
-        std::vector<VkDescriptorSet>         deferredIblDescriptorSets;
-
-        std::unique_ptr<DescriptorPool>      deferredShadowPool;
-        std::unique_ptr<DescriptorSetLayout> deferredShadowSetLayout;
-        std::vector<VkDescriptorSet>         deferredShadowDescriptorSets;
-
-        std::unique_ptr<DescriptorPool>      postProcessPool;
-        std::unique_ptr<DescriptorSetLayout> postProcessSetLayout;
-        std::vector<VkDescriptorSet>         postProcessDescriptorSets;
+        // Descriptor/layout state — centralized in DescriptorManager.
+        std::unique_ptr<class DescriptorManager> descriptorManager;
 
         // Non-owned dependencies passed during initialize().
         IRenderContextPort* renderContextPort = nullptr;

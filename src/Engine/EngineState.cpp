@@ -4,6 +4,7 @@
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"
+#include "Engine/Graphics/DescriptorManager.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
 
@@ -160,93 +161,55 @@ namespace engine {
     }
 
     void EngineState::initDescriptorResources(Device& device, Renderer& renderer) {
-        // G-buffer + Deferred lighting
+        // Create the descriptor manager (owns all pools/layouts/sets).
+        descriptorManager = std::make_unique<DescriptorManager>();
+        descriptorManager->createDescriptorResources(device, renderer);
+
+        // G-buffer pipeline (still needs modelRenderSystem).
         modelRenderSystem->createGbufferPipeline(renderer.getGbufferRenderPass());
 
-        gbufferPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 4).build();
-
-        gbufferSetLayout = DescriptorSetLayout::Builder(device)
-                               .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .build();
-
-        deferredIblPool = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 3).build();
-
-        deferredIblSetLayout = DescriptorSetLayout::Builder(device)
-                                   .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .build();
-
-        deferredShadowPool = DescriptorPool::Builder(device)
-                                 .setMaxSets(SwapChain::maxFramesInFlight())
-                                 .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * (ShadowSystem::MAX_SHADOW_MAPS + ShadowSystem::MAX_CUBE_SHADOW_MAPS))
-                                 .build();
-
-        deferredShadowSetLayout = DescriptorSetLayout::Builder(device)
-                                      .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_SHADOW_MAPS)
-                                      .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_CUBE_SHADOW_MAPS)
-                                      .build();
-
-        // Note: Shadow set must be placed before IBL set to match LightingRenderBindings indices
+        // Deferred lighting system needs descriptor layouts from the manager.
         deferredLightingSystem = std::make_unique<DeferredLightingSystem>(device,
             renderer.getDeferredLightingRenderPass(),
             std::vector<VkDescriptorSetLayout>{renderContextPort->getGlobalSetLayout(),
-                gbufferSetLayout->getDescriptorSetLayout(),
-                deferredShadowSetLayout->getDescriptorSetLayout(),
-                deferredIblSetLayout->getDescriptorSetLayout()});
+                descriptorManager->gbufferSetLayout().getDescriptorSetLayout(),
+                descriptorManager->deferredShadowSetLayout().getDescriptorSetLayout(),
+                descriptorManager->deferredIblSetLayout().getDescriptorSetLayout()});
     }
 
     void EngineState::allocatePerFrameDescriptorSets(Renderer& renderer) {
-        // Allocate + build per-frame descriptor sets that reference renderer images
-        gbufferDescriptorSets.resize(SwapChain::maxFramesInFlight());
-        for (int i = 0; i < static_cast<int>(gbufferDescriptorSets.size()); ++i) {
-            auto nInfo              = renderer.getGbufferNormalImageInfo(i);
-            auto aInfo              = renderer.getGbufferAlbedoImageInfo(i);
-            auto mInfo              = renderer.getGbufferMaterialImageInfo(i);
-            auto dInfo              = renderer.getDepthImageInfo(i);
-            DescriptorWriter(*gbufferSetLayout, *gbufferPool)
-                .writeImage(0, &nInfo)
-                .writeImage(1, &aInfo)
-                .writeImage(2, &mInfo)
-                .writeImage(3, &dInfo)
-                .build(gbufferDescriptorSets[i]);
-        }
+        // Delegate descriptor set allocation to the manager.
+        descriptorManager->allocatePerFrameDescriptors(renderer);
 
-        deferredIblDescriptorSets.resize(SwapChain::maxFramesInFlight());
-        for (int i = 0; i < static_cast<int>(deferredIblDescriptorSets.size()); ++i) {
+        // IBL descriptor sets need IBLSystem access — allocate separately.
+        deferredIblDescriptorSetsRef().resize(SwapChain::maxFramesInFlight());
+        for (int i = 0; i < static_cast<int>(deferredIblDescriptorSetsRef().size()); ++i) {
             auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
-            auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
-            auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
-            DescriptorWriter(*deferredIblSetLayout, *deferredIblPool).writeImage(0, &irradianceInfo).writeImage(1, &prefilterInfo).writeImage(2, &brdfInfo).build(deferredIblDescriptorSets[i]);
+            auto prefilterInfo = iblSystem->getPrefilteredDescriptorInfo();
+            auto brdfInfo = iblSystem->getBRDFLUTDescriptorInfo();
+            DescriptorWriter(descriptorManager->deferredIblSetLayout(),
+                             descriptorManager->deferredIblPool())
+                .writeImage(0, &irradianceInfo)
+                .writeImage(1, &prefilterInfo)
+                .writeImage(2, &brdfInfo)
+                .buildOrThrow(deferredIblDescriptorSetsRef()[i]);
         }
 
-        deferredShadowDescriptorSets.resize(SwapChain::maxFramesInFlight());
-        for (auto& ds : deferredShadowDescriptorSets) {
-            if (!deferredShadowPool->allocateDescriptor(deferredShadowSetLayout->getDescriptorSetLayout(), ds)) {
-                throw std::runtime_error("Failed to allocate deferred shadow descriptor set");
-            }
+        // Validate IBL descriptor sets are not null
+        for (const auto& ds : deferredIblDescriptorSetsRef()) {
+            assert(ds != VK_NULL_HANDLE && "IBL descriptor set failed to allocate");
         }
     }
 
 
     void EngineState::initPostProcessing(Device& device, Renderer& renderer) {
-        // Post processing resources
-        postProcessPool      = DescriptorPool::Builder(device).setMaxSets(SwapChain::maxFramesInFlight()).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 2).build();
-        postProcessSetLayout = DescriptorSetLayout::Builder(device)
-                                   .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                                   .build();
+        // Post-processing descriptor resources are now owned by DescriptorManager.
+        descriptorManager->recreatePostProcessDescriptorSets(device, renderer, VK_NULL_HANDLE);
 
-        postProcessingSystem = std::make_unique<PostProcessingSystem>(device, renderer.getSwapChainRenderPass(), std::vector<VkDescriptorSetLayout>{postProcessSetLayout->getDescriptorSetLayout()});
-        postProcessDescriptorSets.resize(SwapChain::maxFramesInFlight());
-        for (int i = 0; i < static_cast<int>(postProcessDescriptorSets.size()); ++i) {
-            auto imageInfo = renderer.getOffscreenImageInfo(i);
-            auto depthInfo = renderer.getDepthImageInfo(i);
-            DescriptorWriter(*postProcessSetLayout, *postProcessPool).writeImage(0, &imageInfo).writeImage(1, &depthInfo).build(postProcessDescriptorSets[i]);
-        }
+        // Post-processing system (layout from manager).
+        postProcessingSystem = std::make_unique<PostProcessingSystem>(
+            device, renderer.getSwapChainRenderPass(),
+            std::vector<VkDescriptorSetLayout>{descriptorManager->postProcessSetLayout().getDescriptorSetLayout()});
     }
 
     void EngineState::initInputRelatedSystems(Window* window) {
