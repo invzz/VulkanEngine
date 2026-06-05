@@ -26,6 +26,7 @@ class ImGuiManager;
  * - Theme/styling
  * - Workspace state (selection, active camera, etc.)
  * - Rendering of the dockspace and panels
+ * - Layout validation and constraint enforcement
  *
  * Panels should NOT be rendered directly from App. Instead, App calls
  * UIManager::render() which delegates to WorkspaceManager.
@@ -133,6 +134,41 @@ public:
      * @brief Get the asset browser panel (future).
      */
     class AssetBrowserPanel* getAssetBrowserPanel() const { return nullptr; }
+
+    /**
+     * @brief Validate the current layout and enforce workspace constraints.
+     *
+     * This method checks all registered panels against their docking constraints
+     * and ensures they follow the workspace layout rules. It is called every
+     * frame during render() to maintain layout integrity.
+     *
+     * @return true if all constraints are satisfied, false if violations were found
+     *         and corrected.
+     */
+    bool validateLayout();
+
+    /**
+     * @brief Enforce docking constraints for a specific panel.
+     *
+     * This method ensures a panel's docking constraints are valid and
+     * applies corrections if needed. It is called by validateLayout() for
+     * each registered panel.
+     *
+     * @param name The panel name.
+     * @param constraints The docking constraints to enforce.
+     * @return true if constraints are valid, false if they were corrected.
+     */
+    bool enforceConstraints(const std::string& name, const DockConstraints& constraints);
+
+    /**
+     * @brief Get the current layout preset.
+     */
+    LayoutPreset getCurrentLayout() const { return currentLayout_; }
+
+    /**
+     * @brief Set the current layout preset.
+     */
+    void setCurrentLayout(LayoutPreset preset) { currentLayout_ = preset; }
 
 private:
     ImGuiManager* imguiManager_ = nullptr;

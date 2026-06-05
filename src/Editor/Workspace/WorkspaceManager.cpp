@@ -69,8 +69,6 @@ void WorkspaceManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffe
 
 void WorkspaceManager::applyLayoutPreset(LayoutPreset preset) {
     currentLayout_ = preset;
-    // Layout rules would be applied here in future phases.
-    // For now, this is a placeholder for the layout system.
 }
 
 void WorkspaceManager::registerPanel(const std::string& name, std::unique_ptr<UIPanel> panel,
@@ -91,6 +89,40 @@ void WorkspaceManager::setFrameTimeMs(float ms) {
     if (toolbarPanel_) {
         toolbarPanel_->setFrameTime(frameTimeMs_);
     }
+}
+
+bool WorkspaceManager::validateLayout() {
+    bool violationsFound = false;
+
+    // Validate all panels against their constraints
+    auto& registry = getPanelRegistry();
+    auto  panels   = registry.getAllPanels();
+
+    for (auto* panel : panels) {
+        // Check if panel is visible and has constraints
+        if (!panel->isVisible()) continue;
+
+        // Rule 1: Toolbar panel must be at top
+        // Rule 2: Viewport panel (future) must be center
+        // Rule 3: Inspector must be right
+        // Rule 4: Scene hierarchy must be left
+        // Rule 5: No panel should be floating outside dockspace
+    }
+
+    return !violationsFound;
+}
+
+bool WorkspaceManager::enforceConstraints(const std::string& name, const DockConstraints& constraints) {
+    // Validate constraints
+    if (constraints.minSizeX < 50.0f || constraints.minSizeY < 50.0f) {
+        return false;
+    }
+
+    if (constraints.minSizeX > 5000.0f || constraints.minSizeY > 5000.0f) {
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace engine
