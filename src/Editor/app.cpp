@@ -215,6 +215,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
         uiManager    = std::make_unique<UIManager>(*imguiManager);
 
+        // Wire save/load callbacks through UIManager
         uiManager->setOnSaveScene([this]() {
             std::cout << "Saving scene to scene.json..." << '\n';
             if (!saveSceneUseCase->execute("scene.json")) {
@@ -231,26 +232,56 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
                 std::cout << "[App] Failed to deserialize scene.json\n";
             }
         });
-        uiManager->addPanel(std::make_unique<ScenePanel>(device, &engineState));
-        uiManager->addPanel(std::make_unique<InspectorPanel>(*sceneRuntimeAccessAdapter->scene(),
-                                         sceneRuntimeAccessAdapter->physicsSimulationRunning(),
-                                         sceneRuntimeAccessAdapter->showColliderWireframes(),
-                                         sceneRuntimeAccessAdapter->solidGroundEnabled(),
-                                         physicsRuntimePort->joltPhysicsSystem()));
-        uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
-        uiManager->addPanel(std::make_unique<PhysicsPanel>(*sceneRuntimeAccessAdapter->scene(),
-                                         sceneRuntimeAccessAdapter->physicsSimulationRunning(),
-                                         sceneRuntimeAccessAdapter->showColliderWireframes(),
-                                         sceneRuntimeAccessAdapter->solidGroundEnabled(),
-                                         physicsRuntimePort->joltPhysicsSystem()));
+
+        // --- Register panels with docking constraints ---
+        auto& registry = uiManager->getPanelRegistry();
+        auto& state = uiManager->getUIState();
+
+        // Scene hierarchy panel — dock left
+        auto scenePanel = std::make_unique<ScenePanel>(device, &engineState);
+        registry.registerPanel("SceneHierarchy", std::move(scenePanel), DockConstraints{
+            .preferredZone = DockZone::DockLeft,
+            .minSizeX = 250.0f, .minSizeY = 200.0f,
+        });
+
+        // Inspector panel — dock right
+        auto inspectorPanel = std::make_unique<InspectorPanel>(
+            *sceneRuntimeAccessAdapter->scene(),
+            sceneRuntimeAccessAdapter->physicsSimulationRunning(),
+            sceneRuntimeAccessAdapter->showColliderWireframes(),
+            sceneRuntimeAccessAdapter->solidGroundEnabled(),
+            physicsRuntimePort->joltPhysicsSystem());
+        registry.registerPanel("Inspector", std::move(inspectorPanel), DockConstraints{
+            .preferredZone = DockZone::DockRight,
+            .minSizeX = 300.0f, .minSizeY = 200.0f,
+        });
+
+        // Settings panel — dock bottom
+        auto settingsPanel = std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
+        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{
+            .preferredZone = DockZone::DockBottom,
+            .minSizeX = 400.0f, .minSizeY = 150.0f,
+        });
+
+        // Physics panel — dockable anywhere
+        auto physicsPanel = std::make_unique<PhysicsPanel>(
+            *sceneRuntimeAccessAdapter->scene(),
+            sceneRuntimeAccessAdapter->physicsSimulationRunning(),
+            sceneRuntimeAccessAdapter->showColliderWireframes(),
+            sceneRuntimeAccessAdapter->solidGroundEnabled(),
+            physicsRuntimePort->joltPhysicsSystem());
+        registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{
+            .preferredZone = DockZone::DockCenter,
+            .minSizeX = 300.0f, .minSizeY = 200.0f,
+        });
 
         // --- Toolbar panel ---
         auto toolbar = std::make_unique<ToolbarPanel>();
         uiManager->setToolbarPanel(std::move(toolbar));
-        uiManager->addToolbarToggle("Scene", uiManager->getPanel<ScenePanel>());
-        uiManager->addToolbarToggle("Inspector", uiManager->getPanel<InspectorPanel>());
-        uiManager->addToolbarToggle("Settings", uiManager->getPanel<SettingsPanel>());
-        uiManager->addToolbarToggle("Physics", uiManager->getPanel<PhysicsPanel>());
+        uiManager->addToolbarToggle("Scene", registry.getPanel("SceneHierarchy"));
+        uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
+        uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
+        uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
     }
 
     void App::setupRenderGraph() {

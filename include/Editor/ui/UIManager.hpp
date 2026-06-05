@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "Editor/Workspace/WorkspaceManager.hpp"
 #include "Editor/ui/UIPanel.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
@@ -16,7 +17,10 @@ namespace engine {
 class ToolbarPanel;
 
 /**
- * @brief Manages all UI panels
+ * @brief Manages all UI panels.
+ *
+ * Delegates to WorkspaceManager for layout, theming, and state management.
+ * Maintains backward-compatible API for existing panel registration.
  */
 class UIManager {
  public:
@@ -38,12 +42,7 @@ class UIManager {
    */
   template <typename T>
   T* getPanel() {
-    for (auto& panel : panels_) {
-      if (auto* typed = dynamic_cast<T*>(panel.get())) {
-        return typed;
-      }
-    }
-    return nullptr;
+    return workspaceManager_.getPanelRegistry().getPanel<T>();
   }
 
   void setOnSaveScene(std::function<void()> callback) {
@@ -59,10 +58,20 @@ class UIManager {
   /** Register a panel toggle in the toolbar. */
   void addToolbarToggle(const std::string& label, UIPanel* panel);
 
+  /** Get the underlying WorkspaceManager for advanced access. */
+  WorkspaceManager& getWorkspaceManager() { return workspaceManager_; }
+
+  /** Get the UI state. */
+  UIState& getUIState() { return workspaceManager_.getUIState(); }
+
+  /** Get the theme system. */
+  ThemeSystem& getThemeSystem() { return workspaceManager_.getThemeSystem(); }
+
+  /** Get the panel registry. */
+  PanelRegistry& getPanelRegistry() { return workspaceManager_.getPanelRegistry(); }
+
  private:
-  ImGuiManager& imguiManager_;
-  std::vector<std::unique_ptr<UIPanel>> panels_;
-  std::unique_ptr<ToolbarPanel> toolbarPanel_;
+  WorkspaceManager workspaceManager_;
   std::function<void()> onSaveScene_;
   std::function<void()> onLoadScene_;
 };
