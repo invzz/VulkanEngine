@@ -15,7 +15,7 @@ class Window;
 
 class CompositionPass : public IRenderPass {
  public:
-  CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window, bool drawUI = true)
+  CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window, const bool* drawUI = nullptr)
       : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), compositionPort_(compositionPort), camera_(camera), window_(window), drawUI_(drawUI) {}
 
   void execute(FrameInfo& frameInfo) override;
@@ -32,7 +32,7 @@ class CompositionPass : public IRenderPass {
   ICompositionPort* compositionPort_ = nullptr;
   Camera& camera_;
   Window& window_;
-  bool drawUI_ = true;
+  const bool* drawUI_ = nullptr;
 };
 
 }  // namespace engine

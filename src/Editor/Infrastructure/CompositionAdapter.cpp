@@ -7,7 +7,7 @@
 
 namespace engine {
 
-CompositionAdapter::CompositionAdapter(EngineState& engineState, UIManager* uiManager, bool drawUI)
+CompositionAdapter::CompositionAdapter(EngineState& engineState, UIManager* uiManager, const bool* drawUI)
     : engineState_(engineState), uiManager_(uiManager), drawUI_(drawUI) {}
 
 PostProcessingSystem* CompositionAdapter::getPostProcessingSystem() {
@@ -31,7 +31,7 @@ void CompositionAdapter::renderPostProcessing(FrameInfo& frameInfo, VkDescriptor
 
 void CompositionAdapter::renderUI(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool enabled) {
   if (uiManager_ != nullptr) {
-    uiManager_->render(frameInfo, commandBuffer, enabled && drawUI_);
+    uiManager_->render(frameInfo, commandBuffer, enabled && (drawUI_ ? *drawUI_ : true));
   }
 }
 

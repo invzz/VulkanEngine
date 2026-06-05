@@ -244,7 +244,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
         runtimeStateAdapter = std::make_unique<RuntimeStateAdapter>(engineState);
         animationAccessAdapter = std::make_unique<AnimationAccessAdapter>(engineState.animationRuntimeService().animation());
-        compositionAdapter = std::make_unique<CompositionAdapter>(engineState, uiManager.get());
+        compositionAdapter = std::make_unique<CompositionAdapter>(engineState, uiManager.get(), &drawUI_);
 
         // Build state views from adapters for pass injection.
         RenderingStateView renderingView = engineState.renderingService().view();
@@ -270,7 +270,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         graph->addPass(std::make_unique<OffscreenPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, device, debugMode));
 
         // 6. Composition Pass (PostProcess + UI)
-        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window, drawUI_));
+        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window, &drawUI_));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
