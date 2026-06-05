@@ -114,6 +114,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
 
         // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
         engineState.initialize(device, renderer, resourceManager, renderContextAdapter.get(), &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
+        engineFacade = std::make_unique<EngineFacade>(engineState);
 
         auto rendering = engineState.renderingService().view();
         auto sceneRuntime = engineState.sceneRuntimeService().view();
@@ -251,10 +252,10 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         InputStateView inputView = engineState.inputService().view();
 
         // EngineFacade — single accessor for all pass state needs.
-        EngineFacade engineFacade(engineState);
+        EngineFacade& engineFacadeRef = *engineFacade;
 
         // 1. Update Pass
-        graph->addPass(std::make_unique<UpdatePass>(engineFacade, physicsRuntimePort.get(), renderer));
+        graph->addPass(std::make_unique<UpdatePass>(engineFacadeRef, physicsRuntimePort.get(), renderer));
 
         // 2. Compute Pass
         graph->addPass(std::make_unique<ComputePass>(animationAccessAdapter.get()));

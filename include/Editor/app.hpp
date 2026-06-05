@@ -29,6 +29,7 @@
 #include "Editor/Infrastructure/CompositionAdapter.hpp"
 #include "Editor/Infrastructure/SceneRuntimeAccessAdapter.hpp"
 #include "Editor/Infrastructure/PostProcessingAccessAdapter.hpp"
+#include "Engine/EngineFacade.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -52,6 +53,7 @@ class ShadowSystem;
 class LODSystem;
 class UIManager;
 class Camera;
+class EngineFacade;
 
 class IBLSystem;
 class ImGuiManager;
@@ -115,6 +117,7 @@ class App {
   // Central engine state (owns systems, scene, resources used by passes)
   EngineState engineState;
   SceneSerializer sceneSerializer;  // initialized in ctor using engineState
+  std::unique_ptr<EngineFacade> engineFacade;  // facade over engineState — lifetime must outlive render graph
 
   // Explicitly owned by App and injected into EngineState during initialize().
   std::unique_ptr<RenderContext> renderContext;
