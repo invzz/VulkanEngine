@@ -416,4 +416,15 @@ ImVec4 ThemeSystem::getSeparatorColor() const {
     }
 }
 
+ImVec4 ThemeSystem::getColor(ImGuiCol idx) const {
+    // Read from current ImGui style (theme already applied)
+    ImU32 col = ImGui::GetColorU32(idx);
+    return ImVec4(
+        ((col >> 0) & 0xFF) / 255.0f,
+        ((col >> 8) & 0xFF) / 255.0f,
+        ((col >> 16) & 0xFF) / 255.0f,
+        ((col >> 24) & 0xFF) / 255.0f
+    );
+}
+
 }  // namespace engine

@@ -227,3 +227,10 @@ Current implemented slices include:
 ## License
 
 This project is available under the [LICENSE](./LICENSE) file.
+
+
+
+### Remaining Work
+- Convert AnimationPanel (Phase 2)
+- Convert remaining panels: SceneHierarchyPanel, InspectorPanel, ViewportPanel, ConsolePanel, AssetBrowserPanel (Phase 3)
+- Enforce workspace constraints: docking rules, layout validation (Phase 4)

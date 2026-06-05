@@ -76,6 +76,13 @@ public:
      */
     ImVec4 getSeparatorColor() const;
 
+    /**
+     * @brief Get a specific ImGui color from the current theme.
+     * @param idx ImGui color index.
+     * @return The color value.
+     */
+    ImVec4 getColor(ImGuiCol idx) const;
+
 private:
     int currentPreset_ = 0;
 
