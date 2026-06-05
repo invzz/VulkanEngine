@@ -186,7 +186,7 @@ bool UI::TreeNode(const char* label, ImGuiTreeNodeFlags flags) {
     ImGui::PushStyleColor(ImGuiCol_HeaderHovered, headerHov);
     ImGui::PushStyleColor(ImGuiCol_HeaderActive, headerAct);
     ImGui::PushStyleColor(ImGuiCol_Border, border);
-    bool open = ImGui::TreeNodeEx(label, flags | ImGuiTreeNodeFlags_SpanFullWidth);
+    bool open = ImGui::TreeNodeEx(label, flags);
     ImGui::PopStyleColor(4);
     return open;
 }

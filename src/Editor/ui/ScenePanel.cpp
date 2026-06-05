@@ -370,7 +370,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 return false;
             };
 
-            ImGuiTreeNodeFlags const rootFlags = ImGuiTreeNodeFlags_DefaultOpen;
+            ImGuiTreeNodeFlags const rootFlags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth;
 
             {
                 std::string const header = "Cameras (" + std::to_string(cameras.size()) + ")";
