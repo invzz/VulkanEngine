@@ -377,6 +377,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID("cameras_header");
                 ImGuiStyle const& style = ImGui::GetStyle();
                 float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+                ImGui::SetNextItemAllowOverlap();
                 bool const        open  = ui::UI::TreeNode("▶", header.c_str(), rootFlags);
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
                 if (ui::UI::SmallButton("+##add_camera")) {
@@ -402,6 +403,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID("lights_header");
                 ImGuiStyle const& style = ImGui::GetStyle();
                 float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+                ImGui::SetNextItemAllowOverlap();
                 bool const        open  = ui::UI::TreeNode("▶", header.c_str(), rootFlags);
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
                 if (ui::UI::SmallButton("+##add_light")) {
@@ -481,6 +483,7 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PushID("models_header");
                 ImGuiStyle const& style = ImGui::GetStyle();
                 float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+                ImGui::SetNextItemAllowOverlap();
                 bool const        open  = ui::UI::TreeNode("▶", header.c_str(), rootFlags);
                 ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
                 if (ui::UI::SmallButton("+##add_model")) {
