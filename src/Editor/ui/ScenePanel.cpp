@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cctype>
 #include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <imgui.h>
 #include <iostream>
@@ -92,6 +93,12 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             if (resources.resourceManager != nullptr) {
                 resources.resourceManager->updateAsyncCallbacks();
             }
+
+            // --- Search filter ---
+            static char searchFilter[128] = "";
+            ImGui::SetNextItemWidth(-1);
+            ImGui::InputTextWithHint("##search", "Search entities...", searchFilter, sizeof(searchFilter));
+            ImGui::Separator();
 
             auto enqueueModelLoad = [&](const std::string& fullPath,
                                         const std::string& name,
@@ -227,7 +234,8 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
             }
 
             auto view = registry.view<entt::entity>();
-            ImGui::Text("Total: %zu", view.size());
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.7f, 1.0f), "Entities: %zu", view.size());
+            ImGui::Separator();
 
             std::vector<entt::entity> cameras;
             std::vector<entt::entity> dirLights;
@@ -345,6 +353,26 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PopID();
             };
 
+            // --- Search filter helper ---
+            auto matchesFilter = [&](entt::entity entity) -> bool {
+                if (searchFilter[0] == '\0') return true;
+                std::string lowFilter;
+                lowFilter.reserve(strlen(searchFilter));
+                for (char* p = searchFilter; *p; ++p) lowFilter += static_cast<char>(std::tolower(*p));
+
+                std::string label;
+                if (registry.all_of<NameComponent>(entity)) {
+                    label = registry.get<NameComponent>(entity).name;
+                    std::transform(label.begin(), label.end(), label.begin(),
+                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                    if (label.find(lowFilter) != std::string::npos) return true;
+                }
+                // Also match by entity ID
+                std::string idStr = std::to_string(static_cast<uint32_t>(entity));
+                if (idStr.find(lowFilter) != std::string::npos) return true;
+                return false;
+            };
+
             ImGuiTreeNodeFlags const rootFlags = ImGuiTreeNodeFlags_DefaultOpen;
 
             {
@@ -363,7 +391,9 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PopID();
                 if (open) {
                     for (auto entity : cameras) {
-                        drawEntityRow(entity, "[CAM]", ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                        if (matchesFilter(entity)) {
+                            drawEntityRow(entity, "[CAM]", ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                        }
                     }
                     ImGui::TreePop();
                 }
@@ -420,19 +450,25 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 if (open) {
                     if (ImGui::TreeNodeEx("##dirlights", rootFlags, "Directional (%zu)", dirLights.size())) {
                         for (auto entity : dirLights) {
-                            drawEntityRow(entity, "[DIR]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                            if (matchesFilter(entity)) {
+                                drawEntityRow(entity, "[DIR]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                            }
                         }
                         ImGui::TreePop();
                     }
                     if (ImGui::TreeNodeEx("##pointlights", rootFlags, "Point (%zu)", pointLights.size())) {
                         for (auto entity : pointLights) {
-                            drawEntityRow(entity, "[PNT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                            if (matchesFilter(entity)) {
+                                drawEntityRow(entity, "[PNT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                            }
                         }
                         ImGui::TreePop();
                     }
                     if (ImGui::TreeNodeEx("##spotlights", rootFlags, "Spot (%zu)", spotLights.size())) {
                         for (auto entity : spotLights) {
-                            drawEntityRow(entity, "[SPT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                            if (matchesFilter(entity)) {
+                                drawEntityRow(entity, "[SPT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f));
+                            }
                         }
                         ImGui::TreePop();
                     }
@@ -531,7 +567,9 @@ bool shouldCreateStaticCollider(const std::string& path, const std::string& name
                 ImGui::PopID();
                 if (open) {
                     for (auto entity : models) {
-                        drawEntityRow(entity, "[MDL]", ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+                        if (matchesFilter(entity)) {
+                            drawEntityRow(entity, "[MDL]", ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+                        }
                     }
                     ImGui::TreePop();
                 }

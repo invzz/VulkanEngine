@@ -52,9 +52,12 @@
 #include "Engine/EngineFacade.hpp"
 
 // UI Panels
+#include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/InspectorPanel.hpp"
+#include "Editor/ui/PhysicsPanel.hpp"
 #include "Editor/ui/ScenePanel.hpp"
 #include "Editor/ui/SettingsPanel.hpp"
+#include "Editor/ui/ToolbarPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
 
 namespace engine {
@@ -235,6 +238,19 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
                                          sceneRuntimeAccessAdapter->solidGroundEnabled(),
                                          physicsRuntimePort->joltPhysicsSystem()));
         uiManager->addPanel(std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode));
+        uiManager->addPanel(std::make_unique<PhysicsPanel>(*sceneRuntimeAccessAdapter->scene(),
+                                         sceneRuntimeAccessAdapter->physicsSimulationRunning(),
+                                         sceneRuntimeAccessAdapter->showColliderWireframes(),
+                                         sceneRuntimeAccessAdapter->solidGroundEnabled(),
+                                         physicsRuntimePort->joltPhysicsSystem()));
+
+        // --- Toolbar panel ---
+        auto toolbar = std::make_unique<ToolbarPanel>();
+        uiManager->setToolbarPanel(std::move(toolbar));
+        uiManager->addToolbarToggle("Scene", uiManager->getPanel<ScenePanel>());
+        uiManager->addToolbarToggle("Inspector", uiManager->getPanel<InspectorPanel>());
+        uiManager->addToolbarToggle("Settings", uiManager->getPanel<SettingsPanel>());
+        uiManager->addToolbarToggle("Physics", uiManager->getPanel<PhysicsPanel>());
     }
 
     void App::setupRenderGraph() {

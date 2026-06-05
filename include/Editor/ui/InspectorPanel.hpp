@@ -5,12 +5,13 @@
 
 #include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/LightsPanel.hpp"
-#include "Editor/ui/PhysicsPanel.hpp"
 #include "Editor/ui/TransformPanel.hpp"
 #include "Editor/ui/UIPanel.hpp"
 
 namespace engine {
 
+class Scene;
+class FrameInfo;
 class JoltPhysicsSystem;
 
 class InspectorPanel : public UIPanel {
@@ -25,9 +26,8 @@ class InspectorPanel : public UIPanel {
 
  private:
   std::unique_ptr<TransformPanel> transformPanel_;
-  std::unique_ptr<LightsPanel> lightsPanel_;
+  std::unique_ptr<LightsPanel>    lightsPanel_;
   std::unique_ptr<AnimationPanel> animationPanel_;
-  std::unique_ptr<PhysicsPanel> physicsPanel_;
 };
 
 }  // namespace engine

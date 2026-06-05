@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -11,6 +12,8 @@
 #include "Engine/Graphics/ImGuiManager.hpp"
 
 namespace engine {
+
+class ToolbarPanel;
 
 /**
  * @brief Manages all UI panels
@@ -50,9 +53,16 @@ class UIManager {
     onLoadScene_ = std::move(callback);
   }
 
+  /** Set the toolbar panel (rendered as a thin top bar). */
+  void setToolbarPanel(std::unique_ptr<ToolbarPanel> toolbar);
+
+  /** Register a panel toggle in the toolbar. */
+  void addToolbarToggle(const std::string& label, UIPanel* panel);
+
  private:
   ImGuiManager& imguiManager_;
   std::vector<std::unique_ptr<UIPanel>> panels_;
+  std::unique_ptr<ToolbarPanel> toolbarPanel_;
   std::function<void()> onSaveScene_;
   std::function<void()> onLoadScene_;
 };

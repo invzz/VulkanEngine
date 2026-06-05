@@ -5,6 +5,7 @@
 #include <memory>
 #include <utility>
 
+#include "Editor/ui/ToolbarPanel.hpp"
 #include "Editor/ui/UIPanel.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
@@ -16,6 +17,16 @@ UIManager::UIManager(ImGuiManager& imguiManager) : imguiManager_(imguiManager) {
 
 void UIManager::addPanel(std::unique_ptr<UIPanel> panel) {
   panels_.push_back(std::move(panel));
+}
+
+void UIManager::setToolbarPanel(std::unique_ptr<ToolbarPanel> toolbar) {
+  toolbarPanel_ = std::move(toolbar);
+}
+
+void UIManager::addToolbarToggle(const std::string& label, UIPanel* panel) {
+  if (toolbarPanel_) {
+    toolbarPanel_->addToggle(label, panel);
+  }
 }
 
 void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer) {
@@ -32,29 +43,25 @@ void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool
     return;
   }
 
-  if (ImGui::BeginMainMenuBar()) {
-    if (ImGui::BeginMenu("File")) {
-      if (ImGui::MenuItem("Save Scene", "Ctrl+S")) {
-        if (onSaveScene_) onSaveScene_();
-      }
-      if (ImGui::MenuItem("Load Scene", "Ctrl+O")) {
-        if (onLoadScene_) onLoadScene_();
-      }
-      ImGui::EndMenu();
-    }
-    ImGui::EndMainMenuBar();
+  // --- Toolbar (rendered first so it appears on top) ---
+  if (toolbarPanel_ && toolbarPanel_->isVisible()) {
+    toolbarPanel_->render(frameInfo);
   }
 
-  // Create fullscreen dockspace
+  // --- Main dockspace ---
   ImGuiViewport const* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(viewport->WorkPos);
-  ImGui::SetNextWindowSize(viewport->WorkSize);
+  float                toolbarH = (toolbarPanel_ && toolbarPanel_->isVisible()) ? 32.0f : 0.0f;
+  ImVec2               dockPos  = ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + toolbarH);
+  ImVec2               dockSize = ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - toolbarH);
+
+  ImGui::SetNextWindowPos(dockPos);
+  ImGui::SetNextWindowSize(dockSize);
   ImGui::SetNextWindowViewport(viewport->ID);
 
-  ImGuiWindowFlags dockspace_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse;
-  dockspace_flags |= ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-  dockspace_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-  dockspace_flags |= ImGuiWindowFlags_NoBackground;
+  ImGuiWindowFlags dockspace_flags =
+      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+      ImGuiWindowFlags_NoResize   | ImGuiWindowFlags_NoMove |
+      ImGuiWindowFlags_NoNav      | ImGuiWindowFlags_NoBackground;
 
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -63,34 +70,18 @@ void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool
   ImGui::Begin("DockSpace", nullptr, dockspace_flags);
   ImGui::PopStyleVar(3);
 
-  // Create dockspace
   ImGuiID const dockspace_id = ImGui::GetID("MainDockSpace");
   ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
   ImGui::End();
 
-  // Main engine controls window
-  ImGui::Begin("Engine Controls");
-  ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
-  ImGui::Text("Tip: Drag panel headers to dock as sidebars");
-  ImGui::Separator();
-
-  // Render all dockable panels (isSeparateWindow=false)
+  // --- Render all visible panels as standalone windows ---
   for (auto& panel : panels_) {
-    if (panel->isVisible() && !panel->isSeparateWindow()) {
+    if (panel->isVisible()) {
       panel->render(frameInfo);
     }
   }
 
-  ImGui::End();
-
-  // Render separate window panels (dockable via drag)
-  for (auto& panel : panels_) {
-    if (panel->isVisible() && panel->isSeparateWindow()) {
-      panel->render(frameInfo);
-    }
-  }
-
-  // Render ImGui
+  // --- Render ImGui ---
   engine::ImGuiManager::render(commandBuffer);
 }
 }  // namespace engine
