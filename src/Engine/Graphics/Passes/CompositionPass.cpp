@@ -58,7 +58,7 @@ namespace engine {
 
         rendering_.postProcessingSystem->render(frameInfo, descriptorAccess_.postProcessDescriptorSetRef(frameInfo.frameIndex), postProcessPush);
         if (compositionPort_ != nullptr) {
-            compositionPort_->renderUI(frameInfo, frameInfo.commandBuffer, true);
+            compositionPort_->renderUI(frameInfo, frameInfo.commandBuffer, drawUI_);
         }
 
         // End swapchain render pass started above

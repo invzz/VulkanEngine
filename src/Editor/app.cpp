@@ -269,7 +269,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         graph->addPass(std::make_unique<OffscreenPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, device, debugMode));
 
         // 6. Composition Pass (PostProcess + UI)
-        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window));
+        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window, drawUI_));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
@@ -277,6 +277,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
     void App::run() {
         auto currentTime   = std::chrono::high_resolution_clock::now();
         auto lastHeartbeat = currentTime;
+        bool escWasDown    = false;
 
         while (!window.shouldClose()) {
             glfwPollEvents();
@@ -290,6 +291,21 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
             } else if (f11State == GLFW_RELEASE) {
                 f11WasDown = false;
             }
+
+            // ESC: toggle scene interaction mode
+            int escState = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_ESCAPE);
+            if (escState == GLFW_PRESS && !escWasDown) {
+                interactionMode = !interactionMode;
+                if (interactionMode) {
+                    window.setCursorVisible(false);
+                } else {
+                    window.setCursorVisible(true);
+                }
+            }
+            escWasDown = (escState == GLFW_PRESS);
+
+            // Update drawUI based on interaction mode
+            drawUI_ = !interactionMode;
 
             auto  newTime   = std::chrono::high_resolution_clock::now();
             float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
@@ -308,7 +324,7 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
         device.WaitIdle();
     }
 
-    void App::update(float /*frameTime*/) {
+    void App::update(float frameTime) {
         auto resources = engineState.resourceService().view();
         if (resources.resourceManager != nullptr) {
             resources.resourceManager->updateAsyncCallbacks();
@@ -318,6 +334,39 @@ class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenance
 
         if (reconcileSceneLoadUseCase != nullptr) {
             reconcileSceneLoadUseCase->execute(runtimeState);
+        }
+
+        // WASD camera movement in interaction mode
+        if (interactionMode) {
+            auto sceneRuntime = engineState.sceneRuntimeService().view();
+            auto* cameraEntity = sceneRuntime.cameraEntity;
+            if (cameraEntity != nullptr && sceneRuntime.scene != nullptr) {
+                auto& registry = sceneRuntime.scene->getRegistry();
+                auto& transform = registry.get<TransformComponent>(*cameraEntity);
+                float const moveSpeed = 5.0f;  // units/sec
+
+                // Forward / Backward (Z axis)
+                if (glfwGetKey(window.getGLFWwindow(), GLFW_KEY_W) == GLFW_PRESS) {
+                    transform.translation.z += moveSpeed * frameTime;
+                }
+                if (glfwGetKey(window.getGLFWwindow(), GLFW_KEY_S) == GLFW_PRESS) {
+                    transform.translation.z -= moveSpeed * frameTime;
+                }
+                // Left / Right (X axis)
+                if (glfwGetKey(window.getGLFWwindow(), GLFW_KEY_A) == GLFW_PRESS) {
+                    transform.translation.x -= moveSpeed * frameTime;
+                }
+                if (glfwGetKey(window.getGLFWwindow(), GLFW_KEY_D) == GLFW_PRESS) {
+                    transform.translation.x += moveSpeed * frameTime;
+                }
+                // Up / Down (Y axis)
+                if (glfwGetKey(window.getGLFWwindow(), GLFW_KEY_SPACE) == GLFW_PRESS) {
+                    transform.translation.y += moveSpeed * frameTime;
+                }
+                if (glfwGetKey(window.getGLFWwindow(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+                    transform.translation.y -= moveSpeed * frameTime;
+                }
+            }
         }
 
         if (processSceneSelectionMaintenanceUseCase != nullptr) {

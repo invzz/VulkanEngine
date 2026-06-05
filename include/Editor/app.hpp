@@ -163,6 +163,11 @@ class App {
   uint32_t selectedObjectId = 0;
 
   bool pendingUpdateCameraAfterSceneLoad = false;
+
+  // Scene interaction mode: ESC toggles between editor UI mode and
+  // free-camera WASD navigation mode (UI hidden, cursor hidden).
+  bool interactionMode = false;
+  bool drawUI_ = true;
 };
 }  // namespace engine
 
