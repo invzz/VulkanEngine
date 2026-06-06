@@ -4,7 +4,7 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
-#include "Editor/UI/UI.hpp"
+#include "Editor/ui/UI.hpp"
 
 namespace engine {
     DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}

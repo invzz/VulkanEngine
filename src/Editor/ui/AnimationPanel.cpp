@@ -8,7 +8,7 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 
-#include "Editor/UI/UI.hpp"
+#include "Editor/ui/UI.hpp"
 
 namespace engine {
 

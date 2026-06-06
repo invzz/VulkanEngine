@@ -3,10 +3,8 @@
 
 #include <glm/glm.hpp>
 
-#include <cstdint>
 #include <functional>
 #include <imgui.h>
-#include <string>
 
 namespace engine::ui {
 

@@ -5,42 +5,42 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
+
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include "Editor/Workspace/WorkspaceManager.hpp"
 #include "Editor/ui/UIPanel.hpp"
+#include "Workspace/WorkspaceManager.hpp"
 
 namespace engine {
 
     class ToolbarPanel;
 
     /**
- * @brief Manages all UI panels.
- *
- * Delegates to WorkspaceManager for layout, theming, and state management.
- * Maintains backward-compatible API for existing panel registration.
- */
+    * @brief Manages all UI panels.
+    *
+    * Delegates to WorkspaceManager for layout, theming, and state management.
+    * Maintains backward-compatible API for existing panel registration.
+    */
     class UIManager {
        public:
         explicit UIManager(ImGuiManager& imguiManager);
 
         /**
-   * @brief Add a panel to the manager
-   */
+        * @brief Add a panel to the manager
+        */
         void addPanel(std::unique_ptr<UIPanel> panel);
 
         /**
-   * @brief Render all panels
-   */
+        * @brief Render all panels
+        */
         void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer);
         void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI);
 
         /**
-   * @brief Get a specific panel by type (returns nullptr if not found)
-   */
+        * @brief Get a specific panel by type (returns nullptr if not found)
+        */
         template <typename T>
         T* getPanel() {
             return workspaceManager_.getPanelRegistry().getPanel<T>();

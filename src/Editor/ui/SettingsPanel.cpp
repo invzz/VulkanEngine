@@ -10,11 +10,11 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/GpuProfiler.hpp"
 
-#include "Editor/UI/UI.hpp"
 #include "Editor/ui/CameraPanel.hpp"
 #include "Editor/ui/DebugPanel.hpp"
 #include "Editor/ui/IBLPanel.hpp"
 #include "Editor/ui/PostProcessPanel.hpp"
+#include "Editor/ui/UI.hpp"
 #include "entt/entity/fwd.hpp"
 
 namespace engine {

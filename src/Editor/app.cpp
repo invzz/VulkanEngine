@@ -56,7 +56,7 @@
 #include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/InspectorPanel.hpp"
 #include "Editor/ui/PhysicsPanel.hpp"
-#include "Editor/ui/ScenePanel.hpp"
+#include "Editor/ui/Scene/ScenePanel.hpp"
 #include "Editor/ui/SettingsPanel.hpp"
 #include "Editor/ui/ToolbarPanel.hpp"
 #include "Editor/ui/UIManager.hpp"

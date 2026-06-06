@@ -1,4 +1,4 @@
-#include "Editor/ui/Scene.hpp"
+#include "Editor/ui/Scene/SceneComponents.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -22,13 +22,13 @@
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "Editor/UI/UI.hpp"
-#include "Editor/ui/ScenePanel.hpp"
+#include "Editor/ui/Scene/ScenePanel.hpp"
+#include "Editor/ui/UI.hpp"
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/entity.hpp"
 
-namespace engine::ui::SceneUI {
+namespace engine::ui::SceneComponents {
 
     namespace {
 
@@ -53,12 +53,14 @@ namespace engine::ui::SceneUI {
         }
 
         bool matchesFilter(entt::entity entity, const char* filter) {
-            if (filter[0] == '\0')
+            if (filter[0] == '\0') {
                 return true;
+            }
             std::string lowFilter;
             lowFilter.reserve(strlen(filter));
-            for (char* p = const_cast<char*>(filter); *p; ++p)
+            for (char* p = const_cast<char*>(filter); *p; ++p) {
                 lowFilter += static_cast<char>(std::tolower(*p));
+            }
 
             std::string label;
             // Note: caller should check NameComponent before calling
@@ -499,4 +501,4 @@ namespace engine::ui::SceneUI {
         }
     }
 
-}  // namespace engine::ui::SceneUI
+}  // namespace engine::ui::SceneComponents

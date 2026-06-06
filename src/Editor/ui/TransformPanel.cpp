@@ -9,7 +9,7 @@
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "Editor/UI/UI.hpp"
+#include "Editor/ui/UI.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/trigonometric.hpp"
 

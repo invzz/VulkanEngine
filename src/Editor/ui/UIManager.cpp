@@ -7,9 +7,9 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include "Editor/Workspace/WorkspaceManager.hpp"
 #include "Editor/ui/ToolbarPanel.hpp"
 #include "Editor/ui/UIPanel.hpp"
+#include "Editor/ui/Workspace/WorkspaceManager.hpp"
 #include "vulkan/vulkan_core.h"
 
 namespace engine {

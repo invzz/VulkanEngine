@@ -1,18 +1,17 @@
 #ifndef EDITOR_WORKSPACE_WORKSPACE_MANAGER_HPP
 #define EDITOR_WORKSPACE_WORKSPACE_MANAGER_HPP
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
-#include "Editor/Workspace/Layout.hpp"
-#include "Editor/Workspace/PanelRegistry.hpp"
-#include "Editor/Workspace/ThemeSystem.hpp"
-#include "Editor/Workspace/UIState.hpp"
 #include "Editor/ui/UIPanel.hpp"
+#include "Layout.hpp"
+#include "PanelRegistry.hpp"
+#include "ThemeSystem.hpp"
+#include "UIState.hpp"
 
 namespace engine {
 
@@ -128,7 +127,7 @@ namespace engine {
         /**
      * @brief Get the viewport panel (future).
      */
-        class ViewportPanel* getViewportPanel() const {
+        static class ViewportPanel* getViewportPanel() {
             return nullptr;
         }
 

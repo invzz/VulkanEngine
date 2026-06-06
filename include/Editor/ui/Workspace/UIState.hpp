@@ -6,7 +6,7 @@
 #include <functional>
 #include <string>
 
-#include "Editor/Workspace/Layout.hpp"
+#include "Layout.hpp"
 
 namespace engine {
 

@@ -1,4 +1,4 @@
-#include "Editor/Workspace/ShortcutManager.hpp"
+#include "Editor/ui/Workspace/ShortcutManager.hpp"
 
 namespace engine {
 

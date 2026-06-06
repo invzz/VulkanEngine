@@ -1,14 +1,13 @@
 #ifndef EDITOR_WORKSPACE_PANEL_REGISTRY_HPP
 #define EDITOR_WORKSPACE_PANEL_REGISTRY_HPP
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "Editor/Workspace/Layout.hpp"
 #include "Editor/ui/UIPanel.hpp"
+#include "Layout.hpp"
 
 namespace engine {
 

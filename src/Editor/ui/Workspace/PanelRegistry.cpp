@@ -1,4 +1,4 @@
-#include "Editor/Workspace/PanelRegistry.hpp"
+#include "Editor/ui/Workspace/PanelRegistry.hpp"
 
 namespace engine {
 

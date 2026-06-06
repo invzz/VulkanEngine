@@ -20,7 +20,7 @@ namespace engine {
     class Device;
     class EngineState;
 
-    namespace ui::SceneUI {
+    namespace ui::SceneComponents {
 
         /**
  * @brief Tracks a pending model load operation.
@@ -152,7 +152,7 @@ namespace engine {
             const std::string&                              name,
             ModelInsertionOptions::StaticColliderImportMode mode);
 
-    }  // namespace ui::SceneUI
+    }  // namespace ui::SceneComponents
 
 }  // namespace engine
 

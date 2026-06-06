@@ -4,7 +4,6 @@
 #include <entt/entt.hpp>
 #include <functional>
 #include <set>
-#include <vector>
 
 namespace engine {
 

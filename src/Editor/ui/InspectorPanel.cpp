@@ -6,10 +6,10 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
 
-#include "Editor/UI/UI.hpp"
 #include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/LightsPanel.hpp"
 #include "Editor/ui/TransformPanel.hpp"
+#include "Editor/ui/UI.hpp"
 #include "entt/entity/entity.hpp"
 
 namespace engine {

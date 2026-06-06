@@ -1,30 +1,21 @@
-#include "Editor/ui/ScenePanel.hpp"
+#include "Editor/ui/Scene/ScenePanel.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cstdint>
-#include <cstring>
-#include <fstream>
 #include <imgui.h>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "Engine/EngineState.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
-#include "Engine/Scene/components/CameraComponent.hpp"
-#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/PhysicsComponents.hpp"
-#include "Engine/Scene/components/PointLightComponent.hpp"
-#include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "Editor/UI/UI.hpp"
-#include "Editor/ui/Scene.hpp"
+#include "Editor/ui/Scene/SceneComponents.hpp"
+#include "Editor/ui/UI.hpp"
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/entity.hpp"
@@ -69,7 +60,7 @@ namespace engine {
             ui::UI::Separator();
 
             // --- Pending loads ---
-            ui::SceneUI::drawPendingLoadsSection(pendingLoads_, resources.resourceManager);
+            ui::SceneComponents::drawPendingLoadsSection(pendingLoads_, resources.resourceManager);
 
             // --- Entity count ---
             auto        view       = registry.view<entt::entity>();
@@ -78,20 +69,20 @@ namespace engine {
             ui::UI::Separator();
 
             // --- Collect entities ---
-            auto collection = ui::SceneUI::collectEntities(scene);
+            auto collection = ui::SceneComponents::collectEntities(scene);
 
             // --- Enforce single directional light policy ---
-            ui::SceneUI::enforceSingleDirectionalLight(collection.dirLights, toDelete_);
+            ui::SceneComponents::enforceSingleDirectionalLight(collection.dirLights, toDelete_);
 
             // --- Draw sections ---
-            ui::SceneUI::drawCameraSection(collection.cameras,
+            ui::SceneComponents::drawCameraSection(collection.cameras,
                 searchFilter,
                 frameInfo,
                 scene,
                 registry,
                 toDelete_);
 
-            ui::SceneUI::drawLightSection(collection.dirLights,
+            ui::SceneComponents::drawLightSection(collection.dirLights,
                 collection.pointLights,
                 collection.spotLights,
                 searchFilter,
@@ -135,7 +126,7 @@ namespace engine {
                         registry.emplace<ModelComponent>(entity, modelPtr);
                         registry.emplace<NameComponent>(entity, name);
 
-                        if (ui::SceneUI::shouldCreateStaticCollider(fullPath, name, colliderMode)) {
+                        if (ui::SceneComponents::shouldCreateStaticCollider(fullPath, name, colliderMode)) {
                             auto& rigidBody      = registry.emplace<RigidBodyComponent>(entity);
                             rigidBody.isStatic   = true;
                             rigidBody.mode       = RigidBodyComponent::PhysicsMode::Static;
@@ -162,7 +153,7 @@ namespace engine {
                         std::cerr << "[Model] Async load failed for " << fullPath << ": " << error << '\n';
                     });
 
-                ui::SceneUI::PendingModelLoad pending;
+                ui::SceneComponents::PendingModelLoad pending;
                 pending.id           = id;
                 pending.path         = fullPath;
                 pending.name         = name;
@@ -171,7 +162,7 @@ namespace engine {
                 pendingLoads_.emplace_back(std::move(pending));
             };
 
-            ui::SceneUI::drawModelSection(collection.models,
+            ui::SceneComponents::drawModelSection(collection.models,
                 searchFilter,
                 frameInfo,
                 scene,

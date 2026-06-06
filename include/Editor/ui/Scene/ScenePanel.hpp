@@ -8,17 +8,17 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/SceneUtils.hpp"
 
-#include "Editor/ui/Scene.hpp"
 #include "Editor/ui/UIPanel.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
+#include "SceneComponents.hpp"
 
 namespace engine {
 
     class EngineState;
 
     /**
- * @brief Panel for scene object management
- */
+    * @brief Panel for scene object management
+    */
     class ScenePanel : public UIPanel {
        public:
         using StaticColliderImportMode = ModelInsertionOptions::StaticColliderImportMode;
@@ -32,11 +32,11 @@ namespace engine {
         void processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
        private:
-        Device&                                    device_;
-        EngineState*                               engineState_ = nullptr;
-        std::vector<entt::entity>                  toDelete_;
-        std::vector<ui::SceneUI::PendingModelLoad> pendingLoads_;
-        StaticColliderImportMode                   colliderImportMode_{StaticColliderImportMode::AutoDetect};
+        Device&                                            device_;
+        EngineState*                                       engineState_ = nullptr;
+        std::vector<entt::entity>                          toDelete_;
+        std::vector<ui::SceneComponents::PendingModelLoad> pendingLoads_;
+        StaticColliderImportMode                           colliderImportMode_{StaticColliderImportMode::AutoDetect};
     };
 
 }  // namespace engine

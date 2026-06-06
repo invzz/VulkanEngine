@@ -1,11 +1,7 @@
 #ifndef EDITOR_WORKSPACE_LAYOUT_HPP
 #define EDITOR_WORKSPACE_LAYOUT_HPP
 
-#include <cstdint>
 #include <string>
-#include <vector>
-
-#include "entt/entity/fwd.hpp"
 
 namespace engine {
 

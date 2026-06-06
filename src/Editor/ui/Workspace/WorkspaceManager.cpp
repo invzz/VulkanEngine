@@ -1,4 +1,4 @@
-#include "Editor/Workspace/WorkspaceManager.hpp"
+#include "Editor/ui/Workspace/WorkspaceManager.hpp"
 
 #include <imgui.h>
 #include <imgui_internal.h>
