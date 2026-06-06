@@ -2,10 +2,10 @@
 
 #include <entt/entt.hpp>
 
+#include "Jolt/Physics/Collision/Shape/MeshShape.h"
+
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
-
-#include "Jolt/Physics/Collision/Shape/MeshShape.h"
 
 namespace engine {
 

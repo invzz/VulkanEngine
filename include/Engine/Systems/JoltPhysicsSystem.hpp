@@ -11,10 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Engine/Scene/components/PhysicsComponents.hpp"
-#include "Engine/Scene/components/TransformComponent.hpp"
-
 #include "Jolt/Jolt.h"
+
 #include "Jolt/Core/Factory.h"
 #include "Jolt/Core/JobSystemThreadPool.h"
 #include "Jolt/Core/TempAllocator.h"
@@ -31,6 +29,9 @@
 #include "Jolt/Physics/Collision/Shape/SphereShape.h"
 #include "Jolt/Physics/PhysicsSystem.h"
 #include "Jolt/RegisterTypes.h"
+
+#include "Engine/Scene/components/PhysicsComponents.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 
 namespace engine {
 
