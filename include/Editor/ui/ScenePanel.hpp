@@ -8,6 +8,7 @@
 #include "Engine/Scene/SceneUtils.hpp"
 
 #include "Editor/ui/UIPanel.hpp"
+#include "Editor/ui/Scene.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine {
@@ -30,19 +31,10 @@ namespace engine {
         void processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
        private:
-        struct PendingModelLoad {
-            AsyncLoadId                   id{0};
-            std::string                   path;
-            std::string                   name;
-            engine::ModelInsertionOptions options;
-            StaticColliderImportMode      colliderMode{StaticColliderImportMode::AutoDetect};
-            bool                          cancelled = false;
-        };
-
             Device&                   device_;
             EngineState*              engineState_ = nullptr;
             std::vector<entt::entity> toDelete_;
-        std::vector<PendingModelLoad> pendingLoads_;
+        std::vector<ui::SceneUI::PendingModelLoad> pendingLoads_;
             StaticColliderImportMode colliderImportMode_{StaticColliderImportMode::AutoDetect};
     };
 
