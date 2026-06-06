@@ -4,14 +4,14 @@
 
 namespace engine {
 
-class SyncEnvironmentLightingUseCase {
- public:
-  explicit SyncEnvironmentLightingUseCase(IEnvironmentLightingPort& environmentLighting);
+    class SyncEnvironmentLightingUseCase {
+       public:
+        explicit SyncEnvironmentLightingUseCase(IEnvironmentLightingPort& environmentLighting);
 
-  void execute(bool showSkyboxEnabled) const;
+        void execute(bool showSkyboxEnabled) const;
 
- private:
-  IEnvironmentLightingPort& environmentLighting_;
-};
+       private:
+        IEnvironmentLightingPort& environmentLighting_;
+    };
 
 }  // namespace engine

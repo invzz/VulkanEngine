@@ -4,19 +4,19 @@
 
 namespace engine {
 
-// Use case for changing skybox settings.
-class ChangeSkyboxSettingsUseCase {
- public:
-  explicit ChangeSkyboxSettingsUseCase(ISceneSettingsPort& sceneSettings);
+    // Use case for changing skybox settings.
+    class ChangeSkyboxSettingsUseCase {
+       public:
+        explicit ChangeSkyboxSettingsUseCase(ISceneSettingsPort& sceneSettings);
 
-  // Toggle debug cubemap faces display.
-  void execute(bool debugCubemapFaces);
+        // Toggle debug cubemap faces display.
+        void execute(bool debugCubemapFaces);
 
-  // Reload the skybox from the current path.
-  void reloadSkybox();
+        // Reload the skybox from the current path.
+        void reloadSkybox();
 
- private:
-  ISceneSettingsPort& sceneSettings_;
-};
+       private:
+        ISceneSettingsPort& sceneSettings_;
+    };
 
 }  // namespace engine

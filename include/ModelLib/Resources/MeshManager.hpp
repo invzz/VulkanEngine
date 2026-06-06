@@ -7,32 +7,33 @@
 
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/Device.hpp"
+
 #include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
 
-class MeshManager {
- public:
-  MeshManager(Device& device);
-  ~MeshManager() = default;
+    class MeshManager {
+       public:
+        MeshManager(Device& device);
+        ~MeshManager() = default;
 
-  // Register a model and return its mesh ID
-  uint32_t registerModel(const Model* model);
+        // Register a model and return its mesh ID
+        uint32_t registerModel(const Model* model);
 
-  // Get the descriptor info for the global mesh buffer
-  [[nodiscard]] VkDescriptorBufferInfo getDescriptorInfo() const;
+        // Get the descriptor info for the global mesh buffer
+        [[nodiscard]] VkDescriptorBufferInfo getDescriptorInfo() const;
 
-  // Get the descriptor set layout binding for the mesh buffer
-  static VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding();
+        // Get the descriptor set layout binding for the mesh buffer
+        static VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding();
 
- private:
-  Device& device;
-  std::unique_ptr<Buffer> meshBuffer;
-  std::vector<MeshBuffers> meshInfos;
-  std::unordered_map<const Model*, uint32_t> modelToId;
+       private:
+        Device&                                    device;
+        std::unique_ptr<Buffer>                    meshBuffer;
+        std::vector<MeshBuffers>                   meshInfos;
+        std::unordered_map<const Model*, uint32_t> modelToId;
 
-  void updateBuffer();
-};
+        void updateBuffer();
+    };
 
 }  // namespace engine
 

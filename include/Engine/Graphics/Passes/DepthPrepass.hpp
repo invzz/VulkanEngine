@@ -5,22 +5,22 @@
 
 namespace engine {
 
-class Renderer;
+    class Renderer;
 
-class DepthPrepass : public IRenderPass {
- public:
-  DepthPrepass(RenderingStateView rendering, Renderer& renderer)
-      : rendering_(rendering), renderer_(renderer) {}
+    class DepthPrepass : public IRenderPass {
+       public:
+        DepthPrepass(RenderingStateView rendering, Renderer& renderer)
+            : rendering_(rendering), renderer_(renderer) {}
 
-  void execute(FrameInfo& frameInfo) override;
-  [[nodiscard]] const std::string& getName() const override {
-    static std::string name = "DepthPrepass";
-    return name;
-  }
+        void                             execute(FrameInfo& frameInfo) override;
+        [[nodiscard]] const std::string& getName() const override {
+            static std::string name = "DepthPrepass";
+            return name;
+        }
 
- private:
-  RenderingStateView rendering_;
-  Renderer& renderer_;
-};
+       private:
+        RenderingStateView rendering_;
+        Renderer&          renderer_;
+    };
 
 }  // namespace engine

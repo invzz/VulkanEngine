@@ -3,13 +3,13 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Systems/DeferredLightingSystem.hpp"
-#include "Engine/Systems/ModelRenderSystem.hpp"
-#include "Engine/Systems/ShadowSystem.hpp"
-#include "Engine/Systems/GridRenderSystem.hpp"
-#include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
+#include "Engine/Systems/DeferredLightingSystem.hpp"
+#include "Engine/Systems/GridRenderSystem.hpp"
+#include "Engine/Systems/LightSystem.hpp"
+#include "Engine/Systems/ModelRenderSystem.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
 
 namespace {
     void updateShadowDescriptors(engine::RenderingStateView rendering, engine::IDescriptorAccessPort& descriptorAccess, engine::Device& device, int frameIndex) {
@@ -120,10 +120,10 @@ namespace engine {
     }
 
     void OffscreenPass::refreshGbufferDescriptors(int frameIndex) {
-        auto nInfo     = renderer_.getGbufferNormalImageInfo(frameIndex);
-        auto aInfo     = renderer_.getGbufferAlbedoImageInfo(frameIndex);
-        auto mInfo     = renderer_.getGbufferMaterialImageInfo(frameIndex);
-        auto dInfo     = renderer_.getDepthImageInfo(frameIndex);
+        auto nInfo = renderer_.getGbufferNormalImageInfo(frameIndex);
+        auto aInfo = renderer_.getGbufferAlbedoImageInfo(frameIndex);
+        auto mInfo = renderer_.getGbufferMaterialImageInfo(frameIndex);
+        auto dInfo = renderer_.getDepthImageInfo(frameIndex);
 
         DescriptorWriter(descriptorAccess_.gbufferSetLayoutRef(), descriptorAccess_.gbufferPoolRef())
             .writeImage(0, &nInfo)

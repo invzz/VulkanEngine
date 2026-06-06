@@ -1,14 +1,15 @@
 #include <gtest/gtest.h>
-#include "Engine/Systems/PhysicsSystem.hpp"
-#include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Scene/components/PhysicsComponents.hpp"
-#include "Engine/Scene/Scene.hpp"
+
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Camera.hpp"
+#include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/PhysicsComponents.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Systems/PhysicsSystem.hpp"
 
 namespace engine {
     class PhysicsSystemTests : public ::testing::Test {
-    protected:
+       protected:
         void SetUp() override {
             // Setup test scene
             scene = std::make_unique<Scene>();
@@ -22,37 +23,36 @@ namespace engine {
         auto entity = scene->getRegistry().create();
 
         // Add transform component
-        auto& transform = scene->getRegistry().emplace<TransformComponent>(entity);
+        auto& transform       = scene->getRegistry().emplace<TransformComponent>(entity);
         transform.translation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // Add rigid body component
-        auto& rigidBody = scene->getRegistry().emplace<RigidBodyComponent>(entity);
-        rigidBody.mass = 1.0f;
-        rigidBody.velocity = glm::vec3(1.0f, 0.0f, 0.0f);  // Moving in x direction
-        rigidBody.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto& rigidBody           = scene->getRegistry().emplace<RigidBodyComponent>(entity);
+        rigidBody.mass            = 1.0f;
+        rigidBody.velocity        = glm::vec3(1.0f, 0.0f, 0.0f);  // Moving in x direction
+        rigidBody.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
         rigidBody.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.isStatic = false;
-        rigidBody.useGravity = false; // Disable gravity for this test
+        rigidBody.isStatic        = false;
+        rigidBody.useGravity      = false;  // Disable gravity for this test
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics
         PhysicsSystem::update(frameInfo);
@@ -68,37 +68,36 @@ namespace engine {
         auto entity = scene->getRegistry().create();
 
         // Add transform component
-        auto& transform = scene->getRegistry().emplace<TransformComponent>(entity);
+        auto& transform       = scene->getRegistry().emplace<TransformComponent>(entity);
         transform.translation = glm::vec3(10.0f, 20.0f, 30.0f);
-        transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // Add rigid body component (static)
-        auto& rigidBody = scene->getRegistry().emplace<RigidBodyComponent>(entity);
-        rigidBody.mass = 1.0f;
-        rigidBody.velocity = glm::vec3(1.0f, 0.0f, 0.0f);
-        rigidBody.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto& rigidBody           = scene->getRegistry().emplace<RigidBodyComponent>(entity);
+        rigidBody.mass            = 1.0f;
+        rigidBody.velocity        = glm::vec3(1.0f, 0.0f, 0.0f);
+        rigidBody.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
         rigidBody.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.isStatic = true; // Static body
-        rigidBody.useGravity = false;
+        rigidBody.isStatic        = true;  // Static body
+        rigidBody.useGravity      = false;
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics
         PhysicsSystem::update(frameInfo);
@@ -114,37 +113,36 @@ namespace engine {
         auto entity = scene->getRegistry().create();
 
         // Add transform component
-        auto& transform = scene->getRegistry().emplace<TransformComponent>(entity);
+        auto& transform       = scene->getRegistry().emplace<TransformComponent>(entity);
         transform.translation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // Add rigid body component
-        auto& rigidBody = scene->getRegistry().emplace<RigidBodyComponent>(entity);
-        rigidBody.mass = 1.0f;
-        rigidBody.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto& rigidBody           = scene->getRegistry().emplace<RigidBodyComponent>(entity);
+        rigidBody.mass            = 1.0f;
+        rigidBody.velocity        = glm::vec3(0.0f, 0.0f, 0.0f);
+        rigidBody.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
         rigidBody.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.isStatic = false;
-        rigidBody.useGravity = true; // Enable gravity
+        rigidBody.isStatic        = false;
+        rigidBody.useGravity      = true;  // Enable gravity
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics
         PhysicsSystem::update(frameInfo);
@@ -161,37 +159,36 @@ namespace engine {
         auto entity = scene->getRegistry().create();
 
         // Add transform component
-        auto& transform = scene->getRegistry().emplace<TransformComponent>(entity);
+        auto& transform       = scene->getRegistry().emplace<TransformComponent>(entity);
         transform.translation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // Add rigid body component
-        auto& rigidBody = scene->getRegistry().emplace<RigidBodyComponent>(entity);
-        rigidBody.mass = 1.0f;
-        rigidBody.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.angularVelocity = glm::vec3(0.0f, 1.0f, 0.0f); // Rotating around Y axis
-        rigidBody.isStatic = false;
-        rigidBody.useGravity = false;
+        auto& rigidBody           = scene->getRegistry().emplace<RigidBodyComponent>(entity);
+        rigidBody.mass            = 1.0f;
+        rigidBody.velocity        = glm::vec3(0.0f, 0.0f, 0.0f);
+        rigidBody.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
+        rigidBody.angularVelocity = glm::vec3(0.0f, 1.0f, 0.0f);  // Rotating around Y axis
+        rigidBody.isStatic        = false;
+        rigidBody.useGravity      = false;
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics
         PhysicsSystem::update(frameInfo);
@@ -207,37 +204,36 @@ namespace engine {
         auto entity = scene->getRegistry().create();
 
         // Add transform component
-        auto& transform = scene->getRegistry().emplace<TransformComponent>(entity);
+        auto& transform       = scene->getRegistry().emplace<TransformComponent>(entity);
         transform.translation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // Add rigid body component
-        auto& rigidBody = scene->getRegistry().emplace<RigidBodyComponent>(entity);
-        rigidBody.mass = 1.0f;
-        rigidBody.velocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.acceleration = glm::vec3(0.0f, 1.0f, 0.0f); // Acceleration in Y direction
+        auto& rigidBody           = scene->getRegistry().emplace<RigidBodyComponent>(entity);
+        rigidBody.mass            = 1.0f;
+        rigidBody.velocity        = glm::vec3(0.0f, 0.0f, 0.0f);
+        rigidBody.acceleration    = glm::vec3(0.0f, 1.0f, 0.0f);  // Acceleration in Y direction
         rigidBody.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.isStatic = false;
-        rigidBody.useGravity = false;
+        rigidBody.isStatic        = false;
+        rigidBody.useGravity      = false;
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics
         PhysicsSystem::update(frameInfo);
@@ -254,50 +250,49 @@ namespace engine {
         auto entity2 = scene->getRegistry().create();
 
         // Add transform and rigid body for first entity
-        auto& transform1 = scene->getRegistry().emplace<TransformComponent>(entity1);
+        auto& transform1       = scene->getRegistry().emplace<TransformComponent>(entity1);
         transform1.translation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform1.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform1.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform1.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform1.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
-        auto& rigidBody1 = scene->getRegistry().emplace<RigidBodyComponent>(entity1);
-        rigidBody1.mass = 1.0f;
-        rigidBody1.velocity = glm::vec3(1.0f, 0.0f, 0.0f);
-        rigidBody1.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto& rigidBody1           = scene->getRegistry().emplace<RigidBodyComponent>(entity1);
+        rigidBody1.mass            = 1.0f;
+        rigidBody1.velocity        = glm::vec3(1.0f, 0.0f, 0.0f);
+        rigidBody1.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
         rigidBody1.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody1.isStatic = false;
-        rigidBody1.useGravity = false;
+        rigidBody1.isStatic        = false;
+        rigidBody1.useGravity      = false;
 
         // Add transform and rigid body for second entity
-        auto& transform2 = scene->getRegistry().emplace<TransformComponent>(entity2);
+        auto& transform2       = scene->getRegistry().emplace<TransformComponent>(entity2);
         transform2.translation = glm::vec3(5.0f, 0.0f, 0.0f);
-        transform2.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform2.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform2.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform2.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
-        auto& rigidBody2 = scene->getRegistry().emplace<RigidBodyComponent>(entity2);
-        rigidBody2.mass = 1.0f;
-        rigidBody2.velocity = glm::vec3(0.0f, 1.0f, 0.0f);
-        rigidBody2.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto& rigidBody2           = scene->getRegistry().emplace<RigidBodyComponent>(entity2);
+        rigidBody2.mass            = 1.0f;
+        rigidBody2.velocity        = glm::vec3(0.0f, 1.0f, 0.0f);
+        rigidBody2.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
         rigidBody2.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody2.isStatic = false;
-        rigidBody2.useGravity = false;
+        rigidBody2.isStatic        = false;
+        rigidBody2.useGravity      = false;
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics
         PhysicsSystem::update(frameInfo);
@@ -317,37 +312,36 @@ namespace engine {
         auto entity = scene->getRegistry().create();
 
         // Add transform component
-        auto& transform = scene->getRegistry().emplace<TransformComponent>(entity);
+        auto& transform       = scene->getRegistry().emplace<TransformComponent>(entity);
         transform.translation = glm::vec3(0.0f, 10.0f, 0.0f);  // Start 10 units up
-        transform.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
-        transform.scale = glm::vec3(1.0f, 1.0f, 1.0f);
+        transform.rotation    = glm::vec3(0.0f, 0.0f, 0.0f);
+        transform.scale       = glm::vec3(1.0f, 1.0f, 1.0f);
 
         // Add rigid body component
-        auto& rigidBody = scene->getRegistry().emplace<RigidBodyComponent>(entity);
-        rigidBody.mass = 1.0f;
-        rigidBody.velocity = glm::vec3(0.0f, 0.0f, 0.0f);  // Start at rest
-        rigidBody.acceleration = glm::vec3(0.0f, 0.0f, 0.0f);
+        auto& rigidBody           = scene->getRegistry().emplace<RigidBodyComponent>(entity);
+        rigidBody.mass            = 1.0f;
+        rigidBody.velocity        = glm::vec3(0.0f, 0.0f, 0.0f);  // Start at rest
+        rigidBody.acceleration    = glm::vec3(0.0f, 0.0f, 0.0f);
         rigidBody.angularVelocity = glm::vec3(0.0f, 0.0f, 0.0f);
-        rigidBody.isStatic = false;
-        rigidBody.useGravity = true; // Enable gravity
+        rigidBody.isStatic        = false;
+        rigidBody.useGravity      = true;  // Enable gravity
 
         // Create FrameInfo
-        Camera camera;
+        Camera    camera;
         FrameInfo frameInfo{
-            .frameIndex = 0,
-            .frameTime = 0.016f,
-            .commandBuffer = VK_NULL_HANDLE,
-            .camera = camera,
+            .frameIndex          = 0,
+            .frameTime           = 0.016f,
+            .commandBuffer       = VK_NULL_HANDLE,
+            .camera              = camera,
             .globalDescriptorSet = VK_NULL_HANDLE,
-            .globalTextureSet = VK_NULL_HANDLE,
-            .scene = scene.get(),
-            .selectedObjectId = 0,
-            .selectedEntity = entt::null,
-            .cameraEntity = entt::null,
-            .morphManager = nullptr,
-            .extent = {1920, 1080},
-            .debugMode = 0
-        };
+            .globalTextureSet    = VK_NULL_HANDLE,
+            .scene               = scene.get(),
+            .selectedObjectId    = 0,
+            .selectedEntity      = entt::null,
+            .cameraEntity        = entt::null,
+            .morphManager        = nullptr,
+            .extent              = {1920, 1080},
+            .debugMode           = 0};
 
         // Update physics - should cause position to change due to gravity
         PhysicsSystem::update(frameInfo);
@@ -358,4 +352,4 @@ namespace engine {
         // So position.y should be around 10.0 - 0.00251136 = 9.99748864
         EXPECT_LT(transform.translation.y, 10.0f);  // Should have moved down
     }
-}
+}  // namespace engine

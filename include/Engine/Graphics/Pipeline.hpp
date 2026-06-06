@@ -3,9 +3,9 @@
 
 #include <cassert>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/ShaderMonitor.hpp"
@@ -101,13 +101,13 @@ namespace engine {
         VkShaderModule taskShaderModule = VK_NULL_HANDLE;
         VkShaderModule meshShaderModule = VK_NULL_HANDLE;
 
-        bool                            isMeshPipeline_ = false;
-        PipelineConfigInfo              configInfo_{};
+        bool                                             isMeshPipeline_ = false;
+        PipelineConfigInfo                               configInfo_{};
         std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments_{};
-        std::string                     vertFilePath_;
-        std::string                     fragFilePath_;
-        std::string                     taskFilePath_;
-        std::string                     meshFilePath_;
+        std::string                                      vertFilePath_;
+        std::string                                      fragFilePath_;
+        std::string                                      taskFilePath_;
+        std::string                                      meshFilePath_;
 
         // Shader monitoring
         std::unique_ptr<ShaderMonitor> shaderMonitor_;

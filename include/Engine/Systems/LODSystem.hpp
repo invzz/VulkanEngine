@@ -5,12 +5,12 @@
 
 namespace engine {
 
-class LODSystem {
- public:
-  LODSystem() = default;
+    class LODSystem {
+       public:
+        LODSystem() = default;
 
-  static void update(FrameInfo& frameInfo);
-};
+        static void update(FrameInfo& frameInfo);
+    };
 
 }  // namespace engine
 

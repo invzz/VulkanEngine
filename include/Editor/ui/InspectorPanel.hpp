@@ -10,25 +10,25 @@
 
 namespace engine {
 
-class Scene;
-class FrameInfo;
-class JoltPhysicsSystem;
+    class Scene;
+    class FrameInfo;
+    class JoltPhysicsSystem;
 
-class InspectorPanel : public UIPanel {
- public:
-  InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes,
-                 bool* solidGroundEnabled, JoltPhysicsSystem* joltPhysicsSystem);
+    class InspectorPanel : public UIPanel {
+       public:
+        InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes,
+            bool* solidGroundEnabled, JoltPhysicsSystem* joltPhysicsSystem);
 
-  void render(FrameInfo& frameInfo) override;
-  [[nodiscard]] bool isSeparateWindow() const override {
-    return true;
-  }
+        void               render(FrameInfo& frameInfo) override;
+        [[nodiscard]] bool isSeparateWindow() const override {
+            return true;
+        }
 
- private:
-  std::unique_ptr<TransformPanel> transformPanel_;
-  std::unique_ptr<LightsPanel>    lightsPanel_;
-  std::unique_ptr<AnimationPanel> animationPanel_;
-};
+       private:
+        std::unique_ptr<TransformPanel> transformPanel_;
+        std::unique_ptr<LightsPanel>    lightsPanel_;
+        std::unique_ptr<AnimationPanel> animationPanel_;
+    };
 
 }  // namespace engine
 

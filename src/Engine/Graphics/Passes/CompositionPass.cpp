@@ -47,7 +47,7 @@ namespace engine {
         // Refresh the post-process descriptor set each frame (image/depth views may change on resize)
         DescriptorWriter(descriptorAccess_.getPostProcessSetLayout(), descriptorAccess_.getDescriptorPool()).writeImage(0, &imageInfo).writeImage(1, &depthInfo).overwrite(descriptorAccess_.postProcessDescriptorSetRef(frameInfo.frameIndex));
 
-        auto& postProcessPush = runtimeState_.postProcessPushRef();
+        auto& postProcessPush             = runtimeState_.postProcessPushRef();
         postProcessPush.inverseProjection = glm::inverse(camera_.getProjection());
         postProcessPush.projection        = camera_.getProjection();
 

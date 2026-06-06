@@ -4,23 +4,23 @@
 
 namespace engine {
 
-class EngineState;
+    class EngineState;
 
-// Adapter that bridges EngineState to the scene settings port.
-class SceneSettingsAdapter final : public ISceneSettingsPort {
- public:
-  explicit SceneSettingsAdapter(EngineState& engineState);
+    // Adapter that bridges EngineState to the scene settings port.
+    class SceneSettingsAdapter final : public ISceneSettingsPort {
+       public:
+        explicit SceneSettingsAdapter(EngineState& engineState);
 
-  [[nodiscard]] SkyboxSettings* getSkySettings() override;
-  [[nodiscard]] ShadowSettings* getShadowSettings() override;
-  void reloadSkybox() override;
-  void resetShadowSettings() override;
-  void changeShadowSettings(bool enableShadowCulling,
-                            float pointLightDefaultRange,
-                            float spotLightDefaultRange) override;
+        [[nodiscard]] SkyboxSettings* getSkySettings() override;
+        [[nodiscard]] ShadowSettings* getShadowSettings() override;
+        void                          reloadSkybox() override;
+        void                          resetShadowSettings() override;
+        void                          changeShadowSettings(bool enableShadowCulling,
+            float                      pointLightDefaultRange,
+            float                      spotLightDefaultRange) override;
 
- private:
-  EngineState& engineState_;
-};
+       private:
+        EngineState& engineState_;
+    };
 
 }  // namespace engine

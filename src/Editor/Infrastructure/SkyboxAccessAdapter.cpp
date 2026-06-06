@@ -8,21 +8,21 @@
 
 namespace engine {
 
-SkyboxAccessAdapter::SkyboxAccessAdapter(EngineState& engineState)
-    : engineState_(engineState) {}
+    SkyboxAccessAdapter::SkyboxAccessAdapter(EngineState& engineState)
+        : engineState_(engineState) {}
 
-void SkyboxAccessAdapter::setSkybox(Device& device, const char* folderPath, const char* extension) {
-  std::cout << "[SkyboxAccessAdapter] Loading skybox from: " << folderPath << '\n';
-  engineState_.skyboxRef() = Skybox::loadFromFolder(device, std::string(folderPath), extension);
-}
+    void SkyboxAccessAdapter::setSkybox(Device& device, const char* folderPath, const char* extension) {
+        std::cout << "[SkyboxAccessAdapter] Loading skybox from: " << folderPath << '\n';
+        engineState_.skyboxRef() = Skybox::loadFromFolder(device, std::string(folderPath), extension);
+    }
 
-void SkyboxAccessAdapter::resetSkybox() {
-  std::cout << "[SkyboxAccessAdapter] Resetting skybox.\n";
-  engineState_.skyboxRef().reset();
-}
+    void SkyboxAccessAdapter::resetSkybox() {
+        std::cout << "[SkyboxAccessAdapter] Resetting skybox.\n";
+        engineState_.skyboxRef().reset();
+    }
 
-bool SkyboxAccessAdapter::hasSkybox() const {
-  return engineState_.sceneRuntimeService().view().skybox != nullptr;
-}
+    bool SkyboxAccessAdapter::hasSkybox() const {
+        return engineState_.sceneRuntimeService().view().skybox != nullptr;
+    }
 
 }  // namespace engine

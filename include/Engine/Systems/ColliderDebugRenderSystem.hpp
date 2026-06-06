@@ -12,39 +12,39 @@
 
 namespace engine {
 
-class ColliderDebugRenderSystem {
- public:
-  ColliderDebugRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
-  ~ColliderDebugRenderSystem();
+    class ColliderDebugRenderSystem {
+       public:
+        ColliderDebugRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+        ~ColliderDebugRenderSystem();
 
-  ColliderDebugRenderSystem(const ColliderDebugRenderSystem&) = delete;
-  ColliderDebugRenderSystem& operator=(const ColliderDebugRenderSystem&) = delete;
+        ColliderDebugRenderSystem(const ColliderDebugRenderSystem&)            = delete;
+        ColliderDebugRenderSystem& operator=(const ColliderDebugRenderSystem&) = delete;
 
-  void render(FrameInfo& frameInfo) const;
+        void render(FrameInfo& frameInfo) const;
 
- private:
-  enum class ShapeType : int {
-    Box = 0,
-    Sphere = 1,
-    Capsule = 2,
-  };
+       private:
+        enum class ShapeType : int {
+            Box     = 0,
+            Sphere  = 1,
+            Capsule = 2,
+        };
 
-  struct PushConstantData {
-    glm::mat4 modelMatrix{1.0f};
-    glm::vec4 color{0.0f, 1.0f, 1.0f, 1.0f};
-    glm::vec4 shapeParams{0.5f, 0.5f, 0.5f, 0.0f};
-    int shapeType{0};
-  };
+        struct PushConstantData {
+            glm::mat4 modelMatrix{1.0f};
+            glm::vec4 color{0.0f, 1.0f, 1.0f, 1.0f};
+            glm::vec4 shapeParams{0.5f, 0.5f, 0.5f, 0.0f};
+            int       shapeType{0};
+        };
 
-  void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
-  void createPipeline(VkRenderPass renderPass);
+        void createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+        void createPipeline(VkRenderPass renderPass);
 
-  static glm::mat4 makeNoScaleModelMatrix(const TransformComponent& transform);
+        static glm::mat4 makeNoScaleModelMatrix(const TransformComponent& transform);
 
-  Device& device_;
-  std::unique_ptr<Pipeline> pipeline_;
-  VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
-};
+        Device&                   device_;
+        std::unique_ptr<Pipeline> pipeline_;
+        VkPipelineLayout          pipelineLayout_ = VK_NULL_HANDLE;
+    };
 
 }  // namespace engine
 

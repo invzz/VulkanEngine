@@ -3,17 +3,18 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/Scene.hpp"
+
 #include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine {
 
-class SceneLoader {
- public:
-  static void loadScene(Device& device, Scene& scene, ResourceManager& resourceManager);
+    class SceneLoader {
+       public:
+        static void loadScene(Device& device, Scene& scene, ResourceManager& resourceManager);
 
- private:
-  static void createFromFile(Device& device, Scene& scene, ResourceManager& resourceManager, const std::string& modelPath);
-};
+       private:
+        static void createFromFile(Device& device, Scene& scene, ResourceManager& resourceManager, const std::string& modelPath);
+    };
 
 }  // namespace engine
 

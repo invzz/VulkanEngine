@@ -7,16 +7,16 @@
 #include "Engine/Graphics/Renderer.hpp"
 namespace engine {
 
-class RenderPipeline {
- public:
-  explicit RenderPipeline(Renderer& renderer);
+    class RenderPipeline {
+       public:
+        explicit RenderPipeline(Renderer& renderer);
 
-  void setRenderGraph(std::unique_ptr<RenderGraph> graph);
-  void execute(FrameInfo& frameInfo);
+        void setRenderGraph(std::unique_ptr<RenderGraph> graph);
+        void execute(FrameInfo& frameInfo);
 
- private:
-  Renderer& renderer;
-  std::unique_ptr<RenderGraph> renderGraph;
-};
+       private:
+        Renderer&                    renderer;
+        std::unique_ptr<RenderGraph> renderGraph;
+    };
 }  // namespace engine
 #endif  // RENDER_PIPELINE_HPP

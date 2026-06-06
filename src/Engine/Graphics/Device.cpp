@@ -542,7 +542,7 @@ namespace engine {
 
         // Device-level validation layers have been deprecated since Vulkan 1.0.
         // Validation is done at the instance level only.
-        createInfo.enabledLayerCount = 0;
+        createInfo.enabledLayerCount   = 0;
         createInfo.ppEnabledLayerNames = nullptr;
 
         if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS) {

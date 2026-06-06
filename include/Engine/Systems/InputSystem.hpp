@@ -8,20 +8,20 @@
 
 namespace engine {
 
-class InputSystem {
- public:
-  InputSystem(Keyboard& keyboard, Mouse& mouse, Window& window);
+    class InputSystem {
+       public:
+        InputSystem(Keyboard& keyboard, Mouse& mouse, Window& window);
 
-  void update(FrameInfo& frameInfo);
+        void update(FrameInfo& frameInfo);
 
- private:
-  Keyboard& keyboard_;
-  Mouse& mouse_;
-  Window& window_;
+       private:
+        Keyboard& keyboard_;
+        Mouse&    mouse_;
+        Window&   window_;
 
-  // Toggle cursor state tracking
-  bool lastToggleKeyState_ = false;
-};
+        // Toggle cursor state tracking
+        bool lastToggleKeyState_ = false;
+    };
 
 }  // namespace engine
 

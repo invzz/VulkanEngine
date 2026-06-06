@@ -44,9 +44,9 @@ namespace engine {
  */
     class ShadowSystem {
        public:
-          static constexpr int MAX_SPOT_SHADOW_MAPS = 4;
-          static constexpr int MAX_SHADOW_MAPS      = MAX_SPOT_SHADOW_MAPS;
-          static constexpr int MAX_CUBE_SHADOW_MAPS = 4;
+        static constexpr int MAX_SPOT_SHADOW_MAPS = 4;
+        static constexpr int MAX_SHADOW_MAPS      = MAX_SPOT_SHADOW_MAPS;
+        static constexpr int MAX_CUBE_SHADOW_MAPS = 4;
 
         ShadowSystem(Device& device, uint32_t shadowMapSize = 2048);
         ~ShadowSystem();

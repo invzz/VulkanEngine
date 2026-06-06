@@ -98,11 +98,11 @@ namespace engine {
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
         pipelineConfig.attributeDescriptions.clear();
         pipelineConfig.bindingDescriptions.clear();
-        pipelineConfig.renderPass     = renderPass;
-        pipelineConfig.pipelineLayout = pipelineLayout;
-        pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
+        pipelineConfig.renderPass                        = renderPass;
+        pipelineConfig.pipelineLayout                    = pipelineLayout;
+        pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
-        pipeline                      = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(point_light.vert.spv)", std::string(SHADER_PATH) + R"(point_light.frag.spv)", pipelineConfig);
+        pipeline                                         = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(point_light.vert.spv)", std::string(SHADER_PATH) + R"(point_light.frag.spv)", pipelineConfig);
     }
 
     void LightSystem::render(FrameInfo& frameInfo) {
@@ -276,12 +276,12 @@ namespace engine {
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
         pipelineConfig.attributeDescriptions.clear();
         pipelineConfig.bindingDescriptions.clear();
-        pipelineConfig.renderPass                 = renderPass;
-        pipelineConfig.pipelineLayout             = directionalPipelineLayout;
-        pipelineConfig.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;
+        pipelineConfig.renderPass                        = renderPass;
+        pipelineConfig.pipelineLayout                    = directionalPipelineLayout;
+        pipelineConfig.inputAssemblyInfo.topology        = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
-        directionalPipeline                       = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(directional_light.vert.spv)", std::string(SHADER_PATH) + R"(directional_light.frag.spv)", pipelineConfig);
+        directionalPipeline                              = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(directional_light.vert.spv)", std::string(SHADER_PATH) + R"(directional_light.frag.spv)", pipelineConfig);
     }
 
     void LightSystem::createSpotLightPipelineLayout(VkDescriptorSetLayout globalSetLayout) {

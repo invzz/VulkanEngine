@@ -5,9 +5,9 @@
 
 namespace engine {
 
-struct NameComponent {
-  std::string name;
-};
+    struct NameComponent {
+        std::string name;
+    };
 
 }  // namespace engine
 

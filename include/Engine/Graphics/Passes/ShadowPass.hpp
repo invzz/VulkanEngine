@@ -7,21 +7,21 @@
 
 namespace engine {
 
-class ShadowPass : public IRenderPass {
- public:
-  ShadowPass(RenderingStateView rendering, SceneRuntimeStateView sceneRuntime, IRenderContextPort* renderContextPort)
-      : rendering_(rendering), sceneRuntime_(sceneRuntime), renderContextPort_(renderContextPort) {}
+    class ShadowPass : public IRenderPass {
+       public:
+        ShadowPass(RenderingStateView rendering, SceneRuntimeStateView sceneRuntime, IRenderContextPort* renderContextPort)
+            : rendering_(rendering), sceneRuntime_(sceneRuntime), renderContextPort_(renderContextPort) {}
 
-  void execute(FrameInfo& frameInfo) override;
-  [[nodiscard]] const std::string& getName() const override {
-    static std::string name = "Shadow";
-    return name;
-  }
+        void                             execute(FrameInfo& frameInfo) override;
+        [[nodiscard]] const std::string& getName() const override {
+            static std::string name = "Shadow";
+            return name;
+        }
 
- private:
-  RenderingStateView rendering_;
-  SceneRuntimeStateView sceneRuntime_;
-  IRenderContextPort* renderContextPort_ = nullptr;
-};
+       private:
+        RenderingStateView    rendering_;
+        SceneRuntimeStateView sceneRuntime_;
+        IRenderContextPort*   renderContextPort_ = nullptr;
+    };
 
 }  // namespace engine

@@ -8,30 +8,30 @@
 
 namespace engine {
 
-class Renderer;
-class Camera;
-class Scene;
-class Window;
+    class Renderer;
+    class Camera;
+    class Scene;
+    class Window;
 
-class CompositionPass : public IRenderPass {
- public:
-  CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window)
-      : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), compositionPort_(compositionPort), camera_(camera), window_(window) {}
+    class CompositionPass : public IRenderPass {
+       public:
+        CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window)
+            : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), compositionPort_(compositionPort), camera_(camera), window_(window) {}
 
-  void execute(FrameInfo& frameInfo) override;
-  [[nodiscard]] const std::string& getName() const override {
-    static std::string name = "Composition";
-    return name;
-  }
+        void                             execute(FrameInfo& frameInfo) override;
+        [[nodiscard]] const std::string& getName() const override {
+            static std::string name = "Composition";
+            return name;
+        }
 
- private:
-  Renderer& renderer_;
-  RenderingStateView rendering_;
-  IDescriptorAccessPort& descriptorAccess_;
-  IRuntimeStatePort& runtimeState_;
-  ICompositionPort* compositionPort_ = nullptr;
-  Camera& camera_;
-  Window& window_;
-};
+       private:
+        Renderer&              renderer_;
+        RenderingStateView     rendering_;
+        IDescriptorAccessPort& descriptorAccess_;
+        IRuntimeStatePort&     runtimeState_;
+        ICompositionPort*      compositionPort_ = nullptr;
+        Camera&                camera_;
+        Window&                window_;
+    };
 
 }  // namespace engine

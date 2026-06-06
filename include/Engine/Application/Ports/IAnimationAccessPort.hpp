@@ -2,14 +2,14 @@
 
 namespace engine {
 
-class AnimationSystem;
+    class AnimationSystem;
 
-// Port for delivery to access the animation system without depending on EngineState.
-class IAnimationAccessPort {
- public:
-  virtual ~IAnimationAccessPort() = default;
+    // Port for delivery to access the animation system without depending on EngineState.
+    class IAnimationAccessPort {
+       public:
+        virtual ~IAnimationAccessPort() = default;
 
-  [[nodiscard]] virtual AnimationSystem* getAnimationSystem() = 0;
-};
+        [[nodiscard]] virtual AnimationSystem* getAnimationSystem() = 0;
+    };
 
 }  // namespace engine

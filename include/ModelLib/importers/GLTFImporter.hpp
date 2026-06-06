@@ -1,10 +1,10 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_IMPORTERS_GLTFIMPORTER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_IMPORTERS_GLTFIMPORTER_HPP
 
-#include <tiny_gltf.h>
-
 #include <glm/glm.hpp>
+
 #include <string>
+#include <tiny_gltf.h>
 #include <unordered_map>
 #include <vector>
 
@@ -12,60 +12,60 @@
 
 namespace engine {
 
-/**
+    /**
  * @brief Importer for glTF 2.0 files (.gltf and .glb binary format)
  */
-class GLTFImporter : public ModelImporter {
- public:
-  bool load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ) override;
+    class GLTFImporter : public ModelImporter {
+       public:
+        bool load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ) override;
 
-  [[nodiscard]] std::vector<std::string> getSupportedExtensions() const override {
-    return {"gltf", "glb"};
-  }
+        [[nodiscard]] std::vector<std::string> getSupportedExtensions() const override {
+            return {"gltf", "glb"};
+        }
 
-  [[nodiscard]] std::string getName() const override {
-    return "glTF Importer";
-  }
+        [[nodiscard]] std::string getName() const override {
+            return "glTF Importer";
+        }
 
- private:
-  // Refactored helper methods to keep `load()` small and testable
-  static void loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
+       private:
+        // Refactored helper methods to keep `load()` small and testable
+        static void loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
 
-  static void loadMeshes(Model::Builder& builder,
-      const tinygltf::Model& model,
-      bool flipX,
-      bool flipY,
-      bool flipZ,
-      std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-      std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
-      std::unordered_map<uint32_t, uint32_t>& vertexToPositionIndex,
-      bool hasAnimations);
+        static void loadMeshes(Model::Builder&         builder,
+            const tinygltf::Model&                     model,
+            bool                                       flipX,
+            bool                                       flipY,
+            bool                                       flipZ,
+            std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
+            std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+            std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
+            bool                                       hasAnimations);
 
-  static void loadMorphTargets(Model::Builder& builder,
-      const tinygltf::Model& model,
-      const std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-      const std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
-      const std::unordered_map<uint32_t, uint32_t>& vertexToPositionIndex);
+        static void loadMorphTargets(Model::Builder&         builder,
+            const tinygltf::Model&                           model,
+            const std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
+            const std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+            const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex);
 
-  static void loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
+        static void loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
 
-  [[nodiscard]] static glm::mat4 computeNodeTransform(const tinygltf::Node& node);
+        [[nodiscard]] static glm::mat4 computeNodeTransform(const tinygltf::Node& node);
 
-  static void processMesh(Model::Builder& builder,
-      const tinygltf::Model& model,
-      int meshIndex,
-      int nodeIndex,
-      const glm::mat4& globalTransform,
-      std::unordered_map<Model::Vertex, uint32_t>& uniqueVertices,
-      std::unordered_map<int, std::vector<uint32_t>>& indicesByMaterial,
-      std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-      std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
-      std::unordered_map<uint32_t, uint32_t>& vertexToPositionIndex,
-      bool hasAnimations,
-      float xMultiplier,
-      float yMultiplier,
-      float zMultiplier);
-};
+        static void processMesh(Model::Builder&             builder,
+            const tinygltf::Model&                          model,
+            int                                             meshIndex,
+            int                                             nodeIndex,
+            const glm::mat4&                                globalTransform,
+            std::unordered_map<Model::Vertex, uint32_t>&    uniqueVertices,
+            std::unordered_map<int, std::vector<uint32_t>>& indicesByMaterial,
+            std::unordered_map<std::string, uint32_t>&      primitiveVertexOffsets,
+            std::unordered_map<std::string, uint32_t>&      primitiveVertexCounts,
+            std::unordered_map<uint32_t, uint32_t>&         vertexToPositionIndex,
+            bool                                            hasAnimations,
+            float                                           xMultiplier,
+            float                                           yMultiplier,
+            float                                           zMultiplier);
+    };
 
 }  // namespace engine
 

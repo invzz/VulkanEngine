@@ -52,10 +52,10 @@ namespace engine {
     Pipeline::Pipeline(Device& device, const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device)
 
     {
-        isMeshPipeline_                             = false;
-        vertFilePath_                               = vertFilePath;
-        fragFilePath_                               = fragFilePath;
-        configInfo_                                 = configInfo;
+        isMeshPipeline_ = false;
+        vertFilePath_   = vertFilePath;
+        fragFilePath_   = fragFilePath;
+        configInfo_     = configInfo;
         normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
         shaderMonitor_ = std::make_unique<ShaderMonitor>();
@@ -68,11 +68,11 @@ namespace engine {
     }
 
     Pipeline::Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device) {
-        isMeshPipeline_                             = true;
-        taskFilePath_                               = taskFilePath;
-        meshFilePath_                               = meshFilePath;
-        fragFilePath_                               = fragFilePath;
-        configInfo_                                 = configInfo;
+        isMeshPipeline_ = true;
+        taskFilePath_   = taskFilePath;
+        meshFilePath_   = meshFilePath;
+        fragFilePath_   = fragFilePath;
+        configInfo_     = configInfo;
         normalizePipelineConfigPointers(configInfo_, colorBlendAttachments_);
 
         shaderMonitor_ = std::make_unique<ShaderMonitor>();

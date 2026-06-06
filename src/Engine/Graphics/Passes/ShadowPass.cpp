@@ -16,7 +16,7 @@ namespace engine {
         LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
 
         // Upload dynamic light arrays (SSBO) and reflect counts into the UBO.
-        auto const lightCounts = renderContextPort_->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
+        auto const    lightCounts = renderContextPort_->updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
         GlobalUbo     ubo{};
         GlobalUboCold uboCold{};
         ubo.pointLightCount       = lightCounts.point;

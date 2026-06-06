@@ -1,161 +1,160 @@
-#include <gtest/gtest.h>
-
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <set>
 #include <string>
 #include <vector>
 
 namespace {
 
-namespace fs = std::filesystem;
+    namespace fs = std::filesystem;
 
-fs::path findRepoRoot() {
-    fs::path current = fs::current_path();
-    while (!current.empty()) {
-        if (fs::exists(current / "xmake.lua") && fs::exists(current / "include" / "Engine") && fs::exists(current / "src" / "Engine")) {
-            return current;
-        }
-        auto parent = current.parent_path();
-        if (parent == current) {
-            break;
-        }
-        current = parent;
-    }
-    return {};
-}
-
-std::vector<std::string> findIncludeViolations(
-    const fs::path& root,
-    const fs::path& relativeDir,
-    const std::vector<std::string>& forbiddenIncludePrefixes,
-    const std::set<std::string>& allowedFiles = {}) {
-    std::vector<std::string> violations;
-    const fs::path scanRoot = root / relativeDir;
-
-    if (!fs::exists(scanRoot)) {
-        violations.push_back("Missing expected directory: " + scanRoot.string());
-        return violations;
-    }
-
-    for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-
-        const fs::path& path = entry.path();
-        const auto ext = path.extension().string();
-        if (ext != ".hpp" && ext != ".h" && ext != ".cpp" && ext != ".cc" && ext != ".cxx") {
-            continue;
-        }
-
-        // Skip files in the allowlist
-        if (!allowedFiles.empty() && allowedFiles.count(path.filename().string())) {
-            continue;
-        }
-
-        std::ifstream in(path);
-        if (!in.is_open()) {
-            violations.push_back("Could not open file: " + path.string());
-            continue;
-        }
-
-        std::string line;
-        size_t lineNo = 0;
-        while (std::getline(in, line)) {
-            ++lineNo;
-            for (const auto& prefix : forbiddenIncludePrefixes) {
-                if (line.find("#include \"" + prefix) != std::string::npos) {
-                    violations.push_back(path.lexically_relative(root).string() + ":" + std::to_string(lineNo) + " -> " + line);
-                    break;
-                }
+    fs::path findRepoRoot() {
+        fs::path current = fs::current_path();
+        while (!current.empty()) {
+            if (fs::exists(current / "xmake.lua") && fs::exists(current / "include" / "Engine") && fs::exists(current / "src" / "Engine")) {
+                return current;
             }
-        }
-    }
-
-    return violations;
-}
-
-std::vector<std::string> findTokenViolations(
-    const fs::path& root,
-    const fs::path& relativeDir,
-    const std::vector<std::string>& forbiddenTokens,
-    const std::set<std::string>& allowedFiles = {}) {
-    std::vector<std::string> violations;
-    const fs::path scanRoot = root / relativeDir;
-
-    if (!fs::exists(scanRoot)) {
-        violations.push_back("Missing expected directory: " + scanRoot.string());
-        return violations;
-    }
-
-    for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-
-        const fs::path& path = entry.path();
-        const auto ext = path.extension().string();
-        if (ext != ".hpp" && ext != ".h" && ext != ".cpp" && ext != ".cc" && ext != ".cxx") {
-            continue;
-        }
-
-        // Skip files in the allowlist
-        if (!allowedFiles.empty() && allowedFiles.count(path.filename().string())) {
-            continue;
-        }
-
-        std::ifstream in(path);
-        if (!in.is_open()) {
-            violations.push_back("Could not open file: " + path.string());
-            continue;
-        }
-
-        std::string line;
-        size_t lineNo = 0;
-        while (std::getline(in, line)) {
-            ++lineNo;
-            for (const auto& token : forbiddenTokens) {
-                if (line.find(token) != std::string::npos) {
-                    violations.push_back(path.lexically_relative(root).string() + ":" + std::to_string(lineNo) + " -> " + line);
-                    break;
-                }
+            auto parent = current.parent_path();
+            if (parent == current) {
+                break;
             }
+            current = parent;
         }
-    }
-
-    return violations;
-}
-
-std::string joinViolations(const std::vector<std::string>& violations) {
-    std::string out;
-    for (const auto& violation : violations) {
-        out += "\n" + violation;
-    }
-    return out;
-}
-
-std::vector<std::string> filterUnknownViolations(
-    const std::vector<std::string>& violations,
-    const std::set<std::string>& allowedFiles) {
-    std::vector<std::string> unknown;
-    for (const auto& violation : violations) {
-        const auto colonPos = violation.find(':');
-        const std::string file = (colonPos == std::string::npos) ? violation : violation.substr(0, colonPos);
-        if (!allowedFiles.contains(file)) {
-            unknown.push_back(violation);
-        }
-    }
-    return unknown;
-}
-
-std::string readWholeFile(const fs::path& path) {
-    std::ifstream in(path);
-    if (!in.is_open()) {
         return {};
     }
-    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-}
+
+    std::vector<std::string> findIncludeViolations(
+        const fs::path&                 root,
+        const fs::path&                 relativeDir,
+        const std::vector<std::string>& forbiddenIncludePrefixes,
+        const std::set<std::string>&    allowedFiles = {}) {
+        std::vector<std::string> violations;
+        const fs::path           scanRoot = root / relativeDir;
+
+        if (!fs::exists(scanRoot)) {
+            violations.push_back("Missing expected directory: " + scanRoot.string());
+            return violations;
+        }
+
+        for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+
+            const fs::path& path = entry.path();
+            const auto      ext  = path.extension().string();
+            if (ext != ".hpp" && ext != ".h" && ext != ".cpp" && ext != ".cc" && ext != ".cxx") {
+                continue;
+            }
+
+            // Skip files in the allowlist
+            if (!allowedFiles.empty() && allowedFiles.count(path.filename().string())) {
+                continue;
+            }
+
+            std::ifstream in(path);
+            if (!in.is_open()) {
+                violations.push_back("Could not open file: " + path.string());
+                continue;
+            }
+
+            std::string line;
+            size_t      lineNo = 0;
+            while (std::getline(in, line)) {
+                ++lineNo;
+                for (const auto& prefix : forbiddenIncludePrefixes) {
+                    if (line.find("#include \"" + prefix) != std::string::npos) {
+                        violations.push_back(path.lexically_relative(root).string() + ":" + std::to_string(lineNo) + " -> " + line);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return violations;
+    }
+
+    std::vector<std::string> findTokenViolations(
+        const fs::path&                 root,
+        const fs::path&                 relativeDir,
+        const std::vector<std::string>& forbiddenTokens,
+        const std::set<std::string>&    allowedFiles = {}) {
+        std::vector<std::string> violations;
+        const fs::path           scanRoot = root / relativeDir;
+
+        if (!fs::exists(scanRoot)) {
+            violations.push_back("Missing expected directory: " + scanRoot.string());
+            return violations;
+        }
+
+        for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
+            if (!entry.is_regular_file()) {
+                continue;
+            }
+
+            const fs::path& path = entry.path();
+            const auto      ext  = path.extension().string();
+            if (ext != ".hpp" && ext != ".h" && ext != ".cpp" && ext != ".cc" && ext != ".cxx") {
+                continue;
+            }
+
+            // Skip files in the allowlist
+            if (!allowedFiles.empty() && allowedFiles.count(path.filename().string())) {
+                continue;
+            }
+
+            std::ifstream in(path);
+            if (!in.is_open()) {
+                violations.push_back("Could not open file: " + path.string());
+                continue;
+            }
+
+            std::string line;
+            size_t      lineNo = 0;
+            while (std::getline(in, line)) {
+                ++lineNo;
+                for (const auto& token : forbiddenTokens) {
+                    if (line.find(token) != std::string::npos) {
+                        violations.push_back(path.lexically_relative(root).string() + ":" + std::to_string(lineNo) + " -> " + line);
+                        break;
+                    }
+                }
+            }
+        }
+
+        return violations;
+    }
+
+    std::string joinViolations(const std::vector<std::string>& violations) {
+        std::string out;
+        for (const auto& violation : violations) {
+            out += "\n" + violation;
+        }
+        return out;
+    }
+
+    std::vector<std::string> filterUnknownViolations(
+        const std::vector<std::string>& violations,
+        const std::set<std::string>&    allowedFiles) {
+        std::vector<std::string> unknown;
+        for (const auto& violation : violations) {
+            const auto        colonPos = violation.find(':');
+            const std::string file     = (colonPos == std::string::npos) ? violation : violation.substr(0, colonPos);
+            if (!allowedFiles.contains(file)) {
+                unknown.push_back(violation);
+            }
+        }
+        return unknown;
+    }
+
+    std::string readWholeFile(const fs::path& path) {
+        std::ifstream in(path);
+        if (!in.is_open()) {
+            return {};
+        }
+        return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    }
 
 }  // namespace
 
@@ -283,7 +282,7 @@ TEST(ArchitectureDependencyRules, InfrastructureAdaptersSourcesMustOnlyDependOnP
             "Engine/Application/UseCases/",
             "Engine/Application/SceneRuntimeState.hpp",
         },
-        { "CompositionAdapter.cpp" });  // CompositionAdapter legitimately bridges to UIManager
+        {"CompositionAdapter.cpp"});  // CompositionAdapter legitimately bridges to UIManager
     EXPECT_TRUE(violations.empty())
         << "Infrastructure adapter sources must not depend on Application use cases or runtime state:"
         << joinViolations(violations);
@@ -443,7 +442,7 @@ TEST(ArchitectureDependencyRules, MigratedPanelsShouldUseStateServicesForRuntime
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
 
     const std::string settingsPanel = readWholeFile(repoRoot / "src/Editor/ui/SettingsPanel.cpp");
-    const std::string iblPanel = readWholeFile(repoRoot / "src/Editor/ui/IBLPanel.cpp");
+    const std::string iblPanel      = readWholeFile(repoRoot / "src/Editor/ui/IBLPanel.cpp");
 
     ASSERT_FALSE(settingsPanel.empty()) << "Failed to read src/Editor/ui/SettingsPanel.cpp";
     ASSERT_FALSE(iblPanel.empty()) << "Failed to read src/Editor/ui/IBLPanel.cpp";
@@ -481,23 +480,22 @@ TEST(ArchitectureDependencyRules, ScenePanelShouldUseSceneRuntimeServiceForScene
 TEST(ArchitectureDependencyRules, RenderPassesShouldNotDependOnEngineState) {
     // Verify that render passes no longer depend on EngineState directly.
     // This test checks that the pass interfaces use ports instead.
-    
+
     const std::vector<std::string> passFiles = {
         "include/Engine/Graphics/Passes/UpdatePass.hpp",
         "include/Engine/Graphics/Passes/ComputePass.hpp",
         "include/Engine/Graphics/Passes/ShadowPass.hpp",
         "include/Engine/Graphics/Passes/DepthPrepass.hpp",
         "include/Engine/Graphics/Passes/OffscreenPass.hpp",
-        "include/Engine/Graphics/Passes/CompositionPass.hpp"
-    };
-    
+        "include/Engine/Graphics/Passes/CompositionPass.hpp"};
+
     for (const auto& passFile : passFiles) {
         const fs::path root = findRepoRoot();
         ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-        
+
         const std::string passContent = readWholeFile(root / passFile);
         ASSERT_FALSE(passContent.empty()) << "Failed to read " << passFile;
-        
+
         // Should not contain direct EngineState* dependencies
         EXPECT_EQ(passContent.find("EngineState*"), std::string::npos)
             << passFile << " should not contain EngineState* dependency";
@@ -507,11 +505,11 @@ TEST(ArchitectureDependencyRules, RenderPassesShouldNotDependOnEngineState) {
 TEST(ArchitectureDependencyRules, EnvironmentLightingAdapterShouldNotDependOnEngineState) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    
+
     // Check that EnvironmentLightingAdapter header includes the port, not EngineState directly
     const std::string adapterContent = readWholeFile(repoRoot / "include/Editor/Infrastructure/EnvironmentLightingAdapter.hpp");
     ASSERT_FALSE(adapterContent.empty()) << "Failed to read EnvironmentLightingAdapter.hpp";
-    
+
     // The adapter should include the port header
     EXPECT_NE(adapterContent.find("IEnvironmentLightingPort"), std::string::npos)
         << "EnvironmentLightingAdapter should include IEnvironmentLightingPort";
@@ -520,12 +518,10 @@ TEST(ArchitectureDependencyRules, EnvironmentLightingAdapterShouldNotDependOnEng
 TEST(ArchitectureDependencyRules, SceneAccessAdapterShouldNotDependOnEngineState) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    
+
     const std::string adapterContent = readWholeFile(repoRoot / "include/Editor/Infrastructure/SceneAccessAdapter.hpp");
     ASSERT_FALSE(adapterContent.empty()) << "Failed to read SceneAccessAdapter.hpp";
-    
+
     EXPECT_NE(adapterContent.find("ISceneAccessPort"), std::string::npos)
         << "SceneAccessAdapter should include ISceneAccessPort";
 }
-
-

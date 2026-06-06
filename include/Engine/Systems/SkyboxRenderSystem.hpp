@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
+
 #include <memory>
 #include <vector>
 
@@ -15,49 +16,49 @@
 
 namespace engine {
 
-struct SkyboxSettings {
-  bool debugCubemapFaces{false};
-};
+    struct SkyboxSettings {
+        bool debugCubemapFaces{false};
+    };
 
-/**
+    /**
  * @brief Render system for skybox/environment maps
  *
  * Renders a cubemap skybox as the background of the scene.
  * Should be rendered first (or last with depth write disabled).
  */
-class SkyboxRenderSystem {
- public:
-  SkyboxRenderSystem(Device& device, VkRenderPass renderPass);
-  ~SkyboxRenderSystem();
+    class SkyboxRenderSystem {
+       public:
+        SkyboxRenderSystem(Device& device, VkRenderPass renderPass);
+        ~SkyboxRenderSystem();
 
-  // Non-copyable
-  SkyboxRenderSystem(const SkyboxRenderSystem&) = delete;
-  SkyboxRenderSystem& operator=(const SkyboxRenderSystem&) = delete;
+        // Non-copyable
+        SkyboxRenderSystem(const SkyboxRenderSystem&)            = delete;
+        SkyboxRenderSystem& operator=(const SkyboxRenderSystem&) = delete;
 
-  /**
+        /**
    * @brief Render the skybox
    * @param frameInfo Current frame information (camera, etc.)
    * @param skybox The skybox cubemap to render (can be null if using procedural)
    * @param settings Skybox configuration
    */
-  void render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings);
+        void render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings);
 
- private:
-  void createDescriptorSetLayout();
-  void createPipelineLayout();
-  void createPipeline(VkRenderPass renderPass);
+       private:
+        void createDescriptorSetLayout();
+        void createPipelineLayout();
+        void createPipeline(VkRenderPass renderPass);
 
-  Device& device_;
+        Device& device_;
 
-  std::unique_ptr<Pipeline> pipeline_;
+        std::unique_ptr<Pipeline> pipeline_;
 
-  VkPipelineLayout pipelineLayout_ = VK_NULL_HANDLE;
-  VkDescriptorSetLayout descriptorSetLayout_ = VK_NULL_HANDLE;
-  std::unique_ptr<engine::DescriptorPool> descriptorPool_;
+        VkPipelineLayout                        pipelineLayout_      = VK_NULL_HANDLE;
+        VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
+        std::unique_ptr<engine::DescriptorPool> descriptorPool_;
 
-  // Pre-allocated descriptor sets per frame
-  std::vector<VkDescriptorSet> descriptorSets_;
-};
+        // Pre-allocated descriptor sets per frame
+        std::vector<VkDescriptorSet> descriptorSets_;
+    };
 
 }  // namespace engine
 

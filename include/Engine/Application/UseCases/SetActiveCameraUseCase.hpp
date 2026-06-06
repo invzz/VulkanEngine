@@ -5,16 +5,16 @@
 
 namespace engine {
 
-// Use case for setting the active camera.
-class SetActiveCameraUseCase {
- public:
-  explicit SetActiveCameraUseCase(ICameraPort& cameraPort);
+    // Use case for setting the active camera.
+    class SetActiveCameraUseCase {
+       public:
+        explicit SetActiveCameraUseCase(ICameraPort& cameraPort);
 
-  // Set the active camera entity in the runtime state.
-  void execute(entt::entity cameraEntity, SceneRuntimeState& runtimeState);
+        // Set the active camera entity in the runtime state.
+        void execute(entt::entity cameraEntity, SceneRuntimeState& runtimeState);
 
- private:
-  ICameraPort& cameraPort_;
-};
+       private:
+        ICameraPort& cameraPort_;
+    };
 
 }  // namespace engine

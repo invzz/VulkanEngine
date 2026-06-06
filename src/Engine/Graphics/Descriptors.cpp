@@ -374,6 +374,6 @@ namespace engine {
             write.dstSet = set;
         }
         vkUpdateDescriptorSets(pool.device.device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-        writes.clear(); // Prevent stale/duplicate writes on subsequent calls
+        writes.clear();  // Prevent stale/duplicate writes on subsequent calls
     }
 }  // namespace engine

@@ -8,33 +8,33 @@
 
 namespace engine {
 
-class Instance {
- public:
-  Instance() = default;
-  Instance(const Instance&) = delete;
-  Instance& operator=(const Instance&) = delete;
-  Instance(Instance&&) = delete;
-  Instance& operator=(Instance&&) = delete;
+    class Instance {
+       public:
+        Instance()                           = default;
+        Instance(const Instance&)            = delete;
+        Instance& operator=(const Instance&) = delete;
+        Instance(Instance&&)                 = delete;
+        Instance& operator=(Instance&&)      = delete;
 
-  ~Instance();
+        ~Instance();
 
-  // Create an instance with the given extension and layer lists. Throws
-  // engine::RuntimeException on failure.
-  void create(const std::vector<const char*>& extensions = {}, const std::vector<const char*>& layers = {});
+        // Create an instance with the given extension and layer lists. Throws
+        // engine::RuntimeException on failure.
+        void create(const std::vector<const char*>& extensions = {}, const std::vector<const char*>& layers = {});
 
-  // Destroy the instance if created.
-  void reset() noexcept;
+        // Destroy the instance if created.
+        void reset() noexcept;
 
-  VkInstance get() const {
-    return instance_;
-  }
-  explicit operator bool() const {
-    return instance_ != VK_NULL_HANDLE;
-  }
+        VkInstance get() const {
+            return instance_;
+        }
+        explicit operator bool() const {
+            return instance_ != VK_NULL_HANDLE;
+        }
 
- private:
-  VkInstance instance_ = VK_NULL_HANDLE;
-};
+       private:
+        VkInstance instance_ = VK_NULL_HANDLE;
+    };
 
 }  // namespace engine
 

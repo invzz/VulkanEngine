@@ -1,14 +1,15 @@
 #ifndef EDITOR_SCENEPANEL_HPP
 #define EDITOR_SCENEPANEL_HPP
 
+#include <imgui.h>
 #include <string>
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/SceneUtils.hpp"
 
-#include "Editor/ui/UIPanel.hpp"
 #include "Editor/ui/Scene.hpp"
+#include "Editor/ui/UIPanel.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine {
@@ -31,11 +32,11 @@ namespace engine {
         void processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId);
 
        private:
-            Device&                   device_;
-            EngineState*              engineState_ = nullptr;
-            std::vector<entt::entity> toDelete_;
+        Device&                                    device_;
+        EngineState*                               engineState_ = nullptr;
+        std::vector<entt::entity>                  toDelete_;
         std::vector<ui::SceneUI::PendingModelLoad> pendingLoads_;
-            StaticColliderImportMode colliderImportMode_{StaticColliderImportMode::AutoDetect};
+        StaticColliderImportMode                   colliderImportMode_{StaticColliderImportMode::AutoDetect};
     };
 
 }  // namespace engine

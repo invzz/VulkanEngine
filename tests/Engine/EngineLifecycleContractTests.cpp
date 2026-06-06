@@ -1,7 +1,6 @@
-#include <gtest/gtest.h>
-
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <initializer_list>
 #include <set>
 #include <string>
@@ -9,57 +8,57 @@
 
 namespace {
 
-namespace fs = std::filesystem;
+    namespace fs = std::filesystem;
 
-fs::path findRepoRoot() {
-    fs::path current = fs::current_path();
-    while (!current.empty()) {
-        if (fs::exists(current / "xmake.lua") && fs::exists(current / "include" / "Engine") && fs::exists(current / "src" / "Engine")) {
-            return current;
-        }
-        auto parent = current.parent_path();
-        if (parent == current) {
-            break;
-        }
-        current = parent;
-    }
-    return {};
-}
-
-std::string readWholeFile(const fs::path& path) {
-    std::ifstream in(path);
-    if (!in.is_open()) {
-        return {};
-    }
-    return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
-}
-
-void expectNoDirectSystemMemberAccess(const std::string& source,
-    const std::vector<std::string>& forbiddenTokens,
-    const std::string& context,
-    const std::set<std::string>& portPrefixes = {}) {
-    for (const auto& token : forbiddenTokens) {
-        size_t pos = 0;
-        bool found = false;
-        while ((pos = source.find(token, pos)) != std::string::npos) {
-            // Check if this is a port-based call (e.g., physicsPort_->joltPhysicsSystem())
-            bool isPortCall = false;
-            for (const auto& prefix : portPrefixes) {
-                if (pos >= prefix.size() && source.substr(pos - prefix.size(), prefix.size()) == prefix) {
-                    isPortCall = true;
-                    break;
-                }
+    fs::path findRepoRoot() {
+        fs::path current = fs::current_path();
+        while (!current.empty()) {
+            if (fs::exists(current / "xmake.lua") && fs::exists(current / "include" / "Engine") && fs::exists(current / "src" / "Engine")) {
+                return current;
             }
-            if (!isPortCall) {
-                found = true;
+            auto parent = current.parent_path();
+            if (parent == current) {
                 break;
             }
-            ++pos;
+            current = parent;
         }
-        EXPECT_FALSE(found)
-            << context << " should use EngineState accessors/services instead of direct member access: " << token;
+        return {};
     }
-}
+
+    std::string readWholeFile(const fs::path& path) {
+        std::ifstream in(path);
+        if (!in.is_open()) {
+            return {};
+        }
+        return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+    }
+
+    void expectNoDirectSystemMemberAccess(const std::string& source,
+        const std::vector<std::string>&                      forbiddenTokens,
+        const std::string&                                   context,
+        const std::set<std::string>&                         portPrefixes = {}) {
+        for (const auto& token : forbiddenTokens) {
+            size_t pos   = 0;
+            bool   found = false;
+            while ((pos = source.find(token, pos)) != std::string::npos) {
+                // Check if this is a port-based call (e.g., physicsPort_->joltPhysicsSystem())
+                bool isPortCall = false;
+                for (const auto& prefix : portPrefixes) {
+                    if (pos >= prefix.size() && source.substr(pos - prefix.size(), prefix.size()) == prefix) {
+                        isPortCall = true;
+                        break;
+                    }
+                }
+                if (!isPortCall) {
+                    found = true;
+                    break;
+                }
+                ++pos;
+            }
+            EXPECT_FALSE(found)
+                << context << " should use EngineState accessors/services instead of direct member access: " << token;
+        }
+    }
 
 }  // namespace
 
@@ -157,7 +156,7 @@ TEST(EngineLifecycleContracts, EngineStateProvidesGroupedSystemServicesAccessor)
     const fs::path root = findRepoRoot();
     ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
 
-    const std::string header = readWholeFile(root / "include/Engine/EngineState.hpp");
+    const std::string header           = readWholeFile(root / "include/Engine/EngineState.hpp");
     const std::string stateViewsHeader = readWholeFile(root / "include/Engine/State/StateViews.hpp");
     ASSERT_FALSE(header.empty()) << "Failed to read include/Engine/EngineState.hpp";
     ASSERT_FALSE(stateViewsHeader.empty()) << "Failed to read include/Engine/State/StateViews.hpp";
@@ -186,9 +185,9 @@ TEST(EngineLifecycleContracts, HotPathsUseEngineStateSystemAccessorsNotDirectMem
     const fs::path root = findRepoRoot();
     ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
 
-    const std::string updatePass = readWholeFile(root / "src/Engine/Graphics/Passes/UpdatePass.cpp");
+    const std::string updatePass    = readWholeFile(root / "src/Engine/Graphics/Passes/UpdatePass.cpp");
     const std::string offscreenPass = readWholeFile(root / "src/Engine/Graphics/Passes/OffscreenPass.cpp");
-    const std::string shadowPass = readWholeFile(root / "src/Engine/Graphics/Passes/ShadowPass.cpp");
+    const std::string shadowPass    = readWholeFile(root / "src/Engine/Graphics/Passes/ShadowPass.cpp");
     const std::string settingsPanel = readWholeFile(root / "src/Editor/ui/SettingsPanel.cpp");
 
     ASSERT_FALSE(updatePass.empty()) << "Failed to read src/Engine/Graphics/Passes/UpdatePass.cpp";

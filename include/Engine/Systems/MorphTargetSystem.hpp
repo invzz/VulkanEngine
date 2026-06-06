@@ -5,25 +5,26 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 
 namespace engine {
 
-/**
+    /**
  * @brief System for managing morph target animations
  *
  * Automatically initializes and updates morph target blending for all models.
  * Runs compute shaders to blend base vertices with morph deltas before rendering.
  */
-class MorphTargetSystem {
- public:
-  MorphTargetSystem(Device& device);
-  ~MorphTargetSystem();
+    class MorphTargetSystem {
+       public:
+        MorphTargetSystem(Device& device);
+        ~MorphTargetSystem();
 
-  MorphTargetSystem(const MorphTargetSystem&) = delete;
-  MorphTargetSystem& operator=(const MorphTargetSystem&) = delete;
+        MorphTargetSystem(const MorphTargetSystem&)            = delete;
+        MorphTargetSystem& operator=(const MorphTargetSystem&) = delete;
 
-  /**
+        /**
    * @brief Update morph targets for all models
    *
    * This dispatches compute shaders to blend vertices.
@@ -31,18 +32,18 @@ class MorphTargetSystem {
    *
    * @param frameInfo Contains command buffer and game objects
    */
-  void update(FrameInfo& frameInfo);
+        void update(FrameInfo& frameInfo);
 
-  /**
+        /**
    * @brief Get the underlying manager (for use by render systems)
    */
-  MorphTargetManager* getManager() {
-    return manager_.get();
-  }
+        MorphTargetManager* getManager() {
+            return manager_.get();
+        }
 
- private:
-  std::unique_ptr<MorphTargetManager> manager_;
-};
+       private:
+        std::unique_ptr<MorphTargetManager> manager_;
+    };
 
 }  // namespace engine
 

@@ -18,11 +18,11 @@ namespace engine {
         // against higher-precision reference formats.
         constexpr bool kUseCompactGbufferFormats = true;
 
-        constexpr VkFormat kGbufferNormalFormatCompact = VK_FORMAT_R16G16_SNORM;
-        constexpr VkFormat kGbufferNormalFormatReference = VK_FORMAT_R16G16B16A16_SFLOAT;
-        constexpr VkFormat kGbufferAlbedoFormatCompact = VK_FORMAT_R8G8B8A8_UNORM;
-        constexpr VkFormat kGbufferAlbedoFormatReference = VK_FORMAT_R16G16B16A16_SFLOAT;
-        constexpr VkFormat kGbufferMaterialFormatCompact = VK_FORMAT_R8G8B8A8_UNORM;
+        constexpr VkFormat kGbufferNormalFormatCompact     = VK_FORMAT_R16G16_SNORM;
+        constexpr VkFormat kGbufferNormalFormatReference   = VK_FORMAT_R16G16B16A16_SFLOAT;
+        constexpr VkFormat kGbufferAlbedoFormatCompact     = VK_FORMAT_R8G8B8A8_UNORM;
+        constexpr VkFormat kGbufferAlbedoFormatReference   = VK_FORMAT_R16G16B16A16_SFLOAT;
+        constexpr VkFormat kGbufferMaterialFormatCompact   = VK_FORMAT_R8G8B8A8_UNORM;
         constexpr VkFormat kGbufferMaterialFormatReference = VK_FORMAT_R16G16B16A16_SFLOAT;
 
         constexpr VkFormat kSelectedGbufferNormalFormat =
@@ -103,7 +103,6 @@ namespace engine {
             target.destroy(device);
         }
         depthTargets.clear();
-
     }
 
     void FrameBuffer::resize(VkExtent2D newExtent) {
@@ -381,11 +380,11 @@ namespace engine {
 
         // Albedo format is controlled by the compact/reference toggle above.
         VkAttachmentDescription gA = gN;
-        gA.format = kSelectedGbufferAlbedoFormat;
+        gA.format                  = kSelectedGbufferAlbedoFormat;
 
         // Material format is controlled by the compact/reference toggle above.
         VkAttachmentDescription gM = gN;
-        gM.format = kSelectedGbufferMaterialFormat;
+        gM.format                  = kSelectedGbufferMaterialFormat;
 
         // Emissive is written directly into the HDR color buffer during the opaque/G-buffer pass.
         // This ensures emissive contributes to post/bloom and is visible in the scene color copy.

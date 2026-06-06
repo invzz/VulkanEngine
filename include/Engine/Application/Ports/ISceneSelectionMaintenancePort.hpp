@@ -4,11 +4,11 @@
 
 namespace engine {
 
-class ISceneSelectionMaintenancePort {
- public:
-  virtual ~ISceneSelectionMaintenancePort() = default;
+    class ISceneSelectionMaintenancePort {
+       public:
+        virtual ~ISceneSelectionMaintenancePort() = default;
 
-  virtual void processSelectionMaintenance(SceneRuntimeState& runtimeState) = 0;
-};
+        virtual void processSelectionMaintenance(SceneRuntimeState& runtimeState) = 0;
+    };
 
 }  // namespace engine

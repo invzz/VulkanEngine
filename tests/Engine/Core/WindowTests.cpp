@@ -8,9 +8,9 @@ using namespace engine;
 // Window Construction Tests
 // =============================================================================
 TEST(Window, GivenValidParameters_WhenConstructed_ThenWindowIsCreated) {
-  Window window(64, 64, "Construction Test");
+    Window window(64, 64, "Construction Test");
 
-  EXPECT_TRUE(window.getGLFWwindow() != nullptr);
+    EXPECT_TRUE(window.getGLFWwindow() != nullptr);
 }
 
 // =============================================================================
@@ -18,10 +18,10 @@ TEST(Window, GivenValidParameters_WhenConstructed_ThenWindowIsCreated) {
 // =============================================================================
 
 TEST(Window, GivenWindow_WhenGetGLFWwindow_ThenReturnsValidHandle) {
-  Window window(64, 64, "GLFW Handle Test");
+    Window window(64, 64, "GLFW Handle Test");
 
-  GLFWwindow* glfwWindow = window.getGLFWwindow();
-  EXPECT_NE(glfwWindow, nullptr);
+    GLFWwindow* glfwWindow = window.getGLFWwindow();
+    EXPECT_NE(glfwWindow, nullptr);
 }
 
 // =============================================================================
@@ -29,11 +29,11 @@ TEST(Window, GivenWindow_WhenGetGLFWwindow_ThenReturnsValidHandle) {
 // =============================================================================
 
 TEST(Window, GivenWindow_WhenResetWindowResizedFlag_ThenFlagIsFalse) {
-  Window window(64, 64, "Reset Resize Test");
+    Window window(64, 64, "Reset Resize Test");
 
-  window.resetWindowResizedFlag();
+    window.resetWindowResizedFlag();
 
-  EXPECT_FALSE(window.wasWindowResized());
+    EXPECT_FALSE(window.wasWindowResized());
 }
 
 // =============================================================================
@@ -41,47 +41,47 @@ TEST(Window, GivenWindow_WhenResetWindowResizedFlag_ThenFlagIsFalse) {
 // =============================================================================
 
 TEST(Window, GivenNewWindow_WhenIsCursorVisible_ThenReturnsTrue) {
-  Window window(64, 64, "Cursor Test");
+    Window window(64, 64, "Cursor Test");
 
-  EXPECT_TRUE(window.isCursorVisible());
+    EXPECT_TRUE(window.isCursorVisible());
 }
 
 TEST(Window, GivenWindow_WhenSetCursorVisibleFalse_ThenCursorIsHidden) {
-  Window window(64, 64, "Hide Cursor Test");
+    Window window(64, 64, "Hide Cursor Test");
 
-  window.setCursorVisible(false);
+    window.setCursorVisible(false);
 
-  EXPECT_FALSE(window.isCursorVisible());
+    EXPECT_FALSE(window.isCursorVisible());
 }
 
 TEST(Window, GivenWindow_WhenSetCursorVisibleTrue_ThenCursorIsVisible) {
-  Window window(64, 64, "Show Cursor Test");
+    Window window(64, 64, "Show Cursor Test");
 
-  window.setCursorVisible(false);
-  window.setCursorVisible(true);
+    window.setCursorVisible(false);
+    window.setCursorVisible(true);
 
-  EXPECT_TRUE(window.isCursorVisible());
+    EXPECT_TRUE(window.isCursorVisible());
 }
 
 TEST(Window, GivenVisibleCursor_WhenToggleCursor_ThenCursorBecomesHidden) {
-  Window window(64, 64, "Toggle Cursor Test");
+    Window window(64, 64, "Toggle Cursor Test");
 
-  EXPECT_TRUE(window.isCursorVisible());
+    EXPECT_TRUE(window.isCursorVisible());
 
-  window.toggleCursor();
+    window.toggleCursor();
 
-  EXPECT_FALSE(window.isCursorVisible());
+    EXPECT_FALSE(window.isCursorVisible());
 }
 
 TEST(Window, GivenHiddenCursor_WhenToggleCursor_ThenCursorBecomesVisible) {
-  Window window(64, 64, "Toggle Cursor Test 2");
+    Window window(64, 64, "Toggle Cursor Test 2");
 
-  window.setCursorVisible(false);
-  EXPECT_FALSE(window.isCursorVisible());
+    window.setCursorVisible(false);
+    EXPECT_FALSE(window.isCursorVisible());
 
-  window.toggleCursor();
+    window.toggleCursor();
 
-  EXPECT_TRUE(window.isCursorVisible());
+    EXPECT_TRUE(window.isCursorVisible());
 }
 
 // =============================================================================
@@ -89,9 +89,9 @@ TEST(Window, GivenHiddenCursor_WhenToggleCursor_ThenCursorBecomesVisible) {
 // =============================================================================
 
 TEST(Window, GivenNewWindow_WhenShouldClose_ThenReturnsFalse) {
-  Window window(64, 64, "Should Close Test");
+    Window window(64, 64, "Should Close Test");
 
-  EXPECT_FALSE(window.shouldClose());
+    EXPECT_FALSE(window.shouldClose());
 }
 
 // =============================================================================
@@ -99,8 +99,8 @@ TEST(Window, GivenNewWindow_WhenShouldClose_ThenReturnsFalse) {
 // =============================================================================
 
 TEST(Window, GivenNoResize_WhenIsResizeStable_ThenReturnsFalse) {
-  Window window(64, 64, "Stable Resize Test");
+    Window window(64, 64, "Stable Resize Test");
 
-  // No resize has occurred, so it should not be "stable"
-  EXPECT_FALSE(window.isResizeStable(100));
+    // No resize has occurred, so it should not be "stable"
+    EXPECT_FALSE(window.isResizeStable(100));
 }

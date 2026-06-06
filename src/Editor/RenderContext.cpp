@@ -125,12 +125,12 @@ namespace engine {
 
     void RenderContext::createGlobalDescriptorSets() {
         for (size_t i = 0; i < globalDescriptorSets_.size(); i++) {
-            auto bufferInfo = uboBuffers_[i]->descriptorInfo();
+            auto bufferInfo     = uboBuffers_[i]->descriptorInfo();
             auto coldBufferInfo = uboColdBuffers_[i]->descriptorInfo();
-            auto meshInfo   = meshManager_.getDescriptorInfo();
-            auto pointInfo  = pointLightBuffers_[i]->descriptorInfo();
-            auto dirInfo    = directionalLightBuffers_[i]->descriptorInfo();
-            auto spotInfo   = spotLightBuffers_[i]->descriptorInfo();
+            auto meshInfo       = meshManager_.getDescriptorInfo();
+            auto pointInfo      = pointLightBuffers_[i]->descriptorInfo();
+            auto dirInfo        = directionalLightBuffers_[i]->descriptorInfo();
+            auto spotInfo       = spotLightBuffers_[i]->descriptorInfo();
 
             // Write all bindings required by the layout (including light buffers) so
             // DescriptorWriter's defensive check succeeds. We still update light

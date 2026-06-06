@@ -2,12 +2,12 @@
 
 namespace engine {
 
-ProcessSceneSelectionMaintenanceUseCase::ProcessSceneSelectionMaintenanceUseCase(
-    ISceneSelectionMaintenancePort& selectionMaintenance)
-    : selectionMaintenance_(selectionMaintenance) {}
+    ProcessSceneSelectionMaintenanceUseCase::ProcessSceneSelectionMaintenanceUseCase(
+        ISceneSelectionMaintenancePort& selectionMaintenance)
+        : selectionMaintenance_(selectionMaintenance) {}
 
-void ProcessSceneSelectionMaintenanceUseCase::execute(SceneRuntimeState& runtimeState) const {
-  selectionMaintenance_.processSelectionMaintenance(runtimeState);
-}
+    void ProcessSceneSelectionMaintenanceUseCase::execute(SceneRuntimeState& runtimeState) const {
+        selectionMaintenance_.processSelectionMaintenance(runtimeState);
+    }
 
 }  // namespace engine

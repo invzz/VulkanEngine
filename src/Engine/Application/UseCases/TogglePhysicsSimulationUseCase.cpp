@@ -2,19 +2,19 @@
 
 namespace engine {
 
-TogglePhysicsSimulationUseCase::TogglePhysicsSimulationUseCase(IPhysicsRuntimePort& physicsRuntime)
-    : physicsRuntime_(physicsRuntime) {}
+    TogglePhysicsSimulationUseCase::TogglePhysicsSimulationUseCase(IPhysicsRuntimePort& physicsRuntime)
+        : physicsRuntime_(physicsRuntime) {}
 
-void TogglePhysicsSimulationUseCase::execute(bool& simulationRunningRef) {
-  simulationRunningRef = !simulationRunningRef;
-}
+    void TogglePhysicsSimulationUseCase::execute(bool& simulationRunningRef) {
+        simulationRunningRef = !simulationRunningRef;
+    }
 
-void TogglePhysicsSimulationUseCase::setGroundEnabled(bool enabled) {
-  physicsRuntime_.setGroundEnabled(enabled);
-}
+    void TogglePhysicsSimulationUseCase::setGroundEnabled(bool enabled) {
+        physicsRuntime_.setGroundEnabled(enabled);
+    }
 
-bool TogglePhysicsSimulationUseCase::isRunning() const {
-  return physicsRuntime_.physicsSimulationRunningRef();
-}
+    bool TogglePhysicsSimulationUseCase::isRunning() const {
+        return physicsRuntime_.physicsSimulationRunningRef();
+    }
 
 }  // namespace engine

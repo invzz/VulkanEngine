@@ -4,12 +4,12 @@
 
 namespace engine {
 
-class IScenePersistencePort {
- public:
-  virtual ~IScenePersistencePort() = default;
+    class IScenePersistencePort {
+       public:
+        virtual ~IScenePersistencePort() = default;
 
-  virtual void saveScene(const std::string& path) = 0;
-  virtual bool loadScene(const std::string& path) = 0;
-};
+        virtual void saveScene(const std::string& path) = 0;
+        virtual bool loadScene(const std::string& path) = 0;
+    };
 
 }  // namespace engine

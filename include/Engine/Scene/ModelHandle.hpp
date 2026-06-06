@@ -6,7 +6,7 @@
 
 namespace engine {
 
-/**
+    /**
  * @brief Opaque handle to a loaded model resource.
  *
  * Domain-layer replacement for std::shared_ptr<Model>. The handle carries
@@ -15,30 +15,36 @@ namespace engine {
  *
  * A value of 0 represents an invalid/null handle (similar to a null pointer).
  */
-struct ModelHandle {
-    static constexpr uint64_t kInvalid = 0;
+    struct ModelHandle {
+        static constexpr uint64_t kInvalid = 0;
 
-    uint64_t id = kInvalid;
+        uint64_t id = kInvalid;
 
-    ModelHandle() = default;
-    explicit ModelHandle(uint64_t id_) : id(id_) {}
+        ModelHandle() = default;
+        explicit ModelHandle(uint64_t id_) : id(id_) {}
 
-    explicit operator bool() const { return id != kInvalid; }
-    bool isValid() const { return id != kInvalid; }
+        explicit operator bool() const {
+            return id != kInvalid;
+        }
+        bool isValid() const {
+            return id != kInvalid;
+        }
 
-    bool operator==(const ModelHandle& other) const = default;
-    bool operator!=(const ModelHandle& other) const = default;
-    bool operator<(const ModelHandle& other) const { return id < other.id; }
+        bool operator==(const ModelHandle& other) const = default;
+        bool operator!=(const ModelHandle& other) const = default;
+        bool operator<(const ModelHandle& other) const {
+            return id < other.id;
+        }
 
-    friend std::ostream& operator<<(std::ostream& os, const ModelHandle& h) {
-        os << h.id;
-        return os;
-    }
-};
+        friend std::ostream& operator<<(std::ostream& os, const ModelHandle& h) {
+            os << h.id;
+            return os;
+        }
+    };
 
-/**
+    /**
  * @brief Sentinel for "no model".
  */
-inline constexpr ModelHandle kInvalidModelHandle{};
+    inline constexpr ModelHandle kInvalidModelHandle{};
 
-} // namespace engine
+}  // namespace engine

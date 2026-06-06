@@ -1,20 +1,21 @@
 #ifndef EDITOR_IBLPANEL_HPP
 #define EDITOR_IBLPANEL_HPP
 
-#include "Editor/ui/UIPanel.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 
-namespace engine {
-class EngineState;
-class IBLPanel : public UIPanel {
- public:
-  explicit IBLPanel(EngineState* engineState);
-  void render(FrameInfo& frameInfo) override;
+#include "Editor/ui/UIPanel.hpp"
 
- private:
-  EngineState* engineState_ = nullptr;
-  IBLSystem::Settings settings_;
-};
+namespace engine {
+    class EngineState;
+    class IBLPanel : public UIPanel {
+       public:
+        explicit IBLPanel(EngineState* engineState);
+        void render(FrameInfo& frameInfo) override;
+
+       private:
+        EngineState*        engineState_ = nullptr;
+        IBLSystem::Settings settings_;
+    };
 }  // namespace engine
 
 #endif  // EDITOR_IBLPANEL_HPP

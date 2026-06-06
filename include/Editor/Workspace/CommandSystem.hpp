@@ -1,29 +1,29 @@
 #ifndef EDITOR_WORKSPACE_COMMAND_SYSTEM_HPP
 #define EDITOR_WORKSPACE_COMMAND_SYSTEM_HPP
 
+#include <deque>
+#include <functional>
 #include <memory>
 #include <string>
-#include <functional>
 #include <vector>
-#include <deque>
 
 namespace engine {
 
-/**
+    /**
  * @brief A single undoable command.
  *
  * Commands have an execute() and undo() function. They are stored in a
  * deque and can be pushed to the undo stack.
  */
-class Command {
-public:
-    virtual ~Command() = default;
-    virtual void execute() = 0;
-    virtual void undo() = 0;
-    virtual std::string getName() const = 0;
-};
+    class Command {
+       public:
+        virtual ~Command()                  = default;
+        virtual void        execute()       = 0;
+        virtual void        undo()          = 0;
+        virtual std::string getName() const = 0;
+    };
 
-/**
+    /**
  * @brief Command system for undo/redo in the editor.
  *
  * Manages a stack of undoable commands. Commands are pushed via execute(),
@@ -31,76 +31,84 @@ public:
  *
  * Thread-safe for reads; writes must be done on the main thread.
  */
-class CommandSystem {
-public:
-    CommandSystem();
-    ~CommandSystem() = default;
+    class CommandSystem {
+       public:
+        CommandSystem();
+        ~CommandSystem() = default;
 
-    /**
+        /**
      * @brief Execute a command and push it to the undo stack.
      * @param command Command to execute.
      * @param name Human-readable name for the command.
      */
-    void executeCommand(std::unique_ptr<Command> command, const std::string& name);
+        void executeCommand(std::unique_ptr<Command> command, const std::string& name);
 
-    /**
+        /**
      * @brief Undo the last command.
      * @return true if a command was undone.
      */
-    bool undo();
+        bool undo();
 
-    /**
+        /**
      * @brief Redo the last undone command.
      * @return true if a command was redone.
      */
-    bool redo();
+        bool redo();
 
-    /**
+        /**
      * @brief Check if undo is available.
      */
-    bool canUndo() const { return !undoStack_.empty(); }
+        bool canUndo() const {
+            return !undoStack_.empty();
+        }
 
-    /**
+        /**
      * @brief Check if redo is available.
      */
-    bool canRedo() const { return !redoStack_.empty(); }
+        bool canRedo() const {
+            return !redoStack_.empty();
+        }
 
-    /**
+        /**
      * @brief Get the number of undoable commands.
      */
-    size_t getUndoCount() const { return undoStack_.size(); }
+        size_t getUndoCount() const {
+            return undoStack_.size();
+        }
 
-    /**
+        /**
      * @brief Get the number of redoable commands.
      */
-    size_t getRedoCount() const { return redoStack_.size(); }
+        size_t getRedoCount() const {
+            return redoStack_.size();
+        }
 
-    /**
+        /**
      * @brief Clear all undo/redo history.
      */
-    void clear();
+        void clear();
 
-    /**
+        /**
      * @brief Get the name of the last undone command.
      */
-    std::string getLastUndoName() const;
+        std::string getLastUndoName() const;
 
-    /**
+        /**
      * @brief Get the name of the last redone command.
      */
-    std::string getLastRedoName() const;
+        std::string getLastRedoName() const;
 
-private:
-    struct HistoryEntry {
-        std::unique_ptr<Command> command;
-        std::string              name;
+       private:
+        struct HistoryEntry {
+            std::unique_ptr<Command> command;
+            std::string              name;
+        };
+
+        std::deque<HistoryEntry> undoStack_;
+        std::deque<HistoryEntry> redoStack_;
+
+        static constexpr size_t MAX_HISTORY = 64;  // Maximum undo/redo history depth
     };
-
-    std::deque<HistoryEntry> undoStack_;
-    std::deque<HistoryEntry> redoStack_;
-
-    static constexpr size_t MAX_HISTORY = 64;  // Maximum undo/redo history depth
-};
 
 }  // namespace engine
 

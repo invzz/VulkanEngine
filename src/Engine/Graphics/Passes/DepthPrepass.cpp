@@ -5,10 +5,11 @@
 
 namespace engine {
 
-void DepthPrepass::execute(FrameInfo& frameInfo) {
-  renderer_.beginOffscreenDepthPrepassRenderPass(frameInfo.commandBuffer);
-  if (rendering_.modelRenderSystem != nullptr) rendering_.modelRenderSystem->renderDepthPrepass(frameInfo);
-  renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
-}
+    void DepthPrepass::execute(FrameInfo& frameInfo) {
+        renderer_.beginOffscreenDepthPrepassRenderPass(frameInfo.commandBuffer);
+        if (rendering_.modelRenderSystem != nullptr)
+            rendering_.modelRenderSystem->renderDepthPrepass(frameInfo);
+        renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
+    }
 
 }  // namespace engine

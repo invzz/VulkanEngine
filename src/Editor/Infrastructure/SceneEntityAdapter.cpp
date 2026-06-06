@@ -5,23 +5,23 @@
 
 namespace engine {
 
-SceneEntityAdapter::SceneEntityAdapter(EngineState& engineState)
-    : engineState_(engineState) {}
+    SceneEntityAdapter::SceneEntityAdapter(EngineState& engineState)
+        : engineState_(engineState) {}
 
-entt::entity SceneEntityAdapter::createEntity() {
-  return engineState_.sceneRef().createEntity();
-}
+    entt::entity SceneEntityAdapter::createEntity() {
+        return engineState_.sceneRef().createEntity();
+    }
 
-void SceneEntityAdapter::deleteEntity(entt::entity entity) {
-  engineState_.sceneRef().destroyEntity(entity);
-}
+    void SceneEntityAdapter::deleteEntity(entt::entity entity) {
+        engineState_.sceneRef().destroyEntity(entity);
+    }
 
-bool SceneEntityAdapter::isValid(entt::entity entity) const {
-  return engineState_.sceneRef().getRegistry().valid(entity);
-}
+    bool SceneEntityAdapter::isValid(entt::entity entity) const {
+        return engineState_.sceneRef().getRegistry().valid(entity);
+    }
 
-Scene* SceneEntityAdapter::scene() {
-  return &engineState_.sceneRef();
-}
+    Scene* SceneEntityAdapter::scene() {
+        return &engineState_.sceneRef();
+    }
 
 }  // namespace engine

@@ -6,17 +6,17 @@
 
 namespace engine {
 
-class SceneSerializer;
+    class SceneSerializer;
 
-class ScenePersistenceAdapter final : public IScenePersistencePort {
- public:
-  explicit ScenePersistenceAdapter(SceneSerializer& serializer);
+    class ScenePersistenceAdapter final : public IScenePersistencePort {
+       public:
+        explicit ScenePersistenceAdapter(SceneSerializer& serializer);
 
-  void saveScene(const std::string& path) override;
-  bool loadScene(const std::string& path) override;
+        void saveScene(const std::string& path) override;
+        bool loadScene(const std::string& path) override;
 
- private:
-  SceneSerializer& serializer_;
-};
+       private:
+        SceneSerializer& serializer_;
+    };
 
 }  // namespace engine

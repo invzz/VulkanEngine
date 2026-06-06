@@ -26,7 +26,7 @@ namespace engine {
         }
 
         // store non-owned resource pointer
-        this->resourceManager = &resourceManagerRef;
+        this->resourceManager   = &resourceManagerRef;
         this->renderContextPort = requiredRenderContextPort;
 
         // input devices are optional and can be initialized directly
@@ -108,7 +108,7 @@ namespace engine {
                 "physics.systems",
                 {"core.systems"},
                 [this, &device](std::string& error) {
-                    physicsSystem = std::make_unique<PhysicsSystem>(device);
+                    physicsSystem     = std::make_unique<PhysicsSystem>(device);
                     joltPhysicsSystem = std::make_unique<JoltPhysicsSystem>();
                     return true;
                 },
@@ -136,7 +136,7 @@ namespace engine {
         }
 
         // Camera system depends on render context already being created by caller
-        cameraSystem = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
+        cameraSystem              = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
         colliderDebugRenderSystem = std::make_unique<ColliderDebugRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
 
         // Compute / utility systems
@@ -144,8 +144,8 @@ namespace engine {
         lodSystem       = std::make_unique<LODSystem>();
 
         // Shadow & IBL
-        shadowSystem = std::make_unique<ShadowSystem>(device, 4096);
-        iblSystem    = std::make_unique<IBLSystem>(device);
+        shadowSystem       = std::make_unique<ShadowSystem>(device, 4096);
+        iblSystem          = std::make_unique<IBLSystem>(device);
         morphTargetManager = std::make_unique<MorphTargetManager>(device);
 
         // Render systems
@@ -185,10 +185,10 @@ namespace engine {
         deferredIblDescriptorSetsRef().resize(SwapChain::maxFramesInFlight());
         for (int i = 0; i < static_cast<int>(deferredIblDescriptorSetsRef().size()); ++i) {
             auto irradianceInfo = iblSystem->getIrradianceDescriptorInfo();
-            auto prefilterInfo = iblSystem->getPrefilteredDescriptorInfo();
-            auto brdfInfo = iblSystem->getBRDFLUTDescriptorInfo();
+            auto prefilterInfo  = iblSystem->getPrefilteredDescriptorInfo();
+            auto brdfInfo       = iblSystem->getBRDFLUTDescriptorInfo();
             DescriptorWriter(descriptorManager->deferredIblSetLayout(),
-                             descriptorManager->deferredIblPool())
+                descriptorManager->deferredIblPool())
                 .writeImage(0, &irradianceInfo)
                 .writeImage(1, &prefilterInfo)
                 .writeImage(2, &brdfInfo)
@@ -200,7 +200,6 @@ namespace engine {
             assert(ds != VK_NULL_HANDLE && "IBL descriptor set failed to allocate");
         }
     }
-
 
     void EngineState::initPostProcessing(Device& device, Renderer& renderer) {
         // Post-processing descriptor resources are now owned by DescriptorManager.

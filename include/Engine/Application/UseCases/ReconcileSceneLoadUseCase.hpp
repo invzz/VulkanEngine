@@ -5,14 +5,14 @@
 
 namespace engine {
 
-class ReconcileSceneLoadUseCase {
- public:
-  explicit ReconcileSceneLoadUseCase(Scene& scene);
+    class ReconcileSceneLoadUseCase {
+       public:
+        explicit ReconcileSceneLoadUseCase(Scene& scene);
 
-  void execute(SceneRuntimeState& runtimeState) const;
+        void execute(SceneRuntimeState& runtimeState) const;
 
- private:
-  Scene& scene_;
-};
+       private:
+        Scene& scene_;
+    };
 
 }  // namespace engine

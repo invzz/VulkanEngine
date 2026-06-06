@@ -3,22 +3,22 @@
 
 namespace engine {
 
-class GameObject;
+    class GameObject;
 
-class Component {
- public:
-  virtual ~Component() = default;
+    class Component {
+       public:
+        virtual ~Component() = default;
 
-  [[nodiscard]] GameObject* getOwner() const {
-    return owner;
-  }
-  void setOwner(GameObject* newOwner) {
-    owner = newOwner;
-  }
+        [[nodiscard]] GameObject* getOwner() const {
+            return owner;
+        }
+        void setOwner(GameObject* newOwner) {
+            owner = newOwner;
+        }
 
- protected:
-  GameObject* owner = nullptr;
-};
+       protected:
+        GameObject* owner = nullptr;
+    };
 
 }  // namespace engine
 

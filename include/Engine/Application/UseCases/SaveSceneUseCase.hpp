@@ -6,14 +6,14 @@
 
 namespace engine {
 
-class SaveSceneUseCase {
- public:
-  explicit SaveSceneUseCase(IScenePersistencePort& scenePersistence);
+    class SaveSceneUseCase {
+       public:
+        explicit SaveSceneUseCase(IScenePersistencePort& scenePersistence);
 
-  [[nodiscard]] bool execute(const std::string& path) const;
+        [[nodiscard]] bool execute(const std::string& path) const;
 
- private:
-  IScenePersistencePort& scenePersistence_;
-};
+       private:
+        IScenePersistencePort& scenePersistence_;
+    };
 
 }  // namespace engine

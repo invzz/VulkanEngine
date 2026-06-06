@@ -7,9 +7,9 @@
 
 namespace engine {
 
-struct ModelComponent {
-  std::shared_ptr<Model> model;
-};
+    struct ModelComponent {
+        std::shared_ptr<Model> model;
+    };
 
 }  // namespace engine
 

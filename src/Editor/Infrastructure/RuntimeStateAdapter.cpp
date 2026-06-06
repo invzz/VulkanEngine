@@ -4,43 +4,43 @@
 
 namespace engine {
 
-RuntimeStateAdapter::RuntimeStateAdapter(EngineState& engineState)
-    : engineState_(engineState) {}
+    RuntimeStateAdapter::RuntimeStateAdapter(EngineState& engineState)
+        : engineState_(engineState) {}
 
-bool& RuntimeStateAdapter::showSkyboxRef() {
-  return engineState_.showSkyboxRef();
-}
+    bool& RuntimeStateAdapter::showSkyboxRef() {
+        return engineState_.showSkyboxRef();
+    }
 
-bool& RuntimeStateAdapter::showGridRef() {
-  return engineState_.showGridRef();
-}
+    bool& RuntimeStateAdapter::showGridRef() {
+        return engineState_.showGridRef();
+    }
 
-bool& RuntimeStateAdapter::showDebugObjectsRef() {
-  return engineState_.showDebugObjectsRef();
-}
+    bool& RuntimeStateAdapter::showDebugObjectsRef() {
+        return engineState_.showDebugObjectsRef();
+    }
 
-bool& RuntimeStateAdapter::showColliderWireframesRef() {
-  return engineState_.showColliderWireframesRef();
-}
+    bool& RuntimeStateAdapter::showColliderWireframesRef() {
+        return engineState_.showColliderWireframesRef();
+    }
 
-bool& RuntimeStateAdapter::physicsSimulationRunningRef() {
-  return engineState_.physicsSimulationRunningRef();
-}
+    bool& RuntimeStateAdapter::physicsSimulationRunningRef() {
+        return engineState_.physicsSimulationRunningRef();
+    }
 
-bool& RuntimeStateAdapter::solidGroundEnabledRef() {
-  return engineState_.solidGroundEnabledRef();
-}
+    bool& RuntimeStateAdapter::solidGroundEnabledRef() {
+        return engineState_.solidGroundEnabledRef();
+    }
 
-SkyboxSettings& RuntimeStateAdapter::skySettingsRef() {
-  return engineState_.skySettingsRef();
-}
+    SkyboxSettings& RuntimeStateAdapter::skySettingsRef() {
+        return engineState_.skySettingsRef();
+    }
 
-ShadowSettings& RuntimeStateAdapter::shadowSettingsRef() {
-  return engineState_.shadowSettingsRef();
-}
+    ShadowSettings& RuntimeStateAdapter::shadowSettingsRef() {
+        return engineState_.shadowSettingsRef();
+    }
 
-PostProcessPushConstants& RuntimeStateAdapter::postProcessPushRef() {
-  return engineState_.postProcessPushRef();
-}
+    PostProcessPushConstants& RuntimeStateAdapter::postProcessPushRef() {
+        return engineState_.postProcessPushRef();
+    }
 
 }  // namespace engine

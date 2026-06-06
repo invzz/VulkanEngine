@@ -29,25 +29,21 @@ namespace engine {
         }
 
         void logMaterialBindingSummaryOnce(const PBRMaterial& material,
-            uint32_t                           textureFlags,
-            uint32_t                           albedoIndex,
-            uint32_t                           normalIndex,
-            uint32_t                           metallicIndex,
-            uint32_t                           roughnessIndex,
-            uint32_t                           aoIndex,
-            uint32_t                           emissiveIndex) {
+            uint32_t                                          textureFlags,
+            uint32_t                                          albedoIndex,
+            uint32_t                                          normalIndex,
+            uint32_t                                          metallicIndex,
+            uint32_t                                          roughnessIndex,
+            uint32_t                                          aoIndex,
+            uint32_t                                          emissiveIndex) {
             if (!materialDebugLoggingEnabled()) {
                 return;
             }
 
-            static std::mutex              logMutex;
+            static std::mutex                      logMutex;
             static std::unordered_set<std::string> loggedSummaries;
 
-            std::string summary = std::string("flags=") + std::to_string(textureFlags) + " albedo=" + std::to_string(albedoIndex) + " normal=" + std::to_string(normalIndex)
-                + " metallic=" + std::to_string(metallicIndex) + " roughness=" + std::to_string(roughnessIndex) + " ao=" + std::to_string(aoIndex) + " emissive=" + std::to_string(emissiveIndex)
-                + " packedMR=" + (material.useMetallicRoughnessTexture ? "1" : "0") + " packedORM=" + (material.useOcclusionRoughnessMetallicTexture ? "1" : "0")
-                + " hasAlbedo=" + (material.hasAlbedoMap() ? "1" : "0") + " hasNormal=" + (material.hasNormalMap() ? "1" : "0") + " hasRoughness=" + (material.hasRoughnessMap() ? "1" : "0")
-                + " hasAO=" + (material.hasAOMap() ? "1" : "0");
+            std::string summary = std::string("flags=") + std::to_string(textureFlags) + " albedo=" + std::to_string(albedoIndex) + " normal=" + std::to_string(normalIndex) + " metallic=" + std::to_string(metallicIndex) + " roughness=" + std::to_string(roughnessIndex) + " ao=" + std::to_string(aoIndex) + " emissive=" + std::to_string(emissiveIndex) + " packedMR=" + (material.useMetallicRoughnessTexture ? "1" : "0") + " packedORM=" + (material.useOcclusionRoughnessMetallicTexture ? "1" : "0") + " hasAlbedo=" + (material.hasAlbedoMap() ? "1" : "0") + " hasNormal=" + (material.hasNormalMap() ? "1" : "0") + " hasRoughness=" + (material.hasRoughnessMap() ? "1" : "0") + " hasAO=" + (material.hasAOMap() ? "1" : "0");
 
             std::lock_guard<std::mutex> lock(logMutex);
             if (loggedSummaries.size() >= 32 || loggedSummaries.contains(summary)) {
@@ -57,7 +53,7 @@ namespace engine {
             loggedSummaries.insert(summary);
             std::cout << "[MaterialBinding] " << summary << '\n';
         }
-    }
+    }  // namespace
 
     MaterialRenderBindings::MaterialRenderBindings(Device& device) : device_(device) {}
 

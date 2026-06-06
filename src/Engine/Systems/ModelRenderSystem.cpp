@@ -122,22 +122,11 @@ namespace engine {
         bool isMeaningfulMaterialOverride(const PBRMaterial& material) {
             const PBRMaterial defaults{};
 
-            if (material.albedo != defaults.albedo || material.metallic != defaults.metallic || material.roughness != defaults.roughness || material.ao != defaults.ao
-                || material.alphaMode != defaults.alphaMode || material.alphaCutoff != defaults.alphaCutoff || material.doubleSided != defaults.doubleSided || material.clearcoat != defaults.clearcoat
-                || material.clearcoatRoughness != defaults.clearcoatRoughness || material.anisotropic != defaults.anisotropic || material.anisotropicRotation != defaults.anisotropicRotation
-                || material.transmission != defaults.transmission || material.ior != defaults.ior || material.thickness != defaults.thickness || material.attenuationColor != defaults.attenuationColor
-                || material.attenuationDistance != defaults.attenuationDistance || material.iridescence != defaults.iridescence || material.iridescenceIOR != defaults.iridescenceIOR
-                || material.iridescenceThickness != defaults.iridescenceThickness || material.emissiveColor != defaults.emissiveColor || material.emissiveStrength != defaults.emissiveStrength
-                || material.useMetallicRoughnessTexture != defaults.useMetallicRoughnessTexture
-                || material.useOcclusionRoughnessMetallicTexture != defaults.useOcclusionRoughnessMetallicTexture
-                || material.useSpecularGlossinessWorkflow != defaults.useSpecularGlossinessWorkflow || material.specularFactor != defaults.specularFactor
-                || material.glossinessFactor != defaults.glossinessFactor || material.uvScale != defaults.uvScale) {
+            if (material.albedo != defaults.albedo || material.metallic != defaults.metallic || material.roughness != defaults.roughness || material.ao != defaults.ao || material.alphaMode != defaults.alphaMode || material.alphaCutoff != defaults.alphaCutoff || material.doubleSided != defaults.doubleSided || material.clearcoat != defaults.clearcoat || material.clearcoatRoughness != defaults.clearcoatRoughness || material.anisotropic != defaults.anisotropic || material.anisotropicRotation != defaults.anisotropicRotation || material.transmission != defaults.transmission || material.ior != defaults.ior || material.thickness != defaults.thickness || material.attenuationColor != defaults.attenuationColor || material.attenuationDistance != defaults.attenuationDistance || material.iridescence != defaults.iridescence || material.iridescenceIOR != defaults.iridescenceIOR || material.iridescenceThickness != defaults.iridescenceThickness || material.emissiveColor != defaults.emissiveColor || material.emissiveStrength != defaults.emissiveStrength || material.useMetallicRoughnessTexture != defaults.useMetallicRoughnessTexture || material.useOcclusionRoughnessMetallicTexture != defaults.useOcclusionRoughnessMetallicTexture || material.useSpecularGlossinessWorkflow != defaults.useSpecularGlossinessWorkflow || material.specularFactor != defaults.specularFactor || material.glossinessFactor != defaults.glossinessFactor || material.uvScale != defaults.uvScale) {
                 return true;
             }
 
-            return material.albedoMap != nullptr || material.normalMap != nullptr || material.metallicMap != nullptr || material.roughnessMap != nullptr || material.aoMap != nullptr
-                || material.emissiveMap != nullptr || material.specularGlossinessMap != nullptr || material.transmissionMap != nullptr || material.clearcoatMap != nullptr
-                || material.clearcoatRoughnessMap != nullptr || material.clearcoatNormalMap != nullptr;
+            return material.albedoMap != nullptr || material.normalMap != nullptr || material.metallicMap != nullptr || material.roughnessMap != nullptr || material.aoMap != nullptr || material.emissiveMap != nullptr || material.specularGlossinessMap != nullptr || material.transmissionMap != nullptr || material.clearcoatMap != nullptr || material.clearcoatRoughnessMap != nullptr || material.clearcoatNormalMap != nullptr;
         }
 
         PBRMaterial mergeMaterialOverrides(const PBRMaterial* baseMaterial, const PBRMaterial& overrideMaterial) {
@@ -209,11 +198,11 @@ namespace engine {
         }
 
         const PBRMaterial* resolveMaterialForSubMesh(FrameInfo& frameInfo,
-            entt::entity                                     entity,
-            const ModelComponent&                            modelComp,
-            const Model::SubMesh&                            subMesh,
-            std::optional<PBRMaterial>&                      mergedMaterialStorage) {
-            const auto& materials = modelComp.model->getMaterials();
+            entt::entity                                        entity,
+            const ModelComponent&                               modelComp,
+            const Model::SubMesh&                               subMesh,
+            std::optional<PBRMaterial>&                         mergedMaterialStorage) {
+            const auto&        materials    = modelComp.model->getMaterials();
             const PBRMaterial* baseMaterial = nullptr;
             if (subMesh.materialId >= 0 && subMesh.materialId < static_cast<int>(materials.size())) {
                 baseMaterial = &materials[subMesh.materialId].pbrMaterial;

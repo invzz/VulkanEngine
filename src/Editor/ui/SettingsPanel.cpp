@@ -4,13 +4,13 @@
 #include <imgui.h>
 #include <memory>
 
-#include "Editor/UI/UI.hpp"
 #include "Engine/Core/ErrorCodes.hpp"
 #include "Engine/Core/Logger.hpp"
 #include "Engine/EngineState.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/GpuProfiler.hpp"
 
+#include "Editor/UI/UI.hpp"
 #include "Editor/ui/CameraPanel.hpp"
 #include "Editor/ui/DebugPanel.hpp"
 #include "Editor/ui/IBLPanel.hpp"
@@ -23,7 +23,7 @@ namespace engine {
         : engineState_(engineState), multithreadedRecordingEnabled_(multithreadedRecordingEnabled), multithreadedRecordingThreads_(multithreadedRecordingThreads) {
         // CameraPanel still expects entt::entity + Scene*
         entt::entity camEntity = entt::null;
-        Scene* scene = nullptr;
+        Scene*       scene     = nullptr;
         if (engineState_ != nullptr) {
             auto sceneState = engineState_->sceneRuntimeService().view();
             if (sceneState.cameraEntity != nullptr) {
@@ -32,10 +32,10 @@ namespace engine {
             scene = sceneState.scene;
         }
 
-        cameraPanel_           = std::make_unique<CameraPanel>(camEntity, scene);
-        iblPanel_              = std::make_unique<IBLPanel>(engineState_);
-        postProcessPanel_      = std::make_unique<PostProcessPanel>(engineState_->postProcessPushRef());
-        debugPanel_            = std::make_unique<DebugPanel>(debugMode);
+        cameraPanel_      = std::make_unique<CameraPanel>(camEntity, scene);
+        iblPanel_         = std::make_unique<IBLPanel>(engineState_);
+        postProcessPanel_ = std::make_unique<PostProcessPanel>(engineState_->postProcessPushRef());
+        debugPanel_       = std::make_unique<DebugPanel>(debugMode);
     }
 
     void SettingsPanel::render(FrameInfo& frameInfo) {
@@ -50,9 +50,9 @@ namespace engine {
         // Push theme style
         ui::UI::PushThemeStyle();
 
-        auto rendering = engineState_->renderingService().view();
+        auto rendering  = engineState_->renderingService().view();
         auto sceneState = engineState_->sceneRuntimeService().view();
-        auto resources = engineState_->resourceService().view();
+        auto resources  = engineState_->resourceService().view();
 
         if (ImGui::Begin("Settings", &visible_)) {
             // Top-level checkboxes
@@ -268,7 +268,7 @@ namespace engine {
                     for (const auto& event : recent) {
                         const char* boundaryLabel = (event.boundary == ErrorBoundary::Recoverable) ? "Recoverable" : "Fatal";
                         ImVec4      color         = (event.boundary == ErrorBoundary::Recoverable) ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-                        std::string eventText = "[`" + std::string(boundaryLabel) + "] code=" + std::to_string(static_cast<unsigned long long>(event.code)) + " count=" + std::to_string(static_cast<unsigned long long>(event.count));
+                        std::string eventText     = "[`" + std::string(boundaryLabel) + "] code=" + std::to_string(static_cast<unsigned long long>(event.code)) + " count=" + std::to_string(static_cast<unsigned long long>(event.count));
                         ui::UI::TextColored(eventText.c_str(), color);
                         ui::UI::TextDisabled(event.message.c_str());
                     }

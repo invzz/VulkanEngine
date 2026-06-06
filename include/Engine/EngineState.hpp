@@ -18,13 +18,13 @@
 #include "Engine/Systems/GridRenderSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/InputSystem.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "Engine/Systems/LODSystem.hpp"
 #include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
-#include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
-#include "Engine/Systems/JoltPhysicsSystem.hpp"
+#include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -50,12 +50,12 @@ namespace engine {
 
         // lifecycle
         void initialize(Device& device,
-            Renderer&                     renderer,
-            ResourceManager&              resourceManager,
-            IRenderContextPort*           requiredRenderContextPort,
-            Window*                       window,
-            bool                          multithreadedRecordingEnabled,
-            uint32_t                      multithreadedRecordingThreads);
+            Renderer&           renderer,
+            ResourceManager&    resourceManager,
+            IRenderContextPort* requiredRenderContextPort,
+            Window*             window,
+            bool                multithreadedRecordingEnabled,
+            uint32_t            multithreadedRecordingThreads);
 
        private:
         friend class EngineFacade;
@@ -125,7 +125,6 @@ namespace engine {
         }
 
        public:
-
         [[nodiscard]] RenderingStateService renderingService() {
             return RenderingStateService{*this};
         }
@@ -297,45 +296,45 @@ namespace engine {
 
         [[nodiscard]] SystemServicesView systemServices() const {
             return SystemServicesView{
-                .objectSelection = objectSelectionSystem.get(),
-                .input = inputSystem.get(),
-                .camera = cameraSystem.get(),
-                .colliderDebug = colliderDebugRenderSystem.get(),
-                .animation = animationSystem.get(),
-                .lod = lodSystem.get(),
-                .modelRender = modelRenderSystem.get(),
-                .shadow = shadowSystem.get(),
-                .light = lightSystem.get(),
-                .skyboxRender = skyboxRenderSystem.get(),
-                .gridRender = gridRenderSystem.get(),
+                .objectSelection  = objectSelectionSystem.get(),
+                .input            = inputSystem.get(),
+                .camera           = cameraSystem.get(),
+                .colliderDebug    = colliderDebugRenderSystem.get(),
+                .animation        = animationSystem.get(),
+                .lod              = lodSystem.get(),
+                .modelRender      = modelRenderSystem.get(),
+                .shadow           = shadowSystem.get(),
+                .light            = lightSystem.get(),
+                .skyboxRender     = skyboxRenderSystem.get(),
+                .gridRender       = gridRenderSystem.get(),
                 .deferredLighting = deferredLightingSystem.get(),
-                .postProcessing = postProcessingSystem.get(),
-                .ibl = iblSystem.get(),
-                .physics = physicsSystem.get(),
-                .joltPhysics = joltPhysicsSystem.get(),
+                .postProcessing   = postProcessingSystem.get(),
+                .ibl              = iblSystem.get(),
+                .physics          = physicsSystem.get(),
+                .joltPhysics      = joltPhysicsSystem.get(),
             };
         }
 
         SystemRegistry systemRegistry;
 
         // Systems
-        std::unique_ptr<ObjectSelectionSystem>  objectSelectionSystem;
-        std::unique_ptr<InputSystem>            inputSystem;
-        std::unique_ptr<CameraSystem>           cameraSystem;
+        std::unique_ptr<ObjectSelectionSystem>     objectSelectionSystem;
+        std::unique_ptr<InputSystem>               inputSystem;
+        std::unique_ptr<CameraSystem>              cameraSystem;
         std::unique_ptr<ColliderDebugRenderSystem> colliderDebugRenderSystem;
-        std::unique_ptr<AnimationSystem>        animationSystem;
-        std::unique_ptr<LODSystem>              lodSystem;
-        std::unique_ptr<ModelRenderSystem>      modelRenderSystem;
-        std::unique_ptr<ShadowSystem>           shadowSystem;
-        std::unique_ptr<LightSystem>            lightSystem;
-        std::unique_ptr<SkyboxRenderSystem>     skyboxRenderSystem;
-        std::unique_ptr<GridRenderSystem>       gridRenderSystem;
-        std::unique_ptr<DeferredLightingSystem> deferredLightingSystem;
-        std::unique_ptr<PostProcessingSystem>   postProcessingSystem;
-        std::unique_ptr<IBLSystem>              iblSystem;
-        std::unique_ptr<PhysicsSystem>          physicsSystem;
-        std::unique_ptr<JoltPhysicsSystem>      joltPhysicsSystem;
-        std::unique_ptr<MorphTargetManager>     morphTargetManager;
+        std::unique_ptr<AnimationSystem>           animationSystem;
+        std::unique_ptr<LODSystem>                 lodSystem;
+        std::unique_ptr<ModelRenderSystem>         modelRenderSystem;
+        std::unique_ptr<ShadowSystem>              shadowSystem;
+        std::unique_ptr<LightSystem>               lightSystem;
+        std::unique_ptr<SkyboxRenderSystem>        skyboxRenderSystem;
+        std::unique_ptr<GridRenderSystem>          gridRenderSystem;
+        std::unique_ptr<DeferredLightingSystem>    deferredLightingSystem;
+        std::unique_ptr<PostProcessingSystem>      postProcessingSystem;
+        std::unique_ptr<IBLSystem>                 iblSystem;
+        std::unique_ptr<PhysicsSystem>             physicsSystem;
+        std::unique_ptr<JoltPhysicsSystem>         joltPhysicsSystem;
+        std::unique_ptr<MorphTargetManager>        morphTargetManager;
 
         // Input devices (owned by EngineState)
         std::unique_ptr<Keyboard> keyboard;
@@ -354,16 +353,16 @@ namespace engine {
         entt::entity cameraEntity   = entt::null;
 
         // Scene resources and runtime rendering controls.
-        std::unique_ptr<Skybox> skybox;
-        SkyboxSettings          skySettings;
-        ShadowSettings          shadowSettings;
+        std::unique_ptr<Skybox>  skybox;
+        SkyboxSettings           skySettings;
+        ShadowSettings           shadowSettings;
         PostProcessPushConstants postProcessPush{};
 
-        bool showSkybox             = false;
-        bool showGrid               = false;
-        bool showDebugObjects       = false;
-        bool showColliderWireframes = false;
-        bool debugMode              = false;
+        bool showSkybox               = false;
+        bool showGrid                 = false;
+        bool showDebugObjects         = false;
+        bool showColliderWireframes   = false;
+        bool debugMode                = false;
         bool physicsSimulationRunning = false;
         bool solidGroundEnabled       = true;
     };

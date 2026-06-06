@@ -4,15 +4,15 @@
 
 namespace engine {
 
-ScenePersistenceAdapter::ScenePersistenceAdapter(SceneSerializer& serializer)
-    : serializer_(serializer) {}
+    ScenePersistenceAdapter::ScenePersistenceAdapter(SceneSerializer& serializer)
+        : serializer_(serializer) {}
 
-void ScenePersistenceAdapter::saveScene(const std::string& path) {
-  serializer_.serialize(path);
-}
+    void ScenePersistenceAdapter::saveScene(const std::string& path) {
+        serializer_.serialize(path);
+    }
 
-bool ScenePersistenceAdapter::loadScene(const std::string& path) {
-  return serializer_.deserialize(path);
-}
+    bool ScenePersistenceAdapter::loadScene(const std::string& path) {
+        return serializer_.deserialize(path);
+    }
 
 }  // namespace engine

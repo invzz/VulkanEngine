@@ -3,18 +3,20 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+
 #include <memory>
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
+
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 
 namespace engine {
 
-/**
+    /**
  * @brief Central system for all animation types
  *
  * Manages skeletal animations, morph target animations, and procedural animations.
@@ -27,15 +29,15 @@ namespace engine {
  *      - Update all AnimationControllers (interpolate morph weights, bones, etc.)
  *      - Dispatch GPU compute shaders for morph target blending
  */
-class AnimationSystem {
- public:
-  AnimationSystem(Device& device);
-  ~AnimationSystem();
+    class AnimationSystem {
+       public:
+        AnimationSystem(Device& device);
+        ~AnimationSystem();
 
-  AnimationSystem(const AnimationSystem&) = delete;
-  AnimationSystem& operator=(const AnimationSystem&) = delete;
+        AnimationSystem(const AnimationSystem&)            = delete;
+        AnimationSystem& operator=(const AnimationSystem&) = delete;
 
-  /**
+        /**
    * @brief Update all registered animations
    *
    * This performs two steps:
@@ -46,34 +48,34 @@ class AnimationSystem {
    *
    * @param frameInfo Contains deltaTime, command buffer, and game objects
    */
-  void update(FrameInfo& frameInfo);
+        void update(FrameInfo& frameInfo);
 
-  /**
+        /**
    * @brief Get the morph target manager (for render systems that need blended buffers)
    */
-  MorphTargetManager* getMorphManager() {
-    return morphManager_.get();
-  }
+        MorphTargetManager* getMorphManager() {
+            return morphManager_.get();
+        }
 
- private:
-  Device& device_;
-  std::unique_ptr<MorphTargetManager> morphManager_;
+       private:
+        Device&                             device_;
+        std::unique_ptr<MorphTargetManager> morphManager_;
 
-  void updateAnimations(FrameInfo& frameInfo);
-  void updateMorphTargets(FrameInfo& frameInfo);
+        void updateAnimations(FrameInfo& frameInfo);
+        void updateMorphTargets(FrameInfo& frameInfo);
 
-  // Helper functions moved from AnimationController
-  void updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation);
-  void computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform);
+        // Helper functions moved from AnimationController
+        void updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation);
+        void computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform);
 
-  // Interpolation helpers
-  glm::vec3 interpolateVec3(float time, const std::vector<std::pair<float, glm::vec3>>& keyframes);  // Wait, the signature in AnimationController used AnimationSampler
-  // I should probably use AnimationSampler in the signature to match the logic easier.
+        // Interpolation helpers
+        glm::vec3 interpolateVec3(float time, const std::vector<std::pair<float, glm::vec3>>& keyframes);  // Wait, the signature in AnimationController used AnimationSampler
+        // I should probably use AnimationSampler in the signature to match the logic easier.
 
-  static glm::vec3 interpolateVec3(const Model::AnimationSampler& sampler, float time);
-  static glm::quat interpolateQuat(const Model::AnimationSampler& sampler, float time);
-  static std::vector<float> interpolateMorphWeights(const Model::AnimationSampler& sampler, float time);
-};
+        static glm::vec3          interpolateVec3(const Model::AnimationSampler& sampler, float time);
+        static glm::quat          interpolateQuat(const Model::AnimationSampler& sampler, float time);
+        static std::vector<float> interpolateMorphWeights(const Model::AnimationSampler& sampler, float time);
+    };
 
 }  // namespace engine
 
