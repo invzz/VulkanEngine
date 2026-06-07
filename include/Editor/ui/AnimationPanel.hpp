@@ -7,6 +7,7 @@
 
 #include "Engine/Scene/Scene.hpp"
 #include "Editor/ui/UIPanel.hpp"
+#include "Editor/ui/AnimationGraphEditor.hpp"
 
 namespace engine {
 
@@ -69,11 +70,16 @@ private:
 
     std::vector<EntityAnimData> entityAnimData_;
 
+    // ── Animation Graph Editor ────────────────────────────────────────
+    ui::AnimationGraphEditor graphEditor_;
+    bool showGraphEditor_{false};
+
     // Timeline helpers
     void updateTimelineState();
     void renderTimeline();
     void renderEntityAnimations();
     void renderClipControls(EntityAnimData& data, uint32_t entityId, int clipIndex);
+    void renderGraphEditor();
 };
 
 }  // namespace engine

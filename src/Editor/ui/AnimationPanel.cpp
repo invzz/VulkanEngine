@@ -369,6 +369,9 @@ namespace engine {
             }
         }
 
+        // ── Animation Graph Editor ─────────────────────────────────────
+        renderGraphEditor();
+
         ui::UI::PopThemeStyle();
     }
 
@@ -387,6 +390,43 @@ namespace engine {
         }
         if (maxDuration > 0.0f) {
             timeline_.totalDuration = maxDuration;
+        }
+    }
+
+   // ── Animation Graph Editor ───────────────────────────────────────────
+    void AnimationPanel::renderGraphEditor() {
+        if (!showGraphEditor_ || entityAnimData_.empty()) return;
+
+        // Get the first entity's graph and controller
+        std::shared_ptr<AnimationGraph> graph;
+        std::shared_ptr<AnimationController> controller;
+
+        for (const auto& ead : entityAnimData_) {
+            auto view = scene_.getRegistry().view<AnimationComponent>();
+            for (auto entity : view) {
+                auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
+                if (static_cast<uint32_t>(entity) == ead.entityId) {
+                    if (anim.graph) graph = anim.graph;
+                    if (anim.controller) controller = anim.controller;
+                }
+            }
+        }
+
+        if (!graph) return;
+
+        // Toggle button in the panel
+        ImGui::SameLine();
+        if (ui::UI::SmallButton("🔗 Graph Editor##anim_graph")) {
+            showGraphEditor_ = !showGraphEditor_;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Toggle animation graph editor");
+        }
+
+        if (showGraphEditor_ && graph) {
+            // Calculate delta time from timeline
+            float delta = 1.0f / 60.0f; // Assume 60fps for graph stepping
+            graphEditor_.render(graph, controller, delta);
         }
     }
 
