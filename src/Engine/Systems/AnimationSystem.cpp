@@ -15,11 +15,11 @@
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Scene/Components/AnimationController.hpp"
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/quaternion_common.hpp"
 #include "glm/gtc/quaternion.hpp"
 
 namespace engine {
@@ -47,57 +47,82 @@ namespace engine {
 
     void AnimationSystem::updateAnimations(FrameInfo& frameInfo) {
         auto view = frameInfo.scene->getRegistry().view<AnimationComponent, TransformComponent>();
+
         for (auto entity : view) {
             auto [anim, transform] = view.get<AnimationComponent, TransformComponent>(entity);
 
-            if (!anim.isPlaying || !anim.model || anim.currentAnimationIndex < 0) {
-                continue;
+            if (!anim.model) continue;
+
+            // Lazy-create controller if needed
+            if (!anim.controller) {
+                anim.controller = std::make_shared<AnimationController>();
             }
 
-            const auto& animation = anim.model->getAnimations()[anim.currentAnimationIndex];
-
-            // Update time
-            anim.currentTime += frameInfo.frameTime * anim.playbackSpeed;
-
-            // Handle looping
-            if (anim.currentTime > animation.duration) {
-                if (anim.loop) {
-                    anim.currentTime = fmod(anim.currentTime, animation.duration);
+            // If no active clips, check legacy single-clip mode
+            if (!anim.controller->hasActiveClips()) {
+                if (anim.isPlaying && anim.currentAnimationIndex >= 0) {
+                    // Legacy: create controller and play the current animation
+                    anim.controller->play(anim.currentAnimationIndex, *anim.model);
                 } else {
-                    anim.currentTime = animation.duration;
-                    anim.isPlaying   = false;
+                    continue;
                 }
             }
 
-            // Update node transforms based on animation
-            updateNodeTransforms(anim, animation);
+            // Prepare per-bone accumulators
+            auto& nodes = anim.model->getNodes();
+            std::vector<glm::vec3> localTrans(nodes.size(), glm::vec3(0.0f));
+            std::vector<glm::quat> localRot(nodes.size(), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
+            std::vector<glm::vec3> localScale(nodes.size(), glm::vec3(1.0f));
 
-            // Apply root node transform to TransformComponent
-            // Find the root node (first node without a parent)
-            int         rootNodeIndex = -1;
-            const auto& nodes         = anim.model->getNodes();
+            // Update controller — steps time, fires events, accumulates bone transforms
+            anim.controller->update(frameInfo.frameTime, *anim.model,
+                                    localTrans, localRot, localScale);
 
-            for (size_t i = 0; i < nodes.size(); i++) {
+            // Sync isPlaying state from controller
+            anim.isPlaying = anim.controller->hasActiveClips();
+
+            // Apply local transforms to model nodes
+            for (size_t i = 0; i < nodes.size(); ++i) {
+                nodes[i].translation = localTrans[i];
+                nodes[i].rotation = localRot[i];
+                nodes[i].scale = localScale[i];
+            }
+
+            // Compute global transforms (reusing existing helper)
+            anim.nodeTransforms.resize(nodes.size(), glm::mat4(1.0f));
+            for (size_t i = 0; i < nodes.size(); ++i) {
                 bool isRoot = true;
-                for (const auto& node : nodes) {
-                    const auto& children = node.children;
-                    if (std::ranges::find(children, static_cast<int>(i)) != children.end()) {
+                for (const auto& n : nodes) {
+                    if (std::ranges::find(n.children, static_cast<int>(i)) != n.children.end()) {
                         isRoot = false;
                         break;
                     }
                 }
+                 if (isRoot) {
+                    computeGlobalTransforms(anim, static_cast<int>(i), glm::mat4(1.0f));
+                }
+            }
 
+            // Apply root node transform to entity's TransformComponent
+            int rootNodeIndex = -1;
+            for (size_t i = 0; i < nodes.size(); ++i) {
+                bool isRoot = true;
+                for (const auto& n : nodes) {
+                    if (std::ranges::find(n.children, static_cast<int>(i)) != n.children.end()) {
+                        isRoot = false;
+                        break;
+                    }
+                }
                 if (isRoot) {
                     rootNodeIndex = static_cast<int>(i);
                     break;
                 }
             }
 
-            if (rootNodeIndex >= 0 && std::cmp_less(rootNodeIndex, nodes.size())) {
-                const auto& rootNode  = nodes[rootNodeIndex];
-                transform.translation = rootNode.translation;
-                transform.rotation    = glm::eulerAngles(rootNode.rotation);
-                transform.scale       = rootNode.scale * transform.baseScale;
+            if (rootNodeIndex >= 0 && rootNodeIndex < static_cast<int>(nodes.size())) {
+                transform.translation = nodes[static_cast<size_t>(rootNodeIndex)].translation;
+                transform.rotation    = glm::eulerAngles(nodes[static_cast<size_t>(rootNodeIndex)].rotation);
+                transform.scale       = nodes[static_cast<size_t>(rootNodeIndex)].scale * transform.baseScale;
             }
         }
     }
