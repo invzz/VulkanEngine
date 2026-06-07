@@ -142,7 +142,7 @@ public:
     std::vector<AnimationClip>& getClips() { return clips_; }
     const std::vector<AnimationClip>& getClips() const { return clips_; }
 
-    // ── Graph Integration ─────────────────────────────────────────────
+     // ── Graph Integration ─────────────────────────────────────────────
 
     /**
      * @brief Set the animation graph for this controller
@@ -163,6 +163,12 @@ public:
      * @brief Trigger a transition to a target node
      */
     void triggerTransition(int targetNodeId);
+
+    /**
+     * @brief Handle an event — check if any EVENT_BASED transitions fire
+     * @return true if a transition was triggered
+     */
+    bool handleEvent(const std::string& eventName);
 
     /**
      * @brief Get current graph node (if any)

@@ -55,7 +55,7 @@ namespace engine {
 
             // Step animation graph if present
             if (anim.graph) {
-                anim.graph->step(frameInfo.frameTime, anim);
+                anim.graph->step(frameInfo.frameTime);
             }
 
             // Lazy-create controller if needed

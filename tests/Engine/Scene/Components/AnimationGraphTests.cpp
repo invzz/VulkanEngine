@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include "Engine/Scene/Components/AnimationGraph.hpp"
-#include "Engine/Scene/components/AnimationComponent.hpp"
 
 namespace engine {
 namespace {
@@ -117,11 +116,13 @@ TEST(AnimationGraphTest, StepAdvancesTime) {
                         2.0f);
     
     // Step with 1.0f — should not trigger (below threshold)
-    AnimationComponent mockComp;
-    graph.step(1.0f, mockComp);
+    auto trigger = graph.step(1.0f);
+    ASSERT_FALSE(trigger.triggered);
     
     // Step with 2.0f — should trigger
-    graph.step(2.0f, mockComp);
+    trigger = graph.step(2.0f);
+    ASSERT_TRUE(trigger.triggered);
+    ASSERT_EQ(trigger.targetNodeId, walkId);
     
     // Current node should now be walkId
     ASSERT_EQ(graph.getCurrentNode()->id, walkId);

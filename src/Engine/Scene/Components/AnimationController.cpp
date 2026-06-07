@@ -314,22 +314,45 @@ void AnimationController::setGraph(std::shared_ptr<AnimationGraph> graph) {
 void AnimationController::triggerTransition(int targetNodeId) {
     if (!graph_) return;
     
-    const auto* node = graph_->getNode(targetNodeId);
-    if (!node) return;
+     const auto* currentNode = getCurrentGraphNode();
+    if (!currentNode) return;
     
-    // Store current node for crossfading
-    transitioningToNode_ = targetNodeId;
-    transitionTimer_ = 0.0f;
-    
-    // Find the transition duration
-    auto trans = graph_->getTransitions(currentGraphNodeId_);
-    for (auto t : trans) {
+    // Look up transition explicitly
+    auto allTrans = graph_->getTransitions(currentNode->id);
+    const AnimationTransition* foundTrans = nullptr;
+    for (const auto* t : allTrans) {
         if (t->targetNodeId == targetNodeId) {
-            transitionTimer_ = t->blendDuration;
+            foundTrans = t;
             break;
         }
     }
-    if (transitionTimer_ <= 0.0f) transitionTimer_ = 0.25f; // Default blend time
+    
+    // Store current node for crossfading
+    transitioningToNode_ = targetNodeId;
+    transitionTimer_ = foundTrans ? foundTrans->blendDuration : 0.25f;
+    if (transitionTimer_ <= 0.0f) transitionTimer_ = 0.25f;
+    
+    // Update graph current node
+    graph_->setCurrentNode(targetNodeId);
+}
+
+bool AnimationController::handleEvent(const std::string& eventName) {
+    if (!graph_ || transitioningToNode_ != -1) return false;
+    
+    int currentId = currentGraphNodeId_;
+    auto allTrans = graph_->getTransitions(currentId);
+    
+    for (const auto* t : allTrans) {
+        if (t->condition == TransitionCondition::EVENT_BASED && t->eventName == eventName) {
+            // Trigger this transition
+            transitioningToNode_ = t->targetNodeId;
+            transitionTimer_ = t->blendDuration > 0.0f ? t->blendDuration : 0.25f;
+            graph_->setCurrentNode(t->targetNodeId);
+            currentGraphNodeId_ = t->targetNodeId;
+            return true;
+        }
+    }
+    return false;
 }
 
 const AnimationGraphNode* AnimationController::getCurrentGraphNode() const {
@@ -349,15 +372,13 @@ std::vector<std::pair<std::string, void*>> AnimationController::update(float del
                                                                        std::vector<glm::vec3>& outScales) {
     firedEvents_.clear();
 
-    // Evaluate graph transitions if a graph exists
+    // Step the graph (advance time, evaluate transitions)
     if (graph_ && !transitioningToNode_) {
-        const auto* trans = graph_->evaluateNextTransition();
-        if (trans && graph_->getCurrentNode()) {
-            // Check time-based transitions
-            if (trans->condition == TransitionCondition::TIME_BASED) {
-                // This is handled by checking elapsed time in the graph's step()
-                // For now, we'll use a simple threshold
-            }
+         auto trigger = graph_->step(deltaTime);
+        if (trigger.triggered) {
+            // Transition triggered by graph stepping
+            transitioningToNode_ = trigger.targetNodeId;
+            transitionTimer_ = trigger.blendDuration > 0.0f ? trigger.blendDuration : 0.25f;
         }
     }
 
@@ -365,10 +386,21 @@ std::vector<std::pair<std::string, void*>> AnimationController::update(float del
     if (transitioningToNode_ != -1) {
         transitionTimer_ -= deltaTime;
         if (transitionTimer_ <= 0.0f) {
-            // Transition complete
+            // Transition complete — switch to target node's clip
             currentGraphNodeId_ = transitioningToNode_;
             transitioningToNode_ = -1;
             transitionTimer_ = 0.0f;
+
+            // Load the clip from the target node
+            const auto* targetNode = getCurrentGraphNode();
+            if (targetNode && targetNode->clipIndex >= 0) {
+                // Stop all current clips and play the new one
+                for (auto& clip : clips_) {
+                    clip.active = false;
+                    clip.weight = 0.0f;
+                }
+                addClip(targetNode->clipIndex, model, 0, true);
+            }
         }
     }
 
@@ -387,13 +419,13 @@ std::vector<std::pair<std::string, void*>> AnimationController::update(float del
             if (eventCallback_) {
                 eventCallback_(evt.name, evt.userData);
             }
+
+            // Handle event-based transitions
+            handleEvent(evt.name);
+
             ++clip.nextEventIndex;
         }
     }
-
-    // Blend clips with same priority (OVERRIDE mode: only highest-priority clip writes)
-    // For now, OVERRIDE mode means the first active clip for each bone wins.
-    // ADDITIVE mode means all clips accumulate.
 
     return std::move(firedEvents_);
 }

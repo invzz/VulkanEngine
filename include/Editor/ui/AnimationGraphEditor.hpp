@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <vector>
 #include <algorithm>
+#include <cstring>
 
 #include "Engine/Scene/Components/AnimationGraph.hpp"
 #include "Engine/Scene/Components/AnimationController.hpp"
@@ -23,6 +24,7 @@ namespace engine::ui {
  * - Render nodes as colored rectangles with name and clip info
  * - Draw bezier curve connections between nodes
  * - Drag nodes to reposition (ImGui::IsMouseDragging on node bounds)
+ * - Drag-from-output-port to create new transitions (drag-to-connect)
  * - Inline property panel for selected node/transition
  * - Play/step preview to visualize graph state transitions
  * - Zoom and pan with scroll/wheel
@@ -68,10 +70,28 @@ private:
     int hoveredNodeId_{-1};
     int draggingNodeId_{-1};
 
+    // Drag-to-connect state
+    int draggingOutputNode_{-1};
+    bool isConnecting_{false};
+    int connectTargetNodeId_{-1};
+    ImVec2 connectMousePos_{0.0f, 0.0f};
+
     // Preview state
     bool isPlaying_{false};
     float previewTime_{0.0f};
     bool graphModified_{false};
+
+    // Dialog state
+    bool showAddNode_{false};
+    bool showAddTransition_{false};
+    std::string newNodeName_;
+    int newClipIndex_{-1};
+    bool newNodeIsEntry_{false};
+    int newTransitionSource_{-1};
+    int newTransitionTarget_{-1};
+    std::string newTransitionName_;
+    TransitionCondition newTransitionCondition_{TransitionCondition::NONE};
+    float newTransitionTimeThreshold_{0.0f};
 
     // ── Internal helpers ──────────────────────────────────────────────
     void updateNodePositions(std::shared_ptr<AnimationGraph> graph);
@@ -86,6 +106,10 @@ private:
     void handleNodeInteraction();
     void handleCanvasInteraction();
     void autoLayoutGraph(std::shared_ptr<AnimationGraph> graph);
+    void handleAddNodeDialog(std::shared_ptr<AnimationGraph> graph);
+    void handleAddTransitionDialog(std::shared_ptr<AnimationGraph> graph);
+    void handleConnectInteraction(std::shared_ptr<AnimationGraph> graph);
+    void renderConnectPreview();
 
     // Node color helpers
     ImVec4 getNodeColor(const AnimationGraphNode& node) const;
@@ -187,8 +211,6 @@ inline void AnimationGraphEditor::updateNodePositions(std::shared_ptr<AnimationG
     if (graph->getEntryNode()) {
         nodeIds.insert(graph->getEntryNode()->id);
     }
-    // We need to iterate transitions to find all nodes - use getTransitions on entry
-    // For now, just add entry and any node we can find via transitions
     for (const auto& entry : nodeMap_) {
         if (entry.second.node) {
             nodeIds.insert(entry.second.node->id);
@@ -279,7 +301,7 @@ inline void AnimationGraphEditor::renderNodes() {
 
         // Active indicator
         if (node.node->active) {
-            std::string status = "▶ Active";
+            std::string status = "Active";
             ImGui::GetWindowDrawList()->AddText(
                 ImVec2(screenPos.x + 8.0f * zoom_, screenPos.y + 40.0f * zoom_),
                 ImGui::ColorConvertFloat4ToU32(ImVec4(0.4f, 0.9f, 0.4f, 0.8f)),
@@ -296,6 +318,18 @@ inline void AnimationGraphEditor::renderNodes() {
         }
         if (ImGui::IsItemHovered() && ImGui::IsMouseDragging(0)) {
             draggingNodeId_ = id;
+        }
+
+        // ── Drag-to-connect from output port ─────────────────────────
+        // Hit test output port circle
+        ImVec2 portCenter(screenPos.x + screenSize.x, screenPos.y + screenSize.y * 0.5f);
+        float portRadius = 8.0f * zoom_;
+        ImVec2 mouseDelta(ImGui::GetMousePos().x - portCenter.x, ImGui::GetMousePos().y - portCenter.y);
+        float distToMouse = ImSqrt(mouseDelta.x * mouseDelta.x + mouseDelta.y * mouseDelta.y);
+        if (distToMouse < portRadius && ImGui::IsMouseDragging(0, 1.0f)) {
+            draggingOutputNode_ = id;
+            isConnecting_ = true;
+            connectMousePos_ = ImGui::GetMousePos();
         }
     }
 }
@@ -373,6 +407,77 @@ inline void AnimationGraphEditor::renderConnections(std::shared_ptr<AnimationGra
                 ImGui::ColorConvertFloat4ToU32(ImVec4(0.8f, 0.85f, 0.95f, 0.9f)),
                 t->name.c_str()
             );
+        }
+    }
+}
+
+inline void AnimationGraphEditor::renderConnectPreview() {
+    if (!isConnecting_ || draggingOutputNode_ < 0) return;
+
+    auto srcIt = nodeMap_.find(draggingOutputNode_);
+    if (srcIt == nodeMap_.end() || !srcIt->second.node) return;
+
+    ImVec2 srcScreenPos(srcIt->second.pos.x + canvasOffset_.x, srcIt->second.pos.y + canvasOffset_.y);
+    ImVec2 srcSize(srcIt->second.size.x * zoom_, srcIt->second.size.y * zoom_);
+    ImVec2 srcPos(srcScreenPos.x + srcSize.x, srcScreenPos.y + srcSize.y * 0.5f);
+
+    ImVec2 dstPos(connectMousePos_);
+
+    // Bezier control points
+    ImVec2 cp1(srcPos.x + 50.0f * zoom_, srcPos.y);
+    ImVec2 cp2(dstPos.x - 50.0f * zoom_, dstPos.y);
+
+    // Draw dashed bezier line
+    int segments = 20;
+    for (int i = 0; i < segments; ++i) {
+        float tt = i / static_cast<float>(segments);
+        float tt2 = tt * tt;
+        float tt3 = tt2 * tt;
+        float mt = 1.0f - tt;
+        float mt2 = mt * mt;
+        float mt3 = mt2 * mt;
+
+        float x = mt3 * srcPos.x + 3 * mt2 * tt * cp1.x + 3 * mt * tt2 * cp2.x + tt3 * dstPos.x;
+        float y = mt3 * srcPos.y + 3 * mt2 * tt * cp1.y + 3 * mt * tt2 * cp2.y + tt3 * dstPos.y;
+
+        float ntt = (i + 1) / static_cast<float>(segments);
+        float ntt2 = ntt * ntt;
+        float ntt3 = ntt2 * ntt;
+        float mnt = 1.0f - ntt;
+        float mnt2 = mnt * mnt;
+        float mnt3 = mnt2 * mnt;
+
+        float nx = mnt3 * srcPos.x + 3 * mnt2 * ntt * cp1.x + 3 * mnt * ntt2 * cp2.x + ntt3 * dstPos.x;
+        float ny = mnt3 * srcPos.y + 3 * mnt2 * ntt * cp1.y + 3 * mnt * ntt2 * cp2.y + ntt3 * dstPos.y;
+
+        // Dashed line effect
+        bool dash = (i % 3) == 0;
+        if (!dash) {
+            ImGui::GetWindowDrawList()->AddLine(ImVec2(x, y), ImVec2(nx, ny),
+                ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f, 0.7f, 0.95f, 0.8f)),
+                2.0f);
+        }
+    }
+
+   // Highlight target node if hovering over it
+    for (auto& entry : nodeMap_) {
+        if (entry.second.node == nullptr) continue;
+        ImVec2 nScreenPos(entry.second.pos.x + canvasOffset_.x, entry.second.pos.y + canvasOffset_.y);
+        ImVec2 nSize(entry.second.size.x * zoom_, entry.second.size.y * zoom_);
+        ImVec2 mousePos = ImGui::GetMousePos();
+        if (mousePos.x > nScreenPos.x && mousePos.x < nScreenPos.x + nSize.x &&
+            mousePos.y > nScreenPos.y && mousePos.y < nScreenPos.y + nSize.y) {
+            if (entry.first != draggingOutputNode_) {
+                connectTargetNodeId_ = entry.first;
+                ImVec2 nScreenPosMax(nScreenPos.x + nSize.x, nScreenPos.y + nSize.y);
+                ImGui::GetWindowDrawList()->AddRect(nScreenPos, nScreenPosMax,
+                    ImGui::ColorConvertFloat4ToU32(ImVec4(1.0f, 0.9f, 0.3f, 0.6f)),
+                    6.0f, 0, 3.0f);
+            } else {
+                connectTargetNodeId_ = -1;
+            }
+        } else {
+            connectTargetNodeId_ = -1;
         }
     }
 }
@@ -468,10 +573,10 @@ inline void AnimationGraphEditor::renderPropertyPanel(std::shared_ptr<AnimationG
         ImGui::TextDisabled("Click a node or connection to inspect");
     }
 
-    // Add node/transition buttons
+  // Add node/transition buttons
     ImGui::Separator();
     if (ImGui::SmallButton("+ Add Node")) {
-        graphModified_ = true;
+        showAddNode_ = true;
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Add new animation state node");
@@ -479,10 +584,10 @@ inline void AnimationGraphEditor::renderPropertyPanel(std::shared_ptr<AnimationG
 
     ImGui::SameLine();
     if (ImGui::SmallButton("+ Add Transition")) {
-        graphModified_ = true;
+        showAddTransition_ = true;
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Add transition between selected nodes");
+        ImGui::SetTooltip("Add transition between nodes");
     }
 
     ImGui::SameLine();
@@ -517,16 +622,16 @@ inline void AnimationGraphEditor::renderPlayControls(std::shared_ptr<AnimationGr
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Transitioning...");
     }
 
-    if (ImGui::SmallButton("▶ Play")) {
+    if (ImGui::SmallButton("Play")) {
         isPlaying_ = true;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("⏸ Step")) {
+    if (ImGui::SmallButton("Step")) {
         // Note: full stepping requires AnimationComponent, which is a forward declaration here
         graphModified_ = true;
     }
     ImGui::SameLine();
-    if (ImGui::SmallButton("⏹ Stop")) {
+    if (ImGui::SmallButton("Stop")) {
         isPlaying_ = false;
         previewTime_ = 0.0f;
     }
@@ -538,6 +643,29 @@ inline void AnimationGraphEditor::renderPlayControls(std::shared_ptr<AnimationGr
     // Show preview time
     ImGui::Text("Preview Time: %.3fs", previewTime_);
     ImGui::DragFloat("Preview Speed", &previewTime_, 0.1f, 0.0f, 100.0f, "%.2f s");
+}
+
+inline void AnimationGraphEditor::handleConnectInteraction(std::shared_ptr<AnimationGraph> graph) {
+    // If we've released the mouse while hovering over a target node, create the connection
+    if (isConnecting_ && connectTargetNodeId_ >= 0) {
+        if (ImGui::IsMouseReleased(0)) {
+            // Open the add transition dialog pre-filled
+            newTransitionSource_ = draggingOutputNode_;
+            newTransitionTarget_ = connectTargetNodeId_;
+            newTransitionName_ = "Transition_" + std::to_string(draggingOutputNode_) + "_to_" + std::to_string(connectTargetNodeId_);
+            newTransitionCondition_ = TransitionCondition::TIME_BASED;
+            newTransitionTimeThreshold_ = 0.0f;
+            showAddTransition_ = true;
+            isConnecting_ = false;
+            draggingOutputNode_ = -1;
+            connectTargetNodeId_ = -1;
+        }
+    } else if (isConnecting_ && ImGui::IsMouseReleased(0)) {
+        // Released without landing on a node — cancel
+        isConnecting_ = false;
+        draggingOutputNode_ = -1;
+        connectTargetNodeId_ = -1;
+    }
 }
 
 inline void AnimationGraphEditor::handleNodeInteraction() {
@@ -589,8 +717,11 @@ inline bool AnimationGraphEditor::render(std::shared_ptr<AnimationGraph> graph,
     selectedTransitionId_ = -1;
     hoveredNodeId_ = -1;
     draggingNodeId_ = -1;
+    isConnecting_ = false;
+    draggingOutputNode_ = -1;
+    connectTargetNodeId_ = -1;
 
-    if (!ImGui::Begin("Animation Graph##graph_editor")) {
+    if (!ImGui::Begin("Animation Graph##graph_editor", nullptr, ImGuiWindowFlags_NoScrollbar)) {
         ImGui::End();
         return false;
     }
@@ -630,8 +761,16 @@ inline bool AnimationGraphEditor::render(std::shared_ptr<AnimationGraph> graph,
     // Render nodes
     renderNodes();
 
+    // Render connect preview line
+    renderConnectPreview();
+
     // Handle interactions
     handleNodeInteraction();
+    handleConnectInteraction(graph);
+
+    // Show popups
+    handleAddNodeDialog(graph);
+    handleAddTransitionDialog(graph);
 
     // Right panel for properties
     if (ImGui::BeginChild("properties_panel", ImVec2(250.0f, 0), true)) {
@@ -642,6 +781,160 @@ inline bool AnimationGraphEditor::render(std::shared_ptr<AnimationGraph> graph,
 
     ImGui::End();
     return graphModified_;
+}
+
+inline void AnimationGraphEditor::handleAddNodeDialog(std::shared_ptr<AnimationGraph> graph) {
+    if (!showAddNode_) return;
+    
+    if (!ImGui::BeginPopupModal("Add Node###add_node_modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        showAddNode_ = false;
+        return;
+    }
+    
+    // Use buffer for ImGui InputText
+    char nameBuf[256] = "";
+    if (!newNodeName_.empty()) {
+        strncpy(nameBuf, newNodeName_.c_str(), sizeof(nameBuf) - 1);
+        nameBuf[sizeof(nameBuf) - 1] = '\0';
+    }
+    
+    ImGui::Text("New Node Name:");
+    ImGui::InputText("##new_node_name", nameBuf, sizeof(nameBuf));
+    if (nameBuf[0] != '\0') {
+        newNodeName_ = nameBuf;
+    }
+    
+    ImGui::Text("Clip Index (-1 for entry/exit):");
+    ImGui::InputInt("##new_clip_index", &newClipIndex_);
+    
+    ImGui::Checkbox("Entry Node", &newNodeIsEntry_);
+    
+    ImGui::Spacing();
+    if (ImGui::SmallButton("OK")) {
+        if (graph && !newNodeName_.empty()) {
+            int newId = graph->addNode(newNodeName_, newClipIndex_, newNodeIsEntry_);
+            graphModified_ = true;
+            selectedNodeId_ = newId;
+            showAddNode_ = false;
+            newNodeName_.clear();
+            newClipIndex_ = -1;
+            newNodeIsEntry_ = false;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Cancel")) {
+        showAddNode_ = false;
+        newNodeName_.clear();
+        newClipIndex_ = -1;
+        newNodeIsEntry_ = false;
+    }
+    
+    ImGui::EndPopup();
+}
+
+inline void AnimationGraphEditor::handleAddTransitionDialog(std::shared_ptr<AnimationGraph> graph) {
+    if (!showAddTransition_) return;
+    
+    if (!ImGui::BeginPopupModal("Add Transition###add_trans_modal", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        showAddTransition_ = false;
+        return;
+    }
+    
+    // Build node list for combos
+    std::vector<const AnimationGraphNode*> nodes;
+    if (graph) {
+        auto allNodes = graph->getAllNodes();
+        for (const auto& n : allNodes) {
+            nodes.push_back(&n);
+        }
+    }
+    
+    if (nodes.empty()) {
+        ImGui::TextDisabled("No nodes available");
+    } else {
+        int sourceIdx = -1;
+        if (newTransitionSource_ >= 0) {
+            for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+                if (nodes[i]->id == newTransitionSource_) {
+                    sourceIdx = i;
+                    break;
+                }
+            }
+        }
+        if (sourceIdx < 0) sourceIdx = 0;
+        ImGui::Combo("From Node", &sourceIdx,
+            [](void* data, int idx) -> const char* {
+                const auto* nodes = static_cast<const std::vector<const AnimationGraphNode*>*>(data);
+                return nodes->at(idx)->name.empty() ? ("Node " + std::to_string(nodes->at(idx)->id)).c_str() : nodes->at(idx)->name.c_str();
+            }, this, static_cast<int>(nodes.size()));
+        newTransitionSource_ = nodes[sourceIdx]->id;
+        
+        int targetIdx = -1;
+        if (newTransitionTarget_ >= 0) {
+            for (int i = 0; i < static_cast<int>(nodes.size()); ++i) {
+                if (nodes[i]->id == newTransitionTarget_) {
+                    targetIdx = i;
+                    break;
+                }
+            }
+        }
+        if (targetIdx < 0) targetIdx = 1;
+        ImGui::Combo("To Node", &targetIdx,
+            [](void* data, int idx) -> const char* {
+                const auto* nodes = static_cast<const std::vector<const AnimationGraphNode*>*>(data);
+                return nodes->at(idx)->name.empty() ? ("Node " + std::to_string(nodes->at(idx)->id)).c_str() : nodes->at(idx)->name.c_str();
+            }, this, static_cast<int>(nodes.size()));
+        newTransitionTarget_ = nodes[targetIdx]->id;
+        
+        ImGui::Text("Transition Name:");
+        char transNameBuf[256] = "";
+        if (!newTransitionName_.empty()) {
+            strncpy(transNameBuf, newTransitionName_.c_str(), sizeof(transNameBuf) - 1);
+            transNameBuf[sizeof(transNameBuf) - 1] = '\0';
+        }
+        ImGui::InputText("##trans_name", transNameBuf, sizeof(transNameBuf));
+        if (transNameBuf[0] != '\0') {
+            newTransitionName_ = transNameBuf;
+        }
+        
+        int condInt = static_cast<int>(newTransitionCondition_);
+        ImGui::Combo("Condition", &condInt, "None\0Time-Based\0Event-Based\0Param-Based\0");
+        newTransitionCondition_ = static_cast<TransitionCondition>(condInt);
+        
+        if (newTransitionCondition_ == TransitionCondition::TIME_BASED) {
+            ImGui::DragFloat("Time Threshold (s)", &newTransitionTimeThreshold_, 0.1f, 0.01f, 100.0f, "%.2f");
+        }
+    }
+    
+    ImGui::Spacing();
+    if (ImGui::SmallButton("OK")) {
+        if (graph && newTransitionSource_ >= 0 && newTransitionTarget_ >= 0) {
+            graph->addTransition(
+                newTransitionSource_, newTransitionTarget_,
+                newTransitionName_.empty() ? ("Transition_" + std::to_string(newTransitionSource_) + "_to_" + std::to_string(newTransitionTarget_)) : newTransitionName_,
+                newTransitionCondition_,
+                newTransitionCondition_ == TransitionCondition::TIME_BASED ? newTransitionTimeThreshold_ : 0.0f,
+                newTransitionCondition_ == TransitionCondition::EVENT_BASED ? newTransitionName_ : "",
+                "", 0.0f, 0.25f, false
+            );
+            graphModified_ = true;
+            showAddTransition_ = false;
+            newTransitionSource_ = -1;
+            newTransitionTarget_ = -1;
+            newTransitionName_.clear();
+            newTransitionCondition_ = TransitionCondition::NONE;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::SmallButton("Cancel")) {
+        showAddTransition_ = false;
+        newTransitionSource_ = -1;
+        newTransitionTarget_ = -1;
+        newTransitionName_.clear();
+        newTransitionCondition_ = TransitionCondition::NONE;
+    }
+    
+    ImGui::EndPopup();
 }
 
 } // namespace engine::ui

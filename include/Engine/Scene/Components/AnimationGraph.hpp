@@ -127,11 +127,25 @@ public:
     /** Set current active node */
     void setCurrentNode(int nodeId);
 
-    /** Step the graph — advance time, evaluate conditions */
-    void step(float deltaTime, const AnimationComponent& comp);
-
     /** Get all registered event names for this graph */
     std::vector<std::string> getRequiredEvents() const;
+
+    /** Get all nodes (for editor) */
+    std::vector<AnimationGraphNode> getAllNodes() const;
+
+    /** Get all transitions (for editor) */
+    std::vector<AnimationTransition> getTransitionsCopy() const;
+
+    struct TransitionTrigger {
+        int sourceNodeId{-1};
+        int targetNodeId{-1};
+        float blendDuration{0.0f};
+        TransitionCondition condition{TransitionCondition::NONE};
+        bool triggered{false};
+    };
+
+  /** Step the graph — advance time, evaluate conditions. Returns trigger info. */
+    TransitionTrigger step(float deltaTime);
 
 private:
     std::vector<AnimationGraphNode> nodes_;

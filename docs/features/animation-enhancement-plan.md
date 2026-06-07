@@ -219,12 +219,17 @@ struct AnimationComponent {
   - `getRequiredEvents()` — collect event names from transitions
   - `setCurrentNode()` — manual node switching
 
-### 3.2 Editor UI — Graph Editor widget (future)
-- Node-based graph view in ImGui
-- Add/remove nodes and transitions
-- Visual connections between nodes (colored lines)
-- Inline property editing for transition conditions
-- Play/pause/step preview within editor
+### 3.2 Editor UI — Graph Editor widget ✅
+|- `AnimationGraphEditor.hpp` — header-only ImGui widget
+|- Node rendering with colored rectangles (entry/exit/blend/state)
+|- Bézier curve connections between nodes
+|- Drag nodes to reposition
+|- Inline property panel for node/transition editing
+|- Play/step preview controls
+|- Auto-layout (BFS layer-based)
+|- Zoom/pan canvas
+|- Integration with AnimationPanel (toggle button)
+|- Build: Green, Tests: 33/33 pass
 
 ### 3.3 Runtime Integration ✅
 - **AnimationController**:

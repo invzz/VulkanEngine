@@ -66,6 +66,14 @@ namespace engine {
         return result;
     }
 
+    std::vector<AnimationTransition> AnimationGraph::getTransitionsCopy() const {
+        return transitions_;
+    }
+
+    std::vector<AnimationGraphNode> AnimationGraph::getAllNodes() const {
+        return nodes_;
+    }
+
     const AnimationTransition* AnimationGraph::getDefaultTransition(int sourceId) const {
         for (const auto& t : transitions_) {
             if (t.sourceNodeId == sourceId && t.isDefault) {
@@ -135,9 +143,20 @@ namespace engine {
         return getDefaultTransition(current->id);
     }
 
-    void AnimationGraph::step(float deltaTime, const AnimationComponent& comp) {
+   struct TransitionTrigger {
+        int sourceNodeId{-1};
+        int targetNodeId{-1};
+        float blendDuration{0.0f};
+        TransitionCondition condition{TransitionCondition::NONE};
+        bool triggered{false};
+    };
+
+    AnimationGraph::TransitionTrigger AnimationGraph::step(float deltaTime) {
+        AnimationGraph::TransitionTrigger trigger;
+        trigger.sourceNodeId = currentNodeId_;
+
         const auto* current = getNode(currentNodeId_);
-        if (!current) return;
+        if (!current) return trigger;
 
         elapsedSinceEntry_ += deltaTime;
 
@@ -149,10 +168,38 @@ namespace engine {
                     // Trigger transition
                     setCurrentNode(t->targetNodeId);
                     elapsedSinceEntry_ = 0.0f;
+                    trigger.targetNodeId = t->targetNodeId;
+                    trigger.blendDuration = t->blendDuration;
+                    trigger.condition = t->condition;
+                    trigger.triggered = true;
                     break;
                 }
             }
         }
+
+        // Check default transition
+        if (!trigger.triggered) {
+            const auto* defaultTrans = getDefaultTransition(current->id);
+            if (defaultTrans) {
+                setCurrentNode(defaultTrans->targetNodeId);
+                elapsedSinceEntry_ = 0.0f;
+                trigger.targetNodeId = defaultTrans->targetNodeId;
+                trigger.blendDuration = defaultTrans->blendDuration;
+                trigger.condition = defaultTrans->condition;
+                trigger.triggered = true;
+            }
+        }
+
+        // Update node state — access via mutable reference
+        if (currentNodeId_ >= 0 && static_cast<size_t>(currentNodeId_) < nodes_.size()) {
+            nodes_[static_cast<size_t>(currentNodeId_)].active = true;
+        }
+        const auto* newCurrent = getCurrentNode();
+        if (newCurrent && newCurrent->id >= 0 && static_cast<size_t>(newCurrent->id) < nodes_.size()) {
+            nodes_[static_cast<size_t>(newCurrent->id)].active = true;
+        }
+
+        return trigger;
     }
 
     std::vector<std::string> AnimationGraph::getRequiredEvents() const {
