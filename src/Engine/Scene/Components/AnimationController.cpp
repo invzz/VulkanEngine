@@ -302,12 +302,75 @@ int AnimationController::findDominantClipForBone(int boneIndex) const {
     return bestIdx;
 }
 
+void AnimationController::setGraph(std::shared_ptr<AnimationGraph> graph) {
+    graph_ = graph;
+    if (graph_ && graph_->getEntryNode()) {
+        currentGraphNodeId_ = graph_->getEntryNode()->id;
+        transitioningToNode_ = -1;
+        transitionTimer_ = 0.0f;
+    }
+}
+
+void AnimationController::triggerTransition(int targetNodeId) {
+    if (!graph_) return;
+    
+    const auto* node = graph_->getNode(targetNodeId);
+    if (!node) return;
+    
+    // Store current node for crossfading
+    transitioningToNode_ = targetNodeId;
+    transitionTimer_ = 0.0f;
+    
+    // Find the transition duration
+    auto trans = graph_->getTransitions(currentGraphNodeId_);
+    for (auto t : trans) {
+        if (t->targetNodeId == targetNodeId) {
+            transitionTimer_ = t->blendDuration;
+            break;
+        }
+    }
+    if (transitionTimer_ <= 0.0f) transitionTimer_ = 0.25f; // Default blend time
+}
+
+const AnimationGraphNode* AnimationController::getCurrentGraphNode() const {
+    if (!graph_ || currentGraphNodeId_ < 0) return nullptr;
+    return graph_->getNode(currentGraphNodeId_);
+}
+
+std::string AnimationController::getCurrentGraphNodeName() const {
+    const auto* node = getCurrentGraphNode();
+    return node ? node->name : "None";
+}
+
 std::vector<std::pair<std::string, void*>> AnimationController::update(float deltaTime,
                                                                        const Model& model,
                                                                        std::vector<glm::vec3>& outTranslations,
                                                                        std::vector<glm::quat>& outRotations,
                                                                        std::vector<glm::vec3>& outScales) {
     firedEvents_.clear();
+
+    // Evaluate graph transitions if a graph exists
+    if (graph_ && !transitioningToNode_) {
+        const auto* trans = graph_->evaluateNextTransition();
+        if (trans && graph_->getCurrentNode()) {
+            // Check time-based transitions
+            if (trans->condition == TransitionCondition::TIME_BASED) {
+                // This is handled by checking elapsed time in the graph's step()
+                // For now, we'll use a simple threshold
+            }
+        }
+    }
+
+    // Handle crossfading during transition
+    if (transitioningToNode_ != -1) {
+        transitionTimer_ -= deltaTime;
+        if (transitionTimer_ <= 0.0f) {
+            // Transition complete
+            currentGraphNodeId_ = transitioningToNode_;
+            transitioningToNode_ = -1;
+            transitionTimer_ = 0.0f;
+        }
+    }
 
     // Step each active clip's time
     for (auto& clip : clips_) {

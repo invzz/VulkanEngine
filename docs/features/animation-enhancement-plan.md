@@ -226,9 +226,23 @@ struct AnimationComponent {
 - Inline property editing for transition conditions
 - Play/pause/step preview within editor
 
+### 3.3 Runtime Integration ✅
+- **AnimationController**:
+  - `setGraph()` / `getGraph()` — attach/detach graph
+  - `triggerTransition()` — initiate crossfade to target node
+  - `getCurrentGraphNode()` / `getCurrentGraphNodeName()` — query state
+  - `isTransitioning()` — check crossfade progress
+  - `update()` evaluates graph conditions and handles crossfading
+- **AnimationComponent**:
+  - `std::shared_ptr<AnimationGraph> graph` — graph field
+  - `setGraph()`, `triggerGraphTransition()`, `getCurrentGraphNodeName()`, `isTransitioning()` — exposed methods
+- **AnimationSystem**:
+  - `updateAnimations()` steps graph before processing clips
+  - Graph stepping handles time-based transitions automatically
+
 ### Build & Test
 - Build: Green
-- Tests: 10/10 AnimationGraph tests pass, 33/33 total animation tests
+- Tests: 33/33 animation tests pass (10 new graph tests + 23 existing)
 
 ## Verification Checklist
 

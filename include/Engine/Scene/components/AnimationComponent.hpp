@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Engine/Scene/Components/AnimationController.hpp"
+#include "Engine/Scene/Components/AnimationGraph.hpp"
 #include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
@@ -23,6 +24,7 @@ namespace engine {
     struct AnimationComponent {
         std::shared_ptr<Model> model;
         std::shared_ptr<AnimationController> controller;
+        std::shared_ptr<AnimationGraph> graph; // Animation graph for state transitions
 
         // Backward-compatible query fields (mirrors controller state)
         int   currentAnimationIndex{-1};
@@ -101,6 +103,42 @@ namespace engine {
         /** Drain fired events from the controller */
         std::vector<std::pair<std::string, void*>> takeEvents() {
             return controller ? controller->takeEvents() : std::vector<std::pair<std::string, void*>>{};
+        }
+
+        // ── Graph methods ───────────────────────────────────────────────
+
+        /** Set the animation graph for state transitions */
+        void setGraph(std::shared_ptr<AnimationGraph> g) {
+            graph = g;
+            if (controller) {
+                controller->setGraph(g);
+            }
+            if (g && g->getEntryNode()) {
+                currentAnimationIndex = g->getEntryNode()->clipIndex;
+                currentTime = 0.0f;
+            }
+        }
+
+        /** Trigger a transition in the animation graph */
+        bool triggerGraphTransition(int targetNodeId) {
+            if (!graph) return false;
+            if (controller) {
+                controller->triggerTransition(targetNodeId);
+            }
+            return true;
+        }
+
+        /** Get current graph node name (for display/debug) */
+        std::string getCurrentGraphNodeName() const {
+            if (controller) {
+                return controller->getCurrentGraphNodeName();
+            }
+            return "None";
+        }
+
+        /** Check if a transition is currently in progress */
+        bool isTransitioning() const {
+            return controller ? controller->isTransitioning() : false;
         }
 
     private:

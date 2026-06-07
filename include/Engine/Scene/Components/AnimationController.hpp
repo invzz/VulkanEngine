@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "AnimationClip.hpp"
+#include "AnimationGraph.hpp"
 #include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
@@ -141,6 +142,43 @@ public:
     std::vector<AnimationClip>& getClips() { return clips_; }
     const std::vector<AnimationClip>& getClips() const { return clips_; }
 
+    // ── Graph Integration ─────────────────────────────────────────────
+
+    /**
+     * @brief Set the animation graph for this controller
+     */
+    void setGraph(std::shared_ptr<AnimationGraph> graph);
+
+    /**
+     * @brief Check if this controller has an associated graph
+     */
+    bool hasGraph() const { return graph_ != nullptr; }
+
+    /**
+     * @brief Get the graph
+     */
+    std::shared_ptr<AnimationGraph> getGraph() const { return graph_; }
+
+    /**
+     * @brief Trigger a transition to a target node
+     */
+    void triggerTransition(int targetNodeId);
+
+    /**
+     * @brief Get current graph node (if any)
+     */
+    const AnimationGraphNode* getCurrentGraphNode() const;
+
+    /**
+     * @brief Get current graph node name (for display)
+     */
+    std::string getCurrentGraphNodeName() const;
+
+    /**
+     * @brief Check if a transition is in progress (crossfading)
+     */
+    bool isTransitioning() const { return transitioningToNode_ != -1; }
+
     /**
      * @brief Get clip by index, or nullptr if not found
      */
@@ -175,6 +213,12 @@ private:
 
     // Temporarily accumulates fired events during update(), drained by takeEvents()
     std::vector<std::pair<std::string, void*>> firedEvents_;
+
+    // Animation graph integration
+    std::shared_ptr<AnimationGraph> graph_;
+    int currentGraphNodeId_{-1};
+    int transitioningToNode_{-1};
+    float transitionTimer_{0.0f};
 
     // Internal: apply a single clip's transforms to accumulators
     void applyClipToAccumulators(const AnimationClip& clip, const Model& model,

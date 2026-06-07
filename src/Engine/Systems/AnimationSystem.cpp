@@ -53,6 +53,11 @@ namespace engine {
 
             if (!anim.model) continue;
 
+            // Step animation graph if present
+            if (anim.graph) {
+                anim.graph->step(frameInfo.frameTime, anim);
+            }
+
             // Lazy-create controller if needed
             if (!anim.controller) {
                 anim.controller = std::make_shared<AnimationController>();
