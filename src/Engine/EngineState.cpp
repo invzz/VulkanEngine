@@ -7,6 +7,7 @@
 #include "Engine/Graphics/DescriptorManager.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
+#include "Engine/Systems/SelectionOutlineSystem.hpp"
 
 #include "ModelLib/Resources/TextureManager.hpp"
 
@@ -138,6 +139,7 @@ namespace engine {
         // Camera system depends on render context already being created by caller
         cameraSystem              = std::make_unique<CameraSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
         colliderDebugRenderSystem = std::make_unique<ColliderDebugRenderSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
+        selectionOutlineSystem    = std::make_unique<SelectionOutlineSystem>(device, renderer.getOffscreenRenderPassLoadColorDepth(), renderContextPort->getGlobalSetLayout());
 
         // Compute / utility systems
         animationSystem = std::make_unique<AnimationSystem>(device);

@@ -71,7 +71,8 @@ namespace engine {
             const char*                 icon,
             ImVec4                      color,
             FrameInfo&                  frameInfo,
-            const entt::registry&       registry);
+            const entt::registry&       registry,
+            std::vector<entt::entity>&  toDelete);
 
         /**
  * @brief Render the Cameras section with + button and entity list.

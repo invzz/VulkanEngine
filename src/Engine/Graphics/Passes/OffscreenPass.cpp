@@ -9,6 +9,7 @@
 #include "Engine/Systems/GridRenderSystem.hpp"
 #include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
+#include "Engine/Systems/SelectionOutlineSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
 namespace {
@@ -109,6 +110,9 @@ namespace engine {
             }
             if ((runtimeState_.showColliderWireframesRef()) && (rendering_.colliderDebug != nullptr)) {
                 rendering_.colliderDebug->render(frameInfo);
+            }
+            if (rendering_.selectionOutline != nullptr) {
+                rendering_.selectionOutline->render(frameInfo);
             }
 
             renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);

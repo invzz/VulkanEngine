@@ -25,6 +25,7 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/SelectionOutlineSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -78,6 +79,7 @@ namespace engine {
                 .iblSystem              = iblSystem.get(),
                 .camera                 = cameraSystem.get(),
                 .colliderDebug          = colliderDebugRenderSystem.get(),
+                .selectionOutline       = selectionOutlineSystem.get(),
                 .renderContextPort      = renderContextPort,
                 .showSkybox             = &showSkybox,
                 .showGrid               = &showGrid,
@@ -300,6 +302,7 @@ namespace engine {
                 .input            = inputSystem.get(),
                 .camera           = cameraSystem.get(),
                 .colliderDebug    = colliderDebugRenderSystem.get(),
+                .selectionOutline = selectionOutlineSystem.get(),
                 .animation        = animationSystem.get(),
                 .lod              = lodSystem.get(),
                 .modelRender      = modelRenderSystem.get(),
@@ -322,6 +325,7 @@ namespace engine {
         std::unique_ptr<InputSystem>               inputSystem;
         std::unique_ptr<CameraSystem>              cameraSystem;
         std::unique_ptr<ColliderDebugRenderSystem> colliderDebugRenderSystem;
+        std::unique_ptr<SelectionOutlineSystem>    selectionOutlineSystem;
         std::unique_ptr<AnimationSystem>           animationSystem;
         std::unique_ptr<LODSystem>                 lodSystem;
         std::unique_ptr<ModelRenderSystem>         modelRenderSystem;

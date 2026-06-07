@@ -123,7 +123,8 @@ namespace engine::ui::SceneComponents {
         const char*                 icon,
         ImVec4                      color,
         FrameInfo&                  frameInfo,
-        const entt::registry&       registry) {
+        const entt::registry&       registry,
+        std::vector<entt::entity>&  toDelete) {
         auto const id = static_cast<uint32_t>(entity);
 
         assert(id <= static_cast<uint32_t>(std::numeric_limits<int>::max()));
@@ -163,23 +164,34 @@ namespace engine::ui::SceneComponents {
         }
 
         float const selectableWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - actionsWidth);
-        (void) selectableWidth;  // Width reserved but not used directly
-        if (UI::Selectable(label.c_str(), isSelected)) {
+
+        // Use raw ImGui style colors for the selectable (mimicking UI::Selectable behavior)
+        ImGui::PushStyleColor(ImGuiCol_Header,     ImGui::GetStyleColorVec4(ImGuiCol_Header));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+        ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+        ImGui::PushStyleColor(ImGuiCol_Text, isSelected ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
+
+        bool const clicked = ImGui::Selectable(label.c_str(), isSelected, ImGuiSelectableFlags_None, ImVec2(selectableWidth, 0.0f));
+        ImGui::PopStyleColor(4);
+        if (clicked) {
             frameInfo.selectedObjectId = id;
             frameInfo.selectedEntity   = entity;
         }
-        ImGui::SameLine();
+
+        // Draw action buttons to the right of the selectable
+        ImGui::SameLine(0.0f, 0.0f);
 
         if (registry.all_of<CameraComponent>(entity)) {
             if (entity == frameInfo.cameraEntity) {
                 UI::TextDisabled("Active");
+                ImGui::SameLine(0.0f, style.ItemSpacing.x);
             } else {
                 std::string activeBtn = "Set Active##cam_" + std::to_string(id);
                 if (UI::SmallButton(activeBtn.c_str())) {
                     frameInfo.cameraEntity = entity;
                 }
+                ImGui::SameLine(0.0f, style.ItemSpacing.x);
             }
-            ImGui::SameLine();
         }
 
         if (entity == frameInfo.cameraEntity) {
@@ -190,8 +202,7 @@ namespace engine::ui::SceneComponents {
         } else {
             std::string delBtn = "Delete##del_" + std::to_string(id);
             if (UI::SmallButton(delBtn.c_str())) {
-                // Note: caller manages toDelete_
-                (void) delBtn;
+                toDelete.push_back(entity);
             }
         }
 
@@ -210,20 +221,26 @@ namespace engine::ui::SceneComponents {
         std::string const header = "Cameras (" + std::to_string(cameras.size()) + ")";
         ImGui::PushID("cameras_header");
         ImGuiStyle const& style = ImGui::GetStyle();
+        
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+        
+        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen );
+                
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
+        
         if (UI::SmallButton("+##add_camera")) {
             auto entity = scene.createEntity();
             registry.emplace<TransformComponent>(entity);
             registry.emplace<CameraComponent>(entity);
             registry.emplace<NameComponent>(entity, "Camera");
         }
+        
         ImGui::PopID();
+        
         if (open) {
             for (auto entity : cameras) {
-                drawEntityRow(entity, "[CAM]", ImVec4(1.0f, 1.0f, 1.0f, 1.0f), frameInfo, registry);
+                drawEntityRow(entity, "[CAM]", ImVec4(1.0f, 1.0f, 1.0f, 1.0f), frameInfo, registry, toDelete);
             }
             ImGui::TreePop();
         }
@@ -247,7 +264,7 @@ namespace engine::ui::SceneComponents {
         ImGuiStyle const& style = ImGui::GetStyle();
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen );
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
         if (UI::SmallButton("+##add_light")) {
             ImGui::OpenPopup("AddLightPopup");
@@ -293,21 +310,21 @@ namespace engine::ui::SceneComponents {
             std::string dirHeader = "Directional (" + std::to_string(dirLights.size()) + ")";
             if (UI::TreeNode("  ▶", dirHeader.c_str())) {
                 for (auto entity : dirLights) {
-                    drawEntityRow(entity, "[DIR]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry);
+                    drawEntityRow(entity, "[DIR]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
                 }
                 ImGui::TreePop();
             }
             std::string pntHeader = "Point (" + std::to_string(pointLights.size()) + ")";
             if (UI::TreeNode("  ▶", pntHeader.c_str())) {
                 for (auto entity : pointLights) {
-                    drawEntityRow(entity, "[PNT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry);
+                    drawEntityRow(entity, "[PNT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
                 }
                 ImGui::TreePop();
             }
             std::string sptHeader = "Spot (" + std::to_string(spotLights.size()) + ")";
             if (UI::TreeNode("  ▶", sptHeader.c_str())) {
                 for (auto entity : spotLights) {
-                    drawEntityRow(entity, "[SPT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry);
+                    drawEntityRow(entity, "[SPT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
                 }
                 ImGui::TreePop();
             }
@@ -335,7 +352,7 @@ namespace engine::ui::SceneComponents {
         ImGuiStyle const& style = ImGui::GetStyle();
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen );
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
         if (UI::SmallButton("+##add_model")) {
             ImGui::OpenPopup("AddModelPopup");
@@ -388,8 +405,7 @@ namespace engine::ui::SceneComponents {
                             }
                         }
 
-                        if (UI::Selectable(name.c_str())) {
-                            if (ImGui::IsItemActivated()) {
+                        if (UI::Selectable(name.c_str(), false, ImGuiSelectableFlags_NoAutoClosePopups)) {
                                 std::string fullPath;
                                 if (relativePath.empty()) {
                                     fullPath.append(MODEL_PATH);
@@ -413,7 +429,6 @@ namespace engine::ui::SceneComponents {
                                 ImGui::CloseCurrentPopup();
                             }
                         }
-                    }
                 }
             } catch (const std::exception& e) {
                 std::string errText = "Error parsing model index: " + std::string(e.what());
@@ -425,7 +440,7 @@ namespace engine::ui::SceneComponents {
         ImGui::PopID();
         if (open) {
             for (auto entity : models) {
-                drawEntityRow(entity, "[MDL]", ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry);
+                drawEntityRow(entity, "[MDL]", ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
             }
             ImGui::TreePop();
         }

@@ -141,7 +141,7 @@ namespace engine::ui {
      * @param selected Whether this item is currently selected.
      * @return true if clicked.
      */
-        static bool Selectable(const char* label, bool selected = false);
+        static bool Selectable(const char* label, bool selected = false, ImGuiSelectableFlags flags = ImGuiSelectableFlags_None);
 
         // ======================================================================
         // Input Controls

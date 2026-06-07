@@ -15,6 +15,7 @@ namespace engine {
     class PostProcessingSystem;
     class IBLSystem;
     class ColliderDebugRenderSystem;
+    class SelectionOutlineSystem;
     class MorphTargetManager;
     class CameraSystem;
 
@@ -29,6 +30,7 @@ namespace engine {
         IBLSystem*                 iblSystem              = nullptr;
         CameraSystem*              camera                 = nullptr;
         ColliderDebugRenderSystem* colliderDebug          = nullptr;
+        SelectionOutlineSystem*    selectionOutline       = nullptr;
         IRenderContextPort*        renderContextPort      = nullptr;
         bool*                      showSkybox             = nullptr;
         bool*                      showGrid               = nullptr;

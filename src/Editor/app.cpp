@@ -27,10 +27,10 @@
 #include "vulkan/vulkan_core.h"
 
 // Systems
-#include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 #include "Engine/Graphics/GpuProfiler.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/PickingSystem.hpp"
 
 // Render Passes
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
@@ -326,15 +326,16 @@ namespace engine {
         renderPipeline->setRenderGraph(std::move(graph));
     }
 
-    void App::run() {
+   void App::run() {
         auto currentTime   = std::chrono::high_resolution_clock::now();
         auto lastHeartbeat = currentTime;
+
+        bool f11WasDown = false;
 
         while (!window.shouldClose()) {
             glfwPollEvents();
 
             // F11: toggle exclusive fullscreen (edge-detect)
-            static bool f11WasDown = false;
             int         f11State   = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
             if (f11State == GLFW_PRESS && !f11WasDown) {
                 window.toggleFullscreen();
@@ -407,6 +408,7 @@ namespace engine {
             auto      sceneRuntime    = engineState.sceneRuntimeService().view();
             auto*     animationSystem = animationAccessAdapter->getAnimationSystem();
 
+             PickingSystem pickingSystem;
             FrameInfo frameInfo{
                 .frameIndex          = frameIndex,
                 .frameTime           = frameTime,
@@ -422,6 +424,25 @@ namespace engine {
                 .extent              = renderer.getSwapChainExtent(),
                 .debugMode           = debugMode,
             };
+
+      // Mouse picking: left click in the viewport
+            static bool lastLeftClick = false;
+            int           leftClick   = glfwGetMouseButton(window.getGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT);
+            if (leftClick == GLFW_PRESS && !lastLeftClick) {
+                double mouseX, mouseY;
+                glfwGetCursorPos(window.getGLFWwindow(), &mouseX, &mouseY);
+                float aspect = static_cast<float>(renderer.getSwapChainExtent().width) / renderer.getSwapChainExtent().height;
+                auto  pickResult = pickingSystem.pick(frameInfo, mouseX / renderer.getSwapChainExtent().width, mouseY / renderer.getSwapChainExtent().height, aspect);
+                if (pickResult.has_value()) {
+                    frameInfo.selectedEntity   = pickResult.value();
+                    frameInfo.selectedObjectId = static_cast<uint32_t>(pickResult.value());
+                } else {
+                    // Clicked empty space: deselect
+                    frameInfo.selectedEntity   = entt::null;
+                    frameInfo.selectedObjectId = 0;
+                }
+            }
+            lastLeftClick = (leftClick == GLFW_PRESS);
 
             renderPipeline->execute(frameInfo);
 

@@ -196,7 +196,7 @@ namespace engine::ui {
         return TreeNode(label, flags);
     }
 
-    bool UI::Selectable(const char* label, bool selected) {
+    bool UI::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags) {
         ImVec4 header    = GetTheme().getColor(ImGuiCol_Header);
         ImVec4 headerHov = GetTheme().getColor(ImGuiCol_HeaderHovered);
         ImVec4 headerAct = GetTheme().getColor(ImGuiCol_HeaderActive);
@@ -206,7 +206,7 @@ namespace engine::ui {
         ImGui::PushStyleColor(ImGuiCol_HeaderHovered, headerHov);
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, headerAct);
         ImGui::PushStyleColor(ImGuiCol_Text, selected ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : text);
-        bool clicked = ImGui::Selectable(label, selected);
+        bool clicked = ImGui::Selectable(label, selected, flags);
         ImGui::PopStyleColor(4);
         return clicked;
     }

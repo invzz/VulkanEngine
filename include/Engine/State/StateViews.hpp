@@ -45,6 +45,7 @@ namespace engine {
         InputSystem*               input            = nullptr;
         CameraSystem*              camera           = nullptr;
         ColliderDebugRenderSystem* colliderDebug    = nullptr;
+        SelectionOutlineSystem*    selectionOutline = nullptr;
         AnimationSystem*           animation        = nullptr;
         LODSystem*                 lod              = nullptr;
         ModelRenderSystem*         modelRender      = nullptr;
@@ -62,7 +63,7 @@ namespace engine {
    * @brief Check if all required pointers are non-null.
    */
         [[nodiscard]] bool isValid() const {
-            return objectSelection != nullptr && input != nullptr && camera != nullptr && colliderDebug != nullptr && animation != nullptr && lod != nullptr && modelRender != nullptr && shadow != nullptr && light != nullptr && skyboxRender != nullptr && gridRender != nullptr && deferredLighting != nullptr && postProcessing != nullptr && ibl != nullptr && physics != nullptr && joltPhysics != nullptr;
+            return objectSelection != nullptr && input != nullptr && camera != nullptr && colliderDebug != nullptr && selectionOutline != nullptr && animation != nullptr && lod != nullptr && modelRender != nullptr && shadow != nullptr && light != nullptr && skyboxRender != nullptr && gridRender != nullptr && deferredLighting != nullptr && postProcessing != nullptr && ibl != nullptr && physics != nullptr && joltPhysics != nullptr;
         }
     };
 
