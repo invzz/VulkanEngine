@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <entt/entt.hpp>
 #include <functional>
-#include <string>
 
 #include "Layout.hpp"
 
@@ -29,7 +28,7 @@ namespace engine {
         // --- Selection ---
 
         /** Get the currently selected entity. */
-        entt::entity getSelectedEntity() const {
+        [[nodiscard]] entt::entity getSelectedEntity() const {
             return selectedEntity_;
         }
 
@@ -37,7 +36,7 @@ namespace engine {
         void setSelectedEntity(entt::entity entity);
 
         /** Get the selected object ID (for ImGui compatibility). */
-        uint32_t getSelectedObjectId() const {
+        [[nodiscard]] uint32_t getSelectedObjectId() const {
             return selectedObjectId_;
         }
 
@@ -50,7 +49,7 @@ namespace engine {
         // --- Camera ---
 
         /** Get the active camera entity. */
-        entt::entity getActiveCameraEntity() const {
+        [[nodiscard]] entt::entity getActiveCameraEntity() const {
             return activeCameraEntity_;
         }
 
@@ -60,7 +59,7 @@ namespace engine {
         // --- Scene ---
 
         /** Get the current scene. */
-        Scene* getScene() const {
+        [[nodiscard]] Scene* getScene() const {
             return scene_;
         }
 
@@ -70,7 +69,7 @@ namespace engine {
         // --- Theme ---
 
         /** Get the current theme preset (0=dark, 1=light, 2=midnight). */
-        int getThemePreset() const {
+        [[nodiscard]] int getThemePreset() const {
             return themePreset_;
         }
 
@@ -80,7 +79,7 @@ namespace engine {
         // --- Layout ---
 
         /** Get the current layout preset. */
-        LayoutPreset getLayoutPreset() const {
+        [[nodiscard]]  LayoutPreset getLayoutPreset() const {
             return layoutPreset_;
         }
 
@@ -90,7 +89,7 @@ namespace engine {
         // --- Frame timing ---
 
         /** Get the current frame time in milliseconds. */
-        float getFrameTimeMs() const {
+        [[nodiscard]] float getFrameTimeMs() const {
             return frameTimeMs_;
         }
 
@@ -100,7 +99,7 @@ namespace engine {
         }
 
         /** Get the current FPS. */
-        float getFPS() const {
+        [[nodiscard]] float getFPS() const {
             return fps_;
         }
 
