@@ -10,6 +10,7 @@
 
 #include "Engine/Scene/Components/AnimationController.hpp"
 #include "Engine/Scene/Components/AnimationGraph.hpp"
+
 #include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
@@ -22,9 +23,9 @@ namespace engine {
      * kept as thin wrappers over the controller for backward compatibility.
      */
     struct AnimationComponent {
-        std::shared_ptr<Model> model;
+        std::shared_ptr<Model>               model;
         std::shared_ptr<AnimationController> controller;
-        std::shared_ptr<AnimationGraph> graph; // Animation graph for state transitions
+        std::shared_ptr<AnimationGraph>      graph;  // Animation graph for state transitions
 
         // Backward-compatible query fields (mirrors controller state)
         int   currentAnimationIndex{-1};
@@ -46,7 +47,8 @@ namespace engine {
 
         /** Play an animation clip (stops all others, starts fresh) */
         void play(int animationIndex = 0, bool shouldLoop = true) {
-            if (!model || !controller) return;
+            if (!model || !controller)
+                return;
             if (animationIndex < 0 || animationIndex >= static_cast<int>(model->getAnimations().size()))
                 return;
 
@@ -60,7 +62,8 @@ namespace engine {
 
         /** Stop all playing clips */
         void stop() {
-            if (!controller) return;
+            if (!controller)
+                return;
             isPlaying   = false;
             currentTime = 0.0f;
             controller->stopAll();
@@ -70,7 +73,8 @@ namespace engine {
 
         /** Add a clip without stopping others (layered) */
         void addClip(int animationIndex, int priority = 0) {
-            if (!model || !controller) return;
+            if (!model || !controller)
+                return;
             if (animationIndex < 0 || animationIndex >= static_cast<int>(model->getAnimations().size()))
                 return;
 
@@ -79,13 +83,15 @@ namespace engine {
 
         /** Set blend weight for a specific clip (0-1) */
         void setClipWeight(int animationIndex, float weight) {
-            if (!controller) return;
+            if (!controller)
+                return;
             controller->setClipWeight(animationIndex, weight);
         }
 
         /** Set playback speed for a specific clip */
         void setClipSpeed(int animationIndex, float speed) {
-            if (!controller) return;
+            if (!controller)
+                return;
             controller->setClipSpeed(animationIndex, speed);
         }
 
@@ -96,7 +102,8 @@ namespace engine {
 
         /** Set an event callback for this component's clips */
         void setEventCallback(std::function<void(const std::string&, void*)> cb) {
-            if (!controller) return;
+            if (!controller)
+                return;
             controller->setEventCallback(std::move(cb));
         }
 
@@ -115,13 +122,14 @@ namespace engine {
             }
             if (g && g->getEntryNode()) {
                 currentAnimationIndex = g->getEntryNode()->clipIndex;
-                currentTime = 0.0f;
+                currentTime           = 0.0f;
             }
         }
 
         /** Trigger a transition in the animation graph */
         bool triggerGraphTransition(int targetNodeId) {
-            if (!graph) return false;
+            if (!graph)
+                return false;
             if (controller) {
                 controller->triggerTransition(targetNodeId);
             }
@@ -141,7 +149,7 @@ namespace engine {
             return controller ? controller->isTransitioning() : false;
         }
 
-    private:
+       private:
         static std::vector<AnimationClip> emptyClips_;
     };
 

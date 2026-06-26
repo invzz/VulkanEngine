@@ -1,10 +1,10 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <vulkan/vulkan.h>
 
-#include <entt/entt.hpp>
+#include <glm/glm.hpp>
 
+#include <entt/entt.hpp>
 #include <memory>
 #include <optional>
 
@@ -19,7 +19,7 @@ namespace engine {
      * intersection against all entities with a ModelComponent + TransformComponent.
      */
     class PickingSystem {
-    public:
+       public:
         PickingSystem() = default;
 
         /**
@@ -32,7 +32,7 @@ namespace engine {
          */
         std::optional<entt::entity> pick(FrameInfo& frameInfo, float mouseX, float mouseY, float aspectRatio);
 
-    private:
+       private:
         /**
          * @brief Test ray-AABB intersection.
          */

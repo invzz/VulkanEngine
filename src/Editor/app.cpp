@@ -29,8 +29,8 @@
 // Systems
 #include "Engine/Graphics/GpuProfiler.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
-#include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/PickingSystem.hpp"
+#include "Engine/Systems/PostProcessingSystem.hpp"
 
 // Render Passes
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
@@ -184,6 +184,22 @@ namespace engine {
         renderPipeline = std::make_unique<RenderPipeline>(renderer);
         setupRenderGraph();
 
+        // 6. Initialize viewport texture (after EngineState and render graph)
+        viewportTexture_.create(device, VkExtent2D{1024, 768});
+
+        // Initialize viewport display (renders HDR viewport texture to swap chain)
+        viewportDisplay_.initialize(
+            device,
+            renderer.getSwapChainRenderPass(),
+            renderer.getSwapChainFormat(),
+            renderer.getSwapChainExtent());
+
+        // Initialize viewport panel (must come after viewportTexture_.create()
+        // because the texture's image view is needed for ImGui registration)
+        if (viewportPanel_) {
+            viewportPanel_->initialize(*imguiManager, &viewportTexture_, VkExtent2D{600, 400});
+        }
+
         (void) GpuProfiler::instance().initialize(
             device.device(),
             device.getProperties().limits.timestampPeriod,
@@ -286,6 +302,14 @@ namespace engine {
         uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
         uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
+
+        // --- Viewport panel ---
+        viewportPanel_ = std::make_unique<ViewportPanel>();
+        registry.registerPanel("Viewport", std::move(viewportPanel_), DockConstraints{
+                                                                          .preferredZone = DockZone::DockCenter,
+                                                                          .minSizeX      = 400.0f,
+                                                                          .minSizeY      = 300.0f,
+                                                                      });
     }
 
     void App::setupRenderGraph() {
@@ -320,13 +344,84 @@ namespace engine {
         // 5. Offscreen Pass (Main Scene - Load depth from prepass)
         graph->addPass(std::make_unique<OffscreenPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, device, debugMode));
 
+        // 5.5. Copy offscreen color to viewport texture + render to swap chain
+        graph->addPass(std::make_unique<LambdaRenderPass>("ViewportCopy",
+            [this](FrameInfo& frameInfo) {
+                // Copy offscreen color to viewport texture
+                VkImage srcImage = renderer.getOffscreenColorImage(frameInfo.frameIndex);
+
+                VkImageMemoryBarrier srcBarrier{};
+                srcBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                srcBarrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                srcBarrier.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                srcBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                srcBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                srcBarrier.image                           = srcImage;
+                srcBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                srcBarrier.subresourceRange.baseMipLevel   = 0;
+                srcBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+                srcBarrier.subresourceRange.baseArrayLayer = 0;
+                srcBarrier.subresourceRange.layerCount     = 1;
+                srcBarrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                srcBarrier.dstAccessMask                   = VK_ACCESS_TRANSFER_READ_BIT;
+
+                vkCmdPipelineBarrier(frameInfo.commandBuffer,
+                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    0,
+                    0,
+                    nullptr,
+                    0,
+                    nullptr,
+                    1,
+                    &srcBarrier);
+
+                // Transition viewport texture to TRANSFER_DST_OPTIMAL
+                VkImageLayout srcLayout = viewportTextureInitialized_
+                    ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                    : VK_IMAGE_LAYOUT_UNDEFINED;
+                viewportTexture_.transitionToTransferDst(frameInfo.commandBuffer, srcLayout);
+                viewportTextureInitialized_ = true;
+
+                VkImageCopy copyRegion{};
+                copyRegion.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                copyRegion.srcSubresource.mipLevel       = 0;
+                copyRegion.srcSubresource.baseArrayLayer = 0;
+                copyRegion.srcSubresource.layerCount     = 1;
+                copyRegion.srcOffset                     = {0, 0, 0};
+                copyRegion.dstSubresource                = copyRegion.srcSubresource;
+                copyRegion.dstOffset                     = {0, 0, 0};
+
+                VkExtent2D const texExtent = viewportTexture_.getExtent();
+                VkExtent2D const srcExtent = frameInfo.extent;
+                copyRegion.extent.width  = std::min(texExtent.width, srcExtent.width);
+                copyRegion.extent.height = std::min(texExtent.height, srcExtent.height);
+                copyRegion.extent.depth  = 1;
+
+                vkCmdCopyImage(frameInfo.commandBuffer,
+                    srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    viewportTexture_.getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1, &copyRegion);
+
+                // Transition viewport texture to SHADER_READ_ONLY
+                viewportTexture_.transitionToShaderReadOnly(frameInfo.commandBuffer,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+                // Render viewport texture to swap chain with tone mapping
+                if (viewportDisplay_.isValid()) {
+                    viewportDisplay_.setViewportTexture(viewportTexture_);
+                    viewportDisplay_.execute(frameInfo.commandBuffer,
+                        renderer.getSwapChainFramebuffer(frameInfo.frameIndex));
+                }
+            }));
+
         // 6. Composition Pass (PostProcess + UI)
         graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
 
-   void App::run() {
+    void App::run() {
         auto currentTime   = std::chrono::high_resolution_clock::now();
         auto lastHeartbeat = currentTime;
 
@@ -335,8 +430,8 @@ namespace engine {
         while (!window.shouldClose()) {
             glfwPollEvents();
 
-            // F11: toggle exclusive fullscreen (edge-detect)
-            int         f11State   = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
+            // F3: toggle exclusive fullscreen (edge-detect)
+            int f11State = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
             if (f11State == GLFW_PRESS && !f11WasDown) {
                 window.toggleFullscreen();
                 f11WasDown = true;
@@ -401,6 +496,12 @@ namespace engine {
             if (renderer.wasSwapChainRecreated()) {
                 // PostProcessingSystem lives in EngineState — recreate via port adapter.
                 postProcessingAccessAdapter->recreatePostProcessingSystemWithExistingLayout(device, renderer.getSwapChainRenderPass());
+                // Update ViewportDisplay with the new swap chain render pass handle.
+                // Without this, ViewportDisplay uses a destroyed render pass handle
+                // (garbage like 0xe000000000e) causing Vulkan validation error.
+                if (viewportDisplay_.isValid()) {
+                    viewportDisplay_.setRenderPass(renderer.getSwapChainRenderPass());
+                }
             }
 
             int const frameIndex      = renderer.getFrameIndex();
@@ -408,8 +509,8 @@ namespace engine {
             auto      sceneRuntime    = engineState.sceneRuntimeService().view();
             auto*     animationSystem = animationAccessAdapter->getAnimationSystem();
 
-             PickingSystem pickingSystem;
-            FrameInfo frameInfo{
+            PickingSystem pickingSystem;
+            FrameInfo     frameInfo{
                 .frameIndex          = frameIndex,
                 .frameTime           = frameTime,
                 .commandBuffer       = commandBuffer,
@@ -425,13 +526,13 @@ namespace engine {
                 .debugMode           = debugMode,
             };
 
-      // Mouse picking: left click in the viewport
+            // Mouse picking: left click in the viewport
             static bool lastLeftClick = false;
-            int           leftClick   = glfwGetMouseButton(window.getGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT);
+            int         leftClick     = glfwGetMouseButton(window.getGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT);
             if (leftClick == GLFW_PRESS && !lastLeftClick) {
                 double mouseX, mouseY;
                 glfwGetCursorPos(window.getGLFWwindow(), &mouseX, &mouseY);
-                float aspect = static_cast<float>(renderer.getSwapChainExtent().width) / renderer.getSwapChainExtent().height;
+                float aspect     = static_cast<float>(renderer.getSwapChainExtent().width) / renderer.getSwapChainExtent().height;
                 auto  pickResult = pickingSystem.pick(frameInfo, mouseX / renderer.getSwapChainExtent().width, mouseY / renderer.getSwapChainExtent().height, aspect);
                 if (pickResult.has_value()) {
                     frameInfo.selectedEntity   = pickResult.value();

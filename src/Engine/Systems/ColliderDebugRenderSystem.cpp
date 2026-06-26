@@ -85,6 +85,7 @@ namespace engine {
 
     void ColliderDebugRenderSystem::render(FrameInfo& frameInfo) const {
         pipeline_->bind(frameInfo.commandBuffer);
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "ColliderDebugRenderSystem: global descriptor set is null");
         vkCmdBindDescriptorSets(
             frameInfo.commandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,

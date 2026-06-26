@@ -225,7 +225,7 @@ target("Editor")
     elseif is_plat("windows") then
         add_syslinks("vulkan-1")
     end
-    add_deps("Engine", "EngineImporters", "EngineSceneIO", "Shaders")
+    add_deps("Engine", "EngineImporters", "EngineSceneIO")
 
 -- ============================================================================
 -- Tools

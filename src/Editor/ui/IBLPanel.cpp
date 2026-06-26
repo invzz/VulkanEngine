@@ -2,13 +2,12 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <imgui.h>
-#include <limits>
 #include <string>
 
 #include "Engine/EngineState.hpp"
-#include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
+
+#include "Editor/ui/UI.hpp"
 
 namespace engine {
 
@@ -22,10 +21,6 @@ namespace engine {
     }
 
     void IBLPanel::render(FrameInfo& /*frameInfo*/) {
-        // ImGui::Begin("IBL Settings");
-
-        bool changed = false;
-
         // Irradiance Size
         int currentIrradianceSizeIdx = 1;  // Default 64
         if (settings_.irradianceSize == 32)
@@ -38,9 +33,8 @@ namespace engine {
             currentIrradianceSizeIdx = 3;
 
         const char* sizeItems[] = {"32", "64", "128", "256"};
-        if (ImGui::Combo("Irradiance Size", &currentIrradianceSizeIdx, sizeItems, IM_ARRAYSIZE(sizeItems))) {
+        if (ui::UI::Combo("Irradiance Size##ibl_irr_size", &currentIrradianceSizeIdx, sizeItems, IM_ARRAYSIZE(sizeItems))) {
             settings_.irradianceSize = std::stoi(sizeItems[currentIrradianceSizeIdx]);
-            changed                  = true;
         }
 
         // Prefilter Size
@@ -55,29 +49,25 @@ namespace engine {
             currentPrefilterSizeIdx = 3;
 
         const char* prefilterSizeItems[] = {"128", "256", "512", "1024"};
-        if (ImGui::Combo("Prefilter Size", &currentPrefilterSizeIdx, prefilterSizeItems, IM_ARRAYSIZE(prefilterSizeItems))) {
+        if (ui::UI::Combo("Prefilter Size##ibl_prefilter_size", &currentPrefilterSizeIdx, prefilterSizeItems, IM_ARRAYSIZE(prefilterSizeItems))) {
             settings_.prefilterSize = std::stoi(prefilterSizeItems[currentPrefilterSizeIdx]);
-            changed                 = true;
         }
 
-        // Prefilter Mip Levels
-        if (ImGui::SliderInt("Prefilter Mip Levels", &settings_.prefilterMipLevels, 1, 10))
-            changed = true;
+        // Prefilter Mip Levels (int slider)
+        ui::UI::SliderInt("Prefilter Mip Levels##ibl_prefilter_mip", &settings_.prefilterMipLevels, 1, 10);
 
-        // Sample Count
+        // Sample Count (int input)
         int sampleCount = static_cast<int>(
             std::min<uint32_t>(settings_.prefilterSampleCount, static_cast<uint32_t>(std::numeric_limits<int>::max())));
-        if (ImGui::InputInt("Prefilter Samples", &sampleCount)) {
+        if (ui::UI::InputInt("Prefilter Samples##ibl_prefilter_samples", &sampleCount)) {
             sampleCount                    = std::clamp(sampleCount, 1, std::numeric_limits<int>::max());
             settings_.prefilterSampleCount = sampleCount;
-            changed                        = true;
         }
 
-        // Sample Delta
-        if (ImGui::InputFloat("Irradiance Delta", &settings_.irradianceSampleDelta, 0.001f, 0.01f, "%.4f"))
-            changed = true;
+        // Sample Delta (float)
+        ui::UI::InputFloat("Irradiance Delta##ibl_irr_delta", &settings_.irradianceSampleDelta, 0.001f, 0.01f, "%.4f");
 
-        if (ImGui::Button("Regenerate IBL")) {
+        if (ui::UI::Button("Regenerate IBL##ibl_regenerate")) {
             if (engineState_ != nullptr) {
                 auto rendering  = engineState_->renderingService().view();
                 auto sceneState = engineState_->sceneRuntimeService().view();
@@ -93,11 +83,8 @@ namespace engine {
         }
 
         if (!hasSkybox) {
-            if (ImGui::IsItemHovered())
-                ImGui::SetTooltip("Load/enable a skybox to generate IBL");
-            ImGui::TextDisabled("No skybox loaded; IBL regeneration disabled");
+            ui::UI::TextDisabled("No skybox loaded; IBL regeneration disabled");
+            ui::UI::InfoTooltip("Load/enable a skybox to generate IBL");
         }
-
-        // ImGui::End();
     }
 }  // namespace engine

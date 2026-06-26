@@ -1,12 +1,12 @@
 #include "Editor/ui/AnimationPanel.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <algorithm>
-#include <string>
-#include <sstream>
 #include <iomanip>
+#include <sstream>
+#include <string>
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
@@ -20,10 +20,11 @@ namespace engine {
     AnimationPanel::AnimationPanel(Scene& scene) : scene_(scene) {}
 
     void AnimationPanel::renderClipControls(EntityAnimData& data, uint32_t entityId, int clipIndex) {
-        if (clipIndex < 0 || clipIndex >= static_cast<int>(data.clipNames.size())) return;
+        if (clipIndex < 0 || clipIndex >= static_cast<int>(data.clipNames.size()))
+            return;
 
         const auto& clipName = data.clipNames[clipIndex];
-        bool selected = (data.selectedClipIndex == clipIndex);
+        bool        selected = (data.selectedClipIndex == clipIndex);
 
         ImGui::PushID(static_cast<int>(entityId) * 1000 + clipIndex);
         if (ui::UI::Selectable(clipName.c_str(), selected)) {
@@ -31,7 +32,7 @@ namespace engine {
         }
         if (selected && ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Weight: %.2f | Speed: %.2f | Crossfade: %.2fs",
-                              data.selectedClipWeight, data.selectedClipSpeed, data.selectedCrossfadeDuration);
+                data.selectedClipWeight, data.selectedClipSpeed, data.selectedCrossfadeDuration);
         }
 
         // Weight slider
@@ -80,7 +81,8 @@ namespace engine {
             auto view = scene_.getRegistry().view<AnimationComponent, ModelComponent>();
             for (auto entity : view) {
                 auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
-                if (!anim.controller || !anim.controller->hasActiveClips()) continue;
+                if (!anim.controller || !anim.controller->hasActiveClips())
+                    continue;
 
                 EntityAnimData ead;
                 ead.entityId = static_cast<uint32_t>(entity);
@@ -95,13 +97,13 @@ namespace engine {
 
                         // Create track data
                         EntityTrackData track;
-                        track.name = name;
-                        track.duration = clip.duration;
-                        track.startOffset = 0.0f;
-                        track.weight = clip.weight;
-                        track.speed = clip.speed;
+                        track.name              = name;
+                        track.duration          = clip.duration;
+                        track.startOffset       = 0.0f;
+                        track.weight            = clip.weight;
+                        track.speed             = clip.speed;
                         track.crossfadeDuration = 0.0f;
-                        track.selected = false;
+                        track.selected          = false;
 
                         // Extract keyframe times from clip
                         auto view2 = scene_.getRegistry().view<AnimationComponent>();
@@ -125,7 +127,7 @@ namespace engine {
                         }
                         if (static_cast<size_t>(ead.selectedClipIndex) < ead.clipNames.size()) {
                             ead.selectedClipWeight = clips[ead.selectedClipIndex].weight;
-                            ead.selectedClipSpeed = clips[ead.selectedClipIndex].speed;
+                            ead.selectedClipSpeed  = clips[ead.selectedClipIndex].speed;
                             // Crossfade duration is UI-only for now
                             ead.selectedCrossfadeDuration = 0.0f;
                         }
@@ -146,17 +148,18 @@ namespace engine {
         ui::UI::TextDisabled("Timeline");
 
         float maxDuration = timeline_.totalDuration;
-        if (maxDuration < 0.1f) maxDuration = 10.0f;
+        if (maxDuration < 0.1f)
+            maxDuration = 10.0f;
         timeline_.totalDuration = maxDuration;
 
         // Visible window scales inversely with zoom: wider when zoomed out
         float windowDuration = std::max(5.0f, 20.0f / timeline_.zoom);
-        float startTime = timeline_.currentTime - windowDuration / 2.0f;
-        float endTime   = timeline_.currentTime + windowDuration / 2.0f;
+        float startTime      = timeline_.currentTime - windowDuration / 2.0f;
+        float endTime        = timeline_.currentTime + windowDuration / 2.0f;
 
         // Timeline bar
         ImVec2 timelineMin = ImGui::GetCursorScreenPos();
-        float  timelineW = ImGui::GetContentRegionAvail().x;
+        float  timelineW   = ImGui::GetContentRegionAvail().x;
         ImVec2 timelineMax(timelineMin.x + timelineW, timelineMin.y + 60.0f);
         ImGui::InvisibleButton("TimelineBar", ImVec2(timelineW, 60.0f));
 
@@ -170,40 +173,46 @@ namespace engine {
 
         // Grid lines
         float timeStep = 1.0f / timeline_.zoom;
-        if (timeStep > 5.0f) timeStep = 5.0f;
-        else if (timeStep > 1.0f) timeStep = 1.0f;
-        else if (timeStep > 0.25f) timeStep = 0.25f;
-        else timeStep = 0.1f;
+        if (timeStep > 5.0f)
+            timeStep = 5.0f;
+        else if (timeStep > 1.0f)
+            timeStep = 1.0f;
+        else if (timeStep > 0.25f)
+            timeStep = 0.25f;
+        else
+            timeStep = 0.1f;
 
         for (float t = std::floor(std::max(0.0f, startTime) / timeStep) * timeStep; t < endTime; t += timeStep) {
-            float norm = (t - startTime) / windowDuration;
-            float x = timelineMin.x + norm * (timelineMax.x - timelineMin.x);
+            float    norm  = (t - startTime) / windowDuration;
+            float    x     = timelineMin.x + norm * (timelineMax.x - timelineMin.x);
             uint32_t color = (std::fmod(t, 5.0f) < 0.01f || std::fmod(t, 5.0f) > 5.0f - 0.01f)
-                ? IM_COL32(80, 80, 100, 255) : IM_COL32(60, 60, 70, 255);
+                                 ? IM_COL32(80, 80, 100, 255)
+                                 : IM_COL32(60, 60, 70, 255);
             drawList->AddLine(ImVec2(x, timelineMin.y), ImVec2(x, timelineMax.y), color, 1.0f);
         }
 
         // ── Animated Clip Tracks ────────────────────────────────────────
-        float trackHeight = 12.0f;
+        float trackHeight  = 12.0f;
         float trackSpacing = 18.0f;
-        float trackStartY = timelineMin.y + 4.0f;
+        float trackStartY  = timelineMin.y + 4.0f;
 
         for (const auto& ead : entityAnimData_) {
             for (int i = 0; i < static_cast<int>(ead.tracks.size()); ++i) {
                 const auto& track = ead.tracks[i];
-                if (track.duration <= 0.0f) continue;
+                if (track.duration <= 0.0f)
+                    continue;
 
-                float trackLeftNorm = std::max(0.0f, std::min(1.0f, (track.startOffset - startTime) / windowDuration));
+                float trackLeftNorm  = std::max(0.0f, std::min(1.0f, (track.startOffset - startTime) / windowDuration));
                 float trackRightNorm = std::max(0.0f, std::min(1.0f, (track.startOffset + track.duration - startTime) / windowDuration));
-                
-                float trackLeftX = timelineMin.x + trackLeftNorm * (timelineMax.x - timelineMin.x);
-                float trackRightX = timelineMin.x + trackRightNorm * (timelineMax.x - timelineMin.x);
-                float trackW = std::max(2.0f, trackRightX - trackLeftX);
-                float trackY = trackStartY + (i * trackSpacing);
 
-                bool isCurrentTrack = (ead.selectedClipIndex == i);
-                uint32_t trackColor = isCurrentTrack ? IM_COL32(100, 180, 255, 200) : IM_COL32(150, 130, 255, 120);
-                uint32_t borderColor = isCurrentTrack ? IM_COL32(150, 200, 255, 255) : IM_COL32(200, 180, 255, 180);
+                float trackLeftX  = timelineMin.x + trackLeftNorm * (timelineMax.x - timelineMin.x);
+                float trackRightX = timelineMin.x + trackRightNorm * (timelineMax.x - timelineMin.x);
+                float trackW      = std::max(2.0f, trackRightX - trackLeftX);
+                float trackY      = trackStartY + (i * trackSpacing);
+
+                bool     isCurrentTrack = (ead.selectedClipIndex == i);
+                uint32_t trackColor     = isCurrentTrack ? IM_COL32(100, 180, 255, 200) : IM_COL32(150, 130, 255, 120);
+                uint32_t borderColor    = isCurrentTrack ? IM_COL32(150, 200, 255, 255) : IM_COL32(200, 180, 255, 180);
 
                 drawList->AddRectFilled(ImVec2(trackLeftX, trackY), ImVec2(trackRightX, trackY + trackHeight), trackColor, 4.0f);
                 drawList->AddRect(ImVec2(trackLeftX, trackY), ImVec2(trackRightX, trackY + trackHeight), borderColor, 4.0f, 0, 1.5f);
@@ -211,8 +220,8 @@ namespace engine {
                 for (float kf : track.keyframeTimes) {
                     if (kf >= startTime && kf <= endTime) {
                         float kfNorm = (kf - startTime) / windowDuration;
-                        float kfX = timelineMin.x + kfNorm * (timelineMax.x - timelineMin.x);
-                        float s = 3.0f;
+                        float kfX    = timelineMin.x + kfNorm * (timelineMax.x - timelineMin.x);
+                        float s      = 3.0f;
                         drawList->AddTriangleFilled(ImVec2(kfX, trackY - 2.0f), ImVec2(kfX - s, trackY + 2.0f), ImVec2(kfX + s, trackY + 2.0f), IM_COL32(255, 255, 200, 255));
                     }
                 }
@@ -221,14 +230,14 @@ namespace engine {
 
         // Playhead
         float playheadNorm = (timeline_.currentTime - startTime) / windowDuration;
-        float playheadX = timelineMin.x + playheadNorm * (timelineMax.x - timelineMin.x);
+        float playheadX    = timelineMin.x + playheadNorm * (timelineMax.x - timelineMin.x);
         drawList->AddLine(ImVec2(playheadX, timelineMin.y), ImVec2(playheadX, timelineMax.y), IM_COL32(100, 200, 255, 255), 2.0f);
         drawList->AddTriangleFilled(ImVec2(playheadX, timelineMax.y), ImVec2(playheadX - 5.0f, timelineMax.y - 8.0f), ImVec2(playheadX + 5.0f, timelineMax.y - 8.0f), IM_COL32(100, 200, 255, 255));
 
         // Time labels
         for (float t = std::floor(std::max(0.0f, startTime) / timeStep) * timeStep; t < endTime; t += timeStep) {
             float norm = (t - startTime) / windowDuration;
-            float x = timelineMin.x + norm * (timelineMax.x - timelineMin.x);
+            float x    = timelineMin.x + norm * (timelineMax.x - timelineMin.x);
             if (x > timelineMin.x + 30.0f && x < timelineMax.x - 30.0f) {
                 std::stringstream ss;
                 ss << std::fixed << std::setprecision(1) << t << "s";
@@ -239,7 +248,7 @@ namespace engine {
         // Scrubbing
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) {
             float mouseNorm = (ImGui::GetIO().MousePos.x - timelineMin.x) / (timelineMax.x - timelineMin.x);
-            mouseNorm = std::max(0.0f, std::min(1.0f, mouseNorm));
+            mouseNorm       = std::max(0.0f, std::min(1.0f, mouseNorm));
             float mouseTime = startTime + mouseNorm * windowDuration;
             if (mouseTime >= 0.0f && mouseTime <= timeline_.totalDuration) {
                 timeline_.currentTime = mouseTime;
@@ -318,9 +327,9 @@ namespace engine {
                                 const auto& clips = anim.controller->getClips();
                                 if (static_cast<size_t>(data.selectedClipIndex) < clips.size()) {
                                     anim.controller->setClipWeight(clips[data.selectedClipIndex].clipIndex,
-                                                                   data.selectedClipWeight);
+                                        data.selectedClipWeight);
                                     anim.controller->setClipSpeed(clips[data.selectedClipIndex].clipIndex,
-                                                                  data.selectedClipSpeed);
+                                        data.selectedClipSpeed);
                                 }
                             }
                         }
@@ -377,7 +386,7 @@ namespace engine {
 
     void AnimationPanel::updateTimelineState() {
         float maxDuration = 0.0f;
-        auto view = scene_.getRegistry().view<AnimationComponent>();
+        auto  view        = scene_.getRegistry().view<AnimationComponent>();
         for (auto entity : view) {
             const auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
             if (anim.controller) {
@@ -393,12 +402,13 @@ namespace engine {
         }
     }
 
-   // ── Animation Graph Editor ───────────────────────────────────────────
+    // ── Animation Graph Editor ───────────────────────────────────────────
     void AnimationPanel::renderGraphEditor() {
-        if (!showGraphEditor_ || entityAnimData_.empty()) return;
+        if (!showGraphEditor_ || entityAnimData_.empty())
+            return;
 
         // Get the first entity's graph and controller
-        std::shared_ptr<AnimationGraph> graph;
+        std::shared_ptr<AnimationGraph>      graph;
         std::shared_ptr<AnimationController> controller;
 
         for (const auto& ead : entityAnimData_) {
@@ -406,13 +416,16 @@ namespace engine {
             for (auto entity : view) {
                 auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
                 if (static_cast<uint32_t>(entity) == ead.entityId) {
-                    if (anim.graph) graph = anim.graph;
-                    if (anim.controller) controller = anim.controller;
+                    if (anim.graph)
+                        graph = anim.graph;
+                    if (anim.controller)
+                        controller = anim.controller;
                 }
             }
         }
 
-        if (!graph) return;
+        if (!graph)
+            return;
 
         // Toggle button in the panel
         ImGui::SameLine();
@@ -425,7 +438,7 @@ namespace engine {
 
         if (showGraphEditor_ && graph) {
             // Calculate delta time from timeline
-            float delta = 1.0f / 60.0f; // Assume 60fps for graph stepping
+            float delta = 1.0f / 60.0f;  // Assume 60fps for graph stepping
             graphEditor_.render(graph, controller, delta);
         }
     }

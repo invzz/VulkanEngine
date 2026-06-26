@@ -312,11 +312,11 @@ namespace engine {
         VkAttachmentDescription colorAttachment = {};
         colorAttachment.format                  = getSwapChainImageFormat();
         colorAttachment.samples                 = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_LOAD;   // Preserve viewport content
         colorAttachment.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachment.stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachment.initialLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;   // Must match present layout when using LOAD
         colorAttachment.finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         VkAttachmentReference colorAttachmentRef = {};

@@ -79,6 +79,7 @@ namespace engine {
 
     void CameraSystem::render(FrameInfo& frameInfo) const {
         pipeline->bind(frameInfo.commandBuffer);
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "CameraSystem: global descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
         auto&       registry    = frameInfo.scene->getRegistry();

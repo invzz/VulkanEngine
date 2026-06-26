@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <imgui.h>
-#include <imgui_internal.h>
 
 namespace engine {
 
@@ -49,7 +48,6 @@ namespace engine {
 
         // --- Left: Application name ---
         ImGui::TextColored(ImVec4(0.6f, 0.8f, 1.0f, 1.0f), "VulkanEngine");
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical, 8.0f);
 
         // --- Panel toggles ---
         for (const auto& toggle : toggles_) {
@@ -62,15 +60,11 @@ namespace engine {
             ImGui::SameLine(0.0f, 0.0f);
         }
 
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical, 8.0f);
-
         // --- Style preset selector ---
         const char* styleNames[] = {"Dark", "Light", "Midnight"};
         if (ImGui::Combo("##style", &stylePreset_, styleNames, IM_ARRAYSIZE(styleNames))) {
             applyStylePreset(stylePreset_);
         }
-
-        ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical, 8.0f);
 
         // --- Right: Metrics ---
         float fps       = ImGui::GetIO().Framerate;

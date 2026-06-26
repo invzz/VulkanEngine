@@ -1,59 +1,57 @@
 #include "Editor/ui/PostProcessPanel.hpp"
 
-#include <imgui.h>
-
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
+
+#include "Editor/ui/UI.hpp"
 
 namespace engine {
     PostProcessPanel::PostProcessPanel(PostProcessPushConstants& pushConstants) : pushConstants{pushConstants} {}
 
     void PostProcessPanel::render(FrameInfo& /*frameInfo*/) {
-        // ImGui::Begin("Post Processing");
-
-        ImGui::DragFloat("Exposure", &pushConstants.exposure, 0.01f, 0.1f, 10.0f);
-        ImGui::DragFloat("Contrast", &pushConstants.contrast, 0.01f, 0.1f, 2.0f);
-        ImGui::DragFloat("Saturation", &pushConstants.saturation, 0.01f, 0.0f, 2.0f);
-        ImGui::DragFloat("Vignette", &pushConstants.vignette, 0.01f, 0.0f, 5.0f);
+        ui::UI::DragFloat("Exposure##pp_exposure", &pushConstants.exposure, 0.01f, 0.1f, 10.0f);
+        ui::UI::DragFloat("Contrast##pp_contrast", &pushConstants.contrast, 0.01f, 0.1f, 2.0f);
+        ui::UI::DragFloat("Saturation##pp_saturation", &pushConstants.saturation, 0.01f, 0.0f, 2.0f);
+        ui::UI::DragFloat("Vignette##pp_vignette", &pushConstants.vignette, 0.01f, 0.0f, 5.0f);
 
         const char* toneMappingItems[] = {"None", "ACES Filmic"};
-        ImGui::Combo("Tone Mapping", &pushConstants.toneMappingMode, toneMappingItems, IM_ARRAYSIZE(toneMappingItems));
+        ui::UI::Combo("Tone Mapping##pp_tone_mapping", &pushConstants.toneMappingMode, toneMappingItems, IM_ARRAYSIZE(toneMappingItems));
 
-        ImGui::Separator();
-        ImGui::Text("Bloom");
+        ui::UI::Separator();
+        ui::UI::TextDisabled("Bloom");
         bool bloom = pushConstants.enableBloom == 1;
-        if (ImGui::Checkbox("Enable Bloom", &bloom)) {
+        if (ui::UI::Checkbox("Enable Bloom##pp_bloom", &bloom)) {
             pushConstants.enableBloom = bloom ? 1 : 0;
         }
         if (bloom) {
-            ImGui::DragFloat("Bloom Intensity", &pushConstants.bloomIntensity, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("Bloom Threshold", &pushConstants.bloomThreshold, 0.01f, 0.0f, 5.0f);
+            ui::UI::DragFloat("Bloom Intensity##pp_bloom_intensity", &pushConstants.bloomIntensity, 0.001f, 0.0f, 1.0f);
+            ui::UI::DragFloat("Bloom Threshold##pp_bloom_threshold", &pushConstants.bloomThreshold, 0.01f, 0.0f, 5.0f);
         }
 
-        ImGui::Separator();
-        ImGui::Text("Anti-Aliasing");
+        ui::UI::Separator();
+        ui::UI::TextDisabled("Anti-Aliasing");
         bool fxaa = pushConstants.enableFXAA == 1;
-        if (ImGui::Checkbox("Enable FXAA", &fxaa)) {
+        if (ui::UI::Checkbox("Enable FXAA##pp_fxaa", &fxaa)) {
             pushConstants.enableFXAA = fxaa ? 1 : 0;
         }
         if (fxaa) {
-            ImGui::DragFloat("FXAA Span Max", &pushConstants.fxaaSpanMax, 0.1f, 1.0f, 16.0f);
-            ImGui::DragFloat("FXAA Reduce Mul", &pushConstants.fxaaReduceMul, 0.001f, 0.0f, 1.0f);
-            ImGui::DragFloat("FXAA Reduce Min", &pushConstants.fxaaReduceMin, 0.0001f, 0.0f, 0.1f);
+            ui::UI::DragFloat("FXAA Span Max##pp_fxaa_span", &pushConstants.fxaaSpanMax, 0.1f, 1.0f, 16.0f);
+            ui::UI::DragFloat("FXAA Reduce Mul##pp_fxaa_reduce_mul", &pushConstants.fxaaReduceMul, 0.001f, 0.0f, 1.0f);
+            ui::UI::DragFloat("FXAA Reduce Min##pp_fxaa_reduce_min", &pushConstants.fxaaReduceMin, 0.0001f, 0.0f, 0.1f);
         }
 
-        ImGui::Separator();
-        ImGui::Text("SSAO");
+        ui::UI::Separator();
+        ui::UI::TextDisabled("SSAO");
         bool ssao = pushConstants.enableSSAO == 1;
-        if (ImGui::Checkbox("Enable SSAO", &ssao)) {
+        if (ui::UI::Checkbox("Enable SSAO##pp_ssao", &ssao)) {
             pushConstants.enableSSAO = ssao ? 1 : 0;
         }
         if (ssao) {
-            ImGui::DragFloat("SSAO Radius", &pushConstants.ssaoRadius, 0.01f, 0.0f, 2.0f);
-            ImGui::DragFloat("SSAO Bias", &pushConstants.ssaoBias, 0.001f, 0.0f, 0.5f);
+            ui::UI::DragFloat("SSAO Radius##pp_ssao_radius", &pushConstants.ssaoRadius, 0.01f, 0.0f, 2.0f);
+            ui::UI::DragFloat("SSAO Bias##pp_ssao_bias", &pushConstants.ssaoBias, 0.001f, 0.0f, 0.5f);
         }
 
-        if (ImGui::Button("Reset")) {
+        if (ui::UI::ResetButton("Reset##pp_reset")) {
             pushConstants.exposure        = 1.0f;
             pushConstants.contrast        = 1.0f;
             pushConstants.saturation      = 1.0f;
@@ -70,7 +68,5 @@ namespace engine {
             pushConstants.ssaoBias        = 0.025f;
             pushConstants.toneMappingMode = 1;
         }
-
-        // ImGui::End();
     }
 }  // namespace engine

@@ -50,6 +50,7 @@ namespace engine {
 
     void GridRenderSystem::render(FrameInfo& frameInfo) const {
         pipeline_->bind(frameInfo.commandBuffer);
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "GridRenderSystem: global descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout_, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
         constexpr int gridExtent   = 20;

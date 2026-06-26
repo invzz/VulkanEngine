@@ -108,6 +108,9 @@ namespace engine {
     void LightSystem::render(FrameInfo& frameInfo) {
         pipeline->bind(frameInfo.commandBuffer);
 
+        // Defensive: validate descriptor set before binding
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null");
+
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
         constexpr float kPointLightDebugRadiusScale = 0.15f;
@@ -128,6 +131,7 @@ namespace engine {
 
         // Render directional lights as arrows
         directionalPipeline->bind(frameInfo.commandBuffer);
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null for directional lights");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, directionalPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
         auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
@@ -157,6 +161,7 @@ namespace engine {
 
         // Render spot lights as cones
         spotPipeline->bind(frameInfo.commandBuffer);
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null for spot lights");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, spotPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
 
         auto spotView = frameInfo.scene->getRegistry().view<SpotLightComponent, TransformComponent>();

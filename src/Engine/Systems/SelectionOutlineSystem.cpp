@@ -1,14 +1,15 @@
 #include "Engine/Systems/SelectionOutlineSystem.hpp"
 
+#include <vulkan/vulkan_core.h>
+
+#include <entt/entity/fwd.hpp>
+
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-#include <entt/entity/fwd.hpp>
-
-#include <vulkan/vulkan_core.h>
 
 namespace engine {
 
@@ -18,7 +19,7 @@ namespace engine {
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset     = 0;
-        pushConstantRange.size       = sizeof(glm::vec3) * 3; // 3 vec3s
+        pushConstantRange.size       = sizeof(glm::vec3) * 3;  // 3 vec3s
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
 
@@ -80,6 +81,7 @@ namespace engine {
 
         // Bind pipeline and descriptors
         pipeline_->bind(frameInfo.commandBuffer);
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "SelectionOutlineSystem: global descriptor set is null");
         vkCmdBindDescriptorSets(
             frameInfo.commandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -94,7 +96,7 @@ namespace engine {
         glm::vec3 pushData[3];
         pushData[0] = worldBounds.min;
         pushData[1] = worldBounds.max;
-        pushData[2] = glm::vec3(1.0f, 0.0f, 0.0f); // Bright red outline
+        pushData[2] = glm::vec3(1.0f, 0.0f, 0.0f);  // Bright red outline
 
         vkCmdPushConstants(
             frameInfo.commandBuffer,

@@ -7,6 +7,8 @@
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
+#include "Editor/ui/UI.hpp"
+
 #include "entt/entity/fwd.hpp"
 
 namespace engine {
@@ -26,25 +28,25 @@ namespace engine {
         if (scene_->getRegistry().valid(currentCamera)) {
             if (scene_->getRegistry().all_of<TransformComponent>(currentCamera)) {
                 auto& pos = scene_->getRegistry().get<TransformComponent>(currentCamera).translation;
-                ImGui::DragFloat3("Position", &pos.x, 0.01f);
+                ui::UI::DragFloat3("Position", &pos.x, 0.01f);
             }
 
             if (scene_->getRegistry().all_of<CameraComponent>(currentCamera)) {
                 auto& camComp = scene_->getRegistry().get<CameraComponent>(currentCamera);
 
                 bool isOrtho = camComp.isOrthographic;
-                if (ImGui::Checkbox("Orthographic", &isOrtho)) {
+                if (ui::UI::Checkbox("Orthographic##cam_ortho", &isOrtho)) {
                     camComp.isOrthographic = isOrtho;
                 }
 
                 if (isOrtho) {
-                    ImGui::DragFloat("Ortho Size", &camComp.orthoSize, 0.1f, 0.1f, 100.0f);
+                    ui::UI::DragFloat("Ortho Size##cam_ortho_size", &camComp.orthoSize, 0.1f, 0.1f, 100.0f);
                 } else {
-                    ImGui::DragFloat("FOV", &camComp.fovY, 0.1f, 1.0f, 179.0f);
+                    ui::UI::DragFloat("FOV##cam_fov", &camComp.fovY, 0.1f, 1.0f, 179.0f);
                 }
 
-                ImGui::DragFloat("Near Plane", &camComp.nearZ, 0.01f, 0.001f, 10.0f);
-                ImGui::DragFloat("Far Plane", &camComp.farZ, 1.0f, 10.0f, 10000.0f);
+                ui::UI::DragFloat("Near Plane##cam_near", &camComp.nearZ, 0.01f, 0.001f, 10.0f);
+                ui::UI::DragFloat("Far Plane##cam_far", &camComp.farZ, 1.0f, 10.0f, 10000.0f);
             }
         }
     }

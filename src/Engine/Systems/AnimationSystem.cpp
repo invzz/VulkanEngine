@@ -12,10 +12,10 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Scene/Components/AnimationController.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Scene/Components/AnimationController.hpp"
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "glm/common.hpp"
@@ -51,7 +51,8 @@ namespace engine {
         for (auto entity : view) {
             auto [anim, transform] = view.get<AnimationComponent, TransformComponent>(entity);
 
-            if (!anim.model) continue;
+            if (!anim.model)
+                continue;
 
             // Step animation graph if present
             if (anim.graph) {
@@ -74,14 +75,14 @@ namespace engine {
             }
 
             // Prepare per-bone accumulators
-            auto& nodes = anim.model->getNodes();
+            auto&                  nodes = anim.model->getNodes();
             std::vector<glm::vec3> localTrans(nodes.size(), glm::vec3(0.0f));
             std::vector<glm::quat> localRot(nodes.size(), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             std::vector<glm::vec3> localScale(nodes.size(), glm::vec3(1.0f));
 
             // Update controller — steps time, fires events, accumulates bone transforms
             anim.controller->update(frameInfo.frameTime, *anim.model,
-                                    localTrans, localRot, localScale);
+                localTrans, localRot, localScale);
 
             // Sync isPlaying state from controller
             anim.isPlaying = anim.controller->hasActiveClips();
@@ -89,8 +90,8 @@ namespace engine {
             // Apply local transforms to model nodes
             for (size_t i = 0; i < nodes.size(); ++i) {
                 nodes[i].translation = localTrans[i];
-                nodes[i].rotation = localRot[i];
-                nodes[i].scale = localScale[i];
+                nodes[i].rotation    = localRot[i];
+                nodes[i].scale       = localScale[i];
             }
 
             // Compute global transforms (reusing existing helper)
@@ -103,7 +104,7 @@ namespace engine {
                         break;
                     }
                 }
-                 if (isRoot) {
+                if (isRoot) {
                     computeGlobalTransforms(anim, static_cast<int>(i), glm::mat4(1.0f));
                 }
             }

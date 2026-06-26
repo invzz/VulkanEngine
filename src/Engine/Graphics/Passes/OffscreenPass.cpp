@@ -80,6 +80,11 @@ namespace engine {
         renderer_.beginGbufferRenderPass(frameInfo.commandBuffer, rendering_.modelRenderSystem->isMultiThreadedRecordingEnabled());
         rendering_.modelRenderSystem->renderGbuffer(frameInfo);
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
+
+        // Transition all depth mip levels from DEPTH_STENCIL_ATTACHMENT_OPTIMAL to
+        // DEPTH_STENCIL_READ_ONLY_OPTIMAL so they are valid for sampling by lighting passes.
+        renderer_.transitionDepthToShaderReadOnly(frameInfo.commandBuffer);
+
         renderer_.beginDeferredLightingRenderPass(frameInfo.commandBuffer);
 
         // Update shadow descriptors

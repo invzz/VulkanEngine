@@ -36,6 +36,7 @@ namespace engine {
         void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
         void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
         void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
+        void        transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
 
         // Accessors
         [[nodiscard]] VkRenderPass getSwapChainRenderPass() const {
@@ -96,8 +97,28 @@ namespace engine {
         [[nodiscard]] float getAspectRatio() const {
             return swapChain->extentAspectRatio();
         }
+        [[nodiscard]] VkFormat getSwapChainFormat() const {
+            return swapChain->getSwapChainImageFormat();
+        }
+
         [[nodiscard]] VkExtent2D getSwapChainExtent() const {
             return swapChain->getSwapChainExtent();
+        }
+
+        [[nodiscard]] VkFramebuffer getSwapChainFramebuffer(int index) const {
+            return swapChain->getFrameBuffer(index);
+        }
+
+        /**
+         * @brief Set whether to skip clearing the swap chain in the next render pass.
+         * Used when the viewport has already been rendered to the swap chain.
+         */
+        void setSkipClearSwapChain(bool skip) {
+            skipClear_ = skip;
+        }
+
+        [[nodiscard]] bool getSkipClearSwapChain() const {
+            return skipClear_;
         }
 
        private:
@@ -124,6 +145,10 @@ namespace engine {
         // we'll insert a no-op transition to PRESENT_SRC prior to presenting to
         // avoid leaving swapchain images in VK_IMAGE_LAYOUT_UNDEFINED.
         bool usedSwapchainThisFrame{false};
+
+        // When true, skip clearing the swap chain in beginSwapChainRenderPass.
+        // Used when the viewport has already been rendered to the swap chain.
+        bool skipClear_{false};
 
        public:
         // Helper for diagnostics

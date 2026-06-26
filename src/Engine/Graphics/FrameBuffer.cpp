@@ -565,6 +565,9 @@ namespace engine {
         nearestSamplerInfo.magFilter           = VK_FILTER_NEAREST;
         nearestSamplerInfo.minFilter           = VK_FILTER_NEAREST;
         nearestSamplerInfo.mipmapMode          = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+        // Depth is only sampled at mip level 0; clamp maxLod to 1 to avoid
+        // referencing unused mip levels whose layout is UNDEFINED.
+        nearestSamplerInfo.maxLod              = 1.0f;
 
         VkImageUsageFlags colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         if (useMipmaps) {
@@ -578,7 +581,9 @@ namespace engine {
 
         for (uint32_t i = 0; i < frameCount; ++i) {
             makeTarget(colorTargets[i], colorFormat, mipLevels, colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, false, true, true, &linearSamplerInfo);
-            makeTarget(depthTargets[i], depthFormat, mipLevels, depthUsage, VK_IMAGE_ASPECT_DEPTH_BIT, true, true, true, &nearestSamplerInfo);
+            // Depth image does not need mipmaps — only mip level 0 is used as an attachment
+            // and sampled. Use mipLevels=1 to avoid referencing unused mip levels.
+            makeTarget(depthTargets[i], depthFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, false, true, true, &nearestSamplerInfo);
             makeTarget(sceneColorTargets[i], colorFormat, mipLevels,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                 VK_IMAGE_ASPECT_COLOR_BIT,
@@ -1023,6 +1028,43 @@ namespace engine {
         barrier.dstAccessMask                 = VK_ACCESS_SHADER_READ_BIT;
 
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    }
+
+    void FrameBuffer::transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer) {
+        if (depthTargets.empty()) {
+            return;
+        }
+
+        // Depth targets now have only 1 mip level (no mipmaps needed for depth),
+        // so this is a no-op. Kept for API compatibility in case depth mipmaps
+        // are re-enabled in the future.
+        if (depthTargets.front().getMipLevels() <= 1) {
+            return;
+        }
+
+        // Mip level 0 was already transitioned to SHADER_READ_ONLY_OPTIMAL by the
+        // G-buffer render pass dependency (finalLayout). Only mip levels 1..N-1 need
+        // an explicit barrier from DEPTH_STENCIL_ATTACHMENT_OPTIMAL to SHADER_READ_ONLY_OPTIMAL.
+        VkImageMemoryBarrier barrier{};
+        barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image                           = depthTargets.front().getImage();
+        barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+        barrier.subresourceRange.baseMipLevel   = 1;
+        barrier.subresourceRange.levelCount     = depthTargets.front().getMipLevels() - 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount     = 1;
+        barrier.srcAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_DEPENDENCY_BY_REGION_BIT,
+            0, nullptr, 0, nullptr, 1, &barrier);
     }
 
 }  // namespace engine

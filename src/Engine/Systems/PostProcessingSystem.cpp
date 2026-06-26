@@ -73,6 +73,9 @@ namespace engine {
     void PostProcessingSystem::render(FrameInfo& frameInfo, VkDescriptorSet descriptorSet, const PostProcessPushConstants& push) {
         pipeline->bind(frameInfo.commandBuffer);
 
+        // Defensive: validate descriptor set before binding
+        assert(descriptorSet != VK_NULL_HANDLE && "PostProcessingSystem: descriptor set is null");
+
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
         vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PostProcessPushConstants), &push);

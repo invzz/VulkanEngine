@@ -1,7 +1,7 @@
 #include "Editor/ui/PhysicsPanel.hpp"
 
 #include <cstdint>
-#include <imgui.h>
+#include <string>
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
@@ -9,6 +9,8 @@
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
+
+#include "Editor/ui/UI.hpp"
 
 #include "entt/entity/entity.hpp"
 
@@ -22,156 +24,163 @@ namespace engine {
         if (!visible_)
             return;
 
-        if (ImGui::Begin("Physics", &visible_)) {
-            if (simulationRunning_ != nullptr) {
-                if (!*simulationRunning_) {
-                    if (ImGui::Button("Play Physics")) {
-                        *simulationRunning_ = true;
-                    }
-                } else {
-                    if (ImGui::Button("Pause Physics")) {
-                        *simulationRunning_ = false;
-                    }
+        if (simulationRunning_ != nullptr) {
+            if (!*simulationRunning_) {
+                if (ui::UI::Button("Play Physics##physics_play")) {
+                    *simulationRunning_ = true;
                 }
-                ImGui::SameLine();
-                ImGui::TextDisabled("Status: %s", *simulationRunning_ ? "Running" : "Stopped");
-                ImGui::Separator();
-            }
-
-            if (showColliderWireframes_ != nullptr) {
-                if (ImGui::Button(*showColliderWireframes_ ? "Hide Collider Wireframes" : "Show Collider Wireframes")) {
-                    *showColliderWireframes_ = !*showColliderWireframes_;
-                }
-                ImGui::SameLine();
-                ImGui::TextDisabled("Collider Debug: %s", *showColliderWireframes_ ? "On" : "Off");
-                ImGui::Separator();
-            }
-
-            if (solidGroundEnabled_ != nullptr) {
-                if (ImGui::Button(*solidGroundEnabled_ ? "Disable Solid Ground" : "Enable Solid Ground")) {
-                    *solidGroundEnabled_ = !*solidGroundEnabled_;
-                    if (joltPhysicsSystem_ != nullptr) {
-                        joltPhysicsSystem_->setGroundEnabled(*solidGroundEnabled_);
-                    }
-                }
-                ImGui::SameLine();
-                ImGui::TextDisabled("Ground Plane: %s", *solidGroundEnabled_ ? "On" : "Off");
-                ImGui::Separator();
-            }
-
-            if (frameInfo.selectedEntity != entt::null) {
-                auto  entity   = frameInfo.selectedEntity;
-                auto& registry = scene_.getRegistry();
-
-                // Check if the entity already has a physics component
-                bool hasRigidBody = registry.all_of<RigidBodyComponent>(entity);
-                bool hasCollider  = registry.all_of<ColliderComponent>(entity);
-
-                ImGui::Text("Selected: Object %u", (uint32_t) entity);
-                ImGui::Separator();
-
-                // Add Physics Component button
-                if (!hasRigidBody) {
-                    if (ImGui::Button("Add Rigid Body Component")) {
-                        addPhysicsComponent(frameInfo);
-                    }
-                    ImGui::Spacing();
-                } else {
-                    // Remove Rigid Body button
-                    if (ImGui::Button("Remove Rigid Body Component")) {
-                        if (registry.all_of<RigidBodyComponent>(entity)) {
-                            registry.remove<RigidBodyComponent>(entity);
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    // Edit physics properties
-                    editPhysicsProperties(frameInfo);
-                }
-
-                // Add Collider Component button
-                if (!hasCollider) {
-                    if (ImGui::Button("Add Collider Component")) {
-                        // Add collider component to entity
-                        auto& collider               = registry.emplace<ColliderComponent>(entity);
-                        collider.shape               = ColliderComponent::ShapeType::Box;
-                        collider.size                = glm::vec3(1.0f, 1.0f, 1.0f);
-                        collider.radius              = 0.5f;
-                        collider.centerOffset        = glm::vec3(0.0f);
-                        collider.pendingShapeRebuild = true;
-
-                        if (registry.all_of<ModelComponent>(entity)) {
-                            auto& modelComp = registry.get<ModelComponent>(entity);
-                            if (modelComp.model != nullptr) {
-                                const AABB& localBounds = modelComp.model->getLocalBounds();
-                                if (localBounds.isValid()) {
-                                    const glm::vec3 extents = glm::max(localBounds.extents(), glm::vec3(0.01f));
-                                    collider.size           = glm::max(extents * 2.0f, glm::vec3(0.02f));
-                                    collider.centerOffset   = localBounds.center();
-                                }
-                            }
-                        }
-
-                        if (registry.all_of<RigidBodyComponent>(entity)) {
-                            registry.get<RigidBodyComponent>(entity).pendingBodyStateOverride = true;
-                        }
-                    }
-                    ImGui::Spacing();
-                } else {
-                    // Remove Collider button
-                    if (ImGui::Button("Remove Collider Component")) {
-                        if (registry.all_of<ColliderComponent>(entity)) {
-                            registry.remove<ColliderComponent>(entity);
-                        }
-                    }
-                    ImGui::Spacing();
-
-                    editColliderProperties(frameInfo);
-                }
-
-                // Display current component information
-                if (hasRigidBody) {
-                    auto& rigidBody = registry.get<RigidBodyComponent>(entity);
-                    ImGui::Text("Mass: %.2f", rigidBody.mass);
-                    ImGui::Text("Velocity: (%.2f, %.2f, %.2f)",
-                        rigidBody.velocity.x, rigidBody.velocity.y, rigidBody.velocity.z);
-                    ImGui::Text("Acceleration: (%.2f, %.2f, %.2f)",
-                        rigidBody.acceleration.x, rigidBody.acceleration.y, rigidBody.acceleration.z);
-                    ImGui::Text("Angular Velocity: (%.2f, %.2f, %.2f)",
-                        rigidBody.angularVelocity.x, rigidBody.angularVelocity.y, rigidBody.angularVelocity.z);
-                    ImGui::Text("Static: %s", rigidBody.isStatic ? "Yes" : "No");
-                    ImGui::Text("Use Gravity: %s", rigidBody.useGravity ? "Yes" : "No");
-                }
-
-                if (hasCollider) {
-                    auto&       collider = registry.get<ColliderComponent>(entity);
-                    std::string shapeStr;
-                    switch (collider.shape) {
-                        case ColliderComponent::ShapeType::Box:
-                            shapeStr = "Box";
-                            break;
-                        case ColliderComponent::ShapeType::Sphere:
-                            shapeStr = "Sphere";
-                            break;
-                        default:
-                            shapeStr = "Mesh";
-                            break;
-                    }
-                    ImGui::Text("Collider Type: %s", shapeStr.c_str());
-                    if (collider.shape == ColliderComponent::ShapeType::Box || collider.shape == ColliderComponent::ShapeType::Sphere) {
-                        ImGui::Text("Size: (%.2f, %.2f, %.2f)",
-                            collider.size.x, collider.size.y, collider.size.z);
-                    }
-                }
-
             } else {
-                ImGui::TextDisabled("No object selected");
-                ImGui::TextDisabled("Press Y/U to select objects");
-                ImGui::TextDisabled("Press C to select camera");
+                if (ui::UI::Button("Pause Physics##physics_pause")) {
+                    *simulationRunning_ = false;
+                }
             }
+            std::string statusText = std::string(*simulationRunning_ ? "Status: Running" : "Status: Stopped");
+            ui::UI::TextDisabled(statusText.c_str());
+            ui::UI::Separator();
         }
 
-        ImGui::End();
+        if (showColliderWireframes_ != nullptr) {
+            std::string wireframeText = *showColliderWireframes_ ? "Hide Collider Wireframes" : "Show Collider Wireframes";
+            if (ui::UI::Button(wireframeText.c_str())) {
+                *showColliderWireframes_ = !*showColliderWireframes_;
+            }
+            std::string wireframeStatus = std::string(*showColliderWireframes_ ? "Collider Debug: On" : "Collider Debug: Off");
+            ui::UI::TextDisabled(wireframeStatus.c_str());
+            ui::UI::Separator();
+        }
+
+        if (solidGroundEnabled_ != nullptr) {
+            std::string groundText = *solidGroundEnabled_ ? "Disable Solid Ground" : "Enable Solid Ground";
+            if (ui::UI::Button(groundText.c_str())) {
+                *solidGroundEnabled_ = !*solidGroundEnabled_;
+                if (joltPhysicsSystem_ != nullptr) {
+                    joltPhysicsSystem_->setGroundEnabled(*solidGroundEnabled_);
+                }
+            }
+            std::string groundStatus = std::string(*solidGroundEnabled_ ? "Ground Plane: On" : "Ground Plane: Off");
+            ui::UI::TextDisabled(groundStatus.c_str());
+            ui::UI::Separator();
+        }
+
+        if (frameInfo.selectedEntity != entt::null) {
+            auto  entity   = frameInfo.selectedEntity;
+            auto& registry = scene_.getRegistry();
+
+            // Check if the entity already has a physics component
+            bool hasRigidBody = registry.all_of<RigidBodyComponent>(entity);
+            bool hasCollider  = registry.all_of<ColliderComponent>(entity);
+
+            std::string selectedText = "Selected: Object " + std::to_string((uint32_t) entity);
+            ui::UI::TextColored(selectedText.c_str(), ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
+            ui::UI::Separator();
+
+            // Add Physics Component button
+            if (!hasRigidBody) {
+                if (ui::UI::Button("Add Rigid Body Component##physics_add_rb")) {
+                    addPhysicsComponent(frameInfo);
+                }
+            } else {
+                // Remove Rigid Body button
+                if (ui::UI::Button("Remove Rigid Body Component##physics_remove_rb")) {
+                    if (registry.all_of<RigidBodyComponent>(entity)) {
+                        registry.remove<RigidBodyComponent>(entity);
+                    }
+                }
+
+                // Edit physics properties
+                editPhysicsProperties(frameInfo);
+            }
+
+            // Add Collider Component button
+            if (!hasCollider) {
+                if (ui::UI::Button("Add Collider Component##physics_add_collider")) {
+                    // Add collider component to entity
+                    auto& collider               = registry.emplace<ColliderComponent>(entity);
+                    collider.shape               = ColliderComponent::ShapeType::Box;
+                    collider.size                = glm::vec3(1.0f, 1.0f, 1.0f);
+                    collider.radius              = 0.5f;
+                    collider.centerOffset        = glm::vec3(0.0f);
+                    collider.pendingShapeRebuild = true;
+
+                    if (registry.all_of<ModelComponent>(entity)) {
+                        auto& modelComp = registry.get<ModelComponent>(entity);
+                        if (modelComp.model != nullptr) {
+                            const AABB& localBounds = modelComp.model->getLocalBounds();
+                            if (localBounds.isValid()) {
+                                const glm::vec3 extents = glm::max(localBounds.extents(), glm::vec3(0.01f));
+                                collider.size           = glm::max(extents * 2.0f, glm::vec3(0.02f));
+                                collider.centerOffset   = localBounds.center();
+                            }
+                        }
+                    }
+
+                    if (registry.all_of<RigidBodyComponent>(entity)) {
+                        registry.get<RigidBodyComponent>(entity).pendingBodyStateOverride = true;
+                    }
+                }
+            } else {
+                // Remove Collider button
+                if (ui::UI::Button("Remove Collider Component##physics_remove_collider")) {
+                    if (registry.all_of<ColliderComponent>(entity)) {
+                        registry.remove<ColliderComponent>(entity);
+                    }
+                }
+
+                editColliderProperties(frameInfo);
+            }
+
+            // Display current component information
+            if (hasRigidBody) {
+                auto& rigidBody = registry.get<RigidBodyComponent>(entity);
+                std::string massText = "Mass: " + std::to_string(rigidBody.mass).substr(0, 5);
+                ui::UI::TextDisabled(massText.c_str());
+                std::string velText = "Velocity: (" + std::to_string(rigidBody.velocity.x).substr(0, 5) + ", " +
+                                      std::to_string(rigidBody.velocity.y).substr(0, 5) + ", " +
+                                      std::to_string(rigidBody.velocity.z).substr(0, 5) + ")";
+                ui::UI::TextDisabled(velText.c_str());
+                std::string accText = "Acceleration: (" + std::to_string(rigidBody.acceleration.x).substr(0, 5) + ", " +
+                                      std::to_string(rigidBody.acceleration.y).substr(0, 5) + ", " +
+                                      std::to_string(rigidBody.acceleration.z).substr(0, 5) + ")";
+                ui::UI::TextDisabled(accText.c_str());
+                std::string angVelText = "Angular Velocity: (" + std::to_string(rigidBody.angularVelocity.x).substr(0, 5) + ", " +
+                                         std::to_string(rigidBody.angularVelocity.y).substr(0, 5) + ", " +
+                                         std::to_string(rigidBody.angularVelocity.z).substr(0, 5) + ")";
+                ui::UI::TextDisabled(angVelText.c_str());
+                std::string staticText = std::string(rigidBody.isStatic ? "Static: Yes" : "Static: No");
+                ui::UI::TextDisabled(staticText.c_str());
+                std::string gravityText = std::string(rigidBody.useGravity ? "Use Gravity: Yes" : "Use Gravity: No");
+                ui::UI::TextDisabled(gravityText.c_str());
+            }
+
+            if (hasCollider) {
+                auto&       collider = registry.get<ColliderComponent>(entity);
+                std::string shapeStr;
+                switch (collider.shape) {
+                    case ColliderComponent::ShapeType::Box:
+                        shapeStr = "Box";
+                        break;
+                    case ColliderComponent::ShapeType::Sphere:
+                        shapeStr = "Sphere";
+                        break;
+                    default:
+                        shapeStr = "Mesh";
+                        break;
+                }
+                std::string colliderTypeText = "Collider Type: " + shapeStr;
+                ui::UI::TextDisabled(colliderTypeText.c_str());
+                if (collider.shape == ColliderComponent::ShapeType::Box || collider.shape == ColliderComponent::ShapeType::Sphere) {
+                    std::string sizeText = "Size: (" + std::to_string(collider.size.x).substr(0, 5) + ", " +
+                                           std::to_string(collider.size.y).substr(0, 5) + ", " +
+                                           std::to_string(collider.size.z).substr(0, 5) + ")";
+                    ui::UI::TextDisabled(sizeText.c_str());
+                }
+            }
+
+        } else {
+            ui::UI::TextDisabled("No object selected");
+            ui::UI::TextDisabled("Press Y/U to select objects");
+            ui::UI::TextDisabled("Press C to select camera");
+        }
     }
 
     void PhysicsPanel::addPhysicsComponent(FrameInfo& frameInfo) {
@@ -208,40 +217,48 @@ namespace engine {
 
         auto& rigidBody = registry.get<RigidBodyComponent>(entity);
 
-        ImGui::Text("Edit Physics Properties:");
-
         bool bodyStateEdited = false;
 
         // Mass
-        ImGui::DragFloat("Mass", &rigidBody.mass, 0.1f, 0.01f, 1000.0f);
+        ui::UI::DragFloat("Mass##phys_mass", &rigidBody.mass, 0.1f, 0.01f, 1000.0f);
 
         // Static checkbox
-        ImGui::Checkbox("Static Body", &rigidBody.isStatic);
+        if (ui::UI::Checkbox("Static Body##phys_static", &rigidBody.isStatic)) {
+            bodyStateEdited = true;
+        }
 
         // Use Gravity checkbox
-        ImGui::Checkbox("Use Gravity", &rigidBody.useGravity);
+        if (ui::UI::Checkbox("Use Gravity##phys_gravity", &rigidBody.useGravity)) {
+            bodyStateEdited = true;
+        }
 
-        ImGui::Separator();
+        ui::UI::Separator();
 
         // Velocity
-        if (ImGui::CollapsingHeader("Velocity")) {
-            bodyStateEdited |= ImGui::DragFloat("X##velocity", &rigidBody.velocity.x, 0.1f);
-            bodyStateEdited |= ImGui::DragFloat("Y##velocity", &rigidBody.velocity.y, 0.1f);
-            bodyStateEdited |= ImGui::DragFloat("Z##velocity", &rigidBody.velocity.z, 0.1f);
+        if (ui::UI::Section("Velocity")) {
+            bool edited = false;
+            edited |= ui::UI::DragFloat("X##phys_vx", &rigidBody.velocity.x, 0.1f);
+            edited |= ui::UI::DragFloat("Y##phys_vy", &rigidBody.velocity.y, 0.1f);
+            edited |= ui::UI::DragFloat("Z##phys_vz", &rigidBody.velocity.z, 0.1f);
+            bodyStateEdited |= edited;
         }
 
         // Acceleration
-        if (ImGui::CollapsingHeader("Acceleration")) {
-            ImGui::DragFloat("X##acceleration", &rigidBody.acceleration.x, 0.1f);
-            ImGui::DragFloat("Y##acceleration", &rigidBody.acceleration.y, 0.1f);
-            ImGui::DragFloat("Z##acceleration", &rigidBody.acceleration.z, 0.1f);
+        if (ui::UI::Section("Acceleration")) {
+            bool edited = false;
+            edited |= ui::UI::DragFloat("X##phys_ax", &rigidBody.acceleration.x, 0.1f);
+            edited |= ui::UI::DragFloat("Y##phys_ay", &rigidBody.acceleration.y, 0.1f);
+            edited |= ui::UI::DragFloat("Z##phys_az", &rigidBody.acceleration.z, 0.1f);
+            bodyStateEdited |= edited;
         }
 
         // Angular Velocity
-        if (ImGui::CollapsingHeader("Angular Velocity")) {
-            bodyStateEdited |= ImGui::DragFloat("X##angular", &rigidBody.angularVelocity.x, 0.01f);
-            bodyStateEdited |= ImGui::DragFloat("Y##angular", &rigidBody.angularVelocity.y, 0.01f);
-            bodyStateEdited |= ImGui::DragFloat("Z##angular", &rigidBody.angularVelocity.z, 0.01f);
+        if (ui::UI::Section("Angular Velocity")) {
+            bool edited = false;
+            edited |= ui::UI::DragFloat("X##phys_avx", &rigidBody.angularVelocity.x, 0.01f);
+            edited |= ui::UI::DragFloat("Y##phys_avy", &rigidBody.angularVelocity.y, 0.01f);
+            edited |= ui::UI::DragFloat("Z##phys_avz", &rigidBody.angularVelocity.z, 0.01f);
+            bodyStateEdited |= edited;
         }
 
         if (bodyStateEdited) {
@@ -260,33 +277,43 @@ namespace engine {
         auto& collider  = registry.get<ColliderComponent>(entity);
         auto* rigidBody = registry.try_get<RigidBodyComponent>(entity);
 
-        ImGui::Text("Edit Collider Properties:");
-
         bool colliderChanged = false;
 
         const char* shapeLabels[]     = {"Sphere", "Box", "Capsule", "Mesh"};
         int         currentShapeIndex = static_cast<int>(collider.shape);
-        if (ImGui::Combo("Shape", &currentShapeIndex, shapeLabels, IM_ARRAYSIZE(shapeLabels))) {
+        if (ui::UI::Combo("Shape##phys_shape", &currentShapeIndex, shapeLabels, IM_ARRAYSIZE(shapeLabels))) {
             collider.shape  = static_cast<ColliderComponent::ShapeType>(currentShapeIndex);
             colliderChanged = true;
         }
 
-        colliderChanged |= ImGui::Checkbox("Is Trigger", &collider.isTrigger);
-        colliderChanged |= ImGui::DragFloat3("Center Offset", &collider.centerOffset.x, 0.01f);
+        if (ui::UI::Checkbox("Is Trigger##phys_trigger", &collider.isTrigger)) {
+            colliderChanged = true;
+        }
+        if (ui::UI::DragFloat3("Center Offset##phys_center", &collider.centerOffset.x, 0.01f)) {
+            colliderChanged = true;
+        }
 
         switch (collider.shape) {
             case ColliderComponent::ShapeType::Box:
-                colliderChanged |= ImGui::DragFloat3("Size", &collider.size.x, 0.05f, 0.01f, 1000.0f);
+                if (ui::UI::DragFloat3("Size##phys_box_size", &collider.size.x, 0.05f, 0.01f, 1000.0f)) {
+                    colliderChanged = true;
+                }
                 break;
             case ColliderComponent::ShapeType::Sphere:
-                colliderChanged |= ImGui::DragFloat("Radius", &collider.radius, 0.01f, 0.01f, 1000.0f);
+                if (ui::UI::DragFloat("Radius##phys_sphere_radius", &collider.radius, 0.01f, 0.01f, 1000.0f)) {
+                    colliderChanged = true;
+                }
                 break;
             case ColliderComponent::ShapeType::Capsule:
-                colliderChanged |= ImGui::DragFloat("Radius##capsule", &collider.radius, 0.01f, 0.01f, 1000.0f);
-                colliderChanged |= ImGui::DragFloat("Height##capsule", &collider.size.y, 0.05f, 0.01f, 1000.0f);
+                if (ui::UI::DragFloat("Radius##phys_capsule_radius", &collider.radius, 0.01f, 0.01f, 1000.0f)) {
+                    colliderChanged = true;
+                }
+                if (ui::UI::DragFloat("Height##phys_capsule_height", &collider.size.y, 0.05f, 0.01f, 1000.0f)) {
+                    colliderChanged = true;
+                }
                 break;
             case ColliderComponent::ShapeType::Mesh:
-                ImGui::TextDisabled("Mesh collider uses model triangles.");
+                ui::UI::TextDisabled("Mesh collider uses model triangles.");
                 break;
         }
 
@@ -295,7 +322,7 @@ namespace engine {
             if (modelComp.model != nullptr) {
                 const AABB& localBounds = modelComp.model->getLocalBounds();
                 if (localBounds.isValid()) {
-                    if (ImGui::Button("Fit Collider To Model Bounds")) {
+                    if (ui::UI::Button("Fit Collider To Model Bounds##phys_fit_bounds")) {
                         const glm::vec3 extents = glm::max(localBounds.extents(), glm::vec3(0.01f));
                         collider.centerOffset   = localBounds.center();
 
@@ -329,7 +356,7 @@ namespace engine {
             }
         }
 
-        ImGui::Separator();
+        ui::UI::Separator();
     }
 
 }  // namespace engine

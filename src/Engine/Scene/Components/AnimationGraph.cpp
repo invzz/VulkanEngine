@@ -1,58 +1,61 @@
 #include "Engine/Scene/Components/AnimationGraph.hpp"
-#include "Engine/Scene/components/AnimationComponent.hpp"
 
 #include <algorithm>
 #include <cmath>
 
+#include "Engine/Scene/components/AnimationComponent.hpp"
+
 namespace engine {
 
     int AnimationGraph::addNode(const std::string& name, int clipIndex, bool isEntryNode) {
-        int id = static_cast<int>(nodes_.size());
+        int                id = static_cast<int>(nodes_.size());
         AnimationGraphNode node(id, name, clipIndex);
         node.isEntry = isEntryNode;
         nodes_.push_back(node);
-        nodeIndex_[id] = &nodes_.back();
+        nodeIndex_[id]    = &nodes_.back();
         nodeByName_[name] = id;
         if (isEntryNode) {
-            entryNodeId_ = id;
+            entryNodeId_   = id;
             currentNodeId_ = id;
         }
         return id;
     }
 
     void AnimationGraph::addTransition(int sourceId, int targetId, const std::string& name,
-                                        TransitionCondition cond,
-                                        float timeThreshold,
-                                        const std::string& eventName,
-                                        const std::string& paramName,
-                                        float paramValue,
-                                        float blendDuration,
-                                        bool isDefault) {
-        int id = static_cast<int>(transitions_.size());
+        TransitionCondition cond,
+        float               timeThreshold,
+        const std::string&  eventName,
+        const std::string&  paramName,
+        float               paramValue,
+        float               blendDuration,
+        bool                isDefault) {
+        int                 id = static_cast<int>(transitions_.size());
         AnimationTransition transition;
-        transition.id = id;
-        transition.name = name;
-        transition.sourceNodeId = sourceId;
-        transition.targetNodeId = targetId;
-        transition.condition = cond;
+        transition.id            = id;
+        transition.name          = name;
+        transition.sourceNodeId  = sourceId;
+        transition.targetNodeId  = targetId;
+        transition.condition     = cond;
         transition.timeThreshold = timeThreshold;
-        transition.eventName = eventName;
-        transition.paramName = paramName;
-        transition.paramValue = paramValue;
+        transition.eventName     = eventName;
+        transition.paramName     = paramName;
+        transition.paramValue    = paramValue;
         transition.blendDuration = blendDuration;
-        transition.isDefault = isDefault;
+        transition.isDefault     = isDefault;
         transitions_.push_back(transition);
     }
 
     const AnimationGraphNode* AnimationGraph::getNode(int nodeId) const {
         auto it = nodeIndex_.find(nodeId);
-        if (it != nodeIndex_.end()) return it->second;
+        if (it != nodeIndex_.end())
+            return it->second;
         return nullptr;
     }
 
     const AnimationGraphNode* AnimationGraph::getNodeByName(const std::string& name) const {
         auto it = nodeByName_.find(name);
-        if (it != nodeByName_.end()) return getNode(it->second);
+        if (it != nodeByName_.end())
+            return getNode(it->second);
         return nullptr;
     }
 
@@ -92,12 +95,12 @@ namespace engine {
     }
 
     void AnimationGraph::setCurrentNode(int nodeId) {
-        currentNodeId_ = nodeId;
+        currentNodeId_     = nodeId;
         elapsedSinceEntry_ = 0.0f;
     }
 
     const AnimationTransition* AnimationGraph::findTransitionByCondition(int sourceId,
-                                                                          TransitionCondition cond) const {
+        TransitionCondition                                                  cond) const {
         for (const auto& t : transitions_) {
             if (t.sourceNodeId == sourceId && t.condition == cond && !t.isDefault) {
                 return &t;
@@ -108,7 +111,8 @@ namespace engine {
 
     const AnimationTransition* AnimationGraph::evaluateNextTransition() const {
         const auto* current = getNode(currentNodeId_);
-        if (!current) return nullptr;
+        if (!current)
+            return nullptr;
 
         auto trans = getTransitions(current->id);
 
@@ -143,20 +147,13 @@ namespace engine {
         return getDefaultTransition(current->id);
     }
 
-   struct TransitionTrigger {
-        int sourceNodeId{-1};
-        int targetNodeId{-1};
-        float blendDuration{0.0f};
-        TransitionCondition condition{TransitionCondition::NONE};
-        bool triggered{false};
-    };
-
     AnimationGraph::TransitionTrigger AnimationGraph::step(float deltaTime) {
         AnimationGraph::TransitionTrigger trigger;
         trigger.sourceNodeId = currentNodeId_;
 
         const auto* current = getNode(currentNodeId_);
-        if (!current) return trigger;
+        if (!current)
+            return trigger;
 
         elapsedSinceEntry_ += deltaTime;
 
@@ -167,11 +164,11 @@ namespace engine {
                 if (elapsedSinceEntry_ >= t->timeThreshold) {
                     // Trigger transition
                     setCurrentNode(t->targetNodeId);
-                    elapsedSinceEntry_ = 0.0f;
-                    trigger.targetNodeId = t->targetNodeId;
+                    elapsedSinceEntry_    = 0.0f;
+                    trigger.targetNodeId  = t->targetNodeId;
                     trigger.blendDuration = t->blendDuration;
-                    trigger.condition = t->condition;
-                    trigger.triggered = true;
+                    trigger.condition     = t->condition;
+                    trigger.triggered     = true;
                     break;
                 }
             }
@@ -182,11 +179,11 @@ namespace engine {
             const auto* defaultTrans = getDefaultTransition(current->id);
             if (defaultTrans) {
                 setCurrentNode(defaultTrans->targetNodeId);
-                elapsedSinceEntry_ = 0.0f;
-                trigger.targetNodeId = defaultTrans->targetNodeId;
+                elapsedSinceEntry_    = 0.0f;
+                trigger.targetNodeId  = defaultTrans->targetNodeId;
                 trigger.blendDuration = defaultTrans->blendDuration;
-                trigger.condition = defaultTrans->condition;
-                trigger.triggered = true;
+                trigger.condition     = defaultTrans->condition;
+                trigger.triggered     = true;
             }
         }
 

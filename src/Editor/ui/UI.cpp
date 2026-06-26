@@ -266,6 +266,23 @@ namespace engine::ui {
         return changed;
     }
 
+    bool UI::DragFloat3(const char* label, float* value, float speed, float min, float max) {
+        ImVec4 grab       = GetTheme().getAccentColor();
+        ImVec4 grabHov    = ImVec4(grab.x * 1.2f, grab.y * 1.2f, grab.z * 1.2f, grab.w);
+        ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
+        ImVec4 frameBgHov = GetTheme().getColor(ImGuiCol_FrameBgHovered);
+        ImVec4 border     = GetTheme().getBorderColor();
+
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, grab);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, grabHov);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, frameBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, frameBgHov);
+        ImGui::PushStyleColor(ImGuiCol_Border, border);
+        bool changed = ImGui::DragFloat3(label, value, speed, min, max, "%.2f");
+        ImGui::PopStyleColor(5);
+        return changed;
+    }
+
     bool UI::ColorEdit3(const char* label, float* col) {
         ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
         ImVec4 frameBgHov = GetTheme().getColor(ImGuiCol_FrameBgHovered);
@@ -276,6 +293,57 @@ namespace engine::ui {
         ImGui::PushStyleColor(ImGuiCol_Border, border);
         bool changed = ImGui::ColorEdit3(label, col, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel);
         ImGui::PopStyleColor(3);
+        return changed;
+    }
+
+    bool UI::InputFloat(const char* label, float* value, float step, float stepFast, const char* format) {
+        ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
+        ImVec4 frameBgHov = GetTheme().getColor(ImGuiCol_FrameBgHovered);
+        ImVec4 frameBgAct = GetTheme().getColor(ImGuiCol_FrameBgActive);
+        ImVec4 border     = GetTheme().getBorderColor();
+        ImVec4 text       = GetTheme().getTextColor();
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, frameBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, frameBgHov);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, frameBgAct);
+        ImGui::PushStyleColor(ImGuiCol_Border, border);
+        ImGui::PushStyleColor(ImGuiCol_Text, text);
+        bool changed = ImGui::InputFloat(label, value, step, stepFast, format);
+        ImGui::PopStyleColor(5);
+        return changed;
+    }
+
+    bool UI::SliderInt(const char* label, int* value, int min, int max) {
+        ImVec4 grab       = GetTheme().getAccentColor();
+        ImVec4 grabHov    = ImVec4(grab.x * 1.2f, grab.y * 1.2f, grab.z * 1.2f, grab.w);
+        ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
+        ImVec4 frameBgHov = GetTheme().getColor(ImGuiCol_FrameBgHovered);
+        ImVec4 border     = GetTheme().getBorderColor();
+
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, grab);
+        ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, grabHov);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, frameBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, frameBgHov);
+        ImGui::PushStyleColor(ImGuiCol_Border, border);
+        bool changed = ImGui::SliderInt(label, value, min, max);
+        ImGui::PopStyleColor(5);
+        return changed;
+    }
+
+    bool UI::InputInt(const char* label, int* value, int step, int stepFast) {
+        ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
+        ImVec4 frameBgHov = GetTheme().getColor(ImGuiCol_FrameBgHovered);
+        ImVec4 frameBgAct = GetTheme().getColor(ImGuiCol_FrameBgActive);
+        ImVec4 border     = GetTheme().getBorderColor();
+        ImVec4 text       = GetTheme().getTextColor();
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, frameBg);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, frameBgHov);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, frameBgAct);
+        ImGui::PushStyleColor(ImGuiCol_Border, border);
+        ImGui::PushStyleColor(ImGuiCol_Text, text);
+        bool changed = ImGui::InputInt(label, value, step, stepFast);
+        ImGui::PopStyleColor(5);
         return changed;
     }
 

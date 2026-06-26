@@ -166,8 +166,8 @@ namespace engine::ui::SceneComponents {
         float const selectableWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - actionsWidth);
 
         // Use raw ImGui style colors for the selectable (mimicking UI::Selectable behavior)
-        ImGui::PushStyleColor(ImGuiCol_Header,     ImGui::GetStyleColorVec4(ImGuiCol_Header));
-        ImGui::PushStyleColor(ImGuiCol_HeaderHovered,  ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
+        ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_Header));
+        ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
         ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
         ImGui::PushStyleColor(ImGuiCol_Text, isSelected ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
 
@@ -221,23 +221,23 @@ namespace engine::ui::SceneComponents {
         std::string const header = "Cameras (" + std::to_string(cameras.size()) + ")";
         ImGui::PushID("cameras_header");
         ImGuiStyle const& style = ImGui::GetStyle();
-        
-        float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+
+        float const btnW = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen );
-                
+
+        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-        
+
         if (UI::SmallButton("+##add_camera")) {
             auto entity = scene.createEntity();
             registry.emplace<TransformComponent>(entity);
             registry.emplace<CameraComponent>(entity);
             registry.emplace<NameComponent>(entity, "Camera");
         }
-        
+
         ImGui::PopID();
-        
+
         if (open) {
             for (auto entity : cameras) {
                 drawEntityRow(entity, "[CAM]", ImVec4(1.0f, 1.0f, 1.0f, 1.0f), frameInfo, registry, toDelete);
@@ -264,7 +264,7 @@ namespace engine::ui::SceneComponents {
         ImGuiStyle const& style = ImGui::GetStyle();
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen );
+        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
         if (UI::SmallButton("+##add_light")) {
             ImGui::OpenPopup("AddLightPopup");
@@ -352,7 +352,7 @@ namespace engine::ui::SceneComponents {
         ImGuiStyle const& style = ImGui::GetStyle();
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen );
+        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
         if (UI::SmallButton("+##add_model")) {
             ImGui::OpenPopup("AddModelPopup");
@@ -406,29 +406,29 @@ namespace engine::ui::SceneComponents {
                         }
 
                         if (UI::Selectable(name.c_str(), false, ImGuiSelectableFlags_NoAutoClosePopups)) {
-                                std::string fullPath;
-                                if (relativePath.empty()) {
-                                    fullPath.append(MODEL_PATH);
-                                    fullPath.append("/glTF/");
-                                    fullPath.append(name);
-                                    fullPath.append("/glTF/");
-                                    fullPath.append(name);
-                                    fullPath.append(".gltf");
-                                } else {
-                                    fullPath.append(MODEL_PATH);
-                                    fullPath.append("/");
-                                    fullPath.append(relativePath);
-                                }
-
-                                ModelInsertionOptions opts;
-                                opts.enableTextures     = true;
-                                opts.loadMaterials      = true;
-                                opts.enableMorphTargets = true;
-
-                                enqueueModelLoad(fullPath, name, opts, colliderMode);
-                                ImGui::CloseCurrentPopup();
+                            std::string fullPath;
+                            if (relativePath.empty()) {
+                                fullPath.append(MODEL_PATH);
+                                fullPath.append("/glTF/");
+                                fullPath.append(name);
+                                fullPath.append("/glTF/");
+                                fullPath.append(name);
+                                fullPath.append(".gltf");
+                            } else {
+                                fullPath.append(MODEL_PATH);
+                                fullPath.append("/");
+                                fullPath.append(relativePath);
                             }
+
+                            ModelInsertionOptions opts;
+                            opts.enableTextures     = true;
+                            opts.loadMaterials      = true;
+                            opts.enableMorphTargets = true;
+
+                            enqueueModelLoad(fullPath, name, opts, colliderMode);
+                            ImGui::CloseCurrentPopup();
                         }
+                    }
                 }
             } catch (const std::exception& e) {
                 std::string errText = "Error parsing model index: " + std::string(e.what());

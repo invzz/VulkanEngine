@@ -76,6 +76,12 @@ namespace engine {
     void DeferredLightingSystem::render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet) {
         pipeline->bind(frameInfo.commandBuffer);
 
+        // Defensive: validate all descriptor sets before binding
+        assert(globalSet != VK_NULL_HANDLE && "DeferredLightingSystem: global descriptor set is null");
+        assert(gbufferSet != VK_NULL_HANDLE && "DeferredLightingSystem: gbuffer descriptor set is null");
+        assert(shadowSet != VK_NULL_HANDLE && "DeferredLightingSystem: shadow descriptor set is null");
+        assert(iblSet != VK_NULL_HANDLE && "DeferredLightingSystem: IBL descriptor set is null");
+
         // Bind descriptor sets in pipeline layout order: global (0), gbuffer (1), shadow (2), ibl (3)
         std::array<VkDescriptorSet, 4> sets{globalSet, gbufferSet, shadowSet, iblSet};
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);

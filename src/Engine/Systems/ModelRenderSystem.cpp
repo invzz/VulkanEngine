@@ -470,9 +470,12 @@ namespace engine {
     }
 
     void ModelRenderSystem::bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const {
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "ModelRenderSystem: global descriptor set is null");
+        assert(frameInfo.globalTextureSet != VK_NULL_HANDLE && "ModelRenderSystem: global texture set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &frameInfo.globalTextureSet, 0, nullptr);
         if (bindSceneColor && !sceneColorDescriptorSets_.empty()) {
+            assert(sceneColorDescriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "ModelRenderSystem: scene color descriptor set is null");
             vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &sceneColorDescriptorSets_[frameInfo.frameIndex], 0, nullptr);
         }
     }
@@ -1015,6 +1018,8 @@ namespace engine {
 
         bindPipelineIfNeeded(depthPrepassPipeline.get());
 
+        assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "ModelRenderSystem: global descriptor set is null");
+        assert(frameInfo.globalTextureSet != VK_NULL_HANDLE && "ModelRenderSystem: global texture set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &frameInfo.globalTextureSet, 0, nullptr);
 

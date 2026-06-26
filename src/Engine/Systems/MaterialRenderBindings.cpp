@@ -372,6 +372,7 @@ namespace engine {
             std::memcpy(mappedData + (dynamicOffsetIndex * atomSize_), data, static_cast<size_t>(dataSize));
 
             uint32_t const dynamicOffset = static_cast<uint32_t>(dynamicOffsetIndex * atomSize_);
+            assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "MaterialRenderBindings: descriptor set is null");
             vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kMaterialSetIndex, 1, &descriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
 
             // Capture bind for diagnostic/tests (thread-safe)
@@ -415,6 +416,7 @@ namespace engine {
         auto const found = cache.find(materialKey);
         if (found != cache.end()) {
             uint32_t const dynamicOffset = found->second;
+            assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "MaterialRenderBindings: descriptor set is null");
             vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kMaterialSetIndex, 1, &descriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
 
             {
@@ -437,6 +439,7 @@ namespace engine {
         std::memcpy(mappedData + (dynamicOffsetIndex * atomSize_), &matData, static_cast<size_t>(sizeof(MaterialUniformData)));
 
         uint32_t const dynamicOffset = static_cast<uint32_t>(dynamicOffsetIndex * atomSize_);
+        assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "MaterialRenderBindings: descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kMaterialSetIndex, 1, &descriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
 
         {

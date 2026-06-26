@@ -140,6 +140,7 @@ namespace engine {
 
         pipeline_->bind(frameInfo.commandBuffer);
 
+        assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "SkyboxRenderSystem: descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipelineLayout_,

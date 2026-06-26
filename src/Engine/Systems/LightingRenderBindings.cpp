@@ -203,6 +203,7 @@ namespace engine {
         descriptorWrites[1].pImageInfo      = cubeShadowInfos.data();
 
         vkUpdateDescriptorSets(device_.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+        assert(shadowDescriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "LightingRenderBindings: shadow descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kShadowSetIndex, 1, &shadowDescriptorSets_[frameInfo.frameIndex], 0, nullptr);
     }
 

@@ -61,6 +61,13 @@ namespace engine {
         void        generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
         void        generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
 
+        /**
+         * @brief Transition all depth mip levels from DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+         * to DEPTH_STENCIL_READ_ONLY_OPTIMAL. Must be called after the G-buffer pass
+         * completes and before depth is sampled by lighting passes.
+         */
+        void transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
+
         [[nodiscard]] float getAspectRatio() const {
             return static_cast<float>(extent.width) / static_cast<float>(extent.height);
         }

@@ -177,6 +177,48 @@ namespace engine::ui {
         static bool DragFloat3(const char* label, float* value, float speed = 0.1f);
 
         /**
+     * @brief Render a float3 input (vector) with min/max bounds.
+     * @param label Label (must include ##unique ID).
+     * @param value Array of 3 floats.
+     * @param speed Drag speed.
+     * @param min Minimum value.
+     * @param max Maximum value.
+     * @return true if changed.
+     */
+        static bool DragFloat3(const char* label, float* value, float speed, float min, float max);
+
+        /**
+     * @brief Render an integer slider with a drag slider.
+     * @param label Label (must include ##unique ID).
+     * @param value Current value.
+     * @param min Minimum value.
+     * @param max Maximum value.
+     * @return true if changed.
+     */
+        static bool SliderInt(const char* label, int* value, int min, int max);
+
+        /**
+     * @brief Render an integer input field.
+     * @param label Label (must include ##unique ID).
+     * @param value Current value.
+     * @param step Step increment (default: 1).
+     * @param stepFast Step increment with Shift (default: 100).
+     * @return true if changed.
+     */
+        static bool InputInt(const char* label, int* value, int step = 1, int stepFast = 100);
+
+        /**
+     * @brief Render a float input field with formatting.
+     * @param label Label (must include ##unique ID).
+     * @param value Current value.
+     * @param step Float step increment.
+     * @param stepFast Float step with Shift.
+     * @param format printf-style format string (default: "%.3f").
+     * @return true if changed.
+     */
+        static bool InputFloat(const char* label, float* value, float step = 0.0f, float stepFast = 0.0f, const char* format = "%.3f");
+
+        /**
      * @brief Render a color input with a color preview square.
      * @param label Label (must include ##unique ID).
      * @param col Array of 3 floats (RGB).

@@ -155,6 +155,7 @@ namespace engine {
         // emit an explicit transition to PRESENT_SRC before presenting so the
         // image isn't left in VK_IMAGE_LAYOUT_UNDEFINED.
         usedSwapchainThisFrame = false;
+        skipClear_             = false;
 
         uint32_t imageIndex;
         auto     result = swapChain->acquireNextImage(&imageIndex);
@@ -574,6 +575,12 @@ namespace engine {
             dstToRead.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
 
             vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &dstToRead);
+        }
+    }
+
+    void Renderer::transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer) {
+        if (offscreenFrameBuffer) {
+            offscreenFrameBuffer->transitionDepthToShaderReadOnly(commandBuffer);
         }
     }
 

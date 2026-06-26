@@ -6,7 +6,6 @@
 #include <string>
 #include <utility>
 
-
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 

@@ -27,6 +27,7 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
+#include "Engine/Graphics/ViewportTexture.hpp"
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
@@ -38,6 +39,9 @@
 #include "Editor/Infrastructure/RenderContextAdapter.hpp"
 #include "Editor/Infrastructure/RuntimeStateAdapter.hpp"
 #include "Editor/Infrastructure/SceneRuntimeAccessAdapter.hpp"
+#include "Engine/Graphics/ViewportDisplay.hpp"
+
+#include "Editor/ui/ViewportPanel.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 
@@ -164,6 +168,14 @@ namespace engine {
 
         // Render Graph
         std::unique_ptr<RenderPipeline> renderPipeline;
+
+        // Viewport rendering
+        ViewportTexture                viewportTexture_;
+        std::unique_ptr<ViewportPanel> viewportPanel_;
+        bool                           viewportTextureInitialized_ = false;
+
+        // Viewport display (renders HDR viewport texture to swap chain)
+        ViewportDisplay viewportDisplay_;
 
         uint32_t selectedObjectId = 0;
 
