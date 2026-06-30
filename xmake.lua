@@ -186,8 +186,6 @@ target("EngineImporters")
     set_kind("static")
     set_group("core")
     set_default(false)
-    -- No source files: resource implementations were moved into ModelLib.
-    -- Keep include paths and packages for any header-only helpers or future code.
     add_includedirs("include", {public = true})
     add_packages(
         "glm", "glfw", "tinyobjloader", "tinygltf",
@@ -263,28 +261,13 @@ target("Shaders")
     set_kind("phony")
     set_group("utility")
     set_default(false)
+
     on_build(function ()
-        if is_host("windows") then
-            os.exec("powershell -ExecutionPolicy Bypass -File " .. project_dir .. "/compile_shaders.ps1")
-        else
-            os.exec("bash " .. project_dir .. "/compile_shaders.sh")
-        end
+        os.execv("python3", {
+            path.join(os.projectdir(), "compile_shaders.py")
+        })
     end)
 
-target("Coverage")
-    set_kind("phony")
-    set_group("utility")
-    set_default(false)
-    add_deps("Tests")
-    on_build(function ()
-        if is_host("windows") then
-            -- Pass -SkipBuild since we already built Tests via add_deps
-            local script = path.join(project_dir, "run_coverage.ps1")
-            os.execv("powershell", {"-ExecutionPolicy", "Bypass", "-File", script, "-SkipBuild"})
-        else
-            print("Coverage is only supported on Windows with OpenCppCoverage")
-        end
-    end)
 
 -- ============================================================================
 -- Tests
@@ -329,3 +312,47 @@ target("Tests")
             os.cp(path.join(scenes_src, "*"), scenes_dst)
         end
     end)
+
+
+
+-- rule("compile_glsl_shader")
+--     set_extensions(".vert", ".frag", ".comp", ".mesh", ".task")
+
+--     on_config(function (target)
+--         import("core.project.config")
+--     end)
+
+--     on_build_file(function (target, sourcefile, opt)
+
+--         import("core.project.depend")
+
+--         local shader_dir = path.directory(sourcefile)
+--         local filename = path.filename(sourcefile)
+--         local outdir = path.join(target:targetdir(), "shaders")
+
+--         os.mkdir(outdir)
+
+--         local ext = path.extension(sourcefile)
+--         local out = path.join(outdir, filename .. ".spv")
+
+--         -- dependency tracking (IMPORTANT for includes)
+--         depend.on_changed(function ()
+
+--             local args = {
+--                 "glslc",
+--                 "--target-spv=spv1.5",
+--                 "-I", shader_dir,
+--                 "-I", path.join(shader_dir, "includes"),
+--                 sourcefile,
+--                 "-o", out
+--             }
+
+--             os.vrunv(args[1], {table.unpack(args, 2)})
+
+--             print("[SHADER] " .. sourcefile .. " -> " .. out)
+--         end, {
+--             files = {sourcefile},
+--             changed = true
+--         })
+--     end)
+-- rule_end()
