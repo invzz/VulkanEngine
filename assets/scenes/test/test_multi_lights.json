@@ -1,0 +1,100 @@
+{
+    "objects": [
+        {
+            "id": "2",
+            "name": "GameObject",
+            "spotLight": {
+                "bake": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "innerAngle": 12.5,
+                "intensity": 3.0,
+                "lightType": "static",
+                "outerAngle": 17.5
+            },
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "directionalLight": {
+                "bake": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 2.0,
+                "lightType": "static"
+            },
+            "id": "1",
+            "name": "GameObject",
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "id": "0",
+            "name": "GameObject",
+            "pointLight": {
+                "bake": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 1.0,
+                "lightType": "static",
+                "radius": 15.0
+            },
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        }
+    ]
+}

@@ -1,14 +1,70 @@
 #include "Engine/Graphics/Device.hpp"
 
+#include <chrono>
+#include <iostream>
+#include <thread>
+
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Core/Window.hpp"
 #include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Graphics/DebugMessenger.hpp"
+#include "Engine/Graphics/DeviceMemory.hpp"
+#include "Engine/Graphics/ExtensionHelpers.hpp"
+#include "Engine/Graphics/ThreadLocalCommandPool.hpp"
+
+#include "GLFW/glfw3.h"
+#include "vulkan/vk_platform.h"
+#include "vulkan/vulkan_core.h"
 
 // std headers
 #include <algorithm>
+#include <bit>
 #include <cstring>
-#include <iostream>
+#include <memory>
+#include <mutex>
 #include <set>
+#include <string>
 #include <unordered_set>
+#include <vector>
+
+// Use Vulkan SDK loader (vulkan-1) - include normal Vulkan headers
+
+namespace {
+    // File-local Vulkan debug helpers.
+    VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT                                                 messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT*                                     pCallbackData,
+        void* /*pUserData*/) {
+        if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) != 0u) {
+            // General message
+            std::cerr << "[ " << GREEN "GENERAL" RESET;
+        } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0u) {
+            // Validation message
+            std::cerr << "[ " << YELLOW "VALIDATION" RESET;
+        } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0u) {
+            // Performance message
+            std::cerr << "[ " << BLUE "PERFORMANCE" RESET;
+        }
+        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
+            std::cerr << RED " ERROR" RESET " ] " << pCallbackData->pMessage << "\n";
+            return VK_FALSE;
+        }
+        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
+            std::cerr << YELLOW " WARNING" RESET " ] " << pCallbackData->pMessage << "\n";
+            return VK_FALSE;
+        }
+        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
+            std::cerr << BLUE " INFO" RESET " ] " << pCallbackData->pMessage << "\n";
+            return VK_FALSE;
+        }
+        if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) != 0) {
+            std::cerr << CYAN " VERBOSE" RESET " ] " << pCallbackData->pMessage << "\n";
+            return VK_FALSE;
+        }
+        return VK_FALSE;
+    }
+
+}  // namespace
 
 /**
  * @namespace engine
@@ -16,282 +72,417 @@
  */
 namespace engine {
 
-  // local callback functions
-  static VKAPI_ATTR VkBool32 VKAPI_CALL
+    std::atomic<int> Device::validationLayersOverride_{-1};
 
-  debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-                VkDebugUtilsMessageTypeFlagsEXT             messageType,
-                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                void* /*pUserData*/)
-  {
-    if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
-    {
-      // General message
-      std::cerr << "[ " << GREEN "GENERAL" RESET;
-    }
-    else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT)
-    {
-      // Validation message
-      std::cerr << "[ " << YELLOW "VALIDATION" RESET;
-    }
-    else if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT)
-    {
-      // Performance message
-      std::cerr << "[ " << BLUE "PERFORMANCE" RESET;
-    }
-    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-    {
-      std::cerr << RED " ERROR" RESET " ] " << pCallbackData->pMessage << std::endl;
-      return VK_FALSE;
-    }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-    {
-      std::cerr << YELLOW " WARNING" RESET " ] " << pCallbackData->pMessage << std::endl;
-      return VK_FALSE;
-    }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
-    {
-      std::cerr << BLUE " INFO" RESET " ] " << pCallbackData->pMessage << std::endl;
-      return VK_FALSE;
-    }
-    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-    {
-      std::cerr << CYAN " VERBOSE" RESET " ] " << pCallbackData->pMessage << std::endl;
-      return VK_FALSE;
-    }
-    return VK_FALSE;
-  }
-
-  VkResult CreateDebugUtilsMessengerEXT(VkInstance                                instance,
-                                        const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-                                        const VkAllocationCallbacks*              pAllocator,
-                                        VkDebugUtilsMessengerEXT*                 pDebugMessenger)
-  {
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr)
-    {
-      return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    }
-    else
-    {
-      return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-  }
-
-  void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-  {
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr)
-    {
-      func(instance, debugMessenger, pAllocator);
-    }
-  }
-
-  // class member functions
-  /**
-   * @class Device
-   * @brief Manages Vulkan device, queues, and related resources.
-   * @param window Reference to the main application window.
-   */
-  Device::Device(Window& window) : window{window}
-  {
-    createInstance();
-    setupDebugMessenger();
-    createSurface();
-    pickPhysicalDevice();
-    createLogicalDevice();
-    createCommandPool();
-    // initialize memory helper (depends on device_ and commandPool being
-    // created)
-    memory_ = std::make_unique<DeviceMemory>(*this);
-  }
-
-  /**
-   * @brief Destructor. Cleans up Vulkan resources and device.
-   */
-  Device::~Device()
-  {
-    // ensure helper is destroyed before device/command pool teardown
-    memory_.reset();
-    vkDestroyCommandPool(device_, commandPool, nullptr);
-    vkDestroyDevice(device_, nullptr);
-
-    if (enableValidationLayers)
-    {
-      DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+    void Device::setValidationLayersEnabledOverride(bool enabled) {
+        validationLayersOverride_.store(enabled ? 1 : 0, std::memory_order_relaxed);
     }
 
-    vkDestroySurfaceKHR(instance, surface_, nullptr);
-    vkDestroyInstance(instance, nullptr);
-  }
-
-  /**
-   * @brief Creates the Vulkan instance and checks required extensions.
-   * @throws std::runtime_error if validation layers or instance creation
-   * fails.
-   */
-  void Device::createInstance()
-  {
-    if (enableValidationLayers && !checkValidationLayerSupport())
-    {
-      throw engine::RuntimeException("validation layers requested, but not available!");
+    void Device::clearValidationLayersEnabledOverride() {
+        validationLayersOverride_.store(-1, std::memory_order_relaxed);
     }
 
-    VkApplicationInfo appInfo = {
+    bool Device::resolveValidationLayersEnabled() {
+        const int overrideValue = validationLayersOverride_.load(std::memory_order_relaxed);
+        if (overrideValue == 0) {
+            return false;
+        }
+        if (overrideValue == 1) {
+            return true;
+        }
+        return kBuildValidationLayersEnabled;
+    }
+
+    void Device::setCurrentFrameIndex(uint32_t frameIndex) {
+        currentFrameIndex_ = frameIndex % kMaxFramesInFlight;
+    }
+
+    void Device::deferDestroy(std::function<void(VkDevice)> fn) {
+        if (!fn) {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(deferredDestroyMutex_);
+        deferredDestroy_[currentFrameIndex_].push_back(std::move(fn));
+    }
+
+    void Device::flushDeferred(uint32_t frameIndex) {
+        std::vector<std::function<void(VkDevice)>> bucket;
+        {
+            std::lock_guard<std::mutex> lock(deferredDestroyMutex_);
+            bucket.swap(deferredDestroy_[frameIndex % kMaxFramesInFlight]);
+        }
+
+        for (auto& fn : bucket) {
+            if (fn) {
+                fn(device_);
+            }
+        }
+    }
+
+    void Device::flushAllDeferred() {
+        for (uint32_t i = 0; i < kMaxFramesInFlight; ++i) {
+            flushDeferred(i);
+        }
+    }
+
+    size_t Device::SamplerCacheKeyHash::operator()(const SamplerCacheKey& key) const {
+        auto hashCombine = [](size_t seed, uint32_t value) {
+            return seed ^ (static_cast<size_t>(value) + 0x9e3779b9U + (seed << 6U) + (seed >> 2U));
+        };
+
+        size_t seed = 0;
+        seed        = hashCombine(seed, key.magFilter);
+        seed        = hashCombine(seed, key.minFilter);
+        seed        = hashCombine(seed, key.mipmapMode);
+        seed        = hashCombine(seed, key.addressModeU);
+        seed        = hashCombine(seed, key.addressModeV);
+        seed        = hashCombine(seed, key.addressModeW);
+        seed        = hashCombine(seed, key.anisotropyEnable);
+        seed        = hashCombine(seed, key.maxAnisotropyBits);
+        seed        = hashCombine(seed, key.compareEnable);
+        seed        = hashCombine(seed, key.compareOp);
+        seed        = hashCombine(seed, key.minLodBits);
+        seed        = hashCombine(seed, key.maxLodBits);
+        seed        = hashCombine(seed, key.mipLodBiasBits);
+        seed        = hashCombine(seed, key.borderColor);
+        seed        = hashCombine(seed, key.unnormalizedCoordinates);
+        return seed;
+    }
+
+    Device::SamplerCacheKey Device::makeSamplerCacheKey(const VkSamplerCreateInfo& createInfo) const {
+        return SamplerCacheKey{
+            static_cast<uint32_t>(createInfo.magFilter),
+            static_cast<uint32_t>(createInfo.minFilter),
+            static_cast<uint32_t>(createInfo.mipmapMode),
+            static_cast<uint32_t>(createInfo.addressModeU),
+            static_cast<uint32_t>(createInfo.addressModeV),
+            static_cast<uint32_t>(createInfo.addressModeW),
+            static_cast<uint32_t>(createInfo.anisotropyEnable),
+            std::bit_cast<uint32_t>(createInfo.maxAnisotropy),
+            static_cast<uint32_t>(createInfo.compareEnable),
+            static_cast<uint32_t>(createInfo.compareOp),
+            std::bit_cast<uint32_t>(createInfo.minLod),
+            std::bit_cast<uint32_t>(createInfo.maxLod),
+            std::bit_cast<uint32_t>(createInfo.mipLodBias),
+            static_cast<uint32_t>(createInfo.borderColor),
+            static_cast<uint32_t>(createInfo.unnormalizedCoordinates),
+        };
+    }
+
+    VkSampler Device::getOrCreateSampler(const VkSamplerCreateInfo& createInfo) {
+        std::lock_guard<std::mutex> lk(samplerCacheMutex_);
+        SamplerCacheKey const       key = makeSamplerCacheKey(createInfo);
+
+        auto const it = samplerCache_.find(key);
+        if (it != samplerCache_.end()) {
+            samplerCacheHits_++;
+            return it->second;
+        }
+
+        VkSampler sampler = VK_NULL_HANDLE;
+        if (vkCreateSampler(device_, &createInfo, nullptr, &sampler) != VK_SUCCESS) {
+            return VK_NULL_HANDLE;
+        }
+
+        samplerCache_[key] = sampler;
+        samplerCacheMisses_++;
+        return sampler;
+    }
+
+    Device::SamplerCacheStats Device::getSamplerCacheStats() const {
+        std::lock_guard<std::mutex> lk(samplerCacheMutex_);
+        SamplerCacheStats           stats{};
+        stats.cacheHits      = samplerCacheHits_;
+        stats.cacheMisses    = samplerCacheMisses_;
+        stats.cachedSamplers = static_cast<uint64_t>(samplerCache_.size());
+        return stats;
+    }
+
+    void Device::destroySamplerCache() {
+        std::lock_guard<std::mutex> lk(samplerCacheMutex_);
+        if (device_ == VK_NULL_HANDLE) {
+            samplerCache_.clear();
+            samplerCacheHits_   = 0;
+            samplerCacheMisses_ = 0;
+            return;
+        }
+
+        for (auto& [_, sampler] : samplerCache_) {
+            if (sampler != VK_NULL_HANDLE) {
+                vkDestroySampler(device_, sampler, nullptr);
+            }
+        }
+        samplerCache_.clear();
+    }
+
+    // class member functions
+    /**
+ * @class Device
+ * @brief Manages Vulkan device, queues, and related resources.
+ * @param window Reference to the main application window.
+ */
+    Device::Device(Window& window) : enableValidationLayers(resolveValidationLayersEnabled()), window{window} {
+        std::cout << "[Device] Validation layers " << (enableValidationLayers ? "enabled" : "disabled") << " (build_default="
+                  << (kBuildValidationLayersEnabled ? "on" : "off") << ")\n";
+        createInstance();
+        setupDebugMessenger();
+        createSurface();
+        pickPhysicalDevice();
+        createLogicalDevice();
+        createCommandPool();
+        // initialize memory helper (depends on device_ and commandPool being
+        // created)
+        memory_ = std::make_unique<DeviceMemory>(*this);
+    }
+
+    /**
+ * @brief Destructor. Cleans up Vulkan resources and device.
+ */
+    Device::~Device() {
+        // Make destructor safe in partial-construction and avoid throwing.
+        try {
+            if (device_ != VK_NULL_HANDLE) {
+                vkDeviceWaitIdle(device_);
+            }
+
+            // Run any deferred destroys queued by subsystems. Protect against
+            // user-provided callbacks throwing.
+            try {
+                if (device_ != VK_NULL_HANDLE) {
+                    flushAllDeferred();
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[Device::~Device] flushAllDeferred threw: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "[Device::~Device] flushAllDeferred threw unknown exception\n";
+            }
+
+            try {
+                destroySamplerCache();
+            } catch (const std::exception& e) {
+                std::cerr << "[Device::~Device] destroySamplerCache threw: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "[Device::~Device] destroySamplerCache threw unknown exception\n";
+            }
+
+            // ensure helper is destroyed before device/command pool teardown
+            try {
+                memory_.reset();
+            } catch (const std::exception& e) {
+                std::cerr << "[Device::~Device] DeviceMemory destructor threw: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "[Device::~Device] DeviceMemory destructor threw unknown exception\n";
+            }
+
+            // Destroy any thread-local command pools before destroying the device
+            // to ensure pool destruction happens while the device is still valid.
+            try {
+                if (threadLocalCommandPools_) {
+                    threadLocalCommandPools_->destroyAll();
+                    threadLocalCommandPools_.reset();
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw: " << e.what() << "\n";
+            } catch (...) {
+                std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw unknown exception\n";
+            }
+
+            if (device_ != VK_NULL_HANDLE && singleTimeFence_ != VK_NULL_HANDLE) {
+                vkDestroyFence(device_, singleTimeFence_, nullptr);
+                singleTimeFence_ = VK_NULL_HANDLE;
+            }
+
+            if (device_ != VK_NULL_HANDLE && commandPool != VK_NULL_HANDLE) {
+                vkDestroyCommandPool(device_, commandPool, nullptr);
+                commandPool = VK_NULL_HANDLE;
+            }
+
+            if (device_ != VK_NULL_HANDLE) {
+                vkDestroyDevice(device_, nullptr);
+                device_ = VK_NULL_HANDLE;
+            }
+
+            if (instance != VK_NULL_HANDLE) {
+                if (enableValidationLayers && debugMessenger) {
+                    // Destroy via RAII guard.
+                    try {
+                        debugMessenger.reset();
+                    } catch (const std::exception& e) {
+                        std::cerr << "[Device::~Device] DebugMessenger destructor threw: " << e.what() << "\n";
+                    } catch (...) {
+                        std::cerr << "[Device::~Device] DebugMessenger destructor threw unknown exception\n";
+                    }
+                }
+
+                if (surface_ != VK_NULL_HANDLE) {
+                    vkDestroySurfaceKHR(instance, surface_, nullptr);
+                    surface_ = VK_NULL_HANDLE;
+                }
+
+                vkDestroyInstance(instance, nullptr);
+                instance = VK_NULL_HANDLE;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[Device::~Device] Exception during shutdown: " << e.what() << "\n";
+        } catch (...) {
+            std::cerr << "[Device::~Device] Unknown exception during shutdown\n";
+        }
+    }
+
+    /**
+ * @brief Creates the Vulkan instance and checks required extensions.
+ * @throws std::runtime_error if validation layers or instance creation
+ * fails.
+ */
+    void Device::createInstance() {
+        if (enableValidationLayers && !checkValidationLayerSupport()) {
+            throw engine::RuntimeException("validation layers requested, but not available!");
+        }
+
+        VkApplicationInfo const appInfo = {
             .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
             .pApplicationName   = "LittleVulkanEngine App",
             .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
             .pEngineName        = "No Engine",
             .engineVersion      = VK_MAKE_VERSION(1, 0, 0),
             .apiVersion         = VK_API_VERSION_1_3,
-    };
+        };
 
-    VkInstanceCreateInfo createInfo = {
+        VkInstanceCreateInfo createInfo = {
             .sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,
-    };
+        };
 
-    auto extensions                    = getRequiredExtensions();
-    createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
-    createInfo.ppEnabledExtensionNames = extensions.data();
+        auto extensions                    = getRequiredExtensions();
+        createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
+        createInfo.ppEnabledExtensionNames = extensions.data();
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-    if (enableValidationLayers)
-    {
-      createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
-      createInfo.ppEnabledLayerNames = validationLayers.data();
+        // When validation layers are enabled we set the layer list on the
+        // instance create info. We do NOT attach the DebugUtils create info to
+        // `pNext` here because we create the debug messenger explicitly in
+        // `setupDebugMessenger()` — this gives us an explicit handle that we can
+        // destroy during shutdown.
+        if (enableValidationLayers) {
+            createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
+            createInfo.ppEnabledLayerNames = validationLayers.data();
+            createInfo.pNext               = nullptr;
+        } else {
+            createInfo.enabledLayerCount = 0;
+            createInfo.pNext             = nullptr;
+        }
 
-      populateDebugMessengerCreateInfo(debugCreateInfo);
-      createInfo.pNext = &debugCreateInfo;
-    }
-    else
-    {
-      createInfo.enabledLayerCount = 0;
-      createInfo.pNext             = nullptr;
-    }
+        if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+            throw engine::RuntimeException("failed to create instance!");
+        }
 
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
-    {
-      throw engine::RuntimeException("failed to create instance!");
-    }
+        // Using Vulkan SDK loader (vulkan-1) - no explicit loader init required
 
-    hasGflwRequiredInstanceExtensions();
-  }
-
-  /**
-   * @brief Selects a suitable physical device (GPU) for Vulkan operations.
-   * @throws std::runtime_error if no suitable device is found.
-   */
-  void Device::pickPhysicalDevice()
-  {
-    uint32_t deviceCount = 0;
-    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-    if (deviceCount == 0)
-    {
-      throw engine::RuntimeException("failed to find GPUs with Vulkan support!");
+        if (!hasGlfwRequiredInstanceExtensions()) {
+            throw engine::RuntimeException("missing required GLFW instance extensions");
+        }
     }
 
-    std::vector<VkPhysicalDevice> devices(deviceCount);
-    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+    /**
+ * @brief Selects a suitable physical device (GPU) for Vulkan operations.
+ * @throws std::runtime_error if no suitable device is found.
+ */
+    void Device::pickPhysicalDevice() {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+        if (deviceCount == 0) {
+            throw engine::RuntimeException("failed to find GPUs with Vulkan support!");
+        }
 
-    VkPhysicalDevice           bestDevice = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties best       = {};
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-    for (const auto& device : devices)
-    {
-      if (!isDeviceSuitable(device)) continue;
+        VkPhysicalDevice           bestDevice = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties best       = {};
 
-      VkPhysicalDeviceProperties props;
-      vkGetPhysicalDeviceProperties(device, &props);
+        for (const auto& device : devices) {
+            if (!isDeviceSuitable(device))
+                continue;
 
-      if (bestDevice == VK_NULL_HANDLE || props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && best.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
-          props.deviceType == best.deviceType && props.limits.maxImageDimension2D > best.limits.maxImageDimension2D)
-      {
-        bestDevice = device;
-        best       = props;
-      }
+            VkPhysicalDeviceProperties props;
+            vkGetPhysicalDeviceProperties(device, &props);
+
+            if (bestDevice == VK_NULL_HANDLE || props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && best.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ||
+                props.deviceType == best.deviceType && props.limits.maxImageDimension2D > best.limits.maxImageDimension2D) {
+                bestDevice = device;
+                best       = props;
+            }
+        }
+
+        if (bestDevice == VK_NULL_HANDLE) {
+            throw engine::RuntimeException("failed to find a suitable GPU!");
+        }
+
+        physicalDevice = bestDevice;
+        properties     = best;
+        std::cout << "physical device: " << properties.deviceName << "\n";
     }
 
-    if (bestDevice == VK_NULL_HANDLE)
-    {
-      throw engine::RuntimeException("failed to find a suitable GPU!");
-    }
+    void Device::createLogicalDevice() {
+        QueueFamilyIndices const indices = findQueueFamilies(physicalDevice);
 
-    physicalDevice = bestDevice;
-    properties     = best;
-    std::cout << "physical device: " << properties.deviceName << std::endl;
-  }
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        std::set<uint32_t> const             uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
 
-  void Device::createLogicalDevice()
-  {
-    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+        float const queuePriority = 1.0f;
 
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<uint32_t>                   uniqueQueueFamilies = {indices.graphicsFamily, indices.presentFamily};
+        for (uint32_t const queueFamily : uniqueQueueFamilies) {
+            VkDeviceQueueCreateInfo const queueCreateInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .queueFamilyIndex = queueFamily, .queueCount = 1, .pQueuePriorities = &queuePriority};
 
-    float queuePriority = 1.0f;
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
 
-    for (uint32_t queueFamily : uniqueQueueFamilies)
-    {
-      VkDeviceQueueCreateInfo queueCreateInfo = {.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                                                 .queueFamilyIndex = queueFamily,
-                                                 .queueCount       = 1,
-                                                 .pQueuePriorities = &queuePriority};
-
-      queueCreateInfos.push_back(queueCreateInfo);
-    }
-
-    VkPhysicalDeviceFeatures deviceFeatures = {
+        VkPhysicalDeviceFeatures const deviceFeatures = {
             .samplerAnisotropy = VK_TRUE,
             .shaderInt64       = VK_TRUE,
-    };
+        };
 
-    std::vector<const char*> enabledExtensions(deviceExtensions.begin(), deviceExtensions.end());
-    enabledExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
+        std::vector<const char*> enabledExtensions(deviceExtensions.begin(), deviceExtensions.end());
+        enabledExtensions.push_back(VK_EXT_MESH_SHADER_EXTENSION_NAME);
 
-    uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
+        const auto availableExtensions = engine::enumerateDeviceExtensions(physicalDevice);
 
-    const bool presentIdExtensionAvailable = std::any_of(availableExtensions.begin(), availableExtensions.end(), [](const VkExtensionProperties& extension) {
-      return std::strcmp(extension.extensionName, VK_KHR_PRESENT_ID_EXTENSION_NAME) == 0;
-    });
+        const bool presentIdExtensionAvailable = engine::ensureExtensionsPresent(std::vector<const char*>{VK_KHR_PRESENT_ID_EXTENSION_NAME}, availableExtensions);
 
-    static_assert(sizeof(PFN_vkGetPhysicalDeviceFeatures2KHR) == sizeof(PFN_vkVoidFunction), "Vulkan function pointer sizes must match");
-    PFN_vkGetPhysicalDeviceFeatures2KHR getFeatures2 = nullptr;
-    if (const auto rawGetFeatures2KHR = vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2KHR"); rawGetFeatures2KHR != nullptr)
-    {
-      std::memcpy(&getFeatures2, &rawGetFeatures2KHR, sizeof(getFeatures2));
-    }
-    if (getFeatures2 == nullptr)
-    {
-      if (const auto rawGetFeatures2 = vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2"); rawGetFeatures2 != nullptr)
-      {
-        std::memcpy(&getFeatures2, &rawGetFeatures2, sizeof(getFeatures2));
-      }
-    }
+        static_assert(sizeof(PFN_vkGetPhysicalDeviceFeatures2KHR) == sizeof(PFN_vkVoidFunction), "Vulkan function pointer sizes must match");
+        PFN_vkGetPhysicalDeviceFeatures2KHR getFeatures2 = nullptr;
+        if (const auto rawGetFeatures2KHR = vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2KHR"); rawGetFeatures2KHR != nullptr) {
+            getFeatures2 = std::bit_cast<PFN_vkGetPhysicalDeviceFeatures2KHR>(rawGetFeatures2KHR);
+        }
+        if (getFeatures2 == nullptr) {
+            if (const auto rawGetFeatures2 = vkGetInstanceProcAddr(instance, "vkGetPhysicalDeviceFeatures2"); rawGetFeatures2 != nullptr) {
+                getFeatures2 = std::bit_cast<PFN_vkGetPhysicalDeviceFeatures2KHR>(rawGetFeatures2);
+            }
+        }
 
-    // Enable Vulkan 1.2 features for Bindless Rendering
-    VkPhysicalDeviceVulkan12Features vulkan12Features = {
-            .sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-            .pNext                                     = nullptr,
-            .descriptorIndexing                        = VK_TRUE,
-            .shaderSampledImageArrayNonUniformIndexing = VK_TRUE,
-            .descriptorBindingPartiallyBound           = VK_TRUE,
-            .descriptorBindingVariableDescriptorCount  = VK_TRUE,
-            .runtimeDescriptorArray                    = VK_TRUE,
-            .scalarBlockLayout                         = VK_TRUE,
-            .bufferDeviceAddress                       = VK_TRUE,
-    };
+        // Enable Vulkan 1.2 features for Bindless Rendering
+        VkPhysicalDeviceVulkan12Features vulkan12Features = {
+            .sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext                                        = nullptr,
+            .storageBuffer8BitAccess                      = VK_TRUE,  // Required for shaders using uint8_t storage buffers
+            .shaderInt8                                   = VK_TRUE,  // Required for shaders using int8/uint8 types
+            .descriptorIndexing                           = VK_TRUE,
+            .shaderSampledImageArrayNonUniformIndexing    = VK_TRUE,
+            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,  // Required for TextureManager UPDATE_AFTER_BIND
+            .descriptorBindingPartiallyBound              = VK_TRUE,
+            .descriptorBindingVariableDescriptorCount     = VK_TRUE,
+            .runtimeDescriptorArray                       = VK_TRUE,
+            .scalarBlockLayout                            = VK_TRUE,
+            .bufferDeviceAddress                          = VK_TRUE,
+        };
 
-    VkPhysicalDeviceMaintenance4Features maintenance4Features = {
+        VkPhysicalDeviceMaintenance4Features maintenance4Features = {
             .sType        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES,
             .pNext        = &vulkan12Features,
             .maintenance4 = VK_TRUE,
-    };
+        };
 
-    VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {
+        VkPhysicalDeviceMeshShaderFeaturesEXT meshShaderFeatures = {
             .sType                                  = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
             .pNext                                  = &maintenance4Features,
             .taskShader                             = VK_TRUE,
@@ -299,370 +490,477 @@ namespace engine {
             .multiviewMeshShader                    = VK_FALSE,
             .primitiveFragmentShadingRateMeshShader = VK_FALSE,
             .meshShaderQueries                      = VK_FALSE,
-    };
+        };
 
-    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
+        VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesQuery = {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
             .pNext = &meshShaderFeatures,
-    };
-    presentIdSupported_ = false;
+        };
+        presentIdSupported_ = false;
 
-    if (presentIdExtensionAvailable && getFeatures2 != nullptr)
-    {
-      VkPhysicalDeviceFeatures2 features2 = {
-              .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
-              .pNext = &presentIdFeaturesQuery,
-      };
-      getFeatures2(physicalDevice, &features2);
-      if (presentIdFeaturesQuery.presentId == VK_TRUE)
-      {
-        presentIdSupported_ = true;
-        enabledExtensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
-      }
-    }
+        if (presentIdExtensionAvailable && getFeatures2 != nullptr) {
+            VkPhysicalDeviceFeatures2 features2 = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+                .pNext = &presentIdFeaturesQuery,
+            };
+            getFeatures2(physicalDevice, &features2);
+            if (presentIdFeaturesQuery.presentId == VK_TRUE) {
+                presentIdSupported_ = true;
+                enabledExtensions.push_back(VK_KHR_PRESENT_ID_EXTENSION_NAME);
+            }
+        }
 
-    // Reset unsupported/unwanted mesh shader features that might have been enabled by the query
-    meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;
-    meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
+        // Reset unsupported/unwanted mesh shader features that might have been
+        // enabled by the query
+        meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;
+        meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
 
-    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
+        VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
             .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
-            .pNext     = &meshShaderFeatures, // Chain to meshShaderFeatures
+            .pNext     = &meshShaderFeatures,  // Chain to meshShaderFeatures
             .presentId = VK_TRUE,
-    };
+        };
 
-    // Set up pNext chain: presentId (if supported) -> meshShaderFeatures -> vulkan12Features
-    void* pNextChain = &meshShaderFeatures;
-    if (presentIdSupported_)
-    {
-      pNextChain = &presentIdFeaturesEnable;
-    }
+        // Set up pNext chain: presentId (if supported) -> meshShaderFeatures ->
+        // vulkan12Features
+        void const* pNextChain = &meshShaderFeatures;
+        if (presentIdSupported_) {
+            pNextChain = &presentIdFeaturesEnable;
+        }
 
-    VkDeviceCreateInfo createInfo = {
+        VkDeviceCreateInfo createInfo = {
             .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext                = pNextChain,
             .queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
             .pQueueCreateInfos    = queueCreateInfos.data(),
             .pEnabledFeatures     = &deviceFeatures,
-    };
+        };
 
-    createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensions.size());
-    createInfo.ppEnabledExtensionNames = enabledExtensions.data();
+        createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensions.size());
+        createInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
-    // might not really be necessary anymore because device specific
-    // validation layers have been deprecated
-    if (enableValidationLayers)
-    {
-      createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
-      createInfo.ppEnabledLayerNames = validationLayers.data();
-    }
-    else
-    {
-      createInfo.enabledLayerCount = 0;
-    }
+        // Device-level validation layers have been deprecated since Vulkan 1.0.
+        // Validation is done at the instance level only.
+        createInfo.enabledLayerCount   = 0;
+        createInfo.ppEnabledLayerNames = nullptr;
 
-    if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS)
-    {
-      throw engine::RuntimeException("failed to create logical device!");
-    }
+        if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS) {
+            throw engine::RuntimeException("failed to create logical device!");
+        }
 
-    vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
-    vkGetDeviceQueue(device_, indices.presentFamily, 0, &presentQueue_);
+        vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
+        vkGetDeviceQueue(device_, indices.presentFamily, 0, &presentQueue_);
 
-    vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT)vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");
-    if (!vkCmdDrawMeshTasksEXT)
-    {
-      std::cerr << "Failed to load vkCmdDrawMeshTasksEXT function pointer!" << std::endl;
-    }
-  }
+        // Using Vulkan SDK loader (vulkan-1) - device-level function pointers are
+        // resolved via vkGetDeviceProcAddr
 
-  /**
-   * @brief Creates a command pool for allocating Vulkan command buffers.
-   * @throws std::runtime_error if command pool creation fails.
-   */
-  void Device::createCommandPool()
-  {
-    QueueFamilyIndices queueFamilyIndices = findPhysicalQueueFamilies();
-
-    VkCommandPoolCreateInfo poolInfo = {};
-    poolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex        = queueFamilyIndices.graphicsFamily;
-    poolInfo.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-    if (vkCreateCommandPool(device_, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
-    {
-      throw engine::RuntimeException("failed to create command pool!");
-    }
-  }
-
-  /**
-   * @brief Creates the Vulkan surface for window presentation.
-   */
-  void Device::createSurface()
-  {
-    window.createWindowSurface(instance, &surface_);
-  }
-
-  /**
-   * @brief Checks if a physical device is suitable for engine requirements.
-   * @param device Vulkan physical device handle.
-   * @return true if device is suitable, false otherwise.
-   */
-  bool Device::isDeviceSuitable(VkPhysicalDevice device)
-  {
-    QueueFamilyIndices indices = findQueueFamilies(device);
-
-    bool extensionsSupported = checkDeviceExtensionSupport(device);
-
-    bool swapChainAdequate = false;
-    if (extensionsSupported)
-    {
-      SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
-      swapChainAdequate                        = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT) vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");
+        if (vkCmdDrawMeshTasksEXT == nullptr) {
+            std::cerr << "Failed to load vkCmdDrawMeshTasksEXT function pointer!" << "\n";
+        }
     }
 
-    VkPhysicalDeviceFeatures supportedFeatures;
-    vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
+    /**
+ * @brief Creates a command pool for allocating Vulkan command buffers.
+ * @throws std::runtime_error if command pool creation fails.
+ */
+    void Device::createCommandPool() {
+        QueueFamilyIndices const queueFamilyIndices = findPhysicalQueueFamilies();
 
-    VkPhysicalDeviceVulkan12Features vulkan12Features = {};
-    vulkan12Features.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        VkCommandPoolCreateInfo poolInfo = {};
+        poolInfo.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.queueFamilyIndex        = queueFamilyIndices.graphicsFamily;
+        poolInfo.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-    VkPhysicalDeviceFeatures2 features2 = {};
-    features2.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    features2.pNext                     = &vulkan12Features;
+        if (vkCreateCommandPool(device_, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+            throw engine::RuntimeException("failed to create command pool!");
+        }
 
-    vkGetPhysicalDeviceFeatures2(device, &features2);
-
-    bool bindlessSupported = vulkan12Features.descriptorIndexing && vulkan12Features.shaderSampledImageArrayNonUniformIndexing &&
-                             vulkan12Features.descriptorBindingPartiallyBound && vulkan12Features.descriptorBindingVariableDescriptorCount &&
-                             vulkan12Features.runtimeDescriptorArray && vulkan12Features.bufferDeviceAddress;
-
-    return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy && supportedFeatures.shaderInt64 &&
-           bindlessSupported;
-  }
-
-  bool Device::checkValidationLayerSupport() const
-  {
-    uint32_t layerCount = 0;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-
-    for (const char* layerName : validationLayers)
-    {
-      const bool found = std::any_of(availableLayers.begin(), availableLayers.end(), [layerName](const VkLayerProperties& layerProps) {
-        return std::strcmp(layerName, layerProps.layerName) == 0;
-      });
-      if (!found)
-      {
-        return false;
-      }
+        // Create reusable fence for single-time commands
+        VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+        if (vkCreateFence(device_, &fenceInfo, nullptr, &singleTimeFence_) != VK_SUCCESS) {
+            throw engine::RuntimeException("failed to create single-time commands fence!");
+        }
     }
 
-    return true;
-  }
-
-  std::vector<const char*> Device::getRequiredExtensions() const
-  {
-    uint32_t     glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    if (enableValidationLayers)
-    {
-      extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    void Device::enableThreadLocalCommandPools() {
+        if (threadLocalCommandPools_)
+            return;  // already enabled
+        threadLocalCommandPools_ = std::make_unique<ThreadLocalCommandPool>();
+        threadLocalCommandPools_->init(device_, findPhysicalQueueFamilies().graphicsFamily);
     }
 
-    return extensions;
-  }
+    VkResult Device::submitGraphics(const VkSubmitInfo* submitInfo, VkFence fence) {
+        std::scoped_lock const lock(queueSubmitMutex_);
+        const int              maxRetries = 2;
+        VkResult               lastRes    = VK_ERROR_INITIALIZATION_FAILED;
+        for (int attempt = 0; attempt <= maxRetries; ++attempt) {
+            lastRes = vkQueueSubmit(graphicsQueue_, 1, submitInfo, fence);
+            if (lastRes == VK_SUCCESS) {
+                return lastRes;
+            }
 
-  void Device::setupDebugMessenger()
-  {
-    if (!enableValidationLayers)
-    {
-      return;
+            uint32_t cbCount = (submitInfo != nullptr) ? submitInfo->commandBufferCount : 0u;
+            std::cerr << "[Device] submitGraphics failed: VkResult=" << lastRes << " commandBuffers=" << cbCount << " attempt=" << attempt << " thread=" << std::this_thread::get_id() << "\n";
+
+            if (lastRes == VK_ERROR_DEVICE_LOST) {
+                // Dump physical device info to help debugging device lost errors
+                std::cerr << "[Device] VK_ERROR_DEVICE_LOST: physical device: " << properties.deviceName << " vendor=" << properties.vendorID << " driver=" << properties.driverVersion << "\n";
+                break;  // no point retrying
+            }
+
+            if (attempt < maxRetries) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        return lastRes;
     }
 
-    VkDebugUtilsMessengerCreateInfoEXT createInfo;
-    populateDebugMessengerCreateInfo(createInfo);
-
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-    {
-      throw engine::RuntimeException("failed to set up debug messenger!");
-    }
-  }
-
-  QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device)
-  {
-    QueueFamilyIndices indices{};
-
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
-
-    uint32_t i = 0;
-    for (const auto& queueFamily : queueFamilies)
-    {
-      if (queueFamily.queueCount > 0 && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT))
-      {
-        indices.graphicsFamily         = i;
-        indices.graphicsFamilyHasValue = true;
-      }
-
-      VkBool32 presentSupport = VK_FALSE;
-      vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface_, &presentSupport);
-      if (queueFamily.queueCount > 0 && presentSupport == VK_TRUE)
-      {
-        indices.presentFamily         = i;
-        indices.presentFamilyHasValue = true;
-      }
-
-      if (indices.isComplete())
-      {
-        break;
-      }
-
-      ++i;
+    VkResult Device::present(const VkPresentInfoKHR* presentInfo) {
+        std::scoped_lock const lock(queueSubmitMutex_);
+        return vkQueuePresentKHR(presentQueue_, const_cast<VkPresentInfoKHR*>(presentInfo));
     }
 
-    return indices;
-  }
-
-  void Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) const
-  {
-    createInfo                 = {};
-    createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-    createInfo.pUserData       = nullptr;
-  }
-
-  void Device::hasGflwRequiredInstanceExtensions() const
-  {
-    uint32_t     glfwExtensionCount = 0;
-    const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::unordered_set<std::string> requiredExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
-
-    for (const auto& extension : availableExtensions)
-    {
-      requiredExtensions.erase(extension.extensionName);
+    /**
+ * @brief Creates the Vulkan surface for window presentation.
+ */
+    void Device::createSurface() {
+        window.createWindowSurface(instance, &surface_);
     }
 
-    if (!requiredExtensions.empty())
-    {
-      throw engine::RuntimeException("missing required GLFW instance extensions");
-    }
-  }
+    /**
+ * @brief Checks if a physical device is suitable for engine requirements.
+ * @param device Vulkan physical device handle.
+ * @return true if device is suitable, false otherwise.
+ */
+    bool Device::isDeviceSuitable(VkPhysicalDevice device) {
+        QueueFamilyIndices const indices = findQueueFamilies(device);
 
-  bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device) const
-  {
-    uint32_t extensionCount = 0;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+        bool const extensionsSupported = checkDeviceExtensionSupport(device);
 
-    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+        bool swapChainAdequate = false;
+        if (extensionsSupported) {
+            SwapChainSupportDetails const swapChainSupport = querySwapChainSupport(device);
+            swapChainAdequate                              = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+        }
 
-    std::unordered_set<std::string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+        VkPhysicalDeviceFeatures supportedFeatures;
+        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-    for (const auto& extension : availableExtensions)
-    {
-      requiredExtensions.erase(extension.extensionName);
-    }
+        VkPhysicalDeviceVulkan12Features vulkan12Features = {};
+        vulkan12Features.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
 
-    return requiredExtensions.empty();
-  }
+        VkPhysicalDeviceFeatures2 features2 = {};
+        features2.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        features2.pNext                     = &vulkan12Features;
 
-  SwapChainSupportDetails Device::querySwapChainSupport(VkPhysicalDevice device)
-  {
-    SwapChainSupportDetails details{};
+        vkGetPhysicalDeviceFeatures2(device, &features2);
 
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface_, &details.capabilities);
+        bool const bindlessSupported = (vulkan12Features.descriptorIndexing != 0u) && (vulkan12Features.shaderSampledImageArrayNonUniformIndexing != 0u) &&
+                                       (vulkan12Features.descriptorBindingPartiallyBound != 0u) && (vulkan12Features.descriptorBindingVariableDescriptorCount != 0u) &&
+                                       (vulkan12Features.runtimeDescriptorArray != 0u) && (vulkan12Features.bufferDeviceAddress != 0u);
 
-    uint32_t formatCount = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, nullptr);
-    if (formatCount != 0)
-    {
-      details.formats.resize(formatCount);
-      vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, details.formats.data());
+        return indices.isComplete() && extensionsSupported && swapChainAdequate && (supportedFeatures.samplerAnisotropy != 0u) && (supportedFeatures.shaderInt64 != 0u) && bindlessSupported;
     }
 
-    uint32_t presentModeCount = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, nullptr);
-    if (presentModeCount != 0)
-    {
-      details.presentModes.resize(presentModeCount);
-      vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, details.presentModes.data());
+    bool Device::checkValidationLayerSupport() const {
+        uint32_t layerCount = 0;
+        vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+        for (const char* layerName : validationLayers) {
+            const bool found = std::ranges::any_of(availableLayers, [layerName](const VkLayerProperties& layerProps) { return std::strcmp(layerName, layerProps.layerName) == 0; });
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    return details;
-  }
+    std::vector<const char*> Device::getRequiredExtensions() const {
+        uint32_t     glfwExtensionCount = 0;
+        const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-  VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-  {
-    for (VkFormat format : candidates)
-    {
-      VkFormatProperties formatProperties;
-      vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+        std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-      if (tiling == VK_IMAGE_TILING_LINEAR && (formatProperties.linearTilingFeatures & features) == features)
-      {
-        return format;
-      }
+        if (enableValidationLayers) {
+            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
 
-      if (tiling == VK_IMAGE_TILING_OPTIMAL && (formatProperties.optimalTilingFeatures & features) == features)
-      {
-        return format;
-      }
+        return extensions;
     }
 
-    throw engine::RuntimeException("failed to find supported format!");
-  }
+    void Device::setupDebugMessenger() {
+        if (!enableValidationLayers) {
+            return;
+        }
 
-  VkCommandBuffer Device::beginSingleTimeCommands()
-  {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool        = commandPool;
-    allocInfo.commandBufferCount = 1;
+        // Use the RAII pilot DebugMessenger to manage creation and destruction.
+        debugMessenger = std::make_unique<DebugMessenger>();
+        debugMessenger->create(instance);
+    }
 
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
+    QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device) {
+        QueueFamilyIndices indices{};
 
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
 
-    return commandBuffer;
-  }
+        uint32_t i = 0;
+        for (const auto& queueFamily : queueFamilies) {
+            if (queueFamily.queueCount > 0 && ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0u)) {
+                indices.graphicsFamily         = i;
+                indices.graphicsFamilyHasValue = true;
+            }
 
-  void Device::endSingleTimeCommands(VkCommandBuffer commandBuffer)
-  {
-    vkEndCommandBuffer(commandBuffer);
+            VkBool32 presentSupport = VK_FALSE;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface_, &presentSupport);
+            if (queueFamily.queueCount > 0 && presentSupport == VK_TRUE) {
+                indices.presentFamily         = i;
+                indices.presentFamilyHasValue = true;
+            }
 
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers    = &commandBuffer;
+            if (indices.isComplete()) {
+                break;
+            }
 
-    vkQueueSubmit(graphicsQueue_, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(graphicsQueue_);
+            ++i;
+        }
 
-    vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
-  }
+        return indices;
+    }
 
-} // namespace engine
+    void Device::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+        createInfo                 = {};
+        createInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = debugCallback;
+        createInfo.pUserData       = nullptr;
+    }
+
+    bool Device::hasGlfwRequiredInstanceExtensions() {
+        uint32_t     glfwExtensionCount = 0;
+        const char** glfwExtensions     = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+        std::vector<const char*> required(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+        const auto available = engine::enumerateInstanceExtensions();
+
+        return engine::ensureExtensionsPresent(required, available);
+    }
+
+    bool Device::checkDeviceExtensionSupport(VkPhysicalDevice device) const {
+        const auto               availableExtensions = engine::enumerateDeviceExtensions(device);
+        std::vector<const char*> required(deviceExtensions.begin(), deviceExtensions.end());
+        return engine::ensureExtensionsPresent(required, availableExtensions);
+    }
+
+    SwapChainSupportDetails Device::querySwapChainSupport(VkPhysicalDevice device) {
+        SwapChainSupportDetails details{};
+
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface_, &details.capabilities);
+
+        uint32_t formatCount = 0;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, nullptr);
+        if (formatCount != 0) {
+            details.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface_, &formatCount, details.formats.data());
+        }
+
+        uint32_t presentModeCount = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, nullptr);
+        if (presentModeCount != 0) {
+            details.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface_, &presentModeCount, details.presentModes.data());
+        }
+
+        return details;
+    }
+
+    VkFormat Device::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
+        if (candidates.empty()) {
+            throw engine::RuntimeException("findSupportedFormat: candidates list is empty!");
+        }
+
+        for (VkFormat const format : candidates) {
+            VkFormatProperties formatProperties;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (formatProperties.linearTilingFeatures & features) == features) {
+                return format;
+            }
+
+            if (tiling == VK_IMAGE_TILING_OPTIMAL && (formatProperties.optimalTilingFeatures & features) == features) {
+                return format;
+            }
+        }
+
+        // If we get here, no suitable format was found. Log details for debugging.
+        std::string tilingStr = (tiling == VK_IMAGE_TILING_LINEAR) ? "LINEAR" : "OPTIMAL";
+        std::cerr << "[ " << RED "ERROR" RESET " ] findSupportedFormat failed:\n"
+                  << "  Tiling: " << tilingStr << "\n"
+                  << "  Required features: 0x" << std::hex << features << std::dec << "\n"
+                  << "  Tested " << candidates.size() << " candidate formats:\n";
+
+        for (size_t i = 0; i < candidates.size(); ++i) {
+            VkFormatProperties formatProperties;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, candidates[i], &formatProperties);
+            std::cerr << "    [" << i << "] Format " << candidates[i] << ": ";
+            if (tiling == VK_IMAGE_TILING_LINEAR) {
+                std::cerr << "linear=0x" << std::hex << formatProperties.linearTilingFeatures << std::dec;
+            } else {
+                std::cerr << "optimal=0x" << std::hex << formatProperties.optimalTilingFeatures << std::dec;
+            }
+            std::cerr << "\n";
+        }
+
+        throw engine::RuntimeException("failed to find supported format! See error output above for details.");
+    }
+
+    VkCommandBuffer Device::beginSingleTimeCommands() {
+        VkCommandPool pool = VK_NULL_HANDLE;
+        // If an opt-in thread-local manager is enabled, use it. Otherwise create a
+        // temporary pool per call (current behavior).
+        if (threadLocalCommandPools_) {
+            pool = threadLocalCommandPools_->getForCurrentThread();
+        } else {
+            // Create a temporary command pool for this single-time command buffer so worker
+            // threads can allocate/record independently without contending on a shared
+            // command pool (avoids threading validation errors).
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            poolInfo.queueFamilyIndex = findPhysicalQueueFamilies().graphicsFamily;
+
+            VkCommandPool tempPool = VK_NULL_HANDLE;
+            if (vkCreateCommandPool(device_, &poolInfo, nullptr, &tempPool) != VK_SUCCESS) {
+                throw engine::RuntimeException("failed to create temporary command pool for single-time commands");
+            }
+            pool = tempPool;
+        }
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool        = pool;
+        allocInfo.commandBufferCount = 1;
+
+        VkCommandBuffer commandBuffer;
+        vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
+
+        // Remember which pool owns this command buffer so endSingleTimeCommands can
+        // free (and possibly destroy) the pool when done.
+        {
+            std::scoped_lock const lock(singleCmdMutex);
+            cmdBufferToPoolMap_[commandBuffer] = pool;
+        }
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        return commandBuffer;
+    }
+
+    void Device::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
+        vkEndCommandBuffer(commandBuffer);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &commandBuffer;
+
+        // Use the reusable fence (protected by singleCmdMutex for thread safety)
+        std::scoped_lock const fenceLock(singleCmdMutex);
+        vkResetFences(device_, 1, &singleTimeFence_);
+
+        VkResult const submitRes = submitGraphics(&submitInfo, singleTimeFence_);
+        if (submitRes != VK_SUCCESS) {
+            throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
+        }
+
+        constexpr uint64_t timeoutNs = 10ull * 1000ull * 1000ull * 1000ull;  // 10 seconds
+        VkResult const     waitRes   = vkWaitForFences(device_, 1, &singleTimeFence_, VK_TRUE, timeoutNs);
+        if (waitRes != VK_SUCCESS) {
+            throw engine::RuntimeException("vkWaitForFences failed: " + std::to_string(waitRes));
+        }
+
+        // std::cerr << "[Device] endSingleTimeCommands - submit OK for cmdBuffer=" << commandBuffer << "\n";
+
+        VkCommandPool pool = VK_NULL_HANDLE;
+        {
+            // Already holding fenceLock on singleCmdMutex - access map directly
+            auto it = cmdBufferToPoolMap_.find(commandBuffer);
+            if (it != cmdBufferToPoolMap_.end()) {
+                pool = it->second;
+                cmdBufferToPoolMap_.erase(it);
+            }
+        }
+
+        if (pool != VK_NULL_HANDLE) {
+            // If the pool is managed by the ThreadLocalCommandPool, only free the
+            // command buffer — do not destroy the pool.
+            if (threadLocalCommandPools_ && threadLocalCommandPools_->ownsPool(pool)) {
+                vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+            } else {
+                vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+                vkDestroyCommandPool(device_, pool, nullptr);
+            }
+        } else {
+            // Fallback to freeing from the shared command pool if we couldn't find
+            // an associated temporary pool (shouldn't happen normally).
+            vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
+        }
+    }
+
+    // Allocate a secondary command buffer. Prefer thread-local pools when enabled
+    // to avoid contention; remember the owning pool so the CB can be freed later.
+    VkResult Device::allocateSecondaryCommandBuffer(VkCommandBuffer* outCommandBuffer) {
+        if (!outCommandBuffer)
+            return VK_ERROR_INITIALIZATION_FAILED;
+
+        VkCommandPool pool = commandPool;
+        if (threadLocalCommandPools_) {
+            pool = threadLocalCommandPools_->getForCurrentThread();
+        }
+
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool        = pool;
+        allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+        allocInfo.commandBufferCount = 1;
+
+        VkResult res = vkAllocateCommandBuffers(device_, &allocInfo, outCommandBuffer);
+        if (res == VK_SUCCESS) {
+            std::scoped_lock const lock(singleCmdMutex);
+            cmdBufferToPoolMap_.emplace(*outCommandBuffer, pool);
+        }
+        return res;
+    }
+
+    // Free a secondary command buffer previously allocated with allocateSecondaryCommandBuffer.
+    void Device::freeSecondaryCommandBuffer(VkCommandBuffer commandBuffer) {
+        VkCommandPool pool = VK_NULL_HANDLE;
+        {
+            std::scoped_lock const lock(singleCmdMutex);
+            auto                   it = cmdBufferToPoolMap_.find(commandBuffer);
+            if (it != cmdBufferToPoolMap_.end()) {
+                pool = it->second;
+                cmdBufferToPoolMap_.erase(it);
+            }
+        }
+        if (pool == VK_NULL_HANDLE)
+            pool = commandPool;
+        vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
+    }
+
+}  // namespace engine

@@ -1,0 +1,3 @@
+[submodule "third_party/xatlas"]
+	path = third_party/xatlas
+	url = https://github.com/jpcy/xatlas.git

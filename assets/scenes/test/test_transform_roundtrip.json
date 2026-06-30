@@ -1,0 +1,35 @@
+{
+    "objects": [
+        {
+            "directionalLight": {
+                "bake": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 1.0,
+                "lightType": "static"
+            },
+            "id": "0",
+            "name": "GameObject",
+            "transform": {
+                "rotation": [
+                    0.5,
+                    1.0,
+                    1.5
+                ],
+                "scale": [
+                    2.0,
+                    3.0,
+                    4.0
+                ],
+                "translation": [
+                    10.0,
+                    20.0,
+                    30.0
+                ]
+            }
+        }
+    ]
+}

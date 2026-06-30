@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP
 
 #include <memory>
 #include <unordered_map>
@@ -8,95 +9,120 @@
 
 namespace engine {
 
-  class DescriptorSetLayout
-  {
-  public:
-    class Builder
-    {
-    public:
-      explicit Builder(Device& device) : device{device} {}
+    class DescriptorSetLayout {
+       public:
+        class Builder {
+           public:
+            explicit Builder(Device& device) : device{device} {}
 
-      Builder&                             addBinding(uint32_t                 binding,
-                                                      VkDescriptorType         descriptorType,
-                                                      VkShaderStageFlags       stageFlags,
-                                                      uint32_t                 count        = 1,
-                                                      VkDescriptorBindingFlags bindingFlags = 0);
-      std::unique_ptr<DescriptorSetLayout> build() const;
+            Builder&                                           addBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, uint32_t count = 1, VkDescriptorBindingFlags bindingFlags = 0);
+            [[nodiscard]] std::unique_ptr<DescriptorSetLayout> build() const;
 
-    private:
-      Device&                                                    device;
-      std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> bindings{};
-      std::unordered_map<uint32_t, VkDescriptorBindingFlags>     bindingFlags{};
+           private:
+            Device&                                                    device;
+            std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> bindings;
+            std::unordered_map<uint32_t, VkDescriptorBindingFlags>     bindingFlags;
+        };
+
+        DescriptorSetLayout(Device& device, const std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>& bindings, const std::unordered_map<uint32_t, VkDescriptorBindingFlags>& bindingFlags);
+        ~DescriptorSetLayout();
+        DescriptorSetLayout(const DescriptorSetLayout&)            = delete;
+        DescriptorSetLayout& operator=(const DescriptorSetLayout&) = delete;
+
+        [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const {
+            return descriptorSetLayout;
+        }
+
+       private:
+        Device&                                                    device;
+        VkDescriptorSetLayout                                      descriptorSetLayout;
+        std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> bindings;
+
+        friend class DescriptorWriter;
     };
 
-    DescriptorSetLayout(Device&                                                           device,
-                        const std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding>& bindings,
-                        const std::unordered_map<uint32_t, VkDescriptorBindingFlags>&     bindingFlags);
-    ~DescriptorSetLayout();
-    DescriptorSetLayout(const DescriptorSetLayout&)            = delete;
-    DescriptorSetLayout& operator=(const DescriptorSetLayout&) = delete;
+    class DescriptorPool {
+       public:
+        class Builder {
+           public:
+            Builder(Device& device) : device{device} {}
 
-    VkDescriptorSetLayout getDescriptorSetLayout() const { return descriptorSetLayout; }
+            Builder& addPoolSize(VkDescriptorType descriptorType, uint32_t count);
+            Builder& setPoolFlags(VkDescriptorPoolCreateFlags flags);
+            Builder& setMaxSets(uint32_t count);
+            // Opt-in: allow the pool to create overflow pools when allocation
+            // requests cannot be satisfied due to fragmentation or size limits.
+            Builder& setAllowOverflow(bool allow);
+            // Require the pool to be created successfully. Defaults to true.
+            Builder&                                      setRequireSuccess(bool require);
+            [[nodiscard]] std::unique_ptr<DescriptorPool> build() const;
 
-  private:
-    Device&                                                    device;
-    VkDescriptorSetLayout                                      descriptorSetLayout;
-    std::unordered_map<uint32_t, VkDescriptorSetLayoutBinding> bindings;
+           private:
+            Device&                           device;
+            std::vector<VkDescriptorPoolSize> poolSizes;
+            uint32_t                          maxSets        = 1000;
+            VkDescriptorPoolCreateFlags       poolFlags      = 0;
+            bool                              allowOverflow  = false;
+            bool                              requireSuccess = true;
+        };
 
-    friend class DescriptorWriter;
-  };
+        DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes, bool allowOverflow = false);
+        ~DescriptorPool();
+        DescriptorPool(const DescriptorPool&)            = delete;
+        DescriptorPool& operator=(const DescriptorPool&) = delete;
 
-  class DescriptorPool
-  {
-  public:
-    class Builder
-    {
-    public:
-      Builder(Device& device) : device{device} {}
+        // requestedPoolSizes: optional hint used when creating an overflow pool
+        // after a primary allocation failure. If nullptr, the pool's creation
+        // sizes are used for any fallback.
+        bool allocateDescriptor(VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor, const std::vector<VkDescriptorPoolSize>* requestedPoolSizes = nullptr);
+        void freeDescriptors(std::vector<VkDescriptorSet>& descriptors) const;
+        void resetPool();
 
-      Builder&                        addPoolSize(VkDescriptorType descriptorType, uint32_t count);
-      Builder&                        setPoolFlags(VkDescriptorPoolCreateFlags flags);
-      Builder&                        setMaxSets(uint32_t count);
-      std::unique_ptr<DescriptorPool> build() const;
+        // Diagnostic helpers (read-only)
+        [[nodiscard]] uint32_t getMaxSets() const {
+            return maxSets;
+        }
+        [[nodiscard]] const std::vector<VkDescriptorPoolSize>& getPoolSizes() const {
+            return poolSizes;
+        }
 
-    private:
-      Device&                           device;
-      std::vector<VkDescriptorPoolSize> poolSizes{};
-      uint32_t                          maxSets   = 1000;
-      VkDescriptorPoolCreateFlags       poolFlags = 0;
+       private:
+        Device&          device;
+        VkDescriptorPool descriptorPool;
+
+        // Stored at creation time so we can emit helpful diagnostics when alloc fails
+        std::vector<VkDescriptorPoolSize> poolSizes;
+        uint32_t                          maxSets;
+        VkDescriptorPoolCreateFlags       poolFlags;
+
+        // Overflow/fallback pools owned by this DescriptorPool (prototype)
+        mutable std::vector<VkDescriptorPool> overflowPools;
+        mutable std::mutex                    overflowMutex;
+        bool                                  allowOverflow = false;
+
+        friend class DescriptorWriter;
     };
 
-    DescriptorPool(Device& device, uint32_t maxSets, VkDescriptorPoolCreateFlags poolFlags, const std::vector<VkDescriptorPoolSize>& poolSizes);
-    ~DescriptorPool();
-    DescriptorPool(const DescriptorPool&)            = delete;
-    DescriptorPool& operator=(const DescriptorPool&) = delete;
+    class DescriptorWriter {
+       public:
+        DescriptorWriter(DescriptorSetLayout& setLayout, DescriptorPool& pool);
 
-    bool allocateDescriptor(const VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor) const;
-    void freeDescriptors(std::vector<VkDescriptorSet>& descriptors) const;
-    void resetPool();
+        DescriptorWriter& writeBuffer(uint32_t binding, VkDescriptorBufferInfo* bufferInfo);
+        DescriptorWriter& writeImage(uint32_t binding, VkDescriptorImageInfo* imageInfo);
 
-  private:
-    Device&          device;
-    VkDescriptorPool descriptorPool;
+        // Extended build: optional outResult supplies the underlying VkResult when
+        // allocation fails (helps callers decide whether to grow pools, retry,
+        // or fail fast). Backwards-compatible default keeps existing call sites OK.
+        bool build(VkDescriptorSet& set, VkResult* outResult = nullptr);
+        void buildOrThrow(VkDescriptorSet& set);
+        void overwrite(VkDescriptorSet& set);
 
-    friend class DescriptorWriter;
-  };
+       private:
+        DescriptorSetLayout&              setLayout;
+        DescriptorPool&                   pool;
+        std::vector<VkWriteDescriptorSet> writes;
+    };
 
-  class DescriptorWriter
-  {
-  public:
-    DescriptorWriter(DescriptorSetLayout& setLayout, DescriptorPool& pool);
+}  // namespace engine
 
-    DescriptorWriter& writeBuffer(uint32_t binding, VkDescriptorBufferInfo* bufferInfo);
-    DescriptorWriter& writeImage(uint32_t binding, VkDescriptorImageInfo* imageInfo);
-
-    bool build(VkDescriptorSet& set);
-    void overwrite(VkDescriptorSet& set);
-
-  private:
-    DescriptorSetLayout&              setLayout;
-    DescriptorPool&                   pool;
-    std::vector<VkWriteDescriptorSet> writes;
-  };
-
-} // namespace engine
+#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP

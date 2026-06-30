@@ -1,4 +1,5 @@
-#pragma once
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
 
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
@@ -7,20 +8,18 @@
 
 namespace engine {
 
-  class InputSystem
-  {
-  public:
-    InputSystem(Keyboard& keyboard, Mouse& mouse, Window& window);
+    class InputSystem {
+       public:
+        InputSystem(Keyboard& keyboard, Mouse& mouse, Window& window);
 
-    void update(FrameInfo& frameInfo);
+        void update(FrameInfo& frameInfo);
 
-  private:
-    Keyboard& keyboard_;
-    Mouse&    mouse_;
-    Window&   window_;
+       private:
+        Keyboard& keyboard_;
+        Mouse&    mouse_;
+        Window&   window_;
+    };
 
-    // Toggle cursor state tracking
-    bool lastToggleKeyState_ = false;
-  };
+}  // namespace engine
 
-} // namespace engine
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
