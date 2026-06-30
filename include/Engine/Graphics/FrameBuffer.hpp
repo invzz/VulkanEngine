@@ -86,6 +86,12 @@ namespace engine {
         [[nodiscard]] VkImage getColorImage(int frameIndex) const {
             return colorTargets[frameIndex].getImage();
         }
+        [[nodiscard]] VkImageView getColorImageView(int frameIndex) const {
+            return colorTargets[frameIndex].getView();
+        }
+        [[nodiscard]] VkSampler getColorSampler(int frameIndex) const {
+            return colorTargets[frameIndex].getSampler();
+        }
 
         // G-buffer attachments
         [[nodiscard]] VkImageView getGbufferNormalImageView(int frameIndex) const {

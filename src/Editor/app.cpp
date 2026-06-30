@@ -136,9 +136,16 @@ namespace engine {
         renderPipeline = std::make_unique<RenderPipeline>(renderer);
         setupRenderGraph();
 
-        viewport_.create(device, VkExtent2D{1024, 768});
+        // Register offscreen color images with ImGui (one per frame-in-flight).
+        viewport_.create(device, renderer);
         if (viewportPanel_) {
-            viewportPanel_->setViewport(&viewport_, VkExtent2D{600, 400});
+            viewportPanel_->setViewport(&viewport_, renderer.getSwapChainExtent());
+            viewportPanel_->onResize = [this](VkExtent2D extent) {
+                // Defer resize to next frame start — we're inside ImGui
+                // rendering (mid command buffer) and can't recreate images.
+                viewportResize_.pending_ = true;
+                viewportResize_.extent_  = extent;
+            };
         }
 
         GpuProfiler::instance().initialize(device.device(),
@@ -191,8 +198,9 @@ namespace engine {
         uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
 
-        viewportPanel_ = std::make_unique<ViewportPanel>();
-        registry.registerPanel("Viewport", std::move(viewportPanel_), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 400.0f, .minSizeY = 300.0f});
+        auto vp        = std::make_unique<ViewportPanel>();
+        viewportPanel_ = vp.get();
+        registry.registerPanel("Viewport", std::move(vp), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 400.0f, .minSizeY = 300.0f});
     }
 
     void App::setupRenderGraph() {
@@ -245,58 +253,12 @@ namespace engine {
             renderer,
             engineState.editor()));
 
-        // ViewportCopy — copies offscreen color to viewport texture for ImGui display
-        graph->addPass(std::make_unique<LambdaRenderPass>("ViewportCopy",
+        // TransitionColorToReadOnly — transition offscreen color from
+        // COLOR_ATTACHMENT_OPTIMAL to SHADER_READ_ONLY_OPTIMAL
+        // so ImGui can sample it directly (no copy needed).
+        graph->addPass(std::make_unique<LambdaRenderPass>("TransitionToReadOnly",
             [this](FrameInfo& frameInfo) {
-                VkImage srcImage = renderer.getOffscreenColorImage(frameInfo.frameIndex);
-
-                VkImageMemoryBarrier srcBarrier{};
-                srcBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-                srcBarrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-                srcBarrier.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-                srcBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-                srcBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-                srcBarrier.image                           = srcImage;
-                srcBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-                srcBarrier.subresourceRange.baseMipLevel   = 0;
-                srcBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-                srcBarrier.subresourceRange.baseArrayLayer = 0;
-                srcBarrier.subresourceRange.layerCount     = 1;
-                srcBarrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                srcBarrier.dstAccessMask                   = VK_ACCESS_TRANSFER_READ_BIT;
-
-                vkCmdPipelineBarrier(frameInfo.commandBuffer,
-                    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-                    0, nullptr, 0, nullptr, 1, &srcBarrier);
-
-                VkImageLayout const srcLayout = viewportInitialized_
-                                                    ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                                    : VK_IMAGE_LAYOUT_UNDEFINED;
-                viewport_.transitionToTransferDst(frameInfo.commandBuffer, srcLayout);
-                viewportInitialized_ = true;
-
-                VkImageCopy copyRegion{};
-                copyRegion.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-                copyRegion.srcSubresource.mipLevel       = 0;
-                copyRegion.srcSubresource.baseArrayLayer = 0;
-                copyRegion.srcSubresource.layerCount     = 1;
-                copyRegion.srcOffset                     = {0, 0, 0};
-                copyRegion.dstSubresource                = copyRegion.srcSubresource;
-                copyRegion.dstOffset                     = {0, 0, 0};
-
-                VkExtent2D const texExtent = viewport_.getExtent();
-                copyRegion.extent.width    = std::min(texExtent.width, frameInfo.extent.width);
-                copyRegion.extent.height   = std::min(texExtent.height, frameInfo.extent.height);
-                copyRegion.extent.depth    = 1;
-
-                vkCmdCopyImage(frameInfo.commandBuffer,
-                    srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    viewport_.getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    1, &copyRegion);
-
-                viewport_.transitionToShaderReadOnly(frameInfo.commandBuffer,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                renderer.transitionColorToShaderReadOnly(frameInfo.commandBuffer);
             }));
 
         // CompositionPass — UI overlay via callback instead of port interface
@@ -335,9 +297,23 @@ namespace engine {
     }
 
     void App::render(float frameTime) {
+        // Process deferred viewport resize before any command buffer work.
+        // Must wait for GPU idle — FrameBuffer::resize() destroys images
+        // that may still be referenced by in-flight command buffers.
+        if (viewportResize_.pending_) {
+            vkDeviceWaitIdle(device.device());
+            viewport_.resize(device, renderer, viewportResize_.extent_);
+            viewportResize_.pending_ = false;
+            viewportPanel_->setViewport(&viewport_, viewportResize_.extent_);
+        }
+
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
                 engineState.recreatePostProcessingSystem(device, renderer.getSwapChainRenderPass());
+                // Recreate offscreen FB and ImGui textures atomically —
+                // both must happen in the same frame to avoid stale descriptors.
+                renderer.recreateOffscreenFramebuffer();
+                viewport_.create(device, renderer);
             }
 
             int frameIndex = renderer.getFrameIndex();
@@ -357,7 +333,7 @@ namespace engine {
                 .morphManager        = engineState.systemPtr<AnimationSystem>()
                                            ? engineState.system<AnimationSystem>().getMorphManager()
                                            : nullptr,
-                .extent              = renderer.getSwapChainExtent(),
+                .extent              = renderer.getOffscreenExtent(),
                 .debugMode           = debugMode,
             };
 

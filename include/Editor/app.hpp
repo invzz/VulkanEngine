@@ -66,9 +66,13 @@ namespace engine {
         std::unique_ptr<Camera> camera;
 
         // Viewport
-        Viewport                       viewport_;
-        std::unique_ptr<ViewportPanel> viewportPanel_;
-        bool                           viewportInitialized_ = false;
+        Viewport       viewport_;
+        ViewportPanel* viewportPanel_ = nullptr;
+
+        struct {
+            bool       pending_ = false;
+            VkExtent2D extent_{};
+        } viewportResize_;
 
         bool     multithreadedRecordingEnabled = true;
         uint32_t multithreadedRecordingThreads = 0;

@@ -3,101 +3,55 @@
 
 #include <vulkan/vulkan.h>
 
+#include <array>
 #include <imgui.h>
 
 #include "Engine/Graphics/Device.hpp"
 
 namespace engine {
 
+    class Renderer;
+
     /**
-     * @brief Viewport render target that owns its HDR texture for scene output
-     *        and ImGui display. Replaces ViewportTexture + ViewportDisplay.
+     * @brief Viewport that displays the offscreen framebuffer's color attachment
+     *        directly in ImGui — no copy, no separate texture. Unreal-style:
+     *        the render target IS the viewport texture.
      *
-     * The Viewport owns:
-     *  - An HDR render target (R16G16B16A16_SFLOAT) for offscreen scene rendering
-     *  - A VkSampler for ImGui display
-     *  - An ImTextureID registered with ImGui Vulkan backend
-     *
-     * Scene output is copied from offscreen buffer to this target via vkCmdCopyImage.
-     * The ViewportPanel displays the texture via ImGui::Image() in the CompositionPass.
+     * On create(), registers each frame-in-flight color image with ImGui.
+     * On resize(), triggers offscreen framebuffer resize and re-registers.
+     * ViewportPanel calls getImTextureID(frameIndex) to pick the right image.
      */
     class Viewport {
        public:
-        Viewport() = default;
-        ~Viewport();
+        Viewport()  = default;
+        ~Viewport() = default;
 
         Viewport(const Viewport&)            = delete;
         Viewport& operator=(const Viewport&) = delete;
-        Viewport(Viewport&& other) noexcept;
-        Viewport& operator=(Viewport&& other) noexcept;
 
         /**
-         * @brief Create the viewport with the given extent and register with ImGui.
+         * @brief Register offscreen color images with ImGui Vulkan backend.
+         * @param device The Vulkan device (used for ImGui_ImplVulkan_AddTexture).
+         * @param renderer The Renderer whose offscreen color attachments to register.
          */
-        void create(Device& device, VkExtent2D extent);
+        void create(Device& device, Renderer& renderer);
 
         /**
-         * @brief Resize the viewport. Destroys and recreates the HDR target.
+         * @brief Resize the offscreen framebuffer and re-register color images.
          */
-        void resize(Device& device, VkExtent2D newExtent);
+        void resize(Device& device, Renderer& renderer, VkExtent2D newExtent);
 
         /**
-         * @brief Destroy all Vulkan resources (call before device teardown).
+         * @brief Get the ImTextureID for the current frame's offscreen color image.
          */
-        void destroy();
-
-        // --- HDR Render Target Access ---
-
-        [[nodiscard]] VkImage getImage() const {
-            return image_;
+        [[nodiscard]] ImTextureID getImTextureID(int frameIndex) const {
+            return imTextureIDs_[static_cast<size_t>(frameIndex)];
         }
-        [[nodiscard]] VkImageView getImageView() const {
-            return imageView_;
-        }
-        [[nodiscard]] VkSampler getSampler() const {
-            return sampler_;
-        }
-        [[nodiscard]] VkExtent2D getExtent() const {
-            return extent_;
-        }
-        [[nodiscard]] VkFormat getFormat() const {
-            return format_;
-        }
-
-        // --- ImGui Display ---
-
-        [[nodiscard]] ImTextureID getImTextureID() const {
-            return imTextureID_;
-        }
-
-        // --- Layout Transitions ---
-
-        /// Transition from SHADER_READ_ONLY to TRANSFER_DST_OPTIMAL.
-        void transitionToTransferDst(VkCommandBuffer cmd,
-            VkImageLayout                            sourceLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) const;
-
-        /// Transition to SHADER_READ_ONLY_OPTIMAL (for ImGui sampling).
-        void transitionToShaderReadOnly(VkCommandBuffer cmd,
-            VkImageLayout                               sourceLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) const;
-
-        /// Get a descriptor image info for sampling.
-        [[nodiscard]] VkDescriptorImageInfo getDescriptorImageInfo() const;
 
        private:
-        void createImage(Device& device, VkExtent2D extent);
-        void createImageView(Device& device);
-        void createSampler(Device& device);
-        void registerWithImGui(Device& device);
+        void registerAllFrames(Device& device, Renderer& renderer);
 
-        VkImage        image_       = VK_NULL_HANDLE;
-        VkDeviceMemory memory_      = VK_NULL_HANDLE;
-        VkImageView    imageView_   = VK_NULL_HANDLE;
-        VkSampler      sampler_     = VK_NULL_HANDLE;
-        VkFormat       format_      = VK_FORMAT_UNDEFINED;
-        VkExtent2D     extent_      = {0, 0};
-        ImTextureID    imTextureID_ = (ImTextureID) nullptr;
-
-        Device* device_ = nullptr;  // cached for destroy
+        std::array<ImTextureID, 4> imTextureIDs_{};  // one per frame-in-flight
     };
 
 }  // namespace engine

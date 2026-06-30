@@ -80,64 +80,64 @@ namespace engine {
         }
 
         Logger::info(LogChannel::Render, "Swapchain recreated successfully.");
-        // Recreate offscreen resources to match new swapchain extent
-        if (offscreenFrameBuffer) {
-            offscreenFrameBuffer->resize(swapChain->getSwapChainExtent());
-        } else {
+        // Only create offscreen resources on first launch. Subsequent
+        // recreation is deferred to recreateOffscreenFramebuffer() so it
+        // happens in the same frame as ImGui texture re-registration.
+        if (!offscreenFrameBuffer) {
+            offscreenExtent_ = swapChain->getSwapChainExtent();
             createOffscreenResources();
+
+            // Initialize offscreen image layouts after creation.
+            VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
+
+            for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
+                VkImageMemoryBarrier barrier{};
+                barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+                barrier.newLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                barrier.image                           = offscreenFrameBuffer->getDepthImage(i);
+                barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+                barrier.subresourceRange.baseMipLevel   = 0;
+                barrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+                barrier.subresourceRange.baseArrayLayer = 0;
+                barrier.subresourceRange.layerCount     = 1;
+                barrier.srcAccessMask                   = 0;
+                barrier.dstAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+                vkCmdPipelineBarrier(commandBuffer,
+                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                    0,
+                    0,
+                    nullptr,
+                    0,
+                    nullptr,
+                    1,
+                    &barrier);
+
+                // Initialize scene-color copy image layout.
+                VkImageMemoryBarrier sceneBarrier{};
+                sceneBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+                sceneBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+                sceneBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                sceneBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                sceneBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+                sceneBarrier.image                           = offscreenFrameBuffer->getSceneColorImage(i);
+                sceneBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                sceneBarrier.subresourceRange.baseMipLevel   = 0;
+                sceneBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+                sceneBarrier.subresourceRange.baseArrayLayer = 0;
+                sceneBarrier.subresourceRange.layerCount     = 1;
+                sceneBarrier.srcAccessMask                   = 0;
+                sceneBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+                vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sceneBarrier);
+            }
+
+            device.endSingleTimeCommands(commandBuffer);
         }
-
-        // Initialize offscreen image layouts after recreation.
-        // Depth prepass expects the depth image in DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
-        VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
-
-        for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
-            VkImageMemoryBarrier barrier{};
-            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            barrier.image                           = offscreenFrameBuffer->getDepthImage(i);
-            barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
-            barrier.subresourceRange.baseMipLevel   = 0;
-            barrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-            barrier.subresourceRange.baseArrayLayer = 0;
-            barrier.subresourceRange.layerCount     = 1;
-            barrier.srcAccessMask                   = 0;
-            barrier.dstAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-            vkCmdPipelineBarrier(commandBuffer,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &barrier);
-
-            // Initialize scene-color copy image layout for safe sampling/copying.
-            VkImageMemoryBarrier sceneBarrier{};
-            sceneBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            sceneBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-            sceneBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            sceneBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            sceneBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
-            sceneBarrier.image                           = offscreenFrameBuffer->getSceneColorImage(i);
-            sceneBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            sceneBarrier.subresourceRange.baseMipLevel   = 0;
-            sceneBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-            sceneBarrier.subresourceRange.baseArrayLayer = 0;
-            sceneBarrier.subresourceRange.layerCount     = 1;
-            sceneBarrier.srcAccessMask                   = 0;
-            sceneBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-
-            vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &sceneBarrier);
-        }
-
-        device.endSingleTimeCommands(commandBuffer);
 
         // TODO: recreate other resources dependent on swap chain (e.g.,
         // pipelines) the pipeline may not need to be recreated here if using
@@ -312,15 +312,15 @@ namespace engine {
         VkViewport viewport{};
         viewport.x        = 0.0f;
         viewport.y        = 0.0f;
-        viewport.width    = static_cast<float>(swapChain->getSwapChainExtent().width);
-        viewport.height   = static_cast<float>(swapChain->getSwapChainExtent().height);
+        viewport.width    = static_cast<float>(offscreenExtent_.width);
+        viewport.height   = static_cast<float>(offscreenExtent_.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapChain->getSwapChainExtent();
+        scissor.extent = offscreenExtent_;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
@@ -333,15 +333,15 @@ namespace engine {
         VkViewport viewport{};
         viewport.x        = 0.0f;
         viewport.y        = 0.0f;
-        viewport.width    = static_cast<float>(swapChain->getSwapChainExtent().width);
-        viewport.height   = static_cast<float>(swapChain->getSwapChainExtent().height);
+        viewport.width    = static_cast<float>(offscreenExtent_.width);
+        viewport.height   = static_cast<float>(offscreenExtent_.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapChain->getSwapChainExtent();
+        scissor.extent = offscreenExtent_;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
@@ -354,15 +354,15 @@ namespace engine {
         VkViewport viewport{};
         viewport.x        = 0.0f;
         viewport.y        = 0.0f;
-        viewport.width    = static_cast<float>(swapChain->getSwapChainExtent().width);
-        viewport.height   = static_cast<float>(swapChain->getSwapChainExtent().height);
+        viewport.width    = static_cast<float>(offscreenExtent_.width);
+        viewport.height   = static_cast<float>(offscreenExtent_.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapChain->getSwapChainExtent();
+        scissor.extent = offscreenExtent_;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
@@ -375,15 +375,15 @@ namespace engine {
         VkViewport viewport{};
         viewport.x        = 0.0f;
         viewport.y        = 0.0f;
-        viewport.width    = static_cast<float>(swapChain->getSwapChainExtent().width);
-        viewport.height   = static_cast<float>(swapChain->getSwapChainExtent().height);
+        viewport.width    = static_cast<float>(offscreenExtent_.width);
+        viewport.height   = static_cast<float>(offscreenExtent_.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapChain->getSwapChainExtent();
+        scissor.extent = offscreenExtent_;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
@@ -400,15 +400,15 @@ namespace engine {
             VkViewport viewport{};
             viewport.x        = 0.0f;
             viewport.y        = 0.0f;
-            viewport.width    = static_cast<float>(swapChain->getSwapChainExtent().width);
-            viewport.height   = static_cast<float>(swapChain->getSwapChainExtent().height);
+            viewport.width    = static_cast<float>(offscreenExtent_.width);
+            viewport.height   = static_cast<float>(offscreenExtent_.height);
             viewport.minDepth = 0.0f;
             viewport.maxDepth = 1.0f;
             vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
             VkRect2D scissor{};
             scissor.offset = {0, 0};
-            scissor.extent = swapChain->getSwapChainExtent();
+            scissor.extent = offscreenExtent_;
             vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
         }
     }
@@ -422,15 +422,15 @@ namespace engine {
         VkViewport viewport{};
         viewport.x        = 0.0f;
         viewport.y        = 0.0f;
-        viewport.width    = static_cast<float>(swapChain->getSwapChainExtent().width);
-        viewport.height   = static_cast<float>(swapChain->getSwapChainExtent().height);
+        viewport.width    = static_cast<float>(offscreenExtent_.width);
+        viewport.height   = static_cast<float>(offscreenExtent_.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapChain->getSwapChainExtent();
+        scissor.extent = offscreenExtent_;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
@@ -528,8 +528,8 @@ namespace engine {
         region.dstSubresource.mipLevel       = 0;
         region.dstSubresource.baseArrayLayer = 0;
         region.dstSubresource.layerCount     = 1;
-        region.extent.width                  = swapChain->getSwapChainExtent().width;
-        region.extent.height                 = swapChain->getSwapChainExtent().height;
+        region.extent.width                  = offscreenExtent_.width;
+        region.extent.height                 = offscreenExtent_.height;
         region.extent.depth                  = 1;
 
         vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -584,6 +584,99 @@ namespace engine {
 
     void Renderer::generateOffscreenMipmaps(VkCommandBuffer commandBuffer) {
         offscreenFrameBuffer->generateMipmaps(commandBuffer, currentFrameIndex);
+    }
+
+    void Renderer::resizeOffscreenFramebuffer(VkExtent2D extent) {
+        offscreenExtent_ = extent;
+        if (offscreenFrameBuffer) {
+            offscreenFrameBuffer->resize(extent);
+        }
+    }
+
+    void Renderer::recreateOffscreenFramebuffer() {
+        VkExtent2D extent = (offscreenExtent_.width > 0 && offscreenExtent_.height > 0)
+                                ? offscreenExtent_
+                                : swapChain->getSwapChainExtent();
+        if (offscreenFrameBuffer) {
+            offscreenFrameBuffer->resize(extent);
+        } else {
+            offscreenExtent_ = extent;
+            createOffscreenResources();
+        }
+
+        // Initialize offscreen image layouts after recreation.
+        VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
+
+        for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
+            VkImageMemoryBarrier barrier{};
+            barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image                           = offscreenFrameBuffer->getDepthImage(i);
+            barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT;
+            barrier.subresourceRange.baseMipLevel   = 0;
+            barrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount     = 1;
+            barrier.srcAccessMask                   = 0;
+            barrier.dstAccessMask                   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+            vkCmdPipelineBarrier(commandBuffer,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+            VkImageMemoryBarrier sceneBarrier{};
+            sceneBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            sceneBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+            sceneBarrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            sceneBarrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            sceneBarrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            sceneBarrier.image                           = offscreenFrameBuffer->getSceneColorImage(i);
+            sceneBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            sceneBarrier.subresourceRange.baseMipLevel   = 0;
+            sceneBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+            sceneBarrier.subresourceRange.baseArrayLayer = 0;
+            sceneBarrier.subresourceRange.layerCount     = 1;
+            sceneBarrier.srcAccessMask                   = 0;
+            sceneBarrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+            vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT,
+                0, 0, nullptr, 0, nullptr, 1, &sceneBarrier);
+        }
+
+        device.endSingleTimeCommands(commandBuffer);
+    }
+
+    void Renderer::transitionColorToShaderReadOnly(VkCommandBuffer commandBuffer) {
+        if (!offscreenFrameBuffer)
+            return;
+
+        VkImage image = offscreenFrameBuffer->getColorImage(currentFrameIndex);
+
+        VkImageMemoryBarrier barrier{};
+        barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        barrier.newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image                           = image;
+        barrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        barrier.subresourceRange.baseMipLevel   = 0;
+        barrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount     = 1;
+        barrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_DEPENDENCY_BY_REGION_BIT,
+            0, nullptr, 0, nullptr, 1, &barrier);
     }
 
 }  // namespace engine

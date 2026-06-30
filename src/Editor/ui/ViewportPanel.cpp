@@ -23,7 +23,10 @@ namespace engine {
         if (viewport_) {
             ImVec2 windowSize = ImGui::GetContentRegionAvail();
             if (windowSize.x > 0 && windowSize.y > 0) {
-                ImGui::Image(viewport_->getImTextureID(), windowSize, ImVec2(0, 0), ImVec2(1, 1));
+                ImTextureID texID = viewport_->getImTextureID(frameInfo.frameIndex);
+                if (texID) {
+                    ImGui::Image(texID, windowSize, ImVec2(0, 0), ImVec2(1, 1));
+                }
             }
         }
 
@@ -36,6 +39,9 @@ namespace engine {
             VkExtent2D newExtent = {static_cast<uint32_t>(winSize.x), static_cast<uint32_t>(winSize.y)};
             if (newExtent.width != extent_.width || newExtent.height != extent_.height) {
                 extent_ = newExtent;
+                if (onResize) {
+                    onResize(newExtent);
+                }
             }
         }
     }

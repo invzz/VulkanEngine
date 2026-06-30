@@ -72,6 +72,30 @@ namespace engine {
         [[nodiscard]] VkImage getOffscreenColorImage(int index) const {
             return offscreenFrameBuffer->getColorImage(index);
         }
+        [[nodiscard]] VkImageView getOffscreenColorImageView(int index) const {
+            return offscreenFrameBuffer->getColorImageView(index);
+        }
+        [[nodiscard]] VkSampler getOffscreenColorSampler(int index) const {
+            return offscreenFrameBuffer->getColorSampler(index);
+        }
+
+        /** Resize the offscreen framebuffer to match viewport panel size. */
+        void resizeOffscreenFramebuffer(VkExtent2D extent);
+
+        /**
+         * @brief Recreate offscreen framebuffer after swapchain recreation.
+         * Must be called in the same frame as ImGui texture re-registration
+         * so descriptors don't point to destroyed images.
+         */
+        void recreateOffscreenFramebuffer();
+
+        [[nodiscard]] VkExtent2D getOffscreenExtent() const {
+            return offscreenExtent_;
+        }
+
+        /** Transition offscreen color from COLOR_ATTACHMENT_OPTIMAL to
+         * SHADER_READ_ONLY_OPTIMAL so ImGui can sample it. */
+        void transitionColorToShaderReadOnly(VkCommandBuffer commandBuffer);
 
         [[nodiscard]] VkImage getOffscreenDepthImage(int index) const {
             return offscreenFrameBuffer->getDepthImage(index);
@@ -134,6 +158,7 @@ namespace engine {
         std::vector<VkCommandBuffer>   commandBuffers;
 
         std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
+        VkExtent2D                   offscreenExtent_{0, 0};  // tracks offscreen FB size independently
 
         uint32_t currentImageIndex{0};
         // keep track of frame index for syncing [0, maxFramesInFlight]
