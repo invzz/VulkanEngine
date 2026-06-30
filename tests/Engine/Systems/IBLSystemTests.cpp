@@ -1,258 +1,239 @@
 #include <gtest/gtest.h>
 
-#include "../../fixtures/DeviceFixture.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
+
+#include "../../fixtures/DeviceFixture.hpp"
 
 namespace engine::test {
 
-  // Test fixture using shared Device
-  class IBLSystemTest : public DeviceFixture
-  {};
+    // Test fixture using shared Device
+    class IBLSystemTest : public DeviceFixture {};
 
-  // ==============================================================================
-  // Construction Tests
-  // ==============================================================================
+    // ==============================================================================
+    // Construction Tests
+    // ==============================================================================
 
-  TEST_F(IBLSystemTest, Construction_DoesNotThrow)
-  {
-    EXPECT_NO_THROW({ IBLSystem iblSystem(device()); });
-  }
+    TEST_F(IBLSystemTest, Construction_DoesNotThrow) {
+        EXPECT_NO_THROW({ IBLSystem iblSystem(device()); });
+    }
 
-  TEST_F(IBLSystemTest, Construction_NotInitiallyGenerated)
-  {
-    IBLSystem iblSystem(device());
+    TEST_F(IBLSystemTest, Construction_NotInitiallyGenerated) {
+        IBLSystem iblSystem(device());
 
-    EXPECT_FALSE(iblSystem.isGenerated());
-  }
+        EXPECT_FALSE(iblSystem.isGenerated());
+    }
 
-  TEST_F(IBLSystemTest, Construction_GenerationCounterStartsAtZero)
-  {
-    IBLSystem iblSystem(device());
-
-    // Counter starts at some value, should increment on changes
-    uint64_t initialCounter = iblSystem.getGenerationCounter();
-    EXPECT_GE(initialCounter, 0);
-  }
+    TEST_F(IBLSystemTest, Construction_GenerationCounterStartsAtZero) {
+        IBLSystem iblSystem(device());
 
-  TEST_F(IBLSystemTest, Construction_HasDefaultSettings)
-  {
-    IBLSystem iblSystem(device());
+        // Counter starts at some value, should increment on changes
+        uint64_t initialCounter = iblSystem.getGenerationCounter();
+        EXPECT_GE(initialCounter, 0);
+    }
 
-    const auto& settings = iblSystem.getSettings();
-
-    // Default settings from IBLSettings.hpp
-    EXPECT_EQ(settings.irradianceSize, 64);
-    EXPECT_EQ(settings.prefilterSize, 256);
-    EXPECT_EQ(settings.prefilterMipLevels, 8);
-    EXPECT_EQ(settings.brdfLUTSize, 256);
-  }
-
-  // ==============================================================================
-  // Fallback Resource Tests (via resetToFallback)
-  // ==============================================================================
-
-  TEST_F(IBLSystemTest, ResetToFallback_DoesNotThrow)
-  {
-    IBLSystem iblSystem(device());
+    TEST_F(IBLSystemTest, Construction_HasDefaultSettings) {
+        IBLSystem iblSystem(device());
 
-    EXPECT_NO_THROW(iblSystem.resetToFallback());
-  }
+        const auto& settings = iblSystem.getSettings();
 
-  TEST_F(IBLSystemTest, ResetToFallback_IsNotGenerated)
-  {
-    IBLSystem iblSystem(device());
-    iblSystem.resetToFallback();
-
-    EXPECT_FALSE(iblSystem.isGenerated());
-  }
+        // Default settings from IBLSettings.hpp
+        EXPECT_EQ(settings.irradianceSize, 64);
+        EXPECT_EQ(settings.prefilterSize, 256);
+        EXPECT_EQ(settings.prefilterMipLevels, 8);
+        EXPECT_EQ(settings.brdfLUTSize, 256);
+    }
 
-  TEST_F(IBLSystemTest, ResetToFallback_IncrementsGenerationCounter)
-  {
-    IBLSystem iblSystem(device());
+    // ==============================================================================
+    // Fallback Resource Tests (via resetToFallback)
+    // ==============================================================================
 
-    uint64_t initialCounter = iblSystem.getGenerationCounter();
-    iblSystem.resetToFallback();
-    uint64_t newCounter = iblSystem.getGenerationCounter();
+    TEST_F(IBLSystemTest, ResetToFallback_DoesNotThrow) {
+        IBLSystem iblSystem(device());
 
-    EXPECT_GT(newCounter, initialCounter);
-  }
+        EXPECT_NO_THROW(iblSystem.resetToFallback());
+    }
 
-  // ==============================================================================
-  // Descriptor Info Tests
-  // ==============================================================================
+    TEST_F(IBLSystemTest, ResetToFallback_IsNotGenerated) {
+        IBLSystem iblSystem(device());
+        iblSystem.resetToFallback();
 
-  TEST_F(IBLSystemTest, GetIrradianceDescriptorInfo_AfterConstruction_ReturnsValidInfo)
-  {
-    IBLSystem iblSystem(device());
+        EXPECT_FALSE(iblSystem.isGenerated());
+    }
 
-    VkDescriptorImageInfo info = iblSystem.getIrradianceDescriptorInfo();
+    TEST_F(IBLSystemTest, ResetToFallback_IncrementsGenerationCounter) {
+        IBLSystem iblSystem(device());
 
-    // Should have valid descriptor info even without generation (fallback)
-    EXPECT_NE(info.sampler, VK_NULL_HANDLE);
-    EXPECT_NE(info.imageView, VK_NULL_HANDLE);
-    EXPECT_EQ(info.imageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  }
+        uint64_t initialCounter = iblSystem.getGenerationCounter();
+        iblSystem.resetToFallback();
+        uint64_t newCounter = iblSystem.getGenerationCounter();
 
-  TEST_F(IBLSystemTest, GetPrefilteredDescriptorInfo_AfterConstruction_ReturnsValidInfo)
-  {
-    IBLSystem iblSystem(device());
+        EXPECT_GT(newCounter, initialCounter);
+    }
 
-    VkDescriptorImageInfo info = iblSystem.getPrefilteredDescriptorInfo();
+    // ==============================================================================
+    // Descriptor Info Tests
+    // ==============================================================================
 
-    EXPECT_NE(info.sampler, VK_NULL_HANDLE);
-    EXPECT_NE(info.imageView, VK_NULL_HANDLE);
-    EXPECT_EQ(info.imageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  }
+    TEST_F(IBLSystemTest, GetIrradianceDescriptorInfo_AfterConstruction_ReturnsValidInfo) {
+        IBLSystem iblSystem(device());
 
-  TEST_F(IBLSystemTest, GetBRDFLUTDescriptorInfo_AfterConstruction_ReturnsValidInfo)
-  {
-    IBLSystem iblSystem(device());
+        VkDescriptorImageInfo info = iblSystem.getIrradianceDescriptorInfo();
 
-    VkDescriptorImageInfo info = iblSystem.getBRDFLUTDescriptorInfo();
+        // Should have valid descriptor info even without generation (fallback)
+        EXPECT_NE(info.sampler, VK_NULL_HANDLE);
+        EXPECT_NE(info.imageView, VK_NULL_HANDLE);
+        EXPECT_EQ(info.imageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
 
-    EXPECT_NE(info.sampler, VK_NULL_HANDLE);
-    EXPECT_NE(info.imageView, VK_NULL_HANDLE);
-    EXPECT_EQ(info.imageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  }
+    TEST_F(IBLSystemTest, GetPrefilteredDescriptorInfo_AfterConstruction_ReturnsValidInfo) {
+        IBLSystem iblSystem(device());
 
-  TEST_F(IBLSystemTest, GetDescriptorInfos_AfterFallback_StillValid)
-  {
-    IBLSystem iblSystem(device());
-    iblSystem.resetToFallback();
+        VkDescriptorImageInfo info = iblSystem.getPrefilteredDescriptorInfo();
 
-    VkDescriptorImageInfo irradInfo = iblSystem.getIrradianceDescriptorInfo();
-    VkDescriptorImageInfo prefInfo  = iblSystem.getPrefilteredDescriptorInfo();
-    VkDescriptorImageInfo brdfInfo  = iblSystem.getBRDFLUTDescriptorInfo();
+        EXPECT_NE(info.sampler, VK_NULL_HANDLE);
+        EXPECT_NE(info.imageView, VK_NULL_HANDLE);
+        EXPECT_EQ(info.imageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
 
-    EXPECT_NE(irradInfo.sampler, VK_NULL_HANDLE);
-    EXPECT_NE(prefInfo.sampler, VK_NULL_HANDLE);
-    EXPECT_NE(brdfInfo.sampler, VK_NULL_HANDLE);
-  }
+    TEST_F(IBLSystemTest, GetBRDFLUTDescriptorInfo_AfterConstruction_ReturnsValidInfo) {
+        IBLSystem iblSystem(device());
 
-  // ==============================================================================
-  // Settings Tests
-  // ==============================================================================
+        VkDescriptorImageInfo info = iblSystem.getBRDFLUTDescriptorInfo();
 
-  TEST_F(IBLSystemTest, UpdateSettings_DoesNotThrow)
-  {
-    IBLSystem iblSystem(device());
+        EXPECT_NE(info.sampler, VK_NULL_HANDLE);
+        EXPECT_NE(info.imageView, VK_NULL_HANDLE);
+        EXPECT_EQ(info.imageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
 
-    IBLSystem::Settings newSettings;
-    newSettings.brdfLUTSize    = 128;
-    newSettings.irradianceSize = 32;
+    TEST_F(IBLSystemTest, GetDescriptorInfos_AfterFallback_StillValid) {
+        IBLSystem iblSystem(device());
+        iblSystem.resetToFallback();
 
-    EXPECT_NO_THROW(iblSystem.updateSettings(newSettings));
-  }
+        VkDescriptorImageInfo irradInfo = iblSystem.getIrradianceDescriptorInfo();
+        VkDescriptorImageInfo prefInfo  = iblSystem.getPrefilteredDescriptorInfo();
+        VkDescriptorImageInfo brdfInfo  = iblSystem.getBRDFLUTDescriptorInfo();
 
-  TEST_F(IBLSystemTest, UpdateSettings_ReturnsUpdatedSettings)
-  {
-    IBLSystem iblSystem(device());
+        EXPECT_NE(irradInfo.sampler, VK_NULL_HANDLE);
+        EXPECT_NE(prefInfo.sampler, VK_NULL_HANDLE);
+        EXPECT_NE(brdfInfo.sampler, VK_NULL_HANDLE);
+    }
 
-    IBLSystem::Settings newSettings;
-    newSettings.brdfLUTSize    = 128;
-    newSettings.irradianceSize = 32;
+    // ==============================================================================
+    // Settings Tests
+    // ==============================================================================
 
-    iblSystem.updateSettings(newSettings);
+    TEST_F(IBLSystemTest, UpdateSettings_DoesNotThrow) {
+        IBLSystem iblSystem(device());
 
-    const auto& currentSettings = iblSystem.getSettings();
-    EXPECT_EQ(currentSettings.brdfLUTSize, 128);
-    EXPECT_EQ(currentSettings.irradianceSize, 32);
-  }
+        IBLSystem::Settings newSettings;
+        newSettings.brdfLUTSize    = 128;
+        newSettings.irradianceSize = 32;
 
-  // ==============================================================================
-  // Update Loop Tests
-  // ==============================================================================
+        EXPECT_NO_THROW(iblSystem.updateSettings(newSettings));
+    }
 
-  TEST_F(IBLSystemTest, Update_WithoutRequest_DoesNothing)
-  {
-    IBLSystem iblSystem(device());
+    TEST_F(IBLSystemTest, UpdateSettings_ReturnsUpdatedSettings) {
+        IBLSystem iblSystem(device());
 
-    uint64_t counterBefore = iblSystem.getGenerationCounter();
+        IBLSystem::Settings newSettings;
+        newSettings.brdfLUTSize    = 128;
+        newSettings.irradianceSize = 32;
 
-    // Call update without requesting regeneration
-    iblSystem.update();
+        iblSystem.updateSettings(newSettings);
 
-    uint64_t counterAfter = iblSystem.getGenerationCounter();
+        const auto& currentSettings = iblSystem.getSettings();
+        EXPECT_EQ(currentSettings.brdfLUTSize, 128);
+        EXPECT_EQ(currentSettings.irradianceSize, 32);
+    }
 
-    EXPECT_EQ(counterBefore, counterAfter);
-  }
+    // ==============================================================================
+    // Update Loop Tests
+    // ==============================================================================
 
-  // ==============================================================================
-  // Disk I/O Tests (error paths - no actual files)
-  // ==============================================================================
+    TEST_F(IBLSystemTest, Update_WithoutRequest_DoesNothing) {
+        IBLSystem iblSystem(device());
 
-  TEST_F(IBLSystemTest, LoadFromDisk_NonexistentDirectory_ReturnsFalse)
-  {
-    IBLSystem iblSystem(device());
+        uint64_t counterBefore = iblSystem.getGenerationCounter();
 
-    bool result = iblSystem.loadFromDisk("/nonexistent/directory/path");
+        // Call update without requesting regeneration
+        iblSystem.update();
 
-    EXPECT_FALSE(result);
-  }
+        uint64_t counterAfter = iblSystem.getGenerationCounter();
 
-  // ==============================================================================
-  // Destructor Tests
-  // ==============================================================================
+        EXPECT_EQ(counterBefore, counterAfter);
+    }
 
-  TEST_F(IBLSystemTest, Destructor_CleansUpResources)
-  {
-    {
-      IBLSystem iblSystem(device());
-    } // Destructor called here
+    // ==============================================================================
+    // Disk I/O Tests (error paths - no actual files)
+    // ==============================================================================
 
-    SUCCEED();
-  }
+    TEST_F(IBLSystemTest, LoadFromDisk_NonexistentDirectory_ReturnsFalse) {
+        IBLSystem iblSystem(device());
 
-  TEST_F(IBLSystemTest, Destructor_AfterResetToFallback_CleansUpResources)
-  {
-    {
-      IBLSystem iblSystem(device());
-      iblSystem.resetToFallback();
-    } // Destructor called here
+        bool result = iblSystem.loadFromDisk("/nonexistent/directory/path");
 
-    SUCCEED();
-  }
+        EXPECT_FALSE(result);
+    }
 
-  // ==============================================================================
-  // Request Regeneration Tests (deferred regeneration)
-  // ==============================================================================
+    // ==============================================================================
+    // Destructor Tests
+    // ==============================================================================
 
-  TEST_F(IBLSystemTest, RequestRegeneration_SetsUpDeferredRegeneration)
-  {
-    IBLSystem iblSystem(device());
+    TEST_F(IBLSystemTest, Destructor_CleansUpResources) {
+        {
+            IBLSystem iblSystem(device());
+        }  // Destructor called here
 
-    // We need a skybox for regeneration, but for this test we just check
-    // that the request is stored (actual generation needs environment map)
+        SUCCEED();
+    }
 
-    // Note: Can't easily test this without a real skybox,
-    // but we can verify the call doesn't crash
-    // Commenting out because it requires a valid Skybox
-    // iblSystem.requestRegeneration(iblSystem.getSettings(), someSkybox);
-    // iblSystem.update();
+    TEST_F(IBLSystemTest, Destructor_AfterResetToFallback_CleansUpResources) {
+        {
+            IBLSystem iblSystem(device());
+            iblSystem.resetToFallback();
+        }  // Destructor called here
 
-    SUCCEED();
-  }
+        SUCCEED();
+    }
 
-  // ==============================================================================
-  // Multiple Systems Tests
-  // ==============================================================================
+    // ==============================================================================
+    // Request Regeneration Tests (deferred regeneration)
+    // ==============================================================================
 
-  TEST_F(IBLSystemTest, MultipleSystems_IndependentState)
-  {
-    IBLSystem system1(device());
-    IBLSystem system2(device());
+    TEST_F(IBLSystemTest, RequestRegeneration_SetsUpDeferredRegeneration) {
+        IBLSystem iblSystem(device());
 
-    IBLSystem::Settings settings1;
-    settings1.brdfLUTSize = 64;
+        // We need a skybox for regeneration, but for this test we just check
+        // that the request is stored (actual generation needs environment map)
 
-    IBLSystem::Settings settings2;
-    settings2.brdfLUTSize = 128;
+        // Note: Can't easily test this without a real skybox,
+        // but we can verify the call doesn't crash
+        // Commenting out because it requires a valid Skybox
+        // iblSystem.requestRegeneration(iblSystem.getSettings(), someSkybox);
+        // iblSystem.update();
 
-    system1.updateSettings(settings1);
-    system2.updateSettings(settings2);
+        SUCCEED();
+    }
 
-    EXPECT_EQ(system1.getSettings().brdfLUTSize, 64);
-    EXPECT_EQ(system2.getSettings().brdfLUTSize, 128);
-  }
+    // ==============================================================================
+    // Multiple Systems Tests
+    // ==============================================================================
 
-} // namespace engine::test
+    TEST_F(IBLSystemTest, MultipleSystems_IndependentState) {
+        IBLSystem system1(device());
+        IBLSystem system2(device());
+
+        IBLSystem::Settings settings1;
+        settings1.brdfLUTSize = 64;
+
+        IBLSystem::Settings settings2;
+        settings2.brdfLUTSize = 128;
+
+        system1.updateSettings(settings1);
+        system2.updateSettings(settings2);
+
+        EXPECT_EQ(system1.getSettings().brdfLUTSize, 64);
+        EXPECT_EQ(system2.getSettings().brdfLUTSize, 128);
+    }
+
+}  // namespace engine::test

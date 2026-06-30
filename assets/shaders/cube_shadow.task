@@ -17,11 +17,6 @@ struct Meshlet {
 
     float center[3];
     float radius;
-
-    float cone_axis[3];
-    float cone_cutoff;
-
-    uint padding[4];
 };
 
 layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
@@ -31,7 +26,7 @@ layout(buffer_reference, scalar) readonly buffer MeshletBuffer {
 layout(push_constant) uniform Push {
     mat4 modelMatrix;
     mat4 lightSpaceMatrix;
-    vec4 lightPosAndFarPlane; // xyz = light position, w = far plane
+    vec4 lightPosAndFarPlane;  // xyz = light position, w = far plane
 
     uint64_t meshletBufferAddress;
     uint64_t meshletVerticesAddress;
@@ -52,12 +47,12 @@ vec4 getPlane(mat4 vp, int row, float sign) {
 bool sphereInFrustum(vec3 center, float radius, mat4 vp) {
     // 6-plane frustum test
     vec4 planes[6];
-    planes[0] = getPlane(vp, 0, 1.0);  // left
-    planes[1] = getPlane(vp, 0, -1.0); // right
-    planes[2] = getPlane(vp, 1, 1.0);  // bottom
-    planes[3] = getPlane(vp, 1, -1.0); // top
-    planes[4] = getPlane(vp, 2, 1.0);  // near
-    planes[5] = getPlane(vp, 2, -1.0); // far
+    planes[0] = getPlane(vp, 0, 1.0);   // left
+    planes[1] = getPlane(vp, 0, -1.0);  // right
+    planes[2] = getPlane(vp, 1, 1.0);   // bottom
+    planes[3] = getPlane(vp, 1, -1.0);  // top
+    planes[4] = getPlane(vp, 2, 1.0);   // near
+    planes[5] = getPlane(vp, 2, -1.0);  // far
 
     for (int i = 0; i < 6; i++) {
         float dist = dot(planes[i].xyz, center) + planes[i].w;

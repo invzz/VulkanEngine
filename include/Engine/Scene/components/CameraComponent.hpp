@@ -5,22 +5,21 @@
 
 namespace engine {
 
-  struct CameraComponent
-  {
-    Camera camera;
+    struct CameraComponent {
+        Camera camera;
 
-    // Perspective settings
-    float fovY  = 80.0f;
-    float nearZ = 0.1f;
-    float farZ  = 100.0f;
+        // Perspective settings
+        float fovY  = 80.0f;
+        float nearZ = 0.1f;
+        float farZ  = 100.0f;
 
-    // Orthographic settings
-    float orthoSize = 10.0f; // Vertical size
+        // Orthographic settings
+        float orthoSize = 10.0f;  // Vertical size
 
-    bool isOrthographic = false;
-    bool isPrimary      = true; // To identify the main camera if multiple exist
-  };
+        bool isOrthographic = false;
+        bool isPrimary      = true;  // To identify the main camera if multiple exist
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_CAMERACOMPONENT_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_CAMERACOMPONENT_HPP

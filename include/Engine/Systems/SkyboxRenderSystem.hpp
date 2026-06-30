@@ -3,7 +3,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <glm/glm.hpp>
 #include <memory>
 #include <vector>
 
@@ -15,68 +14,50 @@
 
 namespace engine {
 
-  struct SkyboxSettings
-  {
-    bool debugCubemapFaces{false};
-  };
-
-  struct FogSettings
-  {
-    float     density{0.005f};
-    float     height{0.0f};
-    float     heightDensity{0.1f};
-    bool      useSkyColor{true};
-    glm::vec3 color{0.5f, 0.6f, 0.7f};
-
-    // God Rays (disabled by default - expensive effect)
-    bool  enableGodRays{false};
-    float godRayDensity{1.0f};
-    float godRayWeight{0.01f};
-    float godRayDecay{0.97f};
-    float godRayExposure{0.5f};
-  };
-
-  /**
-   * @brief Render system for skybox/environment maps
-   *
-   * Renders a cubemap skybox as the background of the scene.
-   * Should be rendered first (or last with depth write disabled).
-   */
-  class SkyboxRenderSystem
-  {
-  public:
-    SkyboxRenderSystem(Device& device, VkRenderPass renderPass);
-    ~SkyboxRenderSystem();
-
-    // Non-copyable
-    SkyboxRenderSystem(const SkyboxRenderSystem&)            = delete;
-    SkyboxRenderSystem& operator=(const SkyboxRenderSystem&) = delete;
+    struct SkyboxSettings {
+        bool debugCubemapFaces{false};
+    };
 
     /**
-     * @brief Render the skybox
-     * @param frameInfo Current frame information (camera, etc.)
-     * @param skybox The skybox cubemap to render (can be null if using procedural)
-     * @param settings Skybox configuration
-     */
-    void render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings);
+ * @brief Render system for skybox/environment maps
+ *
+ * Renders a cubemap skybox as the background of the scene.
+ * Should be rendered first (or last with depth write disabled).
+ */
+    class SkyboxRenderSystem {
+       public:
+        SkyboxRenderSystem(Device& device, VkRenderPass renderPass);
+        ~SkyboxRenderSystem();
 
-  private:
-    void createDescriptorSetLayout();
-    void createPipelineLayout();
-    void createPipeline(VkRenderPass renderPass);
+        // Non-copyable
+        SkyboxRenderSystem(const SkyboxRenderSystem&)            = delete;
+        SkyboxRenderSystem& operator=(const SkyboxRenderSystem&) = delete;
 
-    Device& device_;
+        /**
+   * @brief Render the skybox
+   * @param frameInfo Current frame information (camera, etc.)
+   * @param skybox The skybox cubemap to render (can be null if using procedural)
+   * @param settings Skybox configuration
+   */
+        void render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings);
 
-    std::unique_ptr<Pipeline> pipeline_;
+       private:
+        void createDescriptorSetLayout();
+        void createPipelineLayout();
+        void createPipeline(VkRenderPass renderPass);
 
-    VkPipelineLayout                        pipelineLayout_      = VK_NULL_HANDLE;
-    VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
-    std::unique_ptr<engine::DescriptorPool> descriptorPool_;
+        Device& device_;
 
-    // Pre-allocated descriptor sets per frame
-    std::vector<VkDescriptorSet> descriptorSets_;
-  };
+        std::unique_ptr<Pipeline> pipeline_;
 
-} // namespace engine
+        VkPipelineLayout                        pipelineLayout_      = VK_NULL_HANDLE;
+        VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
+        std::unique_ptr<engine::DescriptorPool> descriptorPool_;
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP
+        // Pre-allocated descriptor sets per frame
+        std::vector<VkDescriptorSet> descriptorSets_;
+    };
+
+}  // namespace engine
+
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP

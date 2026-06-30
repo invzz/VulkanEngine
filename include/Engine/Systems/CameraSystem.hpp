@@ -13,25 +13,24 @@
 
 namespace engine {
 
-  class CameraSystem
-  {
-  public:
-    CameraSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
-    ~CameraSystem();
+    class CameraSystem {
+       public:
+        CameraSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout);
+        ~CameraSystem();
 
-    static void update(FrameInfo& frameInfo, float aspectRatio);
-    void render(FrameInfo& frameInfo) const;
+        static void update(FrameInfo& frameInfo, float aspectRatio);
+        void        render(FrameInfo& frameInfo) const;
 
-  private:
-    static void updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio);
-    void        createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
-    void        createPipeline(VkRenderPass renderPass);
+       private:
+        static void updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio);
+        void        createPipelineLayout(VkDescriptorSetLayout globalSetLayout);
+        void        createPipeline(VkRenderPass renderPass);
 
-    Device&                   device;
-    VkPipelineLayout          pipelineLayout;
-    std::unique_ptr<Pipeline> pipeline;
-  };
+        Device&                   device;
+        VkPipelineLayout          pipelineLayout;
+        std::unique_ptr<Pipeline> pipeline;
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_CAMERASYSTEM_HPP

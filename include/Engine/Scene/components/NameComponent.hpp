@@ -5,11 +5,10 @@
 
 namespace engine {
 
-  struct NameComponent
-  {
-    std::string name;
-  };
+    struct NameComponent {
+        std::string name;
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_NAMECOMPONENT_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_NAMECOMPONENT_HPP

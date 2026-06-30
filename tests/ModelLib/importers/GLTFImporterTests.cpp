@@ -1,455 +1,396 @@
-#include <gtest/gtest.h>
-
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/importers/GLTFImporter.hpp"
 
 namespace engine::tests {
 
-  // Test fixture for GLTF importer tests
-  class GLTFImporterTest : public ::testing::Test
-  {
-  protected:
-    void SetUp() override
-    {
-      // Ensure test assets directory exists
-      assetsPath_ = std::filesystem::current_path();
-      // Walk up to find the project root
-      while (!std::filesystem::exists(assetsPath_ / "assets" / "models" / "glTF") && assetsPath_.has_parent_path())
-      {
-        assetsPath_ = assetsPath_.parent_path();
-      }
-      assetsPath_ /= "assets/models/glTF";
+    // Test fixture for GLTF importer tests
+    class GLTFImporterTest : public ::testing::Test {
+       protected:
+        void SetUp() override {
+            // Ensure test assets directory exists
+            assetsPath_ = std::filesystem::current_path();
+            // Walk up to find the project root
+            while (!std::filesystem::exists(assetsPath_ / "assets" / "models" / "glTF") && assetsPath_.has_parent_path()) {
+                assetsPath_ = assetsPath_.parent_path();
+            }
+            assetsPath_ /= "assets/models/glTF";
+        }
+
+        std::filesystem::path assetsPath_;
+        GLTFImporter          importer_;
+    };
+
+    // ==============================================================================
+    // Basic Interface Tests
+    // ==============================================================================
+
+    TEST_F(GLTFImporterTest, GetName_ReturnsCorrectName) {
+        EXPECT_EQ(importer_.getName(), "glTF Importer");
     }
 
-    std::filesystem::path assetsPath_;
-    GLTFImporter          importer_;
-  };
-
-  // ==============================================================================
-  // Basic Interface Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, GetName_ReturnsCorrectName)
-  {
-    EXPECT_EQ(importer_.getName(), "glTF Importer");
-  }
-
-  TEST_F(GLTFImporterTest, GetSupportedExtensions_ReturnsGltfAndGlb)
-  {
-    auto extensions = importer_.getSupportedExtensions();
-    ASSERT_EQ(extensions.size(), 2);
-    EXPECT_EQ(extensions[0], "gltf");
-    EXPECT_EQ(extensions[1], "glb");
-  }
-
-  // ==============================================================================
-  // Error Handling Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_NonexistentFile_ReturnsFalse)
-  {
-    Model::Builder builder;
-    bool           result = importer_.load(builder, "nonexistent_file.gltf", false, false, false);
-    EXPECT_FALSE(result);
-  }
-
-  TEST_F(GLTFImporterTest, Load_InvalidFile_ReturnsFalse)
-  {
-    // Create a temporary invalid file
-    auto tempPath = std::filesystem::temp_directory_path() / "invalid_test.gltf";
-    {
-      std::ofstream file(tempPath);
-      file << "not valid gltf content";
+    TEST_F(GLTFImporterTest, GetSupportedExtensions_ReturnsGltfAndGlb) {
+        auto extensions = importer_.getSupportedExtensions();
+        ASSERT_EQ(extensions.size(), 2);
+        EXPECT_EQ(extensions[0], "gltf");
+        EXPECT_EQ(extensions[1], "glb");
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, tempPath.string(), false, false, false);
-    EXPECT_FALSE(result);
+    // ==============================================================================
+    // Error Handling Tests
+    // ==============================================================================
 
-    // Cleanup
-    std::filesystem::remove(tempPath);
-  }
-
-  // ==============================================================================
-  // Simple Model Loading Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_Triangle_Succeeds)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+    TEST_F(GLTFImporterTest, Load_NonexistentFile_ReturnsFalse) {
+        Model::Builder builder;
+        bool           result = importer_.load(builder, "nonexistent_file.gltf", false, false, false);
+        EXPECT_FALSE(result);
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
-    EXPECT_TRUE(result);
+    TEST_F(GLTFImporterTest, Load_InvalidFile_ReturnsFalse) {
+        // Create a temporary invalid file
+        auto tempPath = std::filesystem::temp_directory_path() / "invalid_test.gltf";
+        {
+            std::ofstream file(tempPath);
+            file << "not valid gltf content";
+        }
 
-    // Triangle should have 3 vertices
-    EXPECT_GE(builder.vertices.size(), 3);
-  }
+        Model::Builder builder;
+        bool           result = importer_.load(builder, tempPath.string(), false, false, false);
+        EXPECT_FALSE(result);
 
-  TEST_F(GLTFImporterTest, Load_Triangle_HasCorrectVertexCount)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        // Cleanup
+        std::filesystem::remove(tempPath);
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+    // ==============================================================================
+    // Simple Model Loading Tests
+    // ==============================================================================
 
-    // Triangle has exactly 3 unique vertices
-    EXPECT_EQ(builder.vertices.size(), 3);
-  }
+    TEST_F(GLTFImporterTest, Load_Triangle_Succeeds) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-  TEST_F(GLTFImporterTest, Load_Triangle_HasIndices)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        Model::Builder builder;
+        bool           result = importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+        EXPECT_TRUE(result);
+
+        // Triangle should have 3 vertices
+        EXPECT_GE(builder.vertices.size(), 3);
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+    TEST_F(GLTFImporterTest, Load_Triangle_HasCorrectVertexCount) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-    // Should have indices
-    EXPECT_FALSE(builder.indices.empty());
-  }
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
 
-  TEST_F(GLTFImporterTest, Load_Box_Succeeds)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf"))
-    {
-      GTEST_SKIP() << "Box test asset not found";
+        // Triangle has exactly 3 unique vertices
+        EXPECT_EQ(builder.vertices.size(), 3);
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
-    EXPECT_TRUE(result);
-  }
+    TEST_F(GLTFImporterTest, Load_Triangle_HasIndices) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-  TEST_F(GLTFImporterTest, Load_Box_HasVertices)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf"))
-    {
-      GTEST_SKIP() << "Box test asset not found";
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+
+        // Should have indices
+        EXPECT_FALSE(builder.indices.empty());
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
+    TEST_F(GLTFImporterTest, Load_Box_Succeeds) {
+        if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf")) {
+            GTEST_SKIP() << "Box test asset not found";
+        }
 
-    // A box typically has 8 vertices (corners), but with normals could have 24
-    EXPECT_GE(builder.vertices.size(), 8);
-  }
-
-  TEST_F(GLTFImporterTest, Load_Cube_Succeeds)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Cube" / "glTF" / "Cube.gltf"))
-    {
-      GTEST_SKIP() << "Cube test asset not found";
+        Model::Builder builder;
+        bool           result = importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
+        EXPECT_TRUE(result);
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, (assetsPath_ / "Cube" / "glTF" / "Cube.gltf").string(), false, false, false);
-    EXPECT_TRUE(result);
-  }
+    TEST_F(GLTFImporterTest, Load_Box_HasVertices) {
+        if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf")) {
+            GTEST_SKIP() << "Box test asset not found";
+        }
 
-  // ==============================================================================
-  // GLB Binary Format Tests
-  // ==============================================================================
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
 
-  TEST_F(GLTFImporterTest, Load_BoxGLB_Succeeds)
-  {
-    auto glbPath = assetsPath_ / "Box" / "glTF-Binary" / "Box.glb";
-    if (!std::filesystem::exists(glbPath))
-    {
-      GTEST_SKIP() << "Box.glb test asset not found";
+        // A box typically has 8 vertices (corners), but with normals could have 24
+        EXPECT_GE(builder.vertices.size(), 8);
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, glbPath.string(), false, false, false);
-    EXPECT_TRUE(result);
-    EXPECT_FALSE(builder.vertices.empty());
-  }
+    TEST_F(GLTFImporterTest, Load_Cube_Succeeds) {
+        if (!std::filesystem::exists(assetsPath_ / "Cube" / "glTF" / "Cube.gltf")) {
+            GTEST_SKIP() << "Cube test asset not found";
+        }
 
-  // ==============================================================================
-  // Flip Axis Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_WithFlipX_ModifiesVertices)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        Model::Builder builder;
+        bool           result = importer_.load(builder, (assetsPath_ / "Cube" / "glTF" / "Cube.gltf").string(), false, false, false);
+        EXPECT_TRUE(result);
     }
 
-    Model::Builder builderNormal;
-    Model::Builder builderFlipped;
+    // ==============================================================================
+    // GLB Binary Format Tests
+    // ==============================================================================
 
-    importer_.load(builderNormal, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
-    importer_.load(builderFlipped, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), true, false, false);
+    TEST_F(GLTFImporterTest, Load_BoxGLB_Succeeds) {
+        auto glbPath = assetsPath_ / "Box" / "glTF-Binary" / "Box.glb";
+        if (!std::filesystem::exists(glbPath)) {
+            GTEST_SKIP() << "Box.glb test asset not found";
+        }
 
-    // If there are vertices, positions should differ when flipped
-    ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
-
-    // Check at least one position differs (if original X was non-zero)
-    bool hasXDifference = false;
-    for (size_t i = 0; i < builderNormal.vertices.size() && !hasXDifference; ++i)
-    {
-      if (builderNormal.vertices[i].position.x != 0.0f)
-      {
-        hasXDifference = (builderNormal.vertices[i].position.x != builderFlipped.vertices[i].position.x);
-      }
-    }
-    // Flipping should invert X coordinates
-    // EXPECT_TRUE(hasXDifference);
-  }
-
-  TEST_F(GLTFImporterTest, Load_WithFlipY_ModifiesVertices)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        Model::Builder builder;
+        bool           result = importer_.load(builder, glbPath.string(), false, false, false);
+        EXPECT_TRUE(result);
+        EXPECT_FALSE(builder.vertices.empty());
     }
 
-    Model::Builder builderNormal;
-    Model::Builder builderFlipped;
+    // ==============================================================================
+    // Flip Axis Tests
+    // ==============================================================================
 
-    importer_.load(builderNormal, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
-    importer_.load(builderFlipped, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, true, false);
+    TEST_F(GLTFImporterTest, Load_WithFlipX_ModifiesVertices) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-    ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
-  }
+        Model::Builder builderNormal;
+        Model::Builder builderFlipped;
 
-  TEST_F(GLTFImporterTest, Load_WithFlipZ_ModifiesVertices)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        importer_.load(builderNormal, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+        importer_.load(builderFlipped, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), true, false, false);
+
+        // If there are vertices, positions should differ when flipped
+        ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
+
+        // Check at least one position differs (if original X was non-zero)
+        bool hasXDifference = false;
+        for (size_t i = 0; i < builderNormal.vertices.size() && !hasXDifference; ++i) {
+            if (builderNormal.vertices[i].position.x != 0.0f) {
+                hasXDifference = (builderNormal.vertices[i].position.x != builderFlipped.vertices[i].position.x);
+            }
+        }
+        // Flipping should invert X coordinates
+        // EXPECT_TRUE(hasXDifference);
     }
 
-    Model::Builder builderNormal;
-    Model::Builder builderFlipped;
+    TEST_F(GLTFImporterTest, Load_WithFlipY_ModifiesVertices) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-    importer_.load(builderNormal, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
-    importer_.load(builderFlipped, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, true);
+        Model::Builder builderNormal;
+        Model::Builder builderFlipped;
 
-    ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
-  }
+        importer_.load(builderNormal, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+        importer_.load(builderFlipped, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, true, false);
 
-  // ==============================================================================
-  // Model With Textures Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_Duck_Succeeds)
-  {
-    auto duckPath = assetsPath_ / "Duck" / "glTF" / "Duck.gltf";
-    if (!std::filesystem::exists(duckPath))
-    {
-      GTEST_SKIP() << "Duck test asset not found";
+        ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, duckPath.string(), false, false, false);
-    EXPECT_TRUE(result);
-    EXPECT_FALSE(builder.vertices.empty());
-  }
+    TEST_F(GLTFImporterTest, Load_WithFlipZ_ModifiesVertices) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-  TEST_F(GLTFImporterTest, Load_Duck_HasMaterials)
-  {
-    auto duckPath = assetsPath_ / "Duck" / "glTF" / "Duck.gltf";
-    if (!std::filesystem::exists(duckPath))
-    {
-      GTEST_SKIP() << "Duck test asset not found";
+        Model::Builder builderNormal;
+        Model::Builder builderFlipped;
+
+        importer_.load(builderNormal, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+        importer_.load(builderFlipped, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, true);
+
+        ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
     }
 
-    Model::Builder builder;
-    importer_.load(builder, duckPath.string(), false, false, false);
+    // ==============================================================================
+    // Model With Textures Tests
+    // ==============================================================================
 
-    // Duck model should have at least one material
-    EXPECT_FALSE(builder.materials.empty());
-  }
+    TEST_F(GLTFImporterTest, Load_Duck_Succeeds) {
+        auto duckPath = assetsPath_ / "Duck" / "glTF" / "Duck.gltf";
+        if (!std::filesystem::exists(duckPath)) {
+            GTEST_SKIP() << "Duck test asset not found";
+        }
 
-  // ==============================================================================
-  // Complex Models Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_Avocado_Succeeds)
-  {
-    auto avocadoPath = assetsPath_ / "Avocado" / "glTF" / "Avocado.gltf";
-    if (!std::filesystem::exists(avocadoPath))
-    {
-      GTEST_SKIP() << "Avocado test asset not found";
+        Model::Builder builder;
+        bool           result = importer_.load(builder, duckPath.string(), false, false, false);
+        EXPECT_TRUE(result);
+        EXPECT_FALSE(builder.vertices.empty());
     }
 
-    Model::Builder builder;
-    bool           result = importer_.load(builder, avocadoPath.string(), false, false, false);
-    EXPECT_TRUE(result);
-  }
+    TEST_F(GLTFImporterTest, Load_Duck_HasMaterials) {
+        auto duckPath = assetsPath_ / "Duck" / "glTF" / "Duck.gltf";
+        if (!std::filesystem::exists(duckPath)) {
+            GTEST_SKIP() << "Duck test asset not found";
+        }
 
-  TEST_F(GLTFImporterTest, Load_BoxTextured_HasTexturePaths)
-  {
-    auto boxPath = assetsPath_ / "BoxTextured" / "glTF" / "BoxTextured.gltf";
-    if (!std::filesystem::exists(boxPath))
-    {
-      GTEST_SKIP() << "BoxTextured test asset not found";
+        Model::Builder builder;
+        importer_.load(builder, duckPath.string(), false, false, false);
+
+        // Duck model should have at least one material
+        EXPECT_FALSE(builder.materials.empty());
     }
 
-    Model::Builder builder;
-    importer_.load(builder, boxPath.string(), false, false, false);
+    // ==============================================================================
+    // Complex Models Tests
+    // ==============================================================================
 
-    // Textured box should have materials with texture paths
-    EXPECT_FALSE(builder.materials.empty());
+    TEST_F(GLTFImporterTest, Load_Avocado_Succeeds) {
+        auto avocadoPath = assetsPath_ / "Avocado" / "glTF" / "Avocado.gltf";
+        if (!std::filesystem::exists(avocadoPath)) {
+            GTEST_SKIP() << "Avocado test asset not found";
+        }
 
-    // Check if at least one material has a texture
-    bool hasTexture = false;
-    for (const auto& mat : builder.materials)
-    {
-      if (!mat.diffuseTexPath.empty())
-      {
-        hasTexture = true;
-        break;
-      }
-    }
-    // Note: Whether texture paths are present depends on the specific model
-    // EXPECT_TRUE(hasTexture);
-  }
-
-  // ==============================================================================
-  // Vertex Attributes Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_Triangle_VerticesHavePositions)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        Model::Builder builder;
+        bool           result = importer_.load(builder, avocadoPath.string(), false, false, false);
+        EXPECT_TRUE(result);
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+    TEST_F(GLTFImporterTest, Load_BoxTextured_HasTexturePaths) {
+        auto boxPath = assetsPath_ / "BoxTextured" / "glTF" / "BoxTextured.gltf";
+        if (!std::filesystem::exists(boxPath)) {
+            GTEST_SKIP() << "BoxTextured test asset not found";
+        }
 
-    ASSERT_FALSE(builder.vertices.empty());
+        Model::Builder builder;
+        importer_.load(builder, boxPath.string(), false, false, false);
 
-    // Positions should not all be zero
-    bool hasNonZeroPosition = false;
-    for (const auto& v : builder.vertices)
-    {
-      if (v.position != glm::vec3(0.0f))
-      {
-        hasNonZeroPosition = true;
-        break;
-      }
-    }
-    EXPECT_TRUE(hasNonZeroPosition);
-  }
+        // Textured box should have materials with texture paths
+        EXPECT_FALSE(builder.materials.empty());
 
-  TEST_F(GLTFImporterTest, Load_Box_VerticesHaveNormals)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf"))
-    {
-      GTEST_SKIP() << "Box test asset not found";
-    }
-
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
-
-    ASSERT_FALSE(builder.vertices.empty());
-
-    // Box should have normals
-    bool hasNonZeroNormal = false;
-    for (const auto& v : builder.vertices)
-    {
-      if (v.normal != glm::vec3(0.0f))
-      {
-        hasNonZeroNormal = true;
-        break;
-      }
-    }
-    EXPECT_TRUE(hasNonZeroNormal);
-  }
-
-  // ==============================================================================
-  // Index Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_Triangle_IndicesFormValidTriangle)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        // Check if at least one material has a texture
+        bool hasTexture = false;
+        for (const auto& mat : builder.materials) {
+            if (!mat.diffuseTexPath.empty()) {
+                hasTexture = true;
+                break;
+            }
+        }
+        // Note: Whether texture paths are present depends on the specific model
+        // EXPECT_TRUE(hasTexture);
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+    // ==============================================================================
+    // Vertex Attributes Tests
+    // ==============================================================================
 
-    // Should have at least 3 indices for a triangle
-    EXPECT_GE(builder.indices.size(), 3);
+    TEST_F(GLTFImporterTest, Load_Triangle_VerticesHavePositions) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
 
-    // All indices should be valid
-    for (uint32_t index : builder.indices)
-    {
-      EXPECT_LT(index, builder.vertices.size());
-    }
-  }
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
 
-  TEST_F(GLTFImporterTest, Load_Box_IndicesMultipleOf3)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf"))
-    {
-      GTEST_SKIP() << "Box test asset not found";
-    }
+        ASSERT_FALSE(builder.vertices.empty());
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
-
-    // Indices should be multiple of 3 (triangles)
-    EXPECT_EQ(builder.indices.size() % 3, 0);
-  }
-
-  // ==============================================================================
-  // Node Structure Tests
-  // ==============================================================================
-
-  TEST_F(GLTFImporterTest, Load_Triangle_HasNodes)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf"))
-    {
-      GTEST_SKIP() << "Triangle test asset not found";
+        // Positions should not all be zero
+        bool hasNonZeroPosition = false;
+        for (const auto& v : builder.vertices) {
+            if (v.position != glm::vec3(0.0f)) {
+                hasNonZeroPosition = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(hasNonZeroPosition);
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+    TEST_F(GLTFImporterTest, Load_Box_VerticesHaveNormals) {
+        if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf")) {
+            GTEST_SKIP() << "Box test asset not found";
+        }
 
-    // Should have at least one node
-    EXPECT_FALSE(builder.nodes.empty());
-  }
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
 
-  TEST_F(GLTFImporterTest, Load_Box_NodeHasValidMeshIndex)
-  {
-    if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf"))
-    {
-      GTEST_SKIP() << "Box test asset not found";
+        ASSERT_FALSE(builder.vertices.empty());
+
+        // Box should have normals
+        bool hasNonZeroNormal = false;
+        for (const auto& v : builder.vertices) {
+            if (v.normal != glm::vec3(0.0f)) {
+                hasNonZeroNormal = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(hasNonZeroNormal);
     }
 
-    Model::Builder builder;
-    importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
+    // ==============================================================================
+    // Index Tests
+    // ==============================================================================
 
-    // Check if any node has a valid mesh index
-    bool hasValidMeshIndex = false;
-    for (const auto& node : builder.nodes)
-    {
-      if (node.mesh >= 0)
-      {
-        hasValidMeshIndex = true;
-        break;
-      }
+    TEST_F(GLTFImporterTest, Load_Triangle_IndicesFormValidTriangle) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
+
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+
+        // Should have at least 3 indices for a triangle
+        EXPECT_GE(builder.indices.size(), 3);
+
+        // All indices should be valid
+        for (uint32_t index : builder.indices) {
+            EXPECT_LT(index, builder.vertices.size());
+        }
     }
-    EXPECT_TRUE(hasValidMeshIndex);
-  }
 
-} // namespace engine::tests
+    TEST_F(GLTFImporterTest, Load_Box_IndicesMultipleOf3) {
+        if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf")) {
+            GTEST_SKIP() << "Box test asset not found";
+        }
+
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
+
+        // Indices should be multiple of 3 (triangles)
+        EXPECT_EQ(builder.indices.size() % 3, 0);
+    }
+
+    // ==============================================================================
+    // Node Structure Tests
+    // ==============================================================================
+
+    TEST_F(GLTFImporterTest, Load_Triangle_HasNodes) {
+        if (!std::filesystem::exists(assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf")) {
+            GTEST_SKIP() << "Triangle test asset not found";
+        }
+
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Triangle" / "glTF" / "Triangle.gltf").string(), false, false, false);
+
+        // Should have at least one node
+        EXPECT_FALSE(builder.nodes.empty());
+    }
+
+    TEST_F(GLTFImporterTest, Load_Box_NodeHasValidMeshIndex) {
+        if (!std::filesystem::exists(assetsPath_ / "Box" / "glTF" / "Box.gltf")) {
+            GTEST_SKIP() << "Box test asset not found";
+        }
+
+        Model::Builder builder;
+        importer_.load(builder, (assetsPath_ / "Box" / "glTF" / "Box.gltf").string(), false, false, false);
+
+        // Check if any node has a valid mesh index
+        bool hasValidMeshIndex = false;
+        for (const auto& node : builder.nodes) {
+            if (node.mesh >= 0) {
+                hasValidMeshIndex = true;
+                break;
+            }
+        }
+        EXPECT_TRUE(hasValidMeshIndex);
+    }
+
+}  // namespace engine::tests

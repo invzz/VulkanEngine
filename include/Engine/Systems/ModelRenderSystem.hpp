@@ -2,124 +2,160 @@
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
+#include "Engine/Systems/MaterialRenderBindings.hpp"
 
 namespace engine {
-  class ShadowSystem;
-  class IBLSystem;
-  struct PBRMaterial;
+    class ShadowSystem;
+    class IBLSystem;
+    struct PBRMaterial;
 
-  // Push constants for mesh pipeline draws. Must be kept binary-compatible with GLSL
-  // definition in assets/shaders/includes/mesh_push_constants.glsl
-  struct MeshPushConstantData
-  {
-    glm::mat4 modelMatrix{1.0f};
-    glm::mat4 normalMatrix{1.0f};
-    uint32_t  meshId{0};
-    uint64_t  meshletBufferAddress{0};
-    uint64_t  meshletVerticesAddress{0};
-    uint64_t  meshletTrianglesAddress{0};
-    uint64_t  vertexBufferAddress{0};
-    uint32_t  meshletOffset{0};
-    uint32_t  meshletCount{0};
-    glm::vec2 screenSize{0.0f, 0.0f};
-    uint32_t  cullingFlags{0}; // Bit 0: Double Sided, Bit 1: Transparent (skip cone culling)
-    uint32_t  _pad_end{0u};
-  };
+    // Push constants for mesh pipeline draws. Must be kept binary-compatible with GLSL
+    // definition in assets/shaders/includes/mesh_push_constants.glsl
+    struct MeshPushConstantData {
+        glm::mat4 modelMatrix{1.0f};
+        glm::mat4 normalMatrix{1.0f};
+        uint32_t  meshId{0};
+        uint64_t  meshletBufferAddress{0};
+        uint64_t  meshletVerticesAddress{0};
+        uint64_t  meshletTrianglesAddress{0};
+        uint64_t  vertexBufferAddress{0};
+        uint32_t  meshletOffset{0};
+        uint32_t  meshletCount{0};
+    };
 
-  static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0u, "MeshPushConstantData layout mismatch: modelMatrix offset");
-  static_assert(offsetof(MeshPushConstantData, normalMatrix) == 64u, "MeshPushConstantData layout mismatch: normalMatrix offset");
-  static_assert(offsetof(MeshPushConstantData, meshId) == 128u, "MeshPushConstantData layout mismatch: meshId offset");
-  static_assert(offsetof(MeshPushConstantData, meshletBufferAddress) == 136u, "MeshPushConstantData layout mismatch: meshletBufferAddress offset");
-  static_assert(offsetof(MeshPushConstantData, meshletVerticesAddress) == 144u, "MeshPushConstantData layout mismatch: meshletVerticesAddress offset");
-  static_assert(offsetof(MeshPushConstantData, meshletTrianglesAddress) == 152u, "MeshPushConstantData layout mismatch: meshletTrianglesAddress offset");
-  static_assert(offsetof(MeshPushConstantData, vertexBufferAddress) == 160u, "MeshPushConstantData layout mismatch: vertexBufferAddress offset");
-  static_assert(offsetof(MeshPushConstantData, meshletOffset) == 168u, "MeshPushConstantData layout mismatch: meshletOffset offset");
-  static_assert(offsetof(MeshPushConstantData, meshletCount) == 172u, "MeshPushConstantData layout mismatch: meshletCount offset");
-  static_assert(offsetof(MeshPushConstantData, screenSize) == 176u, "MeshPushConstantData layout mismatch: screenSize offset");
-  static_assert(offsetof(MeshPushConstantData, cullingFlags) == 184u, "MeshPushConstantData layout mismatch: cullingFlags offset");
-  static_assert(sizeof(MeshPushConstantData) == 192u, "MeshPushConstantData size mismatch");
+    static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0u, "MeshPushConstantData layout mismatch: modelMatrix offset");
+    static_assert(offsetof(MeshPushConstantData, normalMatrix) == 64u, "MeshPushConstantData layout mismatch: normalMatrix offset");
+    static_assert(offsetof(MeshPushConstantData, meshId) == 128u, "MeshPushConstantData layout mismatch: meshId offset");
+    static_assert(offsetof(MeshPushConstantData, meshletBufferAddress) == 136u, "MeshPushConstantData layout mismatch: meshletBufferAddress offset");
+    static_assert(offsetof(MeshPushConstantData, meshletVerticesAddress) == 144u, "MeshPushConstantData layout mismatch: meshletVerticesAddress offset");
+    static_assert(offsetof(MeshPushConstantData, meshletTrianglesAddress) == 152u, "MeshPushConstantData layout mismatch: meshletTrianglesAddress offset");
+    static_assert(offsetof(MeshPushConstantData, vertexBufferAddress) == 160u, "MeshPushConstantData layout mismatch: vertexBufferAddress offset");
+    static_assert(offsetof(MeshPushConstantData, meshletOffset) == 168u, "MeshPushConstantData layout mismatch: meshletOffset offset");
+    static_assert(offsetof(MeshPushConstantData, meshletCount) == 172u, "MeshPushConstantData layout mismatch: meshletCount offset");
+    static_assert(sizeof(MeshPushConstantData) == 176u, "MeshPushConstantData size mismatch");
 
-  class MaterialRenderBindings;
-  class LightingRenderBindings;
+    class MaterialRenderBindings;
+    class LightingRenderBindings;
 
-  class ModelRenderSystem
-  {
-  public:
-    ModelRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
-    ~ModelRenderSystem();
+    class ModelRenderSystem {
+       public:
+        enum class VariantPolicy : std::uint8_t {
+            Auto,
+            ForceStandard,
+            ForceFull,
+        };
 
-    ModelRenderSystem(const ModelRenderSystem&)            = delete;
-    ModelRenderSystem& operator=(const ModelRenderSystem&) = delete;
+        ModelRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
+        ~ModelRenderSystem();
 
-    // Reset per-frame transient state (material dynamic offsets, etc.).
-    void beginFrame(int frameIndex);
+        ModelRenderSystem(const ModelRenderSystem&)            = delete;
+        ModelRenderSystem& operator=(const ModelRenderSystem&) = delete;
 
-    // Opt-in: enable multithreaded secondary-command-buffer recording (pilot).
-    // threadCount==0 -> choose (HW threads - 1) by default.
-    void enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
+        // Reset per-frame transient state (material dynamic offsets, etc.).
+        void beginFrame(int frameIndex);
 
-    // Multi-pass rendering entry points.
-    void renderGbuffer(FrameInfo& frameInfo);
-    void renderTransmission(FrameInfo& frameInfo);
-    void renderAlphaBlend(FrameInfo& frameInfo);
+        // Opt-in: enable multithreaded secondary-command-buffer recording (pilot).
+        // threadCount==0 -> choose (HW threads - 1) by default.
+        void enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
 
-    // Must be called once after the G-buffer render pass exists.
-    void createGbufferPipeline(VkRenderPass renderPass);
+        void setVariantPolicy(VariantPolicy policy) {
+            variantPolicy_ = policy;
+        }
+        [[nodiscard]] VariantPolicy variantPolicy() const {
+            return variantPolicy_;
+        }
 
-    // Update the scene-color copy descriptor for screen-space refraction.
-    void updateSceneColorDescriptor(int frameIndex, VkDescriptorImageInfo const& sceneColorInfo);
+        void setShaderHotReloadEnabled(bool enabled) {
+            shaderHotReloadEnabled_ = enabled;
+        }
+        [[nodiscard]] bool shaderHotReloadEnabled() const {
+            return shaderHotReloadEnabled_;
+        }
+        [[nodiscard]] bool standardVariantFallbackActive() const {
+            return standardVariantFallbackActive_;
+        }
+        [[nodiscard]] const std::string& standardVariantFallbackReason() const {
+            return standardVariantFallbackReason_;
+        }
+        [[nodiscard]] bool isMultiThreadedRecordingEnabled() const {
+            return multithreadedRecordingEnabled_;
+        }
 
-    void renderDepthPrepass(FrameInfo& frameInfo);
+        // Multi-pass rendering entry points.
+        void renderGbuffer(FrameInfo& frameInfo);
+        void renderTransmission(FrameInfo& frameInfo);
+        void renderAlphaBlend(FrameInfo& frameInfo);
 
-    // Must be called once after the offscreen depth-prepass render pass exists.
-    void createDepthPrepassPipeline(VkRenderPass renderPass);
+        // Must be called once after the G-buffer render pass exists.
+        void createGbufferPipeline(VkRenderPass renderPass);
 
-    void setShadowSystem(ShadowSystem* shadowSystem);
-    void setIBLSystem(IBLSystem* iblSystem);
+        // Update the scene-color copy descriptor for screen-space refraction.
+        void updateSceneColorDescriptor(int frameIndex, VkDescriptorImageInfo const& sceneColorInfo);
 
-  private:
-    void createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
-    void createPipeline(VkRenderPass renderPass);
-    void createSceneColorDescriptorResources();
+        void renderDepthPrepass(FrameInfo& frameInfo);
 
-    // Shared helpers for the forward compositing passes.
-    void bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+        // Must be called once after the offscreen depth-prepass render pass exists.
+        void createDepthPrepassPipeline(VkRenderPass renderPass);
 
-    Device&                   device;
-    std::unique_ptr<Pipeline> depthPrepassPipeline;
-    std::unique_ptr<Pipeline> transparentPipeline;
-    std::unique_ptr<Pipeline> transmissionPipeline;
-    std::unique_ptr<Pipeline> standardTransparentPipeline;
-    std::unique_ptr<Pipeline> standardTransmissionPipeline;
-    std::unique_ptr<Pipeline> gbufferPipeline;
-    VkPipelineLayout          pipelineLayout;
+        void setShadowSystem(ShadowSystem* shadowSystem);
+        void setIBLSystem(IBLSystem* iblSystem);
 
-    std::unique_ptr<MaterialRenderBindings> materialBindings_;
+        [[nodiscard]] MaterialDescriptorCacheStats getMaterialDescriptorCacheStats() const;
+        void                                       resetMaterialDescriptorCacheStats();
 
-    std::unique_ptr<LightingRenderBindings> lightingBindings_;
+       private:
+        void createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
+        void createPipeline(VkRenderPass renderPass);
+        void createSceneColorDescriptorResources();
 
-    // Stored render-pass used to record secondary command buffers' inheritance.
-    VkRenderPass renderPass_ = VK_NULL_HANDLE;
-    // Separate G-buffer render pass for G-buffer secondary command buffers.
-    VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
+        // Shared helpers for the forward compositing passes.
+        void                    bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+        void                    hotReloadPipelinesIfNeeded();
+        [[nodiscard]] Pipeline* chooseTransparentPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
+        [[nodiscard]] Pipeline* chooseTransmissionPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
 
-    // Multithreading configuration (opt-in). When enabled, draw-recording is
-    // partitioned and recorded to secondary command buffers on worker threads.
-    bool               multithreadedRecordingEnabled_ = false;
-    uint32_t           multithreadedRecordingThreads_ = 0;
-    mutable std::mutex multithreadBindMutex_; // short critical section around bindMaterial calls
+        Device&                   device;
+        std::unique_ptr<Pipeline> depthPrepassPipeline;
+        std::unique_ptr<Pipeline> transparentPipeline;
+        std::unique_ptr<Pipeline> transmissionPipeline;
+        std::unique_ptr<Pipeline> standardTransparentPipeline;
+        std::unique_ptr<Pipeline> standardTransmissionPipeline;
+        std::unique_ptr<Pipeline> gbufferPipeline;
+        VkPipelineLayout          pipelineLayout;
 
-    VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
-    std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;
-    std::vector<VkDescriptorSet>            sceneColorDescriptorSets_;
-  };
-} // namespace engine
+        std::unique_ptr<MaterialRenderBindings> materialBindings_;
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP
+        std::unique_ptr<LightingRenderBindings> lightingBindings_;
+
+        // Stored render-pass used to record secondary command buffers' inheritance.
+        VkRenderPass renderPass_ = VK_NULL_HANDLE;
+        // Separate G-buffer render pass for G-buffer secondary command buffers.
+        VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
+
+        // Multithreading configuration (opt-in). When enabled, draw-recording is
+        // partitioned and recorded to secondary command buffers on worker threads.
+        bool               multithreadedRecordingEnabled_ = false;
+        uint32_t           multithreadedRecordingThreads_ = 0;
+        mutable std::mutex multithreadBindMutex_;  // short critical section around bindMaterial calls
+
+        VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
+        std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;
+        std::vector<VkDescriptorSet>            sceneColorDescriptorSets_;
+
+        VariantPolicy variantPolicy_                 = VariantPolicy::Auto;
+        bool          shaderHotReloadEnabled_        = true;
+        bool          standardVariantFallbackActive_ = false;
+        std::string   standardVariantFallbackReason_;
+    };
+}  // namespace engine
+
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP

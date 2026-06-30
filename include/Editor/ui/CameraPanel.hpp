@@ -2,25 +2,20 @@
 #define EDITOR_CAMERAPANEL_HPP
 
 #include "Editor/ui/UIPanel.hpp"
-#include "Engine/Scene/Scene.hpp"
 
 namespace engine {
 
-  /**
-   * @brief Panel for camera controls
-   */
-  class CameraPanel : public UIPanel
-  {
-  public:
-    explicit CameraPanel(entt::entity cameraEntity, Scene* scene);
+    class EngineState;
 
-    void render(FrameInfo& frameInfo) override;
+    class CameraPanel : public UIPanel {
+       public:
+        explicit CameraPanel(EngineState& state);
 
-  private:
-    entt::entity cameraEntity_;
-    Scene*       scene_;
-  };
+        void render(FrameInfo& frameInfo) override;
 
-} // namespace engine
+       private:
+        EngineState& state_;
+    };
 
-#endif // EDITOR_CAMERAPANEL_HPP
+}  // namespace engine
+#endif

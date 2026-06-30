@@ -10,26 +10,25 @@
 
 namespace engine {
 
-  class DeferredLightingSystem
-  {
-  public:
-    DeferredLightingSystem(Device& device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> setLayouts);
-    ~DeferredLightingSystem();
+    class DeferredLightingSystem {
+       public:
+        DeferredLightingSystem(Device& device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> setLayouts);
+        ~DeferredLightingSystem();
 
-    DeferredLightingSystem(const DeferredLightingSystem&)            = delete;
-    DeferredLightingSystem& operator=(const DeferredLightingSystem&) = delete;
+        DeferredLightingSystem(const DeferredLightingSystem&)            = delete;
+        DeferredLightingSystem& operator=(const DeferredLightingSystem&) = delete;
 
-    void render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet);
+        void render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet);
 
-  private:
-    void createPipelineLayout(std::vector<VkDescriptorSetLayout> setLayouts);
-    void createPipeline(VkRenderPass renderPass);
+       private:
+        void createPipelineLayout(std::vector<VkDescriptorSetLayout> setLayouts);
+        void createPipeline(VkRenderPass renderPass);
 
-    Device&                   device;
-    std::unique_ptr<Pipeline> pipeline;
-    VkPipelineLayout          pipelineLayout{VK_NULL_HANDLE};
-  };
+        Device&                   device;
+        std::unique_ptr<Pipeline> pipeline;
+        VkPipelineLayout          pipelineLayout{VK_NULL_HANDLE};
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_DEFERREDLIGHTINGSYSTEM_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_DEFERREDLIGHTINGSYSTEM_HPP

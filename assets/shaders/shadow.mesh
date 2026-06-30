@@ -17,11 +17,6 @@ struct Meshlet {
 
     float center[3];
     float radius;
-
-    float cone_axis[3];
-    float cone_cutoff;
-
-    uint padding[4];
 };
 
 layout(buffer_reference, scalar) readonly buffer MeshletBuffer {

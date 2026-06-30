@@ -6,23 +6,24 @@
 
 namespace engine {
 
-  class ObjectSelectionSystem
-  {
-  public:
-    explicit ObjectSelectionSystem(Keyboard& keyboard);
+    class ObjectSelectionSystem {
+       public:
+        explicit ObjectSelectionSystem(Keyboard& keyboard);
 
-    void update(FrameInfo& frameInfo);
+        void update(FrameInfo& frameInfo);
 
-  private:
-    Keyboard& keyboard_;
+       private:
+        Keyboard& keyboard_;
 
-    bool nextKeyWasPressed_   = false;
-    bool prevKeyWasPressed_   = false;
-    bool cameraKeyWasPressed_ = false;
+        bool nextKeyWasPressed_   = false;
+        bool prevKeyWasPressed_   = false;
+        bool cameraKeyWasPressed_ = false;
 
-    [[nodiscard]] bool isKeyPressed(int key) const { return keyboard_.isKeyPressed(key); }
-  };
+        [[nodiscard]] bool isKeyPressed(int key) const {
+            return keyboard_.isKeyPressed(key);
+        }
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_OBJECTSELECTIONSYSTEM_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_OBJECTSELECTIONSYSTEM_HPP

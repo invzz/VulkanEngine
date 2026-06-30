@@ -10,20 +10,24 @@
 
 namespace engine {
 
-  class InspectorPanel : public UIPanel
-  {
-  public:
-    InspectorPanel(Scene& scene);
+    class EngineState;
 
-    void               render(FrameInfo& frameInfo) override;
-    [[nodiscard]] bool isSeparateWindow() const override { return true; }
+    class InspectorPanel : public UIPanel {
+       public:
+        explicit InspectorPanel(EngineState& state);
 
-  private:
-    std::unique_ptr<TransformPanel> transformPanel_;
-    std::unique_ptr<LightsPanel>    lightsPanel_;
-    std::unique_ptr<AnimationPanel> animationPanel_;
-  };
+        void               render(FrameInfo& frameInfo) override;
+        [[nodiscard]] bool isSeparateWindow() const override {
+            return true;
+        }
 
-} // namespace engine
+       private:
+        EngineState&                    state_;
+        std::unique_ptr<TransformPanel> transformPanel_;
+        std::unique_ptr<LightsPanel>    lightsPanel_;
+        std::unique_ptr<AnimationPanel> animationPanel_;
+    };
 
-#endif // EDITOR_INSPECTORPANEL_HPP
+}  // namespace engine
+
+#endif

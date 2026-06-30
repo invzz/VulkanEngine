@@ -3,10 +3,10 @@
  * @brief Unit tests for Scene class (ECS wrapper)
  */
 
-#include <gtest/gtest.h>
+#include <glm/glm.hpp>
 
 #include <entt/entt.hpp>
-#include <glm/glm.hpp>
+#include <gtest/gtest.h>
 #include <set>
 
 #include "Engine/Scene/Scene.hpp"
@@ -14,348 +14,312 @@
 
 namespace engine::test {
 
-  // Simple test component
-  struct TestComponent
-  {
-    int         value = 0;
-    std::string name;
-  };
+    // Simple test component
+    struct TestComponent {
+        int         value = 0;
+        std::string name;
+    };
 
-  struct TagComponent
-  {
-    bool active = true;
-  };
+    struct TagComponent {
+        bool active = true;
+    };
 
-  class SceneTest : public ::testing::Test
-  {
-  protected:
-    Scene scene;
-  };
+    class SceneTest : public ::testing::Test {
+       protected:
+        Scene scene;
+    };
 
-  // ============================================================================
-  // Entity Creation Tests
-  // ============================================================================
+    // ============================================================================
+    // Entity Creation Tests
+    // ============================================================================
 
-  TEST_F(SceneTest, CreateEntity_ReturnsValidEntity)
-  {
-    entt::entity entity = scene.createEntity();
-    EXPECT_TRUE(scene.getRegistry().valid(entity));
-  }
-
-  TEST_F(SceneTest, CreateEntity_MultipleEntitiesAreUnique)
-  {
-    entt::entity e1 = scene.createEntity();
-    entt::entity e2 = scene.createEntity();
-    entt::entity e3 = scene.createEntity();
-
-    EXPECT_TRUE(e1 != e2);
-    EXPECT_TRUE(e2 != e3);
-    EXPECT_TRUE(e1 != e3);
-  }
-
-  TEST_F(SceneTest, CreateEntity_ManyEntities)
-  {
-    std::set<entt::entity> entities;
-    constexpr int          COUNT = 1000;
-
-    for (int i = 0; i < COUNT; ++i)
-    {
-      entities.insert(scene.createEntity());
+    TEST_F(SceneTest, CreateEntity_ReturnsValidEntity) {
+        entt::entity entity = scene.createEntity();
+        EXPECT_TRUE(scene.getRegistry().valid(entity));
     }
 
-    // All entities should be unique
-    EXPECT_EQ(entities.size(), COUNT);
-  }
+    TEST_F(SceneTest, CreateEntity_MultipleEntitiesAreUnique) {
+        entt::entity e1 = scene.createEntity();
+        entt::entity e2 = scene.createEntity();
+        entt::entity e3 = scene.createEntity();
 
-  // ============================================================================
-  // Entity Destruction Tests
-  // ============================================================================
-
-  TEST_F(SceneTest, DestroyEntity_EntityNoLongerValid)
-  {
-    entt::entity entity = scene.createEntity();
-    scene.destroyEntity(entity);
-
-    EXPECT_FALSE(scene.getRegistry().valid(entity));
-  }
-
-  TEST_F(SceneTest, DestroyEntity_ComponentsRemoved)
-  {
-    entt::entity entity = scene.createEntity();
-    scene.getRegistry().emplace<TestComponent>(entity, 42, "test");
-
-    scene.destroyEntity(entity);
-
-    // After destruction, the entity should not have the component
-    EXPECT_FALSE(scene.getRegistry().valid(entity));
-  }
-
-  TEST_F(SceneTest, DestroyEntity_MultipleTimes)
-  {
-    entt::entity e1 = scene.createEntity();
-    entt::entity e2 = scene.createEntity();
-    entt::entity e3 = scene.createEntity();
-
-    scene.destroyEntity(e2);
-
-    EXPECT_TRUE(scene.getRegistry().valid(e1));
-    EXPECT_FALSE(scene.getRegistry().valid(e2));
-    EXPECT_TRUE(scene.getRegistry().valid(e3));
-  }
-
-  // ============================================================================
-  // Registry Access Tests
-  // ============================================================================
-
-  TEST_F(SceneTest, GetRegistry_ReturnsNonNull)
-  {
-    entt::registry& reg = scene.getRegistry();
-    // Just verify we can use it
-    entt::entity entity = reg.create();
-    EXPECT_TRUE(reg.valid(entity));
-  }
-
-  TEST_F(SceneTest, GetRegistry_ConstVersion)
-  {
-    scene.createEntity();
-
-    const Scene&          constScene = scene;
-    const entt::registry& constReg   = constScene.getRegistry();
-
-    // Const version should work for read operations
-    EXPECT_GE(constReg.storage<entt::entity>()->size(), 1u);
-  }
-
-  // ============================================================================
-  // Component Tests (via Registry)
-  // ============================================================================
-
-  TEST_F(SceneTest, AddComponent_ToEntity)
-  {
-    entt::entity entity = scene.createEntity();
-    auto&        comp   = scene.getRegistry().emplace<TestComponent>(entity);
-    comp.value          = 100;
-    comp.name           = "MyComponent";
-
-    auto& retrieved = scene.getRegistry().get<TestComponent>(entity);
-    EXPECT_EQ(retrieved.value, 100);
-    EXPECT_EQ(retrieved.name, "MyComponent");
-  }
-
-  TEST_F(SceneTest, AddComponent_TransformComponent)
-  {
-    entt::entity entity    = scene.createEntity();
-    auto&        transform = scene.getRegistry().emplace<TransformComponent>(entity);
-    transform.translation  = glm::vec3(1.0f, 2.0f, 3.0f);
-    transform.scale        = glm::vec3(2.0f);
-    transform.rotation.y   = glm::radians(45.0f);
-
-    auto& retrieved = scene.getRegistry().get<TransformComponent>(entity);
-    EXPECT_EQ(retrieved.translation, glm::vec3(1.0f, 2.0f, 3.0f));
-    EXPECT_EQ(retrieved.scale, glm::vec3(2.0f));
-    EXPECT_FLOAT_EQ(retrieved.rotation.y, glm::radians(45.0f));
-  }
-
-  TEST_F(SceneTest, AddComponent_MultipleComponents)
-  {
-    entt::entity entity = scene.createEntity();
-    scene.getRegistry().emplace<TestComponent>(entity, 42, "test");
-    scene.getRegistry().emplace<TransformComponent>(entity);
-    scene.getRegistry().emplace<TagComponent>(entity);
-
-    EXPECT_TRUE(scene.getRegistry().all_of<TestComponent>(entity));
-    EXPECT_TRUE(scene.getRegistry().all_of<TransformComponent>(entity));
-    EXPECT_TRUE(scene.getRegistry().all_of<TagComponent>(entity));
-  }
-
-  TEST_F(SceneTest, RemoveComponent_FromEntity)
-  {
-    entt::entity entity = scene.createEntity();
-    scene.getRegistry().emplace<TestComponent>(entity);
-    scene.getRegistry().emplace<TagComponent>(entity);
-
-    scene.getRegistry().remove<TestComponent>(entity);
-
-    EXPECT_FALSE(scene.getRegistry().all_of<TestComponent>(entity));
-    EXPECT_TRUE(scene.getRegistry().all_of<TagComponent>(entity));
-  }
-
-  // ============================================================================
-  // View Tests (common ECS pattern)
-  // ============================================================================
-
-  TEST_F(SceneTest, View_SingleComponent)
-  {
-    for (int i = 0; i < 5; ++i)
-    {
-      entt::entity e = scene.createEntity();
-      scene.getRegistry().emplace<TestComponent>(e, i, "entity_" + std::to_string(i));
+        EXPECT_TRUE(e1 != e2);
+        EXPECT_TRUE(e2 != e3);
+        EXPECT_TRUE(e1 != e3);
     }
 
-    auto view  = scene.getRegistry().view<TestComponent>();
-    int  count = 0;
-    for (auto entity : view)
-    {
-      auto& comp = view.get<TestComponent>(entity);
-      EXPECT_GE(comp.value, 0);
-      EXPECT_LT(comp.value, 5);
-      ++count;
-    }
-    EXPECT_EQ(count, 5);
-  }
+    TEST_F(SceneTest, CreateEntity_ManyEntities) {
+        std::set<entt::entity> entities;
+        constexpr int          COUNT = 1000;
 
-  TEST_F(SceneTest, View_MultipleComponents)
-  {
-    // Create entities with different component combinations
-    for (int i = 0; i < 10; ++i)
-    {
-      entt::entity e = scene.createEntity();
-      scene.getRegistry().emplace<TransformComponent>(e);
+        for (int i = 0; i < COUNT; ++i) {
+            entities.insert(scene.createEntity());
+        }
 
-      if (i % 2 == 0)
-      {
-        scene.getRegistry().emplace<TestComponent>(e, i, "even");
-      }
+        // All entities should be unique
+        EXPECT_EQ(entities.size(), COUNT);
     }
 
-    // View should only return entities with BOTH components
-    auto view  = scene.getRegistry().view<TransformComponent, TestComponent>();
-    int  count = 0;
-    for (auto entity : view)
-    {
-      auto& test = view.get<TestComponent>(entity);
-      EXPECT_EQ(test.name, "even");
-      ++count;
-    }
-    EXPECT_EQ(count, 5);
-  }
+    // ============================================================================
+    // Entity Destruction Tests
+    // ============================================================================
 
-  TEST_F(SceneTest, View_EmptyView)
-  {
-    // Create some entities without TestComponent
-    for (int i = 0; i < 5; ++i)
-    {
-      entt::entity e = scene.createEntity();
-      scene.getRegistry().emplace<TransformComponent>(e);
+    TEST_F(SceneTest, DestroyEntity_EntityNoLongerValid) {
+        entt::entity entity = scene.createEntity();
+        scene.destroyEntity(entity);
+
+        EXPECT_FALSE(scene.getRegistry().valid(entity));
     }
 
-    auto view  = scene.getRegistry().view<TestComponent>();
-    int  count = 0;
-    for ([[maybe_unused]] auto entity : view)
-    {
-      ++count;
-    }
-    EXPECT_EQ(count, 0);
-  }
+    TEST_F(SceneTest, DestroyEntity_ComponentsRemoved) {
+        entt::entity entity = scene.createEntity();
+        scene.getRegistry().emplace<TestComponent>(entity, 42, "test");
 
-  // ============================================================================
-  // Entity Recycling Tests
-  // ============================================================================
+        scene.destroyEntity(entity);
 
-  TEST_F(SceneTest, EntityRecycling_DestroyedEntityCanBeReused)
-  {
-    entt::entity e1 = scene.createEntity();
-    scene.destroyEntity(e1);
-
-    entt::entity e2 = scene.createEntity();
-
-    // e2 may reuse e1's slot (implementation detail of EnTT)
-    // but should still be valid
-    EXPECT_TRUE(scene.getRegistry().valid(e2));
-  }
-
-  TEST_F(SceneTest, EntityRecycling_ComponentsNotCarriedOver)
-  {
-    entt::entity e1 = scene.createEntity();
-    scene.getRegistry().emplace<TestComponent>(e1, 999, "old");
-    scene.destroyEntity(e1);
-
-    entt::entity e2 = scene.createEntity();
-
-    // New entity should NOT have the old component
-    EXPECT_FALSE(scene.getRegistry().all_of<TestComponent>(e2));
-  }
-
-  // ============================================================================
-  // Stress Tests
-  // ============================================================================
-
-  TEST_F(SceneTest, StressTest_CreateDestroy)
-  {
-    constexpr int ITERATIONS = 100;
-    constexpr int BATCH_SIZE = 100;
-
-    for (int iter = 0; iter < ITERATIONS; ++iter)
-    {
-      std::vector<entt::entity> entities;
-      entities.reserve(BATCH_SIZE);
-
-      // Create batch
-      for (int i = 0; i < BATCH_SIZE; ++i)
-      {
-        entt::entity e = scene.createEntity();
-        scene.getRegistry().emplace<TransformComponent>(e);
-        scene.getRegistry().emplace<TestComponent>(e, i, "batch");
-        entities.push_back(e);
-      }
-
-      // Destroy half
-      for (int i = 0; i < BATCH_SIZE / 2; ++i)
-      {
-        scene.destroyEntity(entities[i]);
-      }
+        // After destruction, the entity should not have the component
+        EXPECT_FALSE(scene.getRegistry().valid(entity));
     }
 
-    // Just verify we didn't crash
-    SUCCEED();
-  }
+    TEST_F(SceneTest, DestroyEntity_MultipleTimes) {
+        entt::entity e1 = scene.createEntity();
+        entt::entity e2 = scene.createEntity();
+        entt::entity e3 = scene.createEntity();
 
-  TEST_F(SceneTest, StressTest_ManyComponents)
-  {
-    entt::entity entity = scene.createEntity();
+        scene.destroyEntity(e2);
 
-    // Add many components of the same type via different entities
-    for (int i = 0; i < 1000; ++i)
-    {
-      entt::entity e = scene.createEntity();
-      scene.getRegistry().emplace<TestComponent>(e, i, "entity");
+        EXPECT_TRUE(scene.getRegistry().valid(e1));
+        EXPECT_FALSE(scene.getRegistry().valid(e2));
+        EXPECT_TRUE(scene.getRegistry().valid(e3));
     }
 
-    auto view = scene.getRegistry().view<TestComponent>();
-    EXPECT_EQ(view.size(), 1000u);
-  }
+    // ============================================================================
+    // Registry Access Tests
+    // ============================================================================
 
-  // ============================================================================
-  // Default Construction Tests
-  // ============================================================================
+    TEST_F(SceneTest, GetRegistry_ReturnsNonNull) {
+        entt::registry& reg = scene.getRegistry();
+        // Just verify we can use it
+        entt::entity entity = reg.create();
+        EXPECT_TRUE(reg.valid(entity));
+    }
 
-  TEST_F(SceneTest, DefaultConstruction_RegistryIsEmpty)
-  {
-    Scene newScene;
-    auto  view = newScene.getRegistry().view<entt::entity>();
-    EXPECT_EQ(view.size(), 0u);
-  }
+    TEST_F(SceneTest, GetRegistry_ConstVersion) {
+        scene.createEntity();
 
-  TEST_F(SceneTest, MultipleScenes_Independent)
-  {
-    Scene scene1;
-    Scene scene2;
+        const Scene&          constScene = scene;
+        const entt::registry& constReg   = constScene.getRegistry();
 
-    entt::entity e1 = scene1.createEntity();
-    scene1.getRegistry().emplace<TestComponent>(e1, 1, "scene1");
+        // Const version should work for read operations
+        EXPECT_GE(constReg.storage<entt::entity>()->size(), 1u);
+    }
 
-    entt::entity e2 = scene2.createEntity();
-    scene2.getRegistry().emplace<TestComponent>(e2, 2, "scene2");
+    // ============================================================================
+    // Component Tests (via Registry)
+    // ============================================================================
 
-    // Each scene should have only its own entity
-    EXPECT_EQ(scene1.getRegistry().view<TestComponent>().size(), 1u);
-    EXPECT_EQ(scene2.getRegistry().view<TestComponent>().size(), 1u);
+    TEST_F(SceneTest, AddComponent_ToEntity) {
+        entt::entity entity = scene.createEntity();
+        auto&        comp   = scene.getRegistry().emplace<TestComponent>(entity);
+        comp.value          = 100;
+        comp.name           = "MyComponent";
 
-    auto& comp1 = scene1.getRegistry().get<TestComponent>(e1);
-    auto& comp2 = scene2.getRegistry().get<TestComponent>(e2);
+        auto& retrieved = scene.getRegistry().get<TestComponent>(entity);
+        EXPECT_EQ(retrieved.value, 100);
+        EXPECT_EQ(retrieved.name, "MyComponent");
+    }
 
-    EXPECT_EQ(comp1.value, 1);
-    EXPECT_EQ(comp2.value, 2);
-  }
+    TEST_F(SceneTest, AddComponent_TransformComponent) {
+        entt::entity entity    = scene.createEntity();
+        auto&        transform = scene.getRegistry().emplace<TransformComponent>(entity);
+        transform.translation  = glm::vec3(1.0f, 2.0f, 3.0f);
+        transform.scale        = glm::vec3(2.0f);
+        transform.rotation.y   = glm::radians(45.0f);
 
-} // namespace engine::test
+        auto& retrieved = scene.getRegistry().get<TransformComponent>(entity);
+        EXPECT_EQ(retrieved.translation, glm::vec3(1.0f, 2.0f, 3.0f));
+        EXPECT_EQ(retrieved.scale, glm::vec3(2.0f));
+        EXPECT_FLOAT_EQ(retrieved.rotation.y, glm::radians(45.0f));
+    }
+
+    TEST_F(SceneTest, AddComponent_MultipleComponents) {
+        entt::entity entity = scene.createEntity();
+        scene.getRegistry().emplace<TestComponent>(entity, 42, "test");
+        scene.getRegistry().emplace<TransformComponent>(entity);
+        scene.getRegistry().emplace<TagComponent>(entity);
+
+        EXPECT_TRUE(scene.getRegistry().all_of<TestComponent>(entity));
+        EXPECT_TRUE(scene.getRegistry().all_of<TransformComponent>(entity));
+        EXPECT_TRUE(scene.getRegistry().all_of<TagComponent>(entity));
+    }
+
+    TEST_F(SceneTest, RemoveComponent_FromEntity) {
+        entt::entity entity = scene.createEntity();
+        scene.getRegistry().emplace<TestComponent>(entity);
+        scene.getRegistry().emplace<TagComponent>(entity);
+
+        scene.getRegistry().remove<TestComponent>(entity);
+
+        EXPECT_FALSE(scene.getRegistry().all_of<TestComponent>(entity));
+        EXPECT_TRUE(scene.getRegistry().all_of<TagComponent>(entity));
+    }
+
+    // ============================================================================
+    // View Tests (common ECS pattern)
+    // ============================================================================
+
+    TEST_F(SceneTest, View_SingleComponent) {
+        for (int i = 0; i < 5; ++i) {
+            entt::entity e = scene.createEntity();
+            scene.getRegistry().emplace<TestComponent>(e, i, "entity_" + std::to_string(i));
+        }
+
+        auto view  = scene.getRegistry().view<TestComponent>();
+        int  count = 0;
+        for (auto entity : view) {
+            auto& comp = view.get<TestComponent>(entity);
+            EXPECT_GE(comp.value, 0);
+            EXPECT_LT(comp.value, 5);
+            ++count;
+        }
+        EXPECT_EQ(count, 5);
+    }
+
+    TEST_F(SceneTest, View_MultipleComponents) {
+        // Create entities with different component combinations
+        for (int i = 0; i < 10; ++i) {
+            entt::entity e = scene.createEntity();
+            scene.getRegistry().emplace<TransformComponent>(e);
+
+            if (i % 2 == 0) {
+                scene.getRegistry().emplace<TestComponent>(e, i, "even");
+            }
+        }
+
+        // View should only return entities with BOTH components
+        auto view  = scene.getRegistry().view<TransformComponent, TestComponent>();
+        int  count = 0;
+        for (auto entity : view) {
+            auto& test = view.get<TestComponent>(entity);
+            EXPECT_EQ(test.name, "even");
+            ++count;
+        }
+        EXPECT_EQ(count, 5);
+    }
+
+    TEST_F(SceneTest, View_EmptyView) {
+        // Create some entities without TestComponent
+        for (int i = 0; i < 5; ++i) {
+            entt::entity e = scene.createEntity();
+            scene.getRegistry().emplace<TransformComponent>(e);
+        }
+
+        auto view  = scene.getRegistry().view<TestComponent>();
+        int  count = 0;
+        for ([[maybe_unused]] auto entity : view) {
+            ++count;
+        }
+        EXPECT_EQ(count, 0);
+    }
+
+    // ============================================================================
+    // Entity Recycling Tests
+    // ============================================================================
+
+    TEST_F(SceneTest, EntityRecycling_DestroyedEntityCanBeReused) {
+        entt::entity e1 = scene.createEntity();
+        scene.destroyEntity(e1);
+
+        entt::entity e2 = scene.createEntity();
+
+        // e2 may reuse e1's slot (implementation detail of EnTT)
+        // but should still be valid
+        EXPECT_TRUE(scene.getRegistry().valid(e2));
+    }
+
+    TEST_F(SceneTest, EntityRecycling_ComponentsNotCarriedOver) {
+        entt::entity e1 = scene.createEntity();
+        scene.getRegistry().emplace<TestComponent>(e1, 999, "old");
+        scene.destroyEntity(e1);
+
+        entt::entity e2 = scene.createEntity();
+
+        // New entity should NOT have the old component
+        EXPECT_FALSE(scene.getRegistry().all_of<TestComponent>(e2));
+    }
+
+    // ============================================================================
+    // Stress Tests
+    // ============================================================================
+
+    TEST_F(SceneTest, StressTest_CreateDestroy) {
+        constexpr int ITERATIONS = 100;
+        constexpr int BATCH_SIZE = 100;
+
+        for (int iter = 0; iter < ITERATIONS; ++iter) {
+            std::vector<entt::entity> entities;
+            entities.reserve(BATCH_SIZE);
+
+            // Create batch
+            for (int i = 0; i < BATCH_SIZE; ++i) {
+                entt::entity e = scene.createEntity();
+                scene.getRegistry().emplace<TransformComponent>(e);
+                scene.getRegistry().emplace<TestComponent>(e, i, "batch");
+                entities.push_back(e);
+            }
+
+            // Destroy half
+            for (int i = 0; i < BATCH_SIZE / 2; ++i) {
+                scene.destroyEntity(entities[i]);
+            }
+        }
+
+        // Just verify we didn't crash
+        SUCCEED();
+    }
+
+    TEST_F(SceneTest, StressTest_ManyComponents) {
+        entt::entity entity = scene.createEntity();
+
+        // Add many components of the same type via different entities
+        for (int i = 0; i < 1000; ++i) {
+            entt::entity e = scene.createEntity();
+            scene.getRegistry().emplace<TestComponent>(e, i, "entity");
+        }
+
+        auto view = scene.getRegistry().view<TestComponent>();
+        EXPECT_EQ(view.size(), 1000u);
+    }
+
+    // ============================================================================
+    // Default Construction Tests
+    // ============================================================================
+
+    TEST_F(SceneTest, DefaultConstruction_RegistryIsEmpty) {
+        Scene newScene;
+        auto  view = newScene.getRegistry().view<entt::entity>();
+        EXPECT_EQ(view.size(), 0u);
+    }
+
+    TEST_F(SceneTest, MultipleScenes_Independent) {
+        Scene scene1;
+        Scene scene2;
+
+        entt::entity e1 = scene1.createEntity();
+        scene1.getRegistry().emplace<TestComponent>(e1, 1, "scene1");
+
+        entt::entity e2 = scene2.createEntity();
+        scene2.getRegistry().emplace<TestComponent>(e2, 2, "scene2");
+
+        // Each scene should have only its own entity
+        EXPECT_EQ(scene1.getRegistry().view<TestComponent>().size(), 1u);
+        EXPECT_EQ(scene2.getRegistry().view<TestComponent>().size(), 1u);
+
+        auto& comp1 = scene1.getRegistry().get<TestComponent>(e1);
+        auto& comp2 = scene2.getRegistry().get<TestComponent>(e2);
+
+        EXPECT_EQ(comp1.value, 1);
+        EXPECT_EQ(comp2.value, 2);
+    }
+
+}  // namespace engine::test

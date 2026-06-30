@@ -2,97 +2,116 @@
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP
 
 #include <glm/glm.hpp>
+
 #include <memory>
 
 namespace engine {
 
-  class Texture; // Forward declaration
+    class Texture;  // Forward declaration
 
-  enum class AlphaMode : std::uint8_t
-  {
-    Opaque,
-    Mask,
-    Blend
-  };
+    enum class AlphaMode : std::uint8_t {
+        Opaque,
+        Mask,
+        Blend
+    };
 
-  struct PBRMaterial
-  {
-    // Base PBR properties
-    glm::vec4 albedo{1.0f, 1.0f, 1.0f, 1.0f};
-    float     metallic{0.0f};
-    float     roughness{0.5f};
-    float     ao{1.0f};
+    struct PBRMaterial {
+        // Base PBR properties
+        glm::vec4 albedo{1.0f, 1.0f, 1.0f, 1.0f};
+        float     metallic{0.0f};
+        float     roughness{0.5f};
+        float     ao{1.0f};
 
-    // Alpha Blending
-    AlphaMode alphaMode{AlphaMode::Opaque};
-    float     alphaCutoff{0.5f};
-    bool      doubleSided{false};
+        // Alpha Blending
+        AlphaMode alphaMode{AlphaMode::Opaque};
+        float     alphaCutoff{0.5f};
+        bool      doubleSided{false};
 
-    // Clearcoat layer (for car paint, lacquered surfaces)
-    float clearcoat{0.0f};           // Clearcoat strength [0, 1]
-    float clearcoatRoughness{0.03f}; // Clearcoat layer roughness (typically smooth)
+        // Clearcoat layer (for car paint, lacquered surfaces)
+        float clearcoat{0.0f};            // Clearcoat strength [0, 1]
+        float clearcoatRoughness{0.03f};  // Clearcoat layer roughness (typically smooth)
 
-    // Anisotropic reflections (for brushed metals, fabric)
-    float anisotropic{0.0f};         // Anisotropy strength [0, 1]
-    float anisotropicRotation{0.0f}; // Rotation of anisotropic direction [0, 1] (0 = tangent aligned)
+        // Anisotropic reflections (for brushed metals, fabric)
+        float anisotropic{0.0f};          // Anisotropy strength [0, 1]
+        float anisotropicRotation{0.0f};  // Rotation of anisotropic direction [0, 1] (0 = tangent aligned)
 
-    // Transmission (Refraction/Transparency)
-    float     transmission{0.0f};                 // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
-    float     ior{1.5f};                          // Index of Refraction (default 1.5)
-    float     thickness{0.0f};                    // Volume thickness (0 = thin walled)
-    glm::vec3 attenuationColor{1.0f, 1.0f, 1.0f}; // Color that white light turns into after
-                                                  // traversing attenuationDistance
-    float attenuationDistance{1.0f};              // Distance at which light color becomes attenuationColor
+        // Transmission (Refraction/Transparency)
+        float     transmission{0.0f};                  // Transmission factor [0, 1] (0 = opaque, 1 = fully transparent)
+        float     ior{1.5f};                           // Index of Refraction (default 1.5)
+        float     thickness{0.0f};                     // Volume thickness (0 = thin walled)
+        glm::vec3 attenuationColor{1.0f, 1.0f, 1.0f};  // Color that white light turns into after
+                                                       // traversing attenuationDistance
+        float attenuationDistance{1.0f};               // Distance at which light color becomes attenuationColor
 
-    // Iridescence (Thin film interference)
-    float iridescence{0.0f};            // Iridescence intensity [0, 1]
-    float iridescenceIOR{1.3f};         // IOR of the thin film
-    float iridescenceThickness{100.0f}; // Thickness of the thin film in nanometers (default 100nm)
+        // Iridescence (Thin film interference)
+        float iridescence{0.0f};             // Iridescence intensity [0, 1]
+        float iridescenceIOR{1.3f};          // IOR of the thin film
+        float iridescenceThickness{100.0f};  // Thickness of the thin film in nanometers (default 100nm)
 
-    // Emissive
-    glm::vec3 emissiveColor{0.0f};    // Emissive color (linear)
-    float     emissiveStrength{1.0f}; // Emissive strength multiplier
+        // Emissive
+        glm::vec3 emissiveColor{0.0f};     // Emissive color (linear)
+        float     emissiveStrength{1.0f};  // Emissive strength multiplier
 
-    // Workflow
-    bool useMetallicRoughnessTexture{false};          // If true, metallic/roughness are packed in roughnessMap (B/G
-                                                      // channels)
-    bool useOcclusionRoughnessMetallicTexture{false}; // If true, occlusion/roughness/metallic are packed in
-                                                      // roughnessMap (R/G/B channels)
-    bool useSpecularGlossinessWorkflow{false};        // If true, use KHR_materials_pbrSpecularGlossiness workflow
+        // Workflow
+        bool useMetallicRoughnessTexture{false};           // If true, metallic/roughness are packed in roughnessMap (B/G
+                                                           // channels)
+        bool useOcclusionRoughnessMetallicTexture{false};  // If true, occlusion/roughness/metallic are packed in
+                                                           // roughnessMap (R/G/B channels)
+        bool useSpecularGlossinessWorkflow{false};         // If true, use KHR_materials_pbrSpecularGlossiness workflow
 
-    // Specular Glossiness Workflow
-    glm::vec3 specularFactor{1.0f};   // Specular color (F0)
-    float     glossinessFactor{1.0f}; // Glossiness (1 - roughness)
+        // Specular Glossiness Workflow
+        glm::vec3 specularFactor{1.0f};    // Specular color (F0)
+        float     glossinessFactor{1.0f};  // Glossiness (1 - roughness)
 
-    // Texture tiling
-    float uvScale{1.0f}; // UV coordinate scale for texture tiling
+        // Texture tiling
+        float uvScale{1.0f};  // UV coordinate scale for texture tiling
 
-    // Texture maps (optional - nullptr means use constant values above)
-    std::shared_ptr<Texture> albedoMap;             // Base color texture (sRGB)
-    std::shared_ptr<Texture> normalMap;             // Normal map (tangent space)
-    std::shared_ptr<Texture> metallicMap;           // Metallic texture (linear)
-    std::shared_ptr<Texture> roughnessMap;          // Roughness texture (linear)
-    std::shared_ptr<Texture> aoMap;                 // Ambient occlusion texture (linear)
-    std::shared_ptr<Texture> emissiveMap;           // Emissive texture (sRGB)
-    std::shared_ptr<Texture> specularGlossinessMap; // Specular (RGB) + Glossiness (A) texture
-    std::shared_ptr<Texture> transmissionMap;       // Transmission texture (R channel)
-    std::shared_ptr<Texture> clearcoatMap;          // Clearcoat texture (R channel)
-    std::shared_ptr<Texture> clearcoatRoughnessMap; // Clearcoat roughness texture (G channel)
-    std::shared_ptr<Texture> clearcoatNormalMap;    // Clearcoat normal map
+        // Texture maps (optional - nullptr means use constant values above)
+        std::shared_ptr<Texture> albedoMap;              // Base color texture (sRGB)
+        std::shared_ptr<Texture> normalMap;              // Normal map (tangent space)
+        std::shared_ptr<Texture> metallicMap;            // Metallic texture (linear)
+        std::shared_ptr<Texture> roughnessMap;           // Roughness texture (linear)
+        std::shared_ptr<Texture> aoMap;                  // Ambient occlusion texture (linear)
+        std::shared_ptr<Texture> emissiveMap;            // Emissive texture (sRGB)
+        std::shared_ptr<Texture> specularGlossinessMap;  // Specular (RGB) + Glossiness (A) texture
+        std::shared_ptr<Texture> transmissionMap;        // Transmission texture (R channel)
+        std::shared_ptr<Texture> clearcoatMap;           // Clearcoat texture (R channel)
+        std::shared_ptr<Texture> clearcoatRoughnessMap;  // Clearcoat roughness texture (G channel)
+        std::shared_ptr<Texture> clearcoatNormalMap;     // Clearcoat normal map
 
-    // Helper methods to check if textures are present
-    [[nodiscard]] bool hasAlbedoMap() const { return albedoMap != nullptr; }
-    [[nodiscard]] bool hasNormalMap() const { return normalMap != nullptr; }
-    [[nodiscard]] bool hasMetallicMap() const { return metallicMap != nullptr; }
-    [[nodiscard]] bool hasRoughnessMap() const { return roughnessMap != nullptr; }
-    [[nodiscard]] bool hasAOMap() const { return aoMap != nullptr; }
-    [[nodiscard]] bool hasEmissiveMap() const { return emissiveMap != nullptr; }
-    [[nodiscard]] bool hasTransmissionMap() const { return transmissionMap != nullptr; }
-    [[nodiscard]] bool hasClearcoatMap() const { return clearcoatMap != nullptr; }
-    [[nodiscard]] bool hasClearcoatRoughnessMap() const { return clearcoatRoughnessMap != nullptr; }
-    [[nodiscard]] bool hasClearcoatNormalMap() const { return clearcoatNormalMap != nullptr; }
-  };
+        // Helper methods to check if textures are present
+        [[nodiscard]] bool hasAlbedoMap() const {
+            return albedoMap != nullptr;
+        }
+        [[nodiscard]] bool hasNormalMap() const {
+            return normalMap != nullptr;
+        }
+        [[nodiscard]] bool hasMetallicMap() const {
+            return metallicMap != nullptr;
+        }
+        [[nodiscard]] bool hasRoughnessMap() const {
+            return roughnessMap != nullptr;
+        }
+        [[nodiscard]] bool hasAOMap() const {
+            return aoMap != nullptr;
+        }
+        [[nodiscard]] bool hasEmissiveMap() const {
+            return emissiveMap != nullptr;
+        }
+        [[nodiscard]] bool hasTransmissionMap() const {
+            return transmissionMap != nullptr;
+        }
+        [[nodiscard]] bool hasClearcoatMap() const {
+            return clearcoatMap != nullptr;
+        }
+        [[nodiscard]] bool hasClearcoatRoughnessMap() const {
+            return clearcoatRoughnessMap != nullptr;
+        }
+        [[nodiscard]] bool hasClearcoatNormalMap() const {
+            return clearcoatNormalMap != nullptr;
+        }
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_PBRMATERIAL_HPP

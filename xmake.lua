@@ -25,6 +25,12 @@ option("deadcode")
     set_description("Enable unused/dead code warnings and linker GC reporting")
 option_end()
 
+option("validation")
+    set_showmenu(true)
+    set_default(false)
+    set_description("Force-enable Vulkan validation layers in this build")
+option_end()
+
 -- ============================================================================
 -- Global Defines (paths, config)
 -- ============================================================================
@@ -43,6 +49,14 @@ add_defines(
     "GLM_FORCE_DEPTH_ZERO_TO_ONE",
     "GLM_ENABLE_EXPERIMENTAL"
 )
+
+if has_config("validation") then
+    add_defines("ENGINE_ENABLE_VALIDATION=1")
+elseif is_mode("debug") then
+    add_defines("ENGINE_ENABLE_VALIDATION=1")
+else
+    add_defines("ENGINE_ENABLE_VALIDATION=0")
+end
 
 if is_plat("linux") then
     add_defines("GLFW_USE_WAYLAND=1")
@@ -66,7 +80,11 @@ add_requires(
     "entt",
     "gtest",
     "imgui v1.92.1-docking", { configs = { glfw = true, vulkan = true } }
+    
 )
+
+-- Jolt Physics — multi-core rigid-body physics engine
+ add_requires("joltphysics", { configs = { debug_renderer = true } } )
 
 if is_plat("linux") then
     add_requires("vulkan")
@@ -119,6 +137,16 @@ target("stb_provider")
     add_files("src/third_party/stb/stb_provider.cpp")
     add_includedirs("include", {public = true})
     add_packages("stb")
+
+-- ImGuizmo — 3D transformation gizmo overlay for ImGui (vendored)
+target("ImGuizmo")
+    set_kind("static")
+    set_group("third_party")
+    set_default(false)
+    add_files("src/third_party/ImGuizmo/src/ImGuizmo.cpp")
+    add_includedirs("src/third_party/ImGuizmo/src", {public = true})
+    add_packages("imgui")
+    add_defines("IMGUI_DEFINE_MATH_OPERATORS")
 
 -- ============================================================================
 -- Core Libraries
@@ -183,6 +211,7 @@ target("Engine")
         "stb", "nlohmann_json", "meshoptimizer",
         "imgui", "entt"
     )
+    add_packages("joltphysics", {public = true})
     if is_plat("linux") then
         add_packages("vulkan")
     elseif is_plat("windows") then
@@ -199,14 +228,14 @@ target("Editor")
     set_group("editor")
     set_default(true)
     add_files("src/Editor/**.cpp")
-    add_includedirs("include", "src/Editor", {public = true})
+    add_includedirs("include", "src/Editor", "src/third_party/ImGuizmo/src", {public = true})
     add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
     if is_plat("linux") then
         add_packages("vulkan")
     elseif is_plat("windows") then
         add_syslinks("vulkan-1")
     end
-    add_deps("Engine", "EngineImporters", "EngineSceneIO", "Shaders")
+    add_deps("Engine", "EngineImporters", "EngineSceneIO", "ImGuizmo")
 
 -- ============================================================================
 -- Tools
@@ -289,5 +318,14 @@ target("Tests")
                 os.mkdir(path.join(targetdir, "assets/models/glTF"))
                 os.cp(src, dst)
             end
+        end
+
+        -- Test scene files
+        local scenes_src = path.join(projectdir, "assets/scenes/test")
+        local scenes_dst = path.join(targetdir, "assets/scenes/test")
+        if os.isdir(scenes_src) then
+            os.mkdir(path.join(targetdir, "assets/scenes"))
+            os.mkdir(scenes_dst)
+            os.cp(path.join(scenes_src, "*"), scenes_dst)
         end
     end)

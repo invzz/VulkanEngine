@@ -9,17 +9,15 @@
 
 namespace engine {
 
-  struct LODLevel
-  {
-    std::shared_ptr<Model> model;
-    float                  distance; // Distance at which this LOD becomes active
-  };
+    struct LODLevel {
+        std::shared_ptr<Model> model;
+        float                  distance;  // Distance at which this LOD becomes active
+    };
 
-  struct LODComponent
-  {
-    std::vector<LODLevel> levels; // Should be sorted by distance
-  };
+    struct LODComponent {
+        std::vector<LODLevel> levels;  // Should be sorted by distance
+    };
 
-} // namespace engine
+}  // namespace engine
 
-#endif // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_LODCOMPONENT_HPP
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_LODCOMPONENT_HPP

@@ -1,0 +1,244 @@
+{
+    "objects": [
+        {
+            "camera": {
+                "farZ": 100.0,
+                "fovY": 80.0,
+                "isOrthographic": false,
+                "isPrimary": true,
+                "nearZ": 0.10000000149011612,
+                "orthoSize": 10.0
+            },
+            "id": "3",
+            "name": "0",
+            "transform": {
+                "rotation": [
+                    -0.32181647419929504,
+                    1.0816264152526855,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    -5.442677974700928,
+                    -6.664356231689453,
+                    -2.921976327896118
+                ]
+            }
+        },
+        {
+            "directionalLight": {
+                "bake": false,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 1.0,
+                "lightType": "static"
+            },
+            "id": "2",
+            "name": "1",
+            "transform": {
+                "rotation": [
+                    -0.9424777626991272,
+                    0.22689279913902283,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "collider": {
+                "centerOffset": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "collisionGroup": 0,
+                "collisionMask": 4294967295,
+                "isTrigger": false,
+                "radius": 0.5,
+                "shape": "box",
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "id": "1",
+            "modelPath": "/home/ac/Documents/source/VulkanEngine/assets/models//glTF/Box/glTF/Box.gltf",
+            "name": "2",
+            "rigidBody": {
+                "acceleration": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "angularVelocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "friction": 0.5,
+                "isStatic": true,
+                "mass": 1.0,
+                "mode": "dynamic",
+                "restitution": 0.30000001192092896,
+                "useGravity": false,
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "collider": {
+                "centerOffset": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "collisionGroup": 0,
+                "collisionMask": 4294967295,
+                "isTrigger": false,
+                "radius": 0.5,
+                "shape": "box",
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "id": "1048576",
+            "modelPath": "/home/ac/Documents/source/VulkanEngine/assets/models//glTF/Box/glTF/Box.gltf",
+            "name": "3",
+            "rigidBody": {
+                "acceleration": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "angularVelocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "friction": 0.5,
+                "isStatic": false,
+                "mass": 1.0,
+                "mode": "dynamic",
+                "restitution": 0.30000001192092896,
+                "useGravity": true,
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    -5.0,
+                    0.0
+                ]
+            }
+        }
+    ],
+    "settings": {
+        "debugMode": 0,
+        "gpuProfiler": {
+            "enabled": false
+        },
+        "ibl": {
+            "brdfLUTSize": 256,
+            "irradianceSampleDelta": 0.02500000037252903,
+            "irradianceSize": 64,
+            "prefilterMipLevels": 8,
+            "prefilterSampleCount": 1024,
+            "prefilterSize": 256
+        },
+        "logging": {
+            "channels": {
+                "general": true,
+                "render": true,
+                "resource": true,
+                "scene": true,
+                "sync": true
+            },
+            "minimumLevel": "info"
+        },
+        "performance": {
+            "multithreadedRecordingEnabled": true,
+            "multithreadedRecordingThreads": 0
+        },
+        "physicsSimulationRunning": false,
+        "postProcess": {
+            "bloomIntensity": 0.03999999910593033,
+            "bloomThreshold": 1.0,
+            "contrast": 1.0,
+            "enableBloom": 1,
+            "enableFXAA": 1,
+            "enableSSAO": 0,
+            "exposure": 1.0,
+            "fxaaReduceMin": 0.0078125,
+            "fxaaReduceMul": 0.125,
+            "fxaaSpanMax": 8.0,
+            "saturation": 1.0,
+            "ssaoBias": 0.02500000037252903,
+            "ssaoRadius": 0.5,
+            "toneMappingMode": 1,
+            "vignette": 0.4000000059604645
+        },
+        "shaderVariants": {
+            "shaderHotReloadEnabled": true,
+            "variantPolicy": "auto"
+        },
+        "showDebugObjects": true,
+        "showGrid": true,
+        "showSkybox": false,
+        "sky": {
+            "debugCubemapFaces": false
+        }
+    }
+}

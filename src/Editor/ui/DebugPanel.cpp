@@ -4,110 +4,83 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
+#include "Editor/ui/UI.hpp"
+
 namespace engine {
-  DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}
+    DebugPanel::DebugPanel(int& debugMode) : debugMode_{debugMode} {}
 
-  void DebugPanel::render(FrameInfo& /*frameInfo*/)
-  {
-    // Debug mode indices: 0=None, 1=Albedo, 2=Normal, 3=Roughness, 4=Metallic,
-    // 5=Lighting, 6=Emissive, 7=Meshlets, 8=Meshlet Cones, 9=Depth, 10=AO,
-    // 11=reserved, 12=IBL Irradiance, 13=IBL Prefilter, 14=IBL BRDF LUT,
-    // 15=CSM Cascades, 16=View Depth, 17=CSM Split Compare, 18=Raw Depth Hue
-    const char* debugItems[] = {"None",
-                                "Albedo",
-                                "Normal",
-                                "Roughness",
-                                "Metallic",
-                                "Lighting Only",
-                                "Emissive Only",
-                                "Meshlets",
-                                "Meshlet Cones",
-                                "Depth",
-                                "AO",
-                                "(Reserved)",
-                                "IBL: Irradiance",
-                                "IBL: Prefilter",
-                                "IBL: BRDF LUT",
-                                "CSM: Cascades",
-                                "CSM: View Depth",
-                                "CSM: Split Compare",
-                                "CSM: Raw Depth"};
-    ImGui::Combo("Debug View", &debugMode_, debugItems, IM_ARRAYSIZE(debugItems));
+    void DebugPanel::render(FrameInfo& /*frameInfo*/) {
+        struct DebugOption {
+            const char* label;
+            int         value;
+        };
 
-    if (debugMode_ == 7 || debugMode_ == 8)
-    {
-      ImGui::Separator();
-      ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "How to verify HZB culling:");
-      ImGui::BulletText("Culled meshlets are NOT rendered at all");
-      ImGui::BulletText("You cannot 'see' them because they don't exist in the frame");
-      ImGui::Spacing();
-      ImGui::Text("Verification methods:");
-      ImGui::BulletText("Compare FPS with HZB on/off (indoor scenes)");
-      ImGui::BulletText("Use RenderDoc to count mesh shader dispatches");
-      ImGui::BulletText("Watch for 'popping' at screen edges if HZB too aggressive");
-    }
-    if (debugMode_ == 9)
-    {
-      ImGui::TextWrapped("Shows linearized depth. Objects closer to camera are darker. This is what HZB uses for occlusion decisions.");
-    }
+        static constexpr DebugOption debugOptions[] = {
+            {"None", 0},
+            {"Albedo", 1},
+            {"Normal", 2},
+            {"Roughness", 3},
+            {"Metallic", 4},
+            {"Lighting Only", 5},
+            {"Emissive Only", 6},
+            {"Meshlets", 7},
+            {"Meshlet Cones", 8},
+            {"Depth", 9},
+            {"AO", 10},
+            {"IBL: Irradiance", 12},
+            {"IBL: Prefilter", 13},
+            {"IBL: BRDF LUT", 14},
+        };
 
-    if (debugMode_ == 10)
-    {
-      ImGui::TextWrapped("Shows per-fragment ambient occlusion (AO). Darker = more occluded.");
-    }
+        int selectedIndex = 0;
+        for (int i = 0; i < IM_ARRAYSIZE(debugOptions); ++i) {
+            if (debugOptions[i].value == debugMode_) {
+                selectedIndex = i;
+                break;
+            }
+        }
 
-    // Debug mode 6: Emissive only (not baked lightmaps)
-    if (debugMode_ == 6)
-    {
-      ImGui::TextWrapped("Shows emissive contribution only (material emissive textures/colors). If the scene has no emissive materials this view will be dark.");
-    }
+        // Push theme style
+        ui::UI::PushThemeStyle();
 
-    // Debug mode 12: IBL irradiance visualization
-    if (debugMode_ == 12)
-    {
-      ImGui::TextWrapped("Shows IBL diffuse irradiance (sampled from irradiance cube). Use this to verify diffuse IBL content and orientation.");
-    }
+        // Combo widget
+        std::string comboLabel = "Debug View##debug_combo";
+        // Extract labels for combo
+        const char* comboLabels[14];
+        for (int i = 0; i < 14; ++i) {
+            comboLabels[i] = debugOptions[i].label;
+        }
+        int tmpIdx = selectedIndex;
+        if (ui::UI::Combo(comboLabel.c_str(), &tmpIdx, comboLabels, 14)) {
+            debugMode_    = debugOptions[tmpIdx].value;
+            selectedIndex = tmpIdx;
+        }
 
-    // Debug mode 13: IBL specular prefilter visualization
-    if (debugMode_ == 13)
-    {
-      ImGui::TextWrapped("Shows IBL specular prefiltered map sample (roughness dependent). Brightness/blur should vary with roughness.");
-    }
+        // Debug text for specific modes
+        if (debugMode_ == 9) {
+            ui::UI::TextDisabled("Shows linearized depth. Objects closer to camera are darker.");
+        }
 
-    // Debug mode 14: BRDF LUT visualization
-    if (debugMode_ == 14)
-    {
-      ImGui::TextWrapped("Shows BRDF LUT sample (used to compute specular energy). Expect a smooth 1D-like gradient across NdotV/roughness.");
-    }
+        if (debugMode_ == 10) {
+            ui::UI::TextDisabled("Shows per-fragment ambient occlusion (AO). Darker = more occluded.");
+        }
 
-    // Debug mode 15: CSM cascade visualization
-    if (debugMode_ == 15)
-    {
-      ImGui::TextWrapped("Shows which shadow cascade covers each pixel: Red=0 (near), Green=1, Blue=2, Yellow=3 (far). Cascades should transition based on distance from camera.");
-    }
+        if (debugMode_ == 6) {
+            ui::UI::TextDisabled("Shows emissive contribution only (material emissive textures/colors). If the scene has no emissive materials this view will be dark.");
+        }
 
-    // Debug mode 16: View-space depth visualization
-    if (debugMode_ == 16)
-    {
-      ImGui::TextWrapped("Shows view-space depth used for CSM cascade selection. Darker=near, Lighter=far. Normalized by the last cascade split distance.");
-    }
+        if (debugMode_ == 12) {
+            ui::UI::TextDisabled("Shows IBL diffuse irradiance (sampled from irradiance cube). Use this to verify diffuse IBL content and orientation.");
+        }
 
-    // Debug mode 17: CSM split comparison
-    if (debugMode_ == 17)
-    {
-      ImGui::TextWrapped("Shows cascade split comparisons: R=depth>split0, G=depth>split1, B=depth>split2. Black=cascade0, Red=cascade1, Yellow=cascade2, White=cascade3.");
-    }
+        if (debugMode_ == 13) {
+            ui::UI::TextDisabled("Shows IBL specular prefiltered map sample (roughness dependent). Brightness/blur should vary with roughness.");
+        }
 
-    // Debug mode 18: Raw depth hue
-    if (debugMode_ == 18)
-    {
-      ImGui::TextWrapped("Shows raw view depth as hue (Blue=near, Green=mid, Red=far). Max range 200 units. Use to verify depth scale.");
-    }
+        if (debugMode_ == 14) {
+            ui::UI::TextDisabled("Shows BRDF LUT sample (used to compute specular energy). Expect a smooth 1D-like gradient across NdotV/roughness.");
+        }
 
-    // Debug mode 19: Per-cascade shadow samples
-    if (debugMode_ == 19)
-    {
-      ImGui::TextWrapped("Shows sampled shadow values per cascade (R= cascade0, G=cascade1, B=cascade2). Useful to detect empty/over-biased cascades.");
+        ui::UI::PopThemeStyle();
     }
-  }
-} // namespace engine
+}  // namespace engine

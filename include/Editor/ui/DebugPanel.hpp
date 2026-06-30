@@ -4,15 +4,14 @@
 #include "Editor/ui/UIPanel.hpp"
 
 namespace engine {
-  class DebugPanel : public UIPanel
-  {
-  public:
-    explicit DebugPanel(int& debugMode);
-    void render(FrameInfo& frameInfo) override;
+    class DebugPanel : public UIPanel {
+       public:
+        explicit DebugPanel(int& debugMode);
+        void render(FrameInfo& frameInfo) override;
 
-  private:
-    int& debugMode_;
-  };
-} // namespace engine
+       private:
+        int& debugMode_;
+    };
+}  // namespace engine
 
-#endif // EDITOR_DEBUGPANEL_HPP
+#endif  // EDITOR_DEBUGPANEL_HPP
