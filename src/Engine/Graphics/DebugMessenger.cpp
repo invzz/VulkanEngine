@@ -3,7 +3,6 @@
 #include <iostream>
 
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Core/ansi_colors.hpp"
 
 namespace {
     VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

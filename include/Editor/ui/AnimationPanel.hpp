@@ -1,8 +1,6 @@
 #ifndef EDITOR_ANIMATIONPANEL_HPP
 #define EDITOR_ANIMATIONPANEL_HPP
 
-#include <glm/glm.hpp>
-
 #include <string>
 #include <vector>
 

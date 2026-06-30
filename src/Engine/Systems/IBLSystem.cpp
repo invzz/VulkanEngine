@@ -1,7 +1,6 @@
 #include "Engine/Systems/IBLSystem.hpp"
 
 #include "Engine/Systems/IBL/BRDFLUT.hpp"
-#include "Engine/Systems/IBL/IBLHelpers.hpp"
 #include "Engine/Systems/IBL/IrradianceIBL.hpp"
 #include "Engine/Systems/IBL/PrefilteredEnvIBL.hpp"
 

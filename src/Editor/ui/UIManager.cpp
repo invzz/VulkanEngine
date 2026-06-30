@@ -1,6 +1,5 @@
 #include "Editor/ui/UIManager.hpp"
 
-#include <imgui.h>
 #include <memory>
 #include <utility>
 

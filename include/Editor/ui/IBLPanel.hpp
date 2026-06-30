@@ -6,16 +6,14 @@
 #include "Editor/ui/UIPanel.hpp"
 
 namespace engine {
-    class EngineState;
     class IBLPanel : public UIPanel {
        public:
-        explicit IBLPanel(EngineState* engineState);
+        explicit IBLPanel(IBLSystem* ibl);
         void render(FrameInfo& frameInfo) override;
 
        private:
-        EngineState*        engineState_ = nullptr;
+        IBLSystem*          iblSystem_ = nullptr;
         IBLSystem::Settings settings_;
     };
 }  // namespace engine
-
-#endif  // EDITOR_IBLPANEL_HPP
+#endif

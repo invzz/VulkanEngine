@@ -1,8 +1,6 @@
 #include "ModelLib/Resources/Texture.hpp"
 
 #include <algorithm>
-#include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <string>
 

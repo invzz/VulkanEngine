@@ -7,10 +7,7 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
-#include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
-#include "Engine/Systems/ModelRenderSystem.hpp"
-#include "Engine/Systems/PostProcessingSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
 namespace engine {

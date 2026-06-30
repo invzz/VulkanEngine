@@ -1,7 +1,5 @@
 #include "Engine/Graphics/Instance.hpp"
 
-#include <cstring>
-
 #include "Engine/Core/Exceptions.hpp"
 
 namespace engine {

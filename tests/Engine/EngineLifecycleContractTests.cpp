@@ -1,7 +1,6 @@
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <initializer_list>
 #include <set>
 #include <string>
 #include <vector>

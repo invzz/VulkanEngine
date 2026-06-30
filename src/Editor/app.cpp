@@ -4,86 +4,80 @@
 
 #include <GLFW/glfw3.h>
 #include <chrono>
-#include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
+#include "Engine/Graphics/Viewport.hpp"
 #include "Engine/Scene/Camera.hpp"
-#include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
+#include "EngineSceneIO/Scene/SceneSerializer.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
 #include "ModelLib/Resources/TextureManager.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "vulkan/vulkan_core.h"
 
 // Systems
 #include "Engine/Graphics/GpuProfiler.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
+#include "Engine/Systems/CameraSystem.hpp"
+#include "Engine/Systems/ColliderDebugRenderSystem.hpp"
+#include "Engine/Systems/DeferredLightingSystem.hpp"
+#include "Engine/Systems/GridRenderSystem.hpp"
+#include "Engine/Systems/IBLSystem.hpp"
+#include "Engine/Systems/InputSystem.hpp"
+#include "Engine/Systems/JoltPhysicsSystem.hpp"
+#include "Engine/Systems/LightSystem.hpp"
+#include "Engine/Systems/ModelRenderSystem.hpp"
+#include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PickingSystem.hpp"
-#include "Engine/Systems/PostProcessingSystem.hpp"
+#include "Engine/Systems/SelectionOutlineSystem.hpp"
+#include "Engine/Systems/ShadowSystem.hpp"
+
+// Force VTexIO linkage from ModelLib/Texture.cpp symbols.
+#include "Engine/Systems/IBL/VTexIO.hpp"
+namespace {
+    auto const _vtex_link = &engine::ibl_detail::vtex::loadImage;
+}
 
 // Render Passes
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
 #include "Engine/Graphics/Passes/ComputePass.hpp"
+#include "Engine/Graphics/Passes/DeferredLightingPass.hpp"
 #include "Engine/Graphics/Passes/DepthPrepass.hpp"
-#include "Engine/Graphics/Passes/OffscreenPass.hpp"
+#include "Engine/Graphics/Passes/ForwardPass.hpp"
+#include "Engine/Graphics/Passes/GbufferPass.hpp"
 #include "Engine/Graphics/Passes/ShadowPass.hpp"
 #include "Engine/Graphics/Passes/UpdatePass.hpp"
 
-// Demo specific
-#include "Engine/EngineFacade.hpp"
-
-#include "Editor/Infrastructure/CameraAdapter.hpp"
-#include "Editor/Infrastructure/EnvironmentLightingAdapter.hpp"
-#include "Editor/Infrastructure/PhysicsRuntimeAdapter.hpp"
-#include "Editor/Infrastructure/SceneEntityAdapter.hpp"
-#include "Editor/Infrastructure/ScenePersistenceAdapter.hpp"
-#include "Editor/Infrastructure/SceneSettingsAdapter.hpp"
-#include "Editor/Infrastructure/TransformAdapter.hpp"
 #include "Editor/RenderContext.hpp"
 
 // UI Panels
-#include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/InspectorPanel.hpp"
 #include "Editor/ui/PhysicsPanel.hpp"
 #include "Editor/ui/Scene/ScenePanel.hpp"
 #include "Editor/ui/SettingsPanel.hpp"
 #include "Editor/ui/ToolbarPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
+#include "Editor/ui/ViewportPanel.hpp"
 
 namespace engine {
 
-    namespace {
-
-        class SceneSelectionMaintenanceAdapter final : public ISceneSelectionMaintenancePort {
-           public:
-            explicit SceneSelectionMaintenanceAdapter(UIManager& uiManager)
-                : uiManager_(uiManager) {}
-
-            void processSelectionMaintenance(SceneRuntimeState& runtimeState) override {
-                if (auto* scenePanel = uiManager_.getPanel<ScenePanel>()) {
-                    scenePanel->processDelayedDeletions(runtimeState.selectedEntity, runtimeState.selectedObjectId);
-                }
-            }
-
-           private:
-            UIManager& uiManager_;
-        };
-
-    }  // namespace
-
     App::App(bool fullscreen)
-        : window(width(), height(), "Vulkan Editor", fullscreen), device(window), renderer(window, device), resourceManager(device), sceneSerializer(*engineState.sceneRuntimeService().view().scene, resourceManager) {
+        : window(width(), height(), "Vulkan Editor", fullscreen),
+          device(window),
+          renderer(window, device),
+          resourceManager(device),
+          sceneSerializer(engineState.scene(), resourceManager) {
         init();
     }
 
@@ -95,46 +89,34 @@ namespace engine {
         } catch (const std::exception& e) {
             std::cerr << "[App::~App] Shutdown drain failed: " << e.what() << '\n';
         } catch (...) {
-            std::cerr << "[App::~App] Shutdown drain failed with unknown exception\n";
+            std::cerr << "[App::~App] Shutdown drain failed\n";
         }
-
         GpuProfiler::instance().shutdown();
     }
 
     void App::init() {
-        // Enable thread-local command pools BEFORE any system uses multithreaded
-        // command buffer recording. This avoids VkCommandPool threading validation
-        // errors when worker threads allocate secondary command buffers while the
-        // main thread performs single-time commands (e.g., texture uploads).
         device.enableThreadLocalCommandPools();
 
-        // 1. Setup explicit RenderContext dependency for EngineState.
         renderContext        = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
         renderContextAdapter = std::make_unique<RenderContextAdapter>(renderContext.get());
 
-        // 2. Setup Scene & Camera
         setupScene();
 
-        // 3. Initialize centralized EngineState (systems, descriptors, pools, post-process)
-        engineState.initialize(device, renderer, resourceManager, renderContextAdapter.get(), &window, multithreadedRecordingEnabled, multithreadedRecordingThreads);
-        engineFacade = std::make_unique<EngineFacade>(engineState);
+        engineState.initialize(device, renderer, resourceManager,
+            renderContextAdapter.get(), &window,
+            multithreadedRecordingEnabled, multithreadedRecordingThreads);
+        engineState.setSerializer(&sceneSerializer);
 
-        auto rendering    = engineState.renderingService().view();
-        auto sceneRuntime = engineState.sceneRuntimeService().view();
-
-        // Wire infrastructure adapters for runtime state access.
-        sceneRuntimeAccessAdapter   = std::make_unique<SceneRuntimeAccessAdapter>(engineState);
-        postProcessingAccessAdapter = std::make_unique<PostProcessingAccessAdapter>(engineState);
-
+        // Sceneserializer bindings
         sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
-            .showSkybox                    = sceneRuntimeAccessAdapter->showSkybox(),
-            .showGrid                      = sceneRuntimeAccessAdapter->showGrid(),
-            .showDebugObjects              = sceneRuntimeAccessAdapter->showDebugObjects(),
-            .physicsSimulationRunning      = sceneRuntimeAccessAdapter->physicsSimulationRunning(),
-            .skySettings                   = sceneRuntimeAccessAdapter->skySettings(),
-            .postProcessPush               = sceneRuntimeAccessAdapter->postProcessPush(),
-            .iblSystem                     = rendering.iblSystem,
-            .modelRenderSystem             = rendering.modelRenderSystem,
+            .showSkybox                    = &engineState.showSkybox(),
+            .showGrid                      = &engineState.showGrid(),
+            .showDebugObjects              = &engineState.showDebugObjects(),
+            .physicsSimulationRunning      = &engineState.physicsRunning(),
+            .skySettings                   = &engineState.skySettings(),
+            .postProcessPush               = &engineState.postProcess(),
+            .iblSystem                     = &engineState.system<IBLSystem>(),
+            .modelRenderSystem             = &engineState.system<ModelRenderSystem>(),
             .getGpuProfilerEnabled         = []() { return GpuProfiler::instance().isEnabled(); },
             .setGpuProfilerEnabled         = [](bool enabled) { GpuProfiler::instance().setEnabled(enabled); },
             .multithreadedRecordingEnabled = &multithreadedRecordingEnabled,
@@ -142,160 +124,66 @@ namespace engine {
             .debugMode                     = &debugMode,
         });
 
-        scenePersistencePort           = std::make_unique<ScenePersistenceAdapter>(sceneSerializer);
-        physicsRuntimePort             = std::make_unique<PhysicsRuntimeAdapter>(engineState);
-        environmentLightingPort        = std::make_unique<EnvironmentLightingAdapter>(device, engineState);
-        sceneEntityPort                = std::make_unique<SceneEntityAdapter>(engineState);
-        cameraPort                     = std::make_unique<CameraAdapter>(engineState);
-        transformPort                  = std::make_unique<TransformAdapter>(engineState);
-        sceneSettingsPort              = std::make_unique<SceneSettingsAdapter>(engineState);
-        loadSceneUseCase               = std::make_unique<LoadSceneUseCase>(*sceneRuntime.scene, *scenePersistencePort, physicsRuntimePort.get());
-        reconcileSceneLoadUseCase      = std::make_unique<ReconcileSceneLoadUseCase>(*sceneRuntime.scene);
-        saveSceneUseCase               = std::make_unique<SaveSceneUseCase>(*scenePersistencePort);
-        syncEnvironmentLightingUseCase = std::make_unique<SyncEnvironmentLightingUseCase>(*environmentLightingPort);
-        sceneEntityManagementUseCase   = std::make_unique<SceneEntityManagementUseCase>(*sceneEntityPort);
-        cameraManagementUseCase        = std::make_unique<CameraManagementUseCase>(*cameraPort);
-        transformManipulationUseCase   = std::make_unique<TransformManipulationUseCase>(*transformPort);
-        sceneSettingsManagementUseCase = std::make_unique<SceneSettingsManagementUseCase>(*sceneSettingsPort, *physicsRuntimePort);
-
-        // Infrastructure adapters for render pass state views.
-        descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
-        runtimeStateAdapter     = std::make_unique<RuntimeStateAdapter>(engineState);
-
-        // 4. Setup UI
         setupUI();
 
-        sceneSelectionMaintenancePort           = std::make_unique<SceneSelectionMaintenanceAdapter>(*uiManager);
-        processSceneSelectionMaintenanceUseCase = std::make_unique<ProcessSceneSelectionMaintenanceUseCase>(*sceneSelectionMaintenancePort);
-
-        // If a scene file exists in the working directory, load it at startup
         if (std::filesystem::exists("scene.json")) {
-            std::cout << "[App] Found scene.json, loading at startup..." << '\n';
-            auto loadRefs = sceneRuntimeState();
-
-            if (loadSceneUseCase->execute("scene.json", loadRefs)) {
-                std::cout << "[App] Loaded scene.json at startup" << '\n';
-            } else {
-                std::cout << "[App] Failed to deserialize scene.json at startup" << '\n';
+            std::cout << "[App] Loading scene.json at startup...\n";
+            if (engineState.loadScene("scene.json")) {
+                std::cout << "[App] Loaded scene.json\n";
             }
         }
 
-        // 5. Setup Render Graph
         renderPipeline = std::make_unique<RenderPipeline>(renderer);
         setupRenderGraph();
 
-        // 6. Initialize viewport texture (after EngineState and render graph)
-        viewportTexture_.create(device, VkExtent2D{1024, 768});
-
-        // Initialize viewport display (renders HDR viewport texture to swap chain)
-        viewportDisplay_.initialize(
-            device,
-            renderer.getSwapChainRenderPass(),
-            renderer.getSwapChainFormat(),
-            renderer.getSwapChainExtent());
-
-        // Initialize viewport panel (must come after viewportTexture_.create()
-        // because the texture's image view is needed for ImGui registration)
+        viewport_.create(device, VkExtent2D{1024, 768});
         if (viewportPanel_) {
-            viewportPanel_->initialize(*imguiManager, &viewportTexture_, VkExtent2D{600, 400});
+            viewportPanel_->setViewport(&viewport_, VkExtent2D{600, 400});
         }
 
-        (void) GpuProfiler::instance().initialize(
-            device.device(),
+        GpuProfiler::instance().initialize(device.device(),
             device.getProperties().limits.timestampPeriod,
-            static_cast<uint32_t>(SwapChain::maxFramesInFlight()),
-            32);
-
-        // Profiling starts disabled by default and can be enabled from Settings.
+            static_cast<uint32_t>(SwapChain::maxFramesInFlight()), 32);
         GpuProfiler::instance().setEnabled(false);
     }
 
     void App::setupScene() {
-        camera                   = std::make_unique<Camera>();
-        auto sceneState          = engineState.sceneRuntimeService().view();
-        *sceneState.cameraEntity = sceneState.scene->createEntity();
-        sceneState.scene->getRegistry().emplace<TransformComponent>(*sceneState.cameraEntity);
-        sceneState.scene->getRegistry().emplace<NameComponent>(*sceneState.cameraEntity, "Camera");
-        sceneState.scene->getRegistry().get<TransformComponent>(*sceneState.cameraEntity).translation = {0.0f, -0.2f, -2.5f};
-        sceneState.scene->getRegistry().emplace<CameraComponent>(*sceneState.cameraEntity);
-    }
-
-    void App::setupSystems() {
-        // All systems, descriptor pools and per-frame descriptor sets are now owned
-        // and initialized by EngineState::initialize(). Nothing to do here.
-        (void) device;
-        (void) renderer;  // keep unused param silence free if needed
+        camera         = std::make_unique<Camera>();
+        auto camEntity = engineState.createEntity();
+        engineState.scene().getRegistry().emplace<TransformComponent>(camEntity);
+        engineState.scene().getRegistry().emplace<NameComponent>(camEntity, "Camera");
+        engineState.scene().getRegistry().get<TransformComponent>(camEntity).translation = {0.0f, -0.2f, -2.5f};
+        engineState.scene().getRegistry().emplace<CameraComponent>(camEntity);
+        engineState.setCameraEntity(camEntity);
     }
 
     void App::setupUI() {
-        imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(), static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
+        imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(),
+            static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
         uiManager    = std::make_unique<UIManager>(*imguiManager);
 
-        // Wire save/load callbacks through UIManager
         uiManager->setOnSaveScene([this]() {
-            std::cout << "Saving scene to scene.json..." << '\n';
-            if (!saveSceneUseCase->execute("scene.json")) {
-                std::cout << "[App] Failed to serialize scene.json\n";
-            }
+            engineState.saveScene("scene.json");
         });
         uiManager->setOnLoadScene([this]() {
-            std::cout << "Loading scene from scene.json..." << '\n';
-            auto loadRefs = sceneRuntimeState();
-
-            if (loadSceneUseCase->execute("scene.json", loadRefs)) {
-                std::cout << "[App] Successfully deserialized scene.json\n";
-            } else {
-                std::cout << "[App] Failed to deserialize scene.json\n";
-            }
+            engineState.loadScene("scene.json");
         });
 
-        // --- Register panels with docking constraints ---
         auto& registry = uiManager->getPanelRegistry();
-        auto& state    = uiManager->getUIState();
 
-        // Scene hierarchy panel — dock left
-        auto scenePanel = std::make_unique<ScenePanel>(device, &engineState);
-        registry.registerPanel("SceneHierarchy", std::move(scenePanel), DockConstraints{
-                                                                            .preferredZone = DockZone::DockLeft,
-                                                                            .minSizeX      = 250.0f,
-                                                                            .minSizeY      = 200.0f,
-                                                                        });
+        auto scenePanel = std::make_unique<ScenePanel>(device, engineState);
+        registry.registerPanel("SceneHierarchy", std::move(scenePanel), DockConstraints{.preferredZone = DockZone::DockLeft, .minSizeX = 250.0f, .minSizeY = 200.0f});
 
-        // Inspector panel — dock right
-        auto inspectorPanel = std::make_unique<InspectorPanel>(
-            *sceneRuntimeAccessAdapter->scene(),
-            sceneRuntimeAccessAdapter->physicsSimulationRunning(),
-            sceneRuntimeAccessAdapter->showColliderWireframes(),
-            sceneRuntimeAccessAdapter->solidGroundEnabled(),
-            physicsRuntimePort->joltPhysicsSystem());
-        registry.registerPanel("Inspector", std::move(inspectorPanel), DockConstraints{
-                                                                           .preferredZone = DockZone::DockRight,
-                                                                           .minSizeX      = 300.0f,
-                                                                           .minSizeY      = 200.0f,
-                                                                       });
+        auto inspectorPanel = std::make_unique<InspectorPanel>(engineState);
+        registry.registerPanel("Inspector", std::move(inspectorPanel), DockConstraints{.preferredZone = DockZone::DockRight, .minSizeX = 300.0f, .minSizeY = 200.0f});
 
-        // Settings panel — dock bottom
-        auto settingsPanel = std::make_unique<SettingsPanel>(&engineState, multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
-        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{
-                                                                         .preferredZone = DockZone::DockBottom,
-                                                                         .minSizeX      = 400.0f,
-                                                                         .minSizeY      = 150.0f,
-                                                                     });
+        auto settingsPanel = std::make_unique<SettingsPanel>(&engineState,
+            multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
+        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::DockBottom, .minSizeX = 400.0f, .minSizeY = 150.0f});
 
-        // Physics panel — dockable anywhere
-        auto physicsPanel = std::make_unique<PhysicsPanel>(
-            *sceneRuntimeAccessAdapter->scene(),
-            sceneRuntimeAccessAdapter->physicsSimulationRunning(),
-            sceneRuntimeAccessAdapter->showColliderWireframes(),
-            sceneRuntimeAccessAdapter->solidGroundEnabled(),
-            physicsRuntimePort->joltPhysicsSystem());
-        registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{
-                                                                       .preferredZone = DockZone::DockCenter,
-                                                                       .minSizeX      = 300.0f,
-                                                                       .minSizeY      = 200.0f,
-                                                                   });
+        auto physicsPanel = std::make_unique<PhysicsPanel>(engineState);
+        registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 300.0f, .minSizeY = 200.0f});
 
-        // --- Toolbar panel ---
         auto toolbar = std::make_unique<ToolbarPanel>();
         uiManager->setToolbarPanel(std::move(toolbar));
         uiManager->addToolbarToggle("Scene", registry.getPanel("SceneHierarchy"));
@@ -303,51 +191,63 @@ namespace engine {
         uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
 
-        // --- Viewport panel ---
         viewportPanel_ = std::make_unique<ViewportPanel>();
-        registry.registerPanel("Viewport", std::move(viewportPanel_), DockConstraints{
-                                                                          .preferredZone = DockZone::DockCenter,
-                                                                          .minSizeX      = 400.0f,
-                                                                          .minSizeY      = 300.0f,
-                                                                      });
+        registry.registerPanel("Viewport", std::move(viewportPanel_), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 400.0f, .minSizeY = 300.0f});
     }
 
     void App::setupRenderGraph() {
         auto graph = std::make_unique<RenderGraph>();
 
-        // Create infrastructure adapters for render pass state views.
-        descriptorAccessAdapter = std::make_unique<DescriptorAccessAdapter>(engineState);
-        runtimeStateAdapter     = std::make_unique<RuntimeStateAdapter>(engineState);
-        animationAccessAdapter  = std::make_unique<AnimationAccessAdapter>(engineState.animationRuntimeService().animation());
-        compositionAdapter      = std::make_unique<CompositionAdapter>(engineState, uiManager.get());
+        // UpdatePass
+        graph->addPass(std::make_unique<UpdatePass>(
+            engineState.systemPtr<ObjectSelectionSystem>(),
+            engineState.systemPtr<InputSystem>(),
+            engineState.systemPtr<JoltPhysicsSystem>(),
+            engineState.physicsRunning(),
+            renderer));
 
-        // Build state views from adapters for pass injection.
-        RenderingStateView    renderingView    = engineState.renderingService().view();
-        SceneRuntimeStateView sceneRuntimeView = engineState.sceneRuntimeService().view();
-        InputStateView        inputView        = engineState.inputService().view();
+        // ComputePass
+        graph->addPass(std::make_unique<ComputePass>(engineState.systemPtr<AnimationSystem>()));
 
-        // EngineFacade — single accessor for all pass state needs.
-        EngineFacade& engineFacadeRef = *engineFacade;
+        // ShadowPass
+        graph->addPass(std::make_unique<ShadowPass>(
+            engineState.system<ShadowSystem>(),
+            engineState.renderContext(),
+            engineState.scene(),
+            engineState.shadowSettings()));
 
-        // 1. Update Pass
-        graph->addPass(std::make_unique<UpdatePass>(engineFacadeRef, physicsRuntimePort.get(), renderer));
+        // DepthPrepass
+        graph->addPass(std::make_unique<DepthPrepass>(
+            engineState.system<ModelRenderSystem>(),
+            renderer));
 
-        // 2. Compute Pass
-        graph->addPass(std::make_unique<ComputePass>(animationAccessAdapter.get()));
+        // GbufferPass (systems via DI, descriptors via EngineState per-frame)
+        graph->addPass(std::make_unique<GbufferPass>(
+            engineState.system<ModelRenderSystem>(),
+            engineState, renderer,
+            engineState.renderContext()));
 
-        // 3. Shadow Pass (state views)
-        graph->addPass(std::make_unique<ShadowPass>(renderingView, sceneRuntimeView, renderContextAdapter.get()));
+        // DeferredLightingPass
+        graph->addPass(std::make_unique<DeferredLightingPass>(
+            engineState.system<DeferredLightingSystem>(),
+            engineState.system<ShadowSystem>(),
+            engineState, renderer, device,
+            engineState.renderContext()));
 
-        // 4. Depth Prepass (Offscreen Depth Only)
-        graph->addPass(std::make_unique<DepthPrepass>(renderingView, renderer));
+        // ForwardPass (transparency + debug + mipmaps)
+        graph->addPass(std::make_unique<ForwardPass>(
+            engineState.system<ModelRenderSystem>(),
+            engineState.system<GridRenderSystem>(),
+            engineState.system<LightSystem>(),
+            engineState.system<CameraSystem>(),
+            engineState.system<ColliderDebugRenderSystem>(),
+            engineState.system<SelectionOutlineSystem>(),
+            renderer,
+            engineState.editor()));
 
-        // 5. Offscreen Pass (Main Scene - Load depth from prepass)
-        graph->addPass(std::make_unique<OffscreenPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, device, debugMode));
-
-        // 5.5. Copy offscreen color to viewport texture + render to swap chain
+        // ViewportCopy — copies offscreen color to viewport texture for ImGui display
         graph->addPass(std::make_unique<LambdaRenderPass>("ViewportCopy",
             [this](FrameInfo& frameInfo) {
-                // Copy offscreen color to viewport texture
                 VkImage srcImage = renderer.getOffscreenColorImage(frameInfo.frameIndex);
 
                 VkImageMemoryBarrier srcBarrier{};
@@ -367,21 +267,14 @@ namespace engine {
 
                 vkCmdPipelineBarrier(frameInfo.commandBuffer,
                     VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                    VK_PIPELINE_STAGE_TRANSFER_BIT,
-                    0,
-                    0,
-                    nullptr,
-                    0,
-                    nullptr,
-                    1,
-                    &srcBarrier);
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                    0, nullptr, 0, nullptr, 1, &srcBarrier);
 
-                // Transition viewport texture to TRANSFER_DST_OPTIMAL
-                VkImageLayout srcLayout = viewportTextureInitialized_
-                    ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                    : VK_IMAGE_LAYOUT_UNDEFINED;
-                viewportTexture_.transitionToTransferDst(frameInfo.commandBuffer, srcLayout);
-                viewportTextureInitialized_ = true;
+                VkImageLayout const srcLayout = viewportInitialized_
+                                              ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                              : VK_IMAGE_LAYOUT_UNDEFINED;
+                viewport_.transitionToTransferDst(frameInfo.commandBuffer, srcLayout);
+                viewportInitialized_ = true;
 
                 VkImageCopy copyRegion{};
                 copyRegion.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -392,52 +285,31 @@ namespace engine {
                 copyRegion.dstSubresource                = copyRegion.srcSubresource;
                 copyRegion.dstOffset                     = {0, 0, 0};
 
-                VkExtent2D const texExtent = viewportTexture_.getExtent();
-                VkExtent2D const srcExtent = frameInfo.extent;
-                copyRegion.extent.width  = std::min(texExtent.width, srcExtent.width);
-                copyRegion.extent.height = std::min(texExtent.height, srcExtent.height);
+                VkExtent2D const texExtent     = viewport_.getExtent();
+                copyRegion.extent.width  = std::min(texExtent.width, frameInfo.extent.width);
+                copyRegion.extent.height = std::min(texExtent.height, frameInfo.extent.height);
                 copyRegion.extent.depth  = 1;
 
                 vkCmdCopyImage(frameInfo.commandBuffer,
                     srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    viewportTexture_.getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    viewport_.getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                     1, &copyRegion);
 
-                // Transition viewport texture to SHADER_READ_ONLY
-                viewportTexture_.transitionToShaderReadOnly(frameInfo.commandBuffer,
+                viewport_.transitionToShaderReadOnly(frameInfo.commandBuffer,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-                // Render viewport texture to swap chain with tone mapping
-                if (viewportDisplay_.isValid()) {
-                    viewportDisplay_.setViewportTexture(viewportTexture_);
-                    viewportDisplay_.execute(frameInfo.commandBuffer,
-                        renderer.getSwapChainFramebuffer(frameInfo.frameIndex));
-                }
             }));
 
-        // 6. Composition Pass (PostProcess + UI)
-        graph->addPass(std::make_unique<CompositionPass>(renderer, renderingView, *descriptorAccessAdapter, *runtimeStateAdapter, compositionAdapter.get(), *camera, window));
+        // CompositionPass — UI overlay via callback instead of port interface
+        graph->addPass(std::make_unique<CompositionPass>(renderer, [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) { uiManager->render(frameInfo, cmd, cursorVisible); }, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
     }
 
     void App::run() {
-        auto currentTime   = std::chrono::high_resolution_clock::now();
-        auto lastHeartbeat = currentTime;
-
-        bool f11WasDown = false;
+        auto currentTime = std::chrono::high_resolution_clock::now();
 
         while (!window.shouldClose()) {
             glfwPollEvents();
-
-            // F3: toggle exclusive fullscreen (edge-detect)
-            int f11State = glfwGetKey(window.getGLFWwindow(), GLFW_KEY_F3);
-            if (f11State == GLFW_PRESS && !f11WasDown) {
-                window.toggleFullscreen();
-                f11WasDown = true;
-            } else if (f11State == GLFW_RELEASE) {
-                f11WasDown = false;
-            }
 
             auto  newTime   = std::chrono::high_resolution_clock::now();
             float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
@@ -446,68 +318,29 @@ namespace engine {
 
             update(frameTime);
             render(frameTime);
-
-            // Heartbeat log to detect freezes (once per second)
-            if (std::chrono::duration<float>(newTime - lastHeartbeat).count() >= 1.0f) {
-                lastHeartbeat = newTime;
-            }
         }
 
         device.WaitIdle();
     }
 
     void App::update(float frameTime) {
-        auto resources = engineState.resourceService().view();
-        if (resources.resourceManager != nullptr) {
-            resources.resourceManager->updateAsyncCallbacks();
+        engineState.resourceManager().updateAsyncCallbacks();
+
+        engineState.reconcileSceneLoad();
+
+        auto showSkybox = &engineState.showSkybox();
+        if (showSkybox != nullptr) {
+            engineState.syncEnvironmentLighting(*showSkybox);
         }
-
-        auto runtimeState = sceneRuntimeState();
-
-        if (reconcileSceneLoadUseCase != nullptr) {
-            reconcileSceneLoadUseCase->execute(runtimeState);
-        }
-
-        if (processSceneSelectionMaintenanceUseCase != nullptr) {
-            processSceneSelectionMaintenanceUseCase->execute(runtimeState);
-        }
-
-        if (syncEnvironmentLightingUseCase != nullptr) {
-            auto       rendering         = engineState.renderingService().view();
-            bool const showSkyboxEnabled = (rendering.showSkybox != nullptr) && *rendering.showSkybox;
-            syncEnvironmentLightingUseCase->execute(showSkyboxEnabled);
-        }
-    }
-
-    SceneRuntimeState App::sceneRuntimeState() {
-        auto sceneRuntime = engineState.sceneRuntimeService().view();
-        return SceneRuntimeState{
-            .physicsSimulationRunning          = *sceneRuntimeAccessAdapter->physicsSimulationRunning(),
-            .selectedEntity                    = *sceneRuntime.selectedEntity,
-            .cameraEntity                      = *sceneRuntime.cameraEntity,
-            .selectedObjectId                  = selectedObjectId,
-            .pendingUpdateCameraAfterSceneLoad = pendingUpdateCameraAfterSceneLoad,
-            .solidGroundEnabled                = *sceneRuntimeAccessAdapter->solidGroundEnabled(),
-        };
     }
 
     void App::render(float frameTime) {
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
-                // PostProcessingSystem lives in EngineState — recreate via port adapter.
-                postProcessingAccessAdapter->recreatePostProcessingSystemWithExistingLayout(device, renderer.getSwapChainRenderPass());
-                // Update ViewportDisplay with the new swap chain render pass handle.
-                // Without this, ViewportDisplay uses a destroyed render pass handle
-                // (garbage like 0xe000000000e) causing Vulkan validation error.
-                if (viewportDisplay_.isValid()) {
-                    viewportDisplay_.setRenderPass(renderer.getSwapChainRenderPass());
-                }
+                engineState.recreatePostProcessingSystem(device, renderer.getSwapChainRenderPass());
             }
 
-            int const frameIndex      = renderer.getFrameIndex();
-            auto      renderingState  = engineState.renderingService().view();
-            auto      sceneRuntime    = engineState.sceneRuntimeService().view();
-            auto*     animationSystem = animationAccessAdapter->getAnimationSystem();
+            int frameIndex = renderer.getFrameIndex();
 
             PickingSystem pickingSystem;
             FrameInfo     frameInfo{
@@ -515,30 +348,33 @@ namespace engine {
                 .frameTime           = frameTime,
                 .commandBuffer       = commandBuffer,
                 .camera              = *camera,
-                .globalDescriptorSet = renderingState.renderContextPort->getGlobalDescriptorSet(frameIndex),
+                .globalDescriptorSet = engineState.renderContext().getGlobalDescriptorSet(frameIndex),
                 .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-                .scene               = sceneRuntime.scene,
+                .scene               = &engineState.scene(),
                 .selectedObjectId    = selectedObjectId,
-                .selectedEntity      = *sceneRuntime.selectedEntity,
-                .cameraEntity        = *sceneRuntime.cameraEntity,
-                .morphManager        = animationSystem ? animationSystem->getMorphManager() : nullptr,
+                .selectedEntity      = engineState.selectedEntity(),
+                .cameraEntity        = engineState.cameraEntity(),
+                .morphManager        = engineState.systemPtr<AnimationSystem>()
+                                           ? engineState.system<AnimationSystem>().getMorphManager()
+                                           : nullptr,
                 .extent              = renderer.getSwapChainExtent(),
                 .debugMode           = debugMode,
             };
 
-            // Mouse picking: left click in the viewport
+            // Mouse picking
             static bool lastLeftClick = false;
             int         leftClick     = glfwGetMouseButton(window.getGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT);
             if (leftClick == GLFW_PRESS && !lastLeftClick) {
                 double mouseX, mouseY;
                 glfwGetCursorPos(window.getGLFWwindow(), &mouseX, &mouseY);
                 float aspect     = static_cast<float>(renderer.getSwapChainExtent().width) / renderer.getSwapChainExtent().height;
-                auto  pickResult = pickingSystem.pick(frameInfo, mouseX / renderer.getSwapChainExtent().width, mouseY / renderer.getSwapChainExtent().height, aspect);
+                auto  pickResult = pickingSystem.pick(frameInfo,
+                    mouseX / renderer.getSwapChainExtent().width,
+                    mouseY / renderer.getSwapChainExtent().height, aspect);
                 if (pickResult.has_value()) {
                     frameInfo.selectedEntity   = pickResult.value();
                     frameInfo.selectedObjectId = static_cast<uint32_t>(pickResult.value());
                 } else {
-                    // Clicked empty space: deselect
                     frameInfo.selectedEntity   = entt::null;
                     frameInfo.selectedObjectId = 0;
                 }
@@ -547,9 +383,9 @@ namespace engine {
 
             renderPipeline->execute(frameInfo);
 
-            selectedObjectId             = frameInfo.selectedObjectId;
-            *sceneRuntime.selectedEntity = frameInfo.selectedEntity;
-            *sceneRuntime.cameraEntity   = frameInfo.cameraEntity;
+            selectedObjectId = frameInfo.selectedObjectId;
+            engineState.setSelectedEntity(frameInfo.selectedEntity);
+            engineState.setCameraEntity(frameInfo.cameraEntity);
 
             renderer.endFrame();
         }

@@ -2,7 +2,6 @@
 #define EDITOR_UI_SCENE_HPP
 
 #include <entt/entity/fwd.hpp>
-#include <entt/entt.hpp>
 #include <functional>
 #include <imgui.h>
 #include <string>
@@ -12,7 +11,6 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneUtils.hpp"
 
-#include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine {

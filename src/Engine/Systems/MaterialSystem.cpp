@@ -1,6 +1,5 @@
 #include "Engine/Systems/MaterialSystem.hpp"
 
-#include <cstddef>
 #include <stdexcept>
 
 #include "Engine/Graphics/Descriptors.hpp"

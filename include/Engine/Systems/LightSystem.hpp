@@ -1,10 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LIGHTSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LIGHTSYSTEM_HPP
 
-#include <glm/glm.hpp>
-#include <glm/vec2.hpp>
-#include <glm/vec3.hpp>
-
 #include <memory>
 
 #include "Engine/Graphics/Device.hpp"

@@ -1,11 +1,8 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-
 #include <glm/glm.hpp>
 
 #include <entt/entt.hpp>
-#include <memory>
 #include <optional>
 
 namespace engine {

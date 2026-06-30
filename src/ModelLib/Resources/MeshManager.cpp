@@ -1,6 +1,5 @@
 #include "ModelLib/Resources/MeshManager.hpp"
 
-#include <cstdint>
 #include <iostream>
 #include <memory>
 

@@ -1,6 +1,5 @@
 #include "Engine/Systems/MorphTargetSystem.hpp"
 
-#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <memory>

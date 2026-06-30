@@ -8,20 +8,13 @@
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/PhysicsComponents.hpp"
-#include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "ModelLib/Resources/Model.hpp"
-#include "ModelLib/Resources/PBRMaterial.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/fwd.hpp"
-#include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/gtc/constants.hpp"
 
 namespace engine {
 

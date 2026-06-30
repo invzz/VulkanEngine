@@ -1,7 +1,6 @@
 #include "Engine/Scene/Components/AnimationGraph.hpp"
 
 #include <algorithm>
-#include <cmath>
 
 #include "Engine/Scene/components/AnimationComponent.hpp"
 

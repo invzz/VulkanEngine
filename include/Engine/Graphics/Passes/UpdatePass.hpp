@@ -1,27 +1,29 @@
-#include "Engine/Application/Ports/IPhysicsRuntimePort.hpp"
-#include "Engine/EngineFacade.hpp"
+#pragma once
+
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
+    class ObjectSelectionSystem;
+    class InputSystem;
+    class JoltPhysicsSystem;
     class Renderer;
-    class FrameInfo;
 
     class UpdatePass : public IRenderPass {
        public:
-        UpdatePass(EngineFacade& engine, IPhysicsRuntimePort* physicsPort, Renderer& renderer)
-            : engine_(engine), physicsPort_(physicsPort), renderer(renderer) {}
+        UpdatePass(ObjectSelectionSystem* objSel, InputSystem* input,
+            JoltPhysicsSystem* jolt, bool& physicsRunning,
+            Renderer& renderer);
 
-        [[nodiscard]] const std::string& getName() const override {
-            static const std::string name = "Update";
-            return name;
-        }
-        void execute(FrameInfo& frameInfo) override;
+        void                             execute(FrameInfo& frameInfo) override;
+        [[nodiscard]] const std::string& getName() const override;
 
        private:
-        EngineFacade&        engine_;
-        IPhysicsRuntimePort* physicsPort_ = nullptr;
-        Renderer&            renderer;
+        ObjectSelectionSystem* objSel_ = nullptr;
+        InputSystem*           input_  = nullptr;
+        JoltPhysicsSystem*     jolt_   = nullptr;
+        bool&                  physRunning_;
+        Renderer&              renderer_;
     };
 
 }  // namespace engine

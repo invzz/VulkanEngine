@@ -1,7 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALRENDERBINDINGS_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALRENDERBINDINGS_HPP
 
-#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <vector>

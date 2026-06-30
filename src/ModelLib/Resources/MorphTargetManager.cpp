@@ -1,8 +1,6 @@
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 
 #include <algorithm>
-#include <cstddef>
-#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <utility>
@@ -14,7 +12,6 @@
 #include "Engine/Graphics/MorphTargetCompute.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-#include "glm/ext/vector_float4.hpp"
 #include "vulkan/vulkan_core.h"
 
 namespace engine {

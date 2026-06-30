@@ -19,7 +19,6 @@
 // std headers
 #include <algorithm>
 #include <bit>
-#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <mutex>

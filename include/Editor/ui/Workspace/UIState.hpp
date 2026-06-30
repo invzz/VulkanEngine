@@ -79,7 +79,7 @@ namespace engine {
         // --- Layout ---
 
         /** Get the current layout preset. */
-        [[nodiscard]]  LayoutPreset getLayoutPreset() const {
+        [[nodiscard]] LayoutPreset getLayoutPreset() const {
             return layoutPreset_;
         }
 

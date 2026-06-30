@@ -13,9 +13,7 @@
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
-#include "glm/ext/vector_float4.hpp"
 #include "glm/trigonometric.hpp"
 #include "vulkan/vulkan_core.h"
 

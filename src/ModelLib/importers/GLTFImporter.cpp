@@ -2,14 +2,12 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/PBRMaterial.hpp"
-#include "glm/ext/matrix_float3x3.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"

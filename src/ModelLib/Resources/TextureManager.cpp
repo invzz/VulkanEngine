@@ -1,6 +1,5 @@
 #include "ModelLib/Resources/TextureManager.hpp"
 
-#include <cstdint>
 #include <memory>
 #include <stdexcept>
 

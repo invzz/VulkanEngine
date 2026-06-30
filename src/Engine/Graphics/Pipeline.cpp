@@ -1,7 +1,6 @@
 #include "Engine/Graphics/Pipeline.hpp"
 
 #include <cassert>
-#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>

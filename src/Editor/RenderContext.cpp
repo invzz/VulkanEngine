@@ -1,7 +1,5 @@
 #include "Editor/RenderContext.hpp"
 
-#include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -19,7 +17,6 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "ModelLib/Resources/MeshManager.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
 #include "vulkan/vulkan_core.h"

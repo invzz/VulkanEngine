@@ -1,7 +1,5 @@
 #include "Engine/Systems/PhysicsSystem.hpp"
 
-#include <cassert>
-
 namespace engine {
 
     PhysicsSystem::PhysicsSystem(Device& device) : device(device) {

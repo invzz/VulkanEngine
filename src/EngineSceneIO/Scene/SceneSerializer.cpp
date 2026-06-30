@@ -1,6 +1,5 @@
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 
-#include <cstdint>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -25,7 +24,6 @@
 #include "ModelLib/Resources/PBRMaterial.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/fwd.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "nlohmann/json_fwd.hpp"
 
 namespace {

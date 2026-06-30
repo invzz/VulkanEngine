@@ -36,7 +36,7 @@ namespace engine {
         void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
         void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
         void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
-        void        transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
+        void transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
 
         // Accessors
         [[nodiscard]] VkRenderPass getSwapChainRenderPass() const {

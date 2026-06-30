@@ -1,6 +1,5 @@
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include <cstdint>
 #include <exception>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>

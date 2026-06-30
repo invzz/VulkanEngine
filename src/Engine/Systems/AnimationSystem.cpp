@@ -1,9 +1,6 @@
 #include "Engine/Systems/AnimationSystem.hpp"
 
 #include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
 #include <exception>
 #include <iostream>
 #include <memory>
@@ -19,7 +16,6 @@
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "glm/common.hpp"
-#include "glm/ext/matrix_float4x4.hpp"
 #include "glm/gtc/quaternion.hpp"
 
 namespace engine {

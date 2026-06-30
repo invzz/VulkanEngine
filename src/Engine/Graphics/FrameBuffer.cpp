@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstddef>
-#include <cstdint>
 #include <stdexcept>
 
 #include "Engine/Graphics/Device.hpp"
@@ -567,7 +565,7 @@ namespace engine {
         nearestSamplerInfo.mipmapMode          = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         // Depth is only sampled at mip level 0; clamp maxLod to 1 to avoid
         // referencing unused mip levels whose layout is UNDEFINED.
-        nearestSamplerInfo.maxLod              = 1.0f;
+        nearestSamplerInfo.maxLod = 1.0f;
 
         VkImageUsageFlags colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         if (useMipmaps) {

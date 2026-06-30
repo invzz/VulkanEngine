@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <cstdint>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -19,7 +18,6 @@
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
-#include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightingRenderBindings.hpp"
 #include "Engine/Systems/MaterialRenderBindings.hpp"
@@ -28,9 +26,6 @@
 #include "ModelLib/Resources/PBRMaterial.hpp"
 #include "ModelLib/Resources/Texture.hpp"
 #include "entt/entity/fwd.hpp"
-#include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/vector_float2.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 #include "glm/matrix.hpp"
 #include "vulkan/vulkan_core.h"

@@ -16,7 +16,6 @@
 #include <utility>
 
 #include "Engine/Graphics/Device.hpp"
-#include "Engine/Systems/IBL/VTexIO.hpp"
 
 #include "ModelLib/Resources/MeshManager.hpp"
 #include "ModelLib/Resources/Model.hpp"
@@ -25,8 +24,6 @@
 #include "ModelLib/Resources/TextureManager.hpp"
 
 // Simple SHA256 implementation for content hashing
-#include <cstdint>
-#include <cstring>
 #include <string>
 #include <thread>
 

@@ -9,7 +9,6 @@
 #include <entt/entt.hpp>
 #include <memory>
 #include <unordered_map>
-#include <vector>
 
 #include "Jolt/Jolt.h"
 
@@ -18,7 +17,6 @@
 #include "Jolt/Core/TempAllocator.h"
 #include "Jolt/Physics/Body/Body.h"
 #include "Jolt/Physics/Body/BodyCreationSettings.h"
-#include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayerInterfaceTable.h"
 #include "Jolt/Physics/Collision/BroadPhase/ObjectVsBroadPhaseLayerFilterTable.h"
 #include "Jolt/Physics/Collision/CastResult.h"

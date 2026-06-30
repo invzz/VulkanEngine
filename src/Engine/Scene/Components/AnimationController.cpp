@@ -1,7 +1,6 @@
 #include "Engine/Scene/Components/AnimationController.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <limits>
 
 namespace engine {

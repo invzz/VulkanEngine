@@ -2,10 +2,8 @@
 #define EDITOR_WORKSPACE_COMMAND_SYSTEM_HPP
 
 #include <deque>
-#include <functional>
 #include <memory>
 #include <string>
-#include <vector>
 
 namespace engine {
 

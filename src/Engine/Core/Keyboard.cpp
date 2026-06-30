@@ -5,7 +5,7 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "glm/common.hpp"
-#include "glm/ext/vector_float3.hpp"
+#include <glm/ext/vector_float3.hpp>
 #include "glm/geometric.hpp"
 #include "glm/gtc/constants.hpp"
 
@@ -37,7 +37,7 @@ namespace engine {
 
         auto            forwardDir = transform.getForwardDir();
         auto            rightDir   = transform.getRightDir();
-        const glm::vec3 upDir{0.0f, 1.0f, 0.0f};
+        constexpr glm::vec3 upDir{0.0f, 1.0f, 0.0f};
 
         glm::vec3 movement{0.0f};
         if (isKeyPressed(mappings.moveForward)) {

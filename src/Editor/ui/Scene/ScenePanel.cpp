@@ -1,6 +1,5 @@
 #include "Editor/ui/Scene/ScenePanel.hpp"
 
-#include <cstdint>
 #include <imgui.h>
 #include <iostream>
 #include <string>
@@ -19,157 +18,87 @@
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/entity.hpp"
-#include "entt/entity/fwd.hpp"
-#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
-    ScenePanel::ScenePanel(Device& device, EngineState* engineState)
-        : device_(device), engineState_(engineState) {}
+    ScenePanel::ScenePanel(Device& device, EngineState& state)
+        : device_(device), state_(state) {}
 
     void ScenePanel::render(FrameInfo& frameInfo) {
-        if (!visible_) {
+        if (!visible_)
             return;
-        }
 
-        if (engineState_ == nullptr) {
-            return;
-        }
-
-        auto sceneState = engineState_->sceneRuntimeService().view();
-        if (sceneState.scene == nullptr) {
-            return;
-        }
-
-        // Push theme style
         ui::UI::PushThemeStyle();
 
-        Scene& scene     = *sceneState.scene;
-        auto&  registry  = scene.getRegistry();
-        auto   resources = engineState_->resourceService().view();
+        Scene& scene    = state_.scene();
+        auto&  registry = scene.getRegistry();
+        auto&  rm       = state_.resourceManager();
 
         if (ImGui::Begin("Scene Objects", &visible_)) {
-            if (resources.resourceManager != nullptr) {
-                resources.resourceManager->updateAsyncCallbacks();
-            }
+            rm.updateAsyncCallbacks();
 
-            // --- Search filter ---
+            // Search filter
             static char searchFilter[128] = "";
             ImGui::SetNextItemWidth(-1);
             ui::UI::InputText("##search", searchFilter, sizeof(searchFilter));
             ui::UI::Separator();
 
-            // --- Pending loads ---
-            ui::SceneComponents::drawPendingLoadsSection(pendingLoads_, resources.resourceManager);
+            // Pending loads
+            ui::SceneComponents::drawPendingLoadsSection(pendingLoads_, &rm);
 
-            // --- Entity count ---
-            auto        view       = registry.view<entt::entity>();
-            std::string entityText = "Entities: " + std::to_string(view.size());
-            ui::UI::TextColored(entityText.c_str(), ImVec4(0.6f, 0.6f, 0.7f, 1.0f));
+            // Entity count
+            auto view = registry.view<entt::entity>();
+            ui::UI::TextColored(("Entities: " + std::to_string(view.size())).c_str(),
+                ImVec4(0.6f, 0.6f, 0.7f, 1.0f));
             ui::UI::Separator();
 
-            // --- Collect entities ---
             auto collection = ui::SceneComponents::collectEntities(scene);
-
-            // --- Enforce single directional light policy ---
             ui::SceneComponents::enforceSingleDirectionalLight(collection.dirLights, toDelete_);
 
-            // --- Draw sections ---
-            ui::SceneComponents::drawCameraSection(collection.cameras,
-                searchFilter,
-                frameInfo,
-                scene,
-                registry,
-                toDelete_);
+            ui::SceneComponents::drawCameraSection(collection.cameras, searchFilter,
+                frameInfo, scene, registry, toDelete_);
 
-            ui::SceneComponents::drawLightSection(collection.dirLights,
-                collection.pointLights,
-                collection.spotLights,
-                searchFilter,
-                frameInfo,
-                scene,
-                registry,
-                toDelete_);
+            ui::SceneComponents::drawLightSection(collection.dirLights, collection.pointLights,
+                collection.spotLights, searchFilter, frameInfo, scene, registry, toDelete_);
 
-            // --- Models section ---
-            auto enqueueModelLoad = [&](const std::string&           fullPath,
-                                        const std::string&           name,
+            auto enqueueModelLoad = [&](const std::string& fullPath, const std::string& name,
                                         const ModelInsertionOptions& opts,
                                         StaticColliderImportMode     colliderMode) {
-                if ((engineState_ == nullptr) || (resources.resourceManager == nullptr)) {
-                    return;
-                }
-
-                AsyncLoadId const id = resources.resourceManager->enqueueModelLoad(
-                    fullPath,
-                    opts.enableTextures,
-                    opts.loadMaterials,
-                    opts.enableMorphTargets,
-                    ResourcePriority::HIGH,
-                    [this, fullPath, name, colliderMode](const std::shared_ptr<engine::Model>& modelPtr) {
-                        if (!modelPtr || engineState_ == nullptr) {
-                            std::cerr << "[Model] Async load returned null model: " << fullPath << "\n";
+                AsyncLoadId id = rm.enqueueModelLoad(fullPath, opts.enableTextures, opts.loadMaterials, opts.enableMorphTargets, ResourcePriority::HIGH, [this, fullPath, name, colliderMode](const std::shared_ptr<Model>& modelPtr) {
+                        if (!modelPtr) {
+                            std::cerr << "[Model] Async load returned null: " << fullPath << "\n";
                             return;
                         }
-
-                        auto sceneState = engineState_->sceneRuntimeService().view();
-                        if (sceneState.scene == nullptr) {
-                            std::cerr << "[Model] Scene runtime state unavailable for async insertion: " << fullPath << "\n";
-                            return;
-                        }
-
-                        Scene& scene    = *sceneState.scene;
-                        auto&  registry = scene.getRegistry();
-
-                        auto entity = scene.createEntity();
-                        registry.emplace<TransformComponent>(entity);
-                        registry.emplace<ModelComponent>(entity, modelPtr);
-                        registry.emplace<NameComponent>(entity, name);
+                        Scene& s    = state_.scene();
+                        auto&  reg  = s.getRegistry();
+                        auto entity = s.createEntity();
+                        reg.emplace<TransformComponent>(entity);
+                        reg.emplace<ModelComponent>(entity, modelPtr);
+                        reg.emplace<NameComponent>(entity, name);
 
                         if (ui::SceneComponents::shouldCreateStaticCollider(fullPath, name, colliderMode)) {
-                            auto& rigidBody      = registry.emplace<RigidBodyComponent>(entity);
-                            rigidBody.isStatic   = true;
-                            rigidBody.mode       = RigidBodyComponent::PhysicsMode::Static;
-                            rigidBody.useGravity = false;
-
-                            auto& collider     = registry.emplace<ColliderComponent>(entity);
-                            collider.shape     = ColliderComponent::ShapeType::Mesh;
-                            collider.isTrigger = false;
+                            auto& rb = reg.emplace<RigidBodyComponent>(entity);
+                            rb.isStatic = true;
+                            rb.mode = RigidBodyComponent::PhysicsMode::Static;
+                            rb.useGravity = false;
+                            auto& col = reg.emplace<ColliderComponent>(entity);
+                            col.shape = ColliderComponent::ShapeType::Mesh;
+                            col.isTrigger = false;
                         }
 
-                        auto& modelComp = registry.get<ModelComponent>(entity);
-                        if (modelComp.model->hasAnimations()) {
-                            registry.emplace<AnimationComponent>(entity, modelComp.model);
-                        }
-                        if (modelComp.model->hasMorphTargets()) {
-                            if (!registry.all_of<AnimationComponent>(entity)) {
-                                registry.emplace<AnimationComponent>(entity, modelComp.model);
-                            }
-                        }
+                        auto& mc = reg.get<ModelComponent>(entity);
+                        if (mc.model->hasAnimations())
+                            reg.emplace<AnimationComponent>(entity, mc.model);
+                        if (mc.model->hasMorphTargets() && !reg.all_of<AnimationComponent>(entity))
+                            reg.emplace<AnimationComponent>(entity, mc.model);
 
-                        std::cout << "[Model] Added to scene (async): " << fullPath << "\n";
-                    },
-                    [fullPath](const std::string& error) {
-                        std::cerr << "[Model] Async load failed for " << fullPath << ": " << error << '\n';
-                    });
+                        std::cout << "[Model] Added to scene (async): " << fullPath << "\n"; }, [fullPath](const std::string& error) { std::cerr << "[Model] Async load failed for " << fullPath << ": " << error << "\n"; });
 
-                ui::SceneComponents::PendingModelLoad pending;
-                pending.id           = id;
-                pending.path         = fullPath;
-                pending.name         = name;
-                pending.options      = opts;
-                pending.colliderMode = colliderMode;
-                pendingLoads_.emplace_back(std::move(pending));
+                pendingLoads_.push_back({id, fullPath, name, opts, colliderMode});
             };
 
-            ui::SceneComponents::drawModelSection(collection.models,
-                searchFilter,
-                frameInfo,
-                scene,
-                registry,
-                toDelete_,
-                colliderImportMode_,
-                enqueueModelLoad);
+            ui::SceneComponents::drawModelSection(collection.models, searchFilter,
+                frameInfo, scene, registry, toDelete_, colliderImportMode_, enqueueModelLoad);
         }
         ImGui::End();
 
@@ -177,24 +106,12 @@ namespace engine {
     }
 
     void ScenePanel::processDelayedDeletions(entt::entity& selectedEntity, uint32_t& selectedObjectId) {
-        if (toDelete_.empty()) {
+        if (toDelete_.empty())
             return;
-        }
-
-        if (engineState_ == nullptr) {
-            toDelete_.clear();
-            return;
-        }
-
-        auto sceneState = engineState_->sceneRuntimeService().view();
-        if (sceneState.scene == nullptr) {
-            toDelete_.clear();
-            return;
-        }
 
         vkDeviceWaitIdle(device_.device());
 
-        Scene& scene = *sceneState.scene;
+        Scene& scene = state_.scene();
 
         for (auto entity : toDelete_) {
             if (entity == selectedEntity) {

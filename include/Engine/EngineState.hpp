@@ -1,15 +1,19 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 #include <memory>
 #include <string>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
 
+#include "Engine/EditorState.hpp"
 #include "Engine/Graphics/DescriptorManager.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
+#include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
-#include "Engine/State/StateServices.hpp"
-#include "Engine/State/StateViews.hpp"
 #include "Engine/SystemRegistry.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
@@ -29,7 +33,10 @@
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
+#include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
+
+#include <entt/entt.hpp>
 
 namespace engine {
 
@@ -39,336 +46,208 @@ namespace engine {
     class Mouse;
     class Window;
 
-    // EngineState is the single source-of-truth for owned systems, scene and
-    // runtime settings. Pass a pointer/reference to render passes and systems
-    // so they can access the current runtime state without long parameter lists.
-    class EngineFacade;
-    class DescriptorManager;
-
+    /**
+     * EngineState — single source of truth: scene, settings, skybox/IBL,
+     * and type-safe DI system registry. Replaces the old port/adapter/use-case
+     * architecture with direct method calls.
+     */
     class EngineState {
        public:
         ~EngineState();
 
-        // lifecycle
-        void initialize(Device& device,
-            Renderer&           renderer,
-            ResourceManager&    resourceManager,
-            IRenderContextPort* requiredRenderContextPort,
-            Window*             window,
-            bool                multithreadedRecordingEnabled,
-            uint32_t            multithreadedRecordingThreads);
+        // ---- Lifecycle ----
+        void initialize(Device& device, Renderer& renderer, ResourceManager& rm,
+            IRenderContextPort* renderContext, Window* window,
+            bool mtRecording, uint32_t mtThreads);
 
-       private:
-        friend class EngineFacade;
-        friend class RenderingStateService;
-        friend class SceneRuntimeService;
-        friend class InputStateService;
-        friend class ResourceStateService;
-        friend class AnimationRuntimeService;
-        friend class PhysicsRuntimeService;
-
-        [[nodiscard]] RenderingStateView renderingState() {
-            return RenderingStateView{
-                .modelRenderSystem      = modelRenderSystem.get(),
-                .shadowSystem           = shadowSystem.get(),
-                .lightSystem            = lightSystem.get(),
-                .skyboxRenderSystem     = skyboxRenderSystem.get(),
-                .gridRenderSystem       = gridRenderSystem.get(),
-                .deferredLightingSystem = deferredLightingSystem.get(),
-                .postProcessingSystem   = postProcessingSystem.get(),
-                .iblSystem              = iblSystem.get(),
-                .camera                 = cameraSystem.get(),
-                .colliderDebug          = colliderDebugRenderSystem.get(),
-                .selectionOutline       = selectionOutlineSystem.get(),
-                .renderContextPort      = renderContextPort,
-                .showSkybox             = &showSkybox,
-                .showGrid               = &showGrid,
-                .showDebugObjects       = &showDebugObjects,
-                .showColliderWireframes = &showColliderWireframes,
-                .debugMode              = &debugMode,
-                .morphTargetManager     = morphTargetManager.get(),
-            };
+        // ---- DI container ----
+        template <typename T>
+        void registerSystem(std::unique_ptr<T>& sys) {
+            systems_[typeid(T)] = sys.get();
         }
 
-        [[nodiscard]] SceneRuntimeStateView sceneState() {
-            return SceneRuntimeStateView{
-                .scene          = &scene,
-                .selectedEntity = &selectedEntity,
-                .cameraEntity   = &cameraEntity,
-                .skybox         = skybox.get(),
-                .skySettings    = &skySettings,
-                .shadowSettings = &shadowSettings,
-            };
+        template <typename T>
+        T& system() {
+            return *static_cast<T*>(systems_.at(typeid(T)));
+        }
+        template <typename T>
+        T* systemPtr() {
+            auto it = systems_.find(typeid(T));
+            return it != systems_.end() ? static_cast<T*>(it->second) : nullptr;
         }
 
-        [[nodiscard]] InputStateView inputState() {
-            return InputStateView{
-                .keyboard              = keyboard.get(),
-                .mouse                 = mouse.get(),
-                .inputSystem           = inputSystem.get(),
-                .objectSelectionSystem = objectSelectionSystem.get(),
-                .cameraSystem          = cameraSystem.get(),
-            };
+        // ---- Scene ----
+        Scene& scene() {
+            return scene_;
+        }
+        entt::entity createEntity();
+        void         destroyEntity(entt::entity e);
+        bool         isValidEntity(entt::entity e) const;
+
+        entt::entity addCamera(const std::string& name = "");
+        entt::entity addDirectionalLight(const std::string& name = "");
+        entt::entity addPointLight(const std::string& name = "");
+        entt::entity addSpotLight(const std::string& name = "");
+        entt::entity addModel(const std::string& name = "", const std::string& path = "");
+
+        // ---- Selection & Camera ----
+        entt::entity selectedEntity() const {
+            return editor_.selectedEntity;
+        }
+        void setSelectedEntity(entt::entity e) {
+            editor_.selectedEntity = e;
+        }
+        entt::entity cameraEntity() const {
+            return cameraEntity_;
+        }
+        void setCameraEntity(entt::entity e) {
+            cameraEntity_ = e;
         }
 
-        [[nodiscard]] ResourceStateView resourceState() {
-            return ResourceStateView{
-                .resourceManager         = resourceManager,
-                .renderContextPort       = renderContextPort,
-                .gbufferPool             = &descriptorManager->gbufferPool(),
-                .gbufferSetLayout        = &descriptorManager->gbufferSetLayout(),
-                .deferredIblPool         = &descriptorManager->deferredIblPool(),
-                .deferredIblSetLayout    = &descriptorManager->deferredIblSetLayout(),
-                .deferredShadowPool      = &descriptorManager->deferredShadowPool(),
-                .deferredShadowSetLayout = &descriptorManager->deferredShadowSetLayout(),
-                .postProcessPool         = &descriptorManager->postProcessPool(),
-                .postProcessSetLayout    = &descriptorManager->postProcessSetLayout(),
-            };
+        // ---- Persistence ----
+        void setSerializer(class SceneSerializer* s) {
+            serializer_ = s;
         }
+        void saveScene(const std::string& path);
+        bool loadScene(const std::string& path);
+        void reconcileSceneLoad();
 
-       public:
-        [[nodiscard]] RenderingStateService renderingService() {
-            return RenderingStateService{*this};
+        // ---- Skybox / IBL ----
+        void syncEnvironmentLighting(bool show);
+        bool loadIBL(const char* path);
+        void resetIBLToFallback();
+
+        // ---- Transform ----
+        glm::vec3 getTranslation(entt::entity e) const;
+        void      setTranslation(entt::entity e, const glm::vec3& v);
+        glm::vec3 getRotation(entt::entity e) const;
+        void      setRotation(entt::entity e, const glm::vec3& v);
+        glm::vec3 getScale(entt::entity e) const;
+        void      setScale(entt::entity e, const glm::vec3& v);
+
+        // ---- Settings ----
+        bool& showSkybox() {
+            return editor_.showSkybox;
         }
-
-        [[nodiscard]] SceneRuntimeService sceneRuntimeService() {
-            return SceneRuntimeService{*this};
+        bool& showGrid() {
+            return editor_.showGrid;
         }
-
-        [[nodiscard]] InputStateService inputService() {
-            return InputStateService{*this};
+        bool& showDebugObjects() {
+            return editor_.showDebugObjects;
         }
-
-        [[nodiscard]] ResourceStateService resourceService() {
-            return ResourceStateService{*this};
+        bool& showColliderWireframes() {
+            return editor_.showColliderWireframes;
         }
-
-        [[nodiscard]] AnimationRuntimeService animationRuntimeService() {
-            return AnimationRuntimeService{*this};
+        bool& debugMode() {
+            return editor_.debugMode;
         }
-
-        [[nodiscard]] PhysicsRuntimeService physicsRuntimeService() {
-            return PhysicsRuntimeService{*this};
+        bool& physicsRunning() {
+            return editor_.physicsRunning;
         }
-
-        [[nodiscard]] const std::vector<std::string>& initializedSystemOrder() const {
-            return systemRegistry.initializationOrder();
+        bool& solidGround() {
+            return editor_.solidGround;
         }
-
-        [[nodiscard]] std::unique_ptr<Skybox>& skyboxRef() {
-            return skybox;
+        SkyboxSettings& skySettings() {
+            return skySettings_;
         }
-
-        [[nodiscard]] SkyboxSettings& skySettingsRef() {
-            return skySettings;
+        ShadowSettings& shadowSettings() {
+            return shadowSettings_;
         }
-
-        [[nodiscard]] ShadowSettings& shadowSettingsRef() {
-            return shadowSettings;
+        PostProcessPushConstants& postProcess() {
+            return postProcess_;
         }
+        void resetShadowSettings();
+        void changeShadowSettings(bool cull, float plr, float slr);
 
-        [[nodiscard]] Scene& sceneRef() {
-            return scene;
+        // ---- Physics ----
+        void clearSceneBodies();
+        void setGroundEnabled(bool enabled);
+
+        // ---- Descriptors ----
+        VkDescriptorSet               gbufferDescriptorSet(int frameIndex) const;
+        VkDescriptorSet&              gbufferDescriptorSetRef(int frameIndex);
+        VkDescriptorSet               deferredShadowDescriptorSet(int frameIndex) const;
+        VkDescriptorSet&              deferredShadowDescriptorSetRef(int frameIndex);
+        VkDescriptorSet               deferredIblDescriptorSet(int frameIndex) const;
+        VkDescriptorSet               postProcessDescriptorSet(int frameIndex) const;
+        VkDescriptorSet&              postProcessDescriptorSetRef(int frameIndex);
+        std::vector<VkDescriptorSet>& deferredIblDescriptorSetsRef();
+        DescriptorSetLayout&          gbufferSetLayout();
+        DescriptorPool&               gbufferPool();
+        DescriptorSetLayout&          postProcessSetLayout();
+        DescriptorPool&               postProcessPool();
+        DescriptorSetLayout&          deferredIblSetLayout();
+        DescriptorPool&               deferredIblPool();
+        DescriptorSetLayout&          deferredShadowSetLayout();
+        DescriptorPool&               deferredShadowPool();
+
+        // ---- Post-processing ----
+        void recreatePostProcessingSystem(Device& device, VkRenderPass rp);
+
+        // ---- Non-owned deps ----
+        const EditorState& editor() const {
+            return editor_;
         }
-
-        [[nodiscard]] PostProcessPushConstants& postProcessPushRef() {
-            return postProcessPush;
+        IRenderContextPort& renderContext() {
+            return *renderContextPort_;
         }
-
-        [[nodiscard]] bool& showSkyboxRef() {
-            return showSkybox;
-        }
-
-        [[nodiscard]] bool& showGridRef() {
-            return showGrid;
-        }
-
-        [[nodiscard]] bool& showDebugObjectsRef() {
-            return showDebugObjects;
-        }
-
-        [[nodiscard]] bool& showColliderWireframesRef() {
-            return showColliderWireframes;
-        }
-
-        [[nodiscard]] bool& physicsSimulationRunningRef() {
-            return physicsSimulationRunning;
-        }
-
-        [[nodiscard]] bool& solidGroundEnabledRef() {
-            return solidGroundEnabled;
-        }
-
-        [[nodiscard]] entt::entity& selectedEntityRef() {
-            return selectedEntity;
-        }
-
-        [[nodiscard]] entt::entity& cameraEntityRef() {
-            return cameraEntity;
-        }
-
-        [[nodiscard]] JoltPhysicsSystem* getJoltPhysicsSystem() const {
-            return joltPhysicsSystem.get();
-        }
-
-        void setPostProcessingSystem(std::unique_ptr<PostProcessingSystem> system) {
-            postProcessingSystem = std::move(system);
-        }
-
-        [[nodiscard]] VkDescriptorSet getGbufferDescriptorSet(int frameIndex) const {
-            return descriptorManager->gbufferDescriptorSet(frameIndex);
-        }
-
-        [[nodiscard]] VkDescriptorSet& gbufferDescriptorSetRef(int frameIndex) {
-            return descriptorManager->gbufferDescriptorSetRef(frameIndex);
-        }
-
-        [[nodiscard]] VkDescriptorSet getDeferredIblDescriptorSet(int frameIndex) const {
-            return descriptorManager->deferredIblDescriptorSet(frameIndex);
-        }
-
-        [[nodiscard]] VkDescriptorSet getDeferredShadowDescriptorSet(int frameIndex) const {
-            return descriptorManager->deferredShadowDescriptorSet(frameIndex);
-        }
-
-        [[nodiscard]] VkDescriptorSet& deferredShadowDescriptorSetRef(int frameIndex) {
-            return descriptorManager->deferredShadowDescriptorSetRef(frameIndex);
-        }
-
-        [[nodiscard]] VkDescriptorSet getPostProcessDescriptorSet(int frameIndex) const {
-            return descriptorManager->postProcessDescriptorSet(frameIndex);
-        }
-
-        [[nodiscard]] VkDescriptorSet& postProcessDescriptorSetRef(int frameIndex) {
-            return descriptorManager->postProcessDescriptorSetRef(frameIndex);
-        }
-
-        [[nodiscard]] std::vector<VkDescriptorSet>& deferredIblDescriptorSetsRef() {
-            return descriptorManager->deferredIblDescriptorSets();
-        }
-
-        [[nodiscard]] DescriptorSetLayout& gbufferSetLayoutRef() {
-            return descriptorManager->gbufferSetLayout();
-        }
-
-        [[nodiscard]] DescriptorPool& gbufferPoolRef() {
-            return descriptorManager->gbufferPool();
-        }
-
-        [[nodiscard]] DescriptorSetLayout& postProcessSetLayoutRef() {
-            return descriptorManager->postProcessSetLayout();
-        }
-
-        [[nodiscard]] DescriptorPool& postProcessPoolRef() {
-            return descriptorManager->postProcessPool();
-        }
-
-        [[nodiscard]] DescriptorSetLayout& deferredIblSetLayoutRef() {
-            return descriptorManager->deferredIblSetLayout();
-        }
-
-        [[nodiscard]] DescriptorPool& deferredIblPoolRef() {
-            return descriptorManager->deferredIblPool();
-        }
-
-        [[nodiscard]] DescriptorSetLayout& deferredShadowSetLayoutRef() {
-            return descriptorManager->deferredShadowSetLayout();
-        }
-
-        [[nodiscard]] DescriptorPool& deferredShadowPoolRef() {
-            return descriptorManager->deferredShadowPool();
+        ResourceManager& resourceManager() {
+            return *resourceManager_;
         }
 
        private:
-        // initialization helpers - keep initialize() high-level and explicit
-        void createInputDevices(Window* window);
-        void initCoreSystems(Device& device, Renderer& renderer, bool multithreadedRecordingEnabled, uint32_t multithreadedRecordingThreads);
-        void initDescriptorResources(Device& device, Renderer& renderer);
-        void allocatePerFrameDescriptorSets(Renderer& renderer);
-        void initPostProcessing(Device& device, Renderer& renderer);
-        void initInputRelatedSystems(Window* window);
+        void createInputDevices(Window* w);
+        void initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th);
+        void initDescriptorResources(Device& d, Renderer& r);
+        void allocatePerFrameDescriptorSets(Renderer& r);
+        void initPostProcessing(Device& d, Renderer& r);
+        void initInputRelatedSystems(Window* w);
+        void ensureCameraExists();
+        void writeIBLDescriptorsToSets();
 
-        // System registration functions for better readability
-        bool registerCoreSystems(std::string& error);
-        bool registerDescriptorResources(std::string& error);
-        bool registerPerFrameDescriptors(std::string& error);
-        bool registerPipelineLinks(std::string& error);
-        bool registerPostProcessing(std::string& error);
-        bool registerInputSystems(std::string& error);
+        // -- Storage --
+        std::unordered_map<std::type_index, void*> systems_;
+        ::engine::SystemRegistry                   initRegistry_;
+        std::unique_ptr<DescriptorManager>         descriptors_;
 
-        [[nodiscard]] SystemServicesView systemServices() const {
-            return SystemServicesView{
-                .objectSelection  = objectSelectionSystem.get(),
-                .input            = inputSystem.get(),
-                .camera           = cameraSystem.get(),
-                .colliderDebug    = colliderDebugRenderSystem.get(),
-                .selectionOutline = selectionOutlineSystem.get(),
-                .animation        = animationSystem.get(),
-                .lod              = lodSystem.get(),
-                .modelRender      = modelRenderSystem.get(),
-                .shadow           = shadowSystem.get(),
-                .light            = lightSystem.get(),
-                .skyboxRender     = skyboxRenderSystem.get(),
-                .gridRender       = gridRenderSystem.get(),
-                .deferredLighting = deferredLightingSystem.get(),
-                .postProcessing   = postProcessingSystem.get(),
-                .ibl              = iblSystem.get(),
-                .physics          = physicsSystem.get(),
-                .joltPhysics      = joltPhysicsSystem.get(),
-            };
-        }
+        std::unique_ptr<ObjectSelectionSystem>     objSel_;
+        std::unique_ptr<InputSystem>               input_;
+        std::unique_ptr<CameraSystem>              cameraSys_;
+        std::unique_ptr<ColliderDebugRenderSystem> colliderDbg_;
+        std::unique_ptr<SelectionOutlineSystem>    selOutline_;
+        std::unique_ptr<AnimationSystem>           anim_;
+        std::unique_ptr<LODSystem>                 lod_;
+        std::unique_ptr<ModelRenderSystem>         models_;
+        std::unique_ptr<ShadowSystem>              shadow_;
+        std::unique_ptr<LightSystem>               light_;
+        std::unique_ptr<SkyboxRenderSystem>        skyboxR_;
+        std::unique_ptr<GridRenderSystem>          grid_;
+        std::unique_ptr<DeferredLightingSystem>    deferred_;
+        std::unique_ptr<PostProcessingSystem>      postProc_;
+        std::unique_ptr<IBLSystem>                 ibl_;
+        std::unique_ptr<PhysicsSystem>             phys_;
+        std::unique_ptr<JoltPhysicsSystem>         jolt_;
+        std::unique_ptr<MorphTargetManager>        morph_;
+        std::unique_ptr<Keyboard>                  kbd_;
+        std::unique_ptr<Mouse>                     mouse_;
 
-        SystemRegistry systemRegistry;
+        IRenderContextPort* renderContextPort_ = nullptr;
+        ResourceManager*    resourceManager_   = nullptr;
+        Device*             device_            = nullptr;
 
-        // Systems
-        std::unique_ptr<ObjectSelectionSystem>     objectSelectionSystem;
-        std::unique_ptr<InputSystem>               inputSystem;
-        std::unique_ptr<CameraSystem>              cameraSystem;
-        std::unique_ptr<ColliderDebugRenderSystem> colliderDebugRenderSystem;
-        std::unique_ptr<SelectionOutlineSystem>    selectionOutlineSystem;
-        std::unique_ptr<AnimationSystem>           animationSystem;
-        std::unique_ptr<LODSystem>                 lodSystem;
-        std::unique_ptr<ModelRenderSystem>         modelRenderSystem;
-        std::unique_ptr<ShadowSystem>              shadowSystem;
-        std::unique_ptr<LightSystem>               lightSystem;
-        std::unique_ptr<SkyboxRenderSystem>        skyboxRenderSystem;
-        std::unique_ptr<GridRenderSystem>          gridRenderSystem;
-        std::unique_ptr<DeferredLightingSystem>    deferredLightingSystem;
-        std::unique_ptr<PostProcessingSystem>      postProcessingSystem;
-        std::unique_ptr<IBLSystem>                 iblSystem;
-        std::unique_ptr<PhysicsSystem>             physicsSystem;
-        std::unique_ptr<JoltPhysicsSystem>         joltPhysicsSystem;
-        std::unique_ptr<MorphTargetManager>        morphTargetManager;
+        Scene        scene_;
+        entt::entity cameraEntity_        = entt::null;
+        bool         pendingCamAfterLoad_ = false;
 
-        // Input devices (owned by EngineState)
-        std::unique_ptr<Keyboard> keyboard;
-        std::unique_ptr<Mouse>    mouse;
+        std::unique_ptr<Skybox>  skybox_;
+        SkyboxSettings           skySettings_{};
+        ShadowSettings           shadowSettings_{};
+        PostProcessPushConstants postProcess_{};
 
-        // Descriptor/layout state — centralized in DescriptorManager.
-        std::unique_ptr<class DescriptorManager> descriptorManager;
+        EditorState editor_{};
 
-        // Non-owned dependencies passed during initialize().
-        IRenderContextPort* renderContextPort = nullptr;
-        ResourceManager*    resourceManager   = nullptr;
-
-        // Scene & transient selection state.
-        Scene        scene;
-        entt::entity selectedEntity = entt::null;
-        entt::entity cameraEntity   = entt::null;
-
-        // Scene resources and runtime rendering controls.
-        std::unique_ptr<Skybox>  skybox;
-        SkyboxSettings           skySettings;
-        ShadowSettings           shadowSettings;
-        PostProcessPushConstants postProcessPush{};
-
-        bool showSkybox               = false;
-        bool showGrid                 = false;
-        bool showDebugObjects         = false;
-        bool showColliderWireframes   = false;
-        bool debugMode                = false;
-        bool physicsSimulationRunning = false;
-        bool solidGroundEnabled       = true;
+        SceneSerializer* serializer_    = nullptr;
+        uint64_t         iblGeneration_ = 0;
     };
 
 }  // namespace engine

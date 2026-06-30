@@ -1,7 +1,6 @@
 #include "Engine/Systems/MaterialRenderBindings.hpp"
 
 #include <cassert>
-#include <cstddef>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>

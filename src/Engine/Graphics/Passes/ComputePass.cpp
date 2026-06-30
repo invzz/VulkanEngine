@@ -1,15 +1,15 @@
-
 #include "Engine/Graphics/Passes/ComputePass.hpp"
 
 #include "Engine/Systems/AnimationSystem.hpp"
 
 namespace engine {
 
+    ComputePass::ComputePass(AnimationSystem* animationSystem)
+        : animationSystem_(animationSystem) {}
+
     void ComputePass::execute(FrameInfo& frameInfo) {
-        if (animationPort_ != nullptr) {
-            auto* animation = animationPort_->getAnimationSystem();
-            if (animation != nullptr)
-                animation->update(frameInfo);
+        if (animationSystem_ != nullptr) {
+            animationSystem_->update(frameInfo);
         }
     }
 

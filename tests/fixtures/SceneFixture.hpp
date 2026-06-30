@@ -11,7 +11,6 @@
 #define VULKANENGINE_TESTS_FIXTURES_SCENEFIXTURE_HPP
 
 #include <filesystem>
-#include <gtest/gtest.h>
 #include <memory>
 
 #include "Engine/Scene/Scene.hpp"

@@ -1,6 +1,5 @@
 #include "Editor/ui/TransformPanel.hpp"
 
-#include <cstdint>
 #include <imgui.h>
 
 #include "Engine/Graphics/FrameInfo.hpp"

@@ -1,7 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENEUTILS_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENEUTILS_HPP
 
-#include <entt/entt.hpp>
 #include <string>
 
 #include "Engine/Scene/Scene.hpp"

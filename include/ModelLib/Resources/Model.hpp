@@ -7,7 +7,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <cstdint>
 #include <limits>
 #include <memory>
 #include <vector>

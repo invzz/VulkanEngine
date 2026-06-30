@@ -1,22 +1,19 @@
 #pragma once
 
-#include "Engine/Application/Ports/ICompositionPort.hpp"
-#include "Engine/Application/Ports/IDescriptorAccessPort.hpp"
-#include "Engine/Application/Ports/IRuntimeStatePort.hpp"
-#include "Engine/Application/StateViews/RenderingStateView.hpp"
+#include <functional>
+
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
     class Renderer;
-    class Camera;
-    class Scene;
     class Window;
 
     class CompositionPass : public IRenderPass {
        public:
-        CompositionPass(Renderer& renderer, RenderingStateView rendering, IDescriptorAccessPort& descriptorAccess, IRuntimeStatePort& runtimeState, ICompositionPort* compositionPort, Camera& camera, Window& window)
-            : renderer_(renderer), rendering_(rendering), descriptorAccess_(descriptorAccess), runtimeState_(runtimeState), compositionPort_(compositionPort), camera_(camera), window_(window) {}
+        using UIRenderFn = std::function<void(FrameInfo&, VkCommandBuffer, bool)>;
+
+        CompositionPass(Renderer& renderer, UIRenderFn renderUI, Window& window);
 
         void                             execute(FrameInfo& frameInfo) override;
         [[nodiscard]] const std::string& getName() const override {
@@ -25,13 +22,9 @@ namespace engine {
         }
 
        private:
-        Renderer&              renderer_;
-        RenderingStateView     rendering_;
-        IDescriptorAccessPort& descriptorAccess_;
-        IRuntimeStatePort&     runtimeState_;
-        ICompositionPort*      compositionPort_ = nullptr;
-        Camera&                camera_;
-        Window&                window_;
+        Renderer&  renderer_;
+        UIRenderFn renderUI_;
+        Window&    window_;
     };
 
 }  // namespace engine

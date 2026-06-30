@@ -1,5 +1,5 @@
-// Single translation unit providing STB implementations for the whole project
-// This avoids link-order issues with multiple static libraries referencing
+// Single translation unit that defines all STB symbols so that static
+// archive link-order doesn't cause unresolved stbi_* references from
 // STB symbols (e.g., tinygltf).
 
 #define STB_IMAGE_IMPLEMENTATION

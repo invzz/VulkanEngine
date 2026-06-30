@@ -1,8 +1,6 @@
 #ifndef EDITOR_TOOLBARPANEL_HPP
 #define EDITOR_TOOLBARPANEL_HPP
 
-#include <imgui.h>
-#include <memory>
 #include <string>
 #include <vector>
 

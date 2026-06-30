@@ -1,10 +1,9 @@
 #include "Editor/ui/InspectorPanel.hpp"
 
 #include <imgui.h>
-#include <memory>
 
+#include "Engine/EngineState.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-#include "Engine/Scene/Scene.hpp"
 
 #include "Editor/ui/AnimationPanel.hpp"
 #include "Editor/ui/LightsPanel.hpp"
@@ -14,20 +13,17 @@
 
 namespace engine {
 
-    InspectorPanel::InspectorPanel(Scene& scene, bool* /*physicsSimulationRunning*/,
-        bool* /*showColliderWireframes*/, bool* /*solidGroundEnabled*/,
-        JoltPhysicsSystem* /*joltPhysicsSystem*/) {
-        transformPanel_ = std::make_unique<TransformPanel>(scene);
-        lightsPanel_    = std::make_unique<LightsPanel>(scene);
-        animationPanel_ = std::make_unique<AnimationPanel>(scene);
-        // PhysicsPanel removed — it is a separate dockable window, not nested here.
+    InspectorPanel::InspectorPanel(EngineState& state)
+        : state_(state) {
+        transformPanel_ = std::make_unique<TransformPanel>(state.scene());
+        lightsPanel_    = std::make_unique<LightsPanel>(state.scene());
+        animationPanel_ = std::make_unique<AnimationPanel>(state.scene());
     }
 
     void InspectorPanel::render(FrameInfo& frameInfo) {
         if (!visible_)
             return;
 
-        // Push theme style
         ui::UI::PushThemeStyle();
 
         if (ImGui::Begin("Inspector", &visible_)) {
@@ -36,19 +32,16 @@ namespace engine {
                 if (!registry.valid(frameInfo.selectedEntity)) {
                     frameInfo.selectedEntity = entt::null;
                 } else {
-                    // Transform section
                     ui::UI::TextColored("Transform", ImVec4(0.6f, 0.85f, 1.0f, 1.0f));
                     ui::UI::Separator();
                     transformPanel_->render(frameInfo);
                     ui::UI::Separator();
 
-                    // Lights section
                     ui::UI::TextColored("Lights", ImVec4(1.0f, 0.9f, 0.3f, 1.0f));
                     ui::UI::Separator();
                     lightsPanel_->render(frameInfo);
                     ui::UI::Separator();
 
-                    // Animation section
                     ui::UI::TextColored("Animation", ImVec4(0.5f, 1.0f, 0.6f, 1.0f));
                     ui::UI::Separator();
                     animationPanel_->render(frameInfo);

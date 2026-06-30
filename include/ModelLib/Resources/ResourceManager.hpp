@@ -1,8 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
 
-#include <glm/glm.hpp>
-
 #include <condition_variable>
 #include <functional>
 #include <future>

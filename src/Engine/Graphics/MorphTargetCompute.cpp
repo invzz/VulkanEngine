@@ -1,6 +1,5 @@
 #include "Engine/Graphics/MorphTargetCompute.hpp"
 
-#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iostream>

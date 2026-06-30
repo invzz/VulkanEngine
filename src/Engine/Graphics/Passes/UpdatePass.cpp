@@ -1,6 +1,6 @@
-
 #include "Engine/Graphics/Passes/UpdatePass.hpp"
 
+#include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/InputSystem.hpp"
@@ -11,27 +11,34 @@
 
 namespace engine {
 
-    void UpdatePass::execute(FrameInfo& frameInfo) {
-        // forward update calls to systems owned by EngineState
-        if (engine_.objectSelection() != nullptr)
-            engine_.objectSelection()->update(frameInfo);
-        if (engine_.input() != nullptr)
-            engine_.input()->update(frameInfo);
-        LODSystem::update(frameInfo);
-        CameraSystem::update(frameInfo, renderer.getAspectRatio());
+    UpdatePass::UpdatePass(ObjectSelectionSystem* os, InputSystem* inp,
+        JoltPhysicsSystem* jolt, bool& physRunning,
+        Renderer& renderer)
+        : objSel_(os), input_(inp), jolt_(jolt), physRunning_(physRunning), renderer_(renderer) {}
 
-        // --- Physics (requires explicit Play from UI) ---
-        if (physicsPort_ != nullptr && physicsPort_->physicsSimulationRunningRef()) {
-            auto* joltPhysics = physicsPort_->joltPhysicsSystem();
-            if (joltPhysics != nullptr) {
-                joltPhysics->syncToEntities(frameInfo.scene);
-                joltPhysics->update(frameInfo.frameTime, 8, 1.0f / 120.0f);
-                joltPhysics->syncToEntities(frameInfo.scene);
+    void UpdatePass::execute(FrameInfo& frameInfo) {
+        if (objSel_)
+            objSel_->update(frameInfo);
+        if (input_)
+            input_->update(frameInfo);
+
+        LODSystem::update(frameInfo);
+        CameraSystem::update(frameInfo, renderer_.getAspectRatio());
+
+        if (physRunning_) {
+            if (jolt_) {
+                jolt_->syncToEntities(frameInfo.scene);
+                jolt_->update(frameInfo.frameTime, 8, 1.0f / 120.0f);
+                jolt_->syncToEntities(frameInfo.scene);
             } else {
-                // legacy PhysicsSystem::update (kept for compatibility)
                 PhysicsSystem::update(frameInfo);
             }
         }
+    }
+
+    const std::string& UpdatePass::getName() const {
+        static std::string n = "Update";
+        return n;
     }
 
 }  // namespace engine

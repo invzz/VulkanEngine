@@ -1,9 +1,7 @@
 #include "Editor/ui/UI.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <imgui.h>
-#include <imgui_internal.h>
 
 #include "Editor/ui/Workspace/ThemeSystem.hpp"
 #include "Editor/ui/Workspace/WorkspaceManager.hpp"

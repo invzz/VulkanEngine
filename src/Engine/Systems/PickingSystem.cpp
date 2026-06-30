@@ -2,7 +2,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include <algorithm>
 #include <entt/entt.hpp>
 #include <float.h>
 

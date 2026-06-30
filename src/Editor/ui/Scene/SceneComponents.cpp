@@ -12,21 +12,17 @@
 #include <vector>
 
 #include "Engine/EngineState.hpp"
-#include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
-#include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "Editor/ui/Scene/ScenePanel.hpp"
 #include "Editor/ui/UI.hpp"
-#include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
-#include "entt/entity/entity.hpp"
 
 namespace engine::ui::SceneComponents {
 

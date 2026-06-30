@@ -5,7 +5,6 @@
 #include <cctype>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -20,7 +19,6 @@
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/PBRMaterial.hpp"
 #include "glm/common.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 
 // Hash function for Model::Vertex

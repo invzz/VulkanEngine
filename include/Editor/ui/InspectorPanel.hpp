@@ -10,14 +10,11 @@
 
 namespace engine {
 
-    class Scene;
-    class FrameInfo;
-    class JoltPhysicsSystem;
+    class EngineState;
 
     class InspectorPanel : public UIPanel {
        public:
-        InspectorPanel(Scene& scene, bool* physicsSimulationRunning, bool* showColliderWireframes,
-            bool* solidGroundEnabled, JoltPhysicsSystem* joltPhysicsSystem);
+        explicit InspectorPanel(EngineState& state);
 
         void               render(FrameInfo& frameInfo) override;
         [[nodiscard]] bool isSeparateWindow() const override {
@@ -25,6 +22,7 @@ namespace engine {
         }
 
        private:
+        EngineState&                    state_;
         std::unique_ptr<TransformPanel> transformPanel_;
         std::unique_ptr<LightsPanel>    lightsPanel_;
         std::unique_ptr<AnimationPanel> animationPanel_;
@@ -32,4 +30,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_INSPECTORPANEL_HPP
+#endif

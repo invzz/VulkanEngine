@@ -9,7 +9,6 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "glm/geometric.hpp"
 
 namespace engine {

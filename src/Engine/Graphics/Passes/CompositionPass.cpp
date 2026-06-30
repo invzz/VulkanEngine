@@ -1,20 +1,20 @@
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
 
+#include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Systems/PostProcessingSystem.hpp"
 
 namespace engine {
 
+    CompositionPass::CompositionPass(Renderer& renderer, UIRenderFn renderUI, Window& window)
+        : renderer_(renderer), renderUI_(std::move(renderUI)), window_(window) {}
+
     void CompositionPass::execute(FrameInfo& frameInfo) {
-        // Begin swapchain render pass for UI only (viewport scene goes to texture, not swapchain)
         renderer_.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
-        // Render UI (including ViewportPanel, Inspector, etc.) — viewport scene is NOT rendered to swapchain
-        if (compositionPort_ != nullptr) {
-            compositionPort_->renderUI(frameInfo, frameInfo.commandBuffer, window_.isCursorVisible());
+        if (renderUI_) {
+            renderUI_(frameInfo, frameInfo.commandBuffer, window_.isCursorVisible());
         }
 
-        // End swapchain render pass started above
         renderer_.endSwapChainRenderPass(frameInfo.commandBuffer);
     }
 

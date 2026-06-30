@@ -1,23 +1,23 @@
-#include "Engine/Application/Ports/IAnimationAccessPort.hpp"
+#pragma once
+
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 
 namespace engine {
 
-    class FrameInfo;
+    class AnimationSystem;
 
     class ComputePass : public IRenderPass {
        public:
-        explicit ComputePass(IAnimationAccessPort* animationPort)
-            : animationPort_(animationPort) {}
+        explicit ComputePass(AnimationSystem* animationSystem);
 
+        void                             execute(FrameInfo& frameInfo) override;
         [[nodiscard]] const std::string& getName() const override {
             static std::string name = "Compute";
             return name;
         }
-        void execute(FrameInfo& frameInfo) override;
 
        private:
-        IAnimationAccessPort* animationPort_ = nullptr;
+        AnimationSystem* animationSystem_ = nullptr;
     };
 
 }  // namespace engine

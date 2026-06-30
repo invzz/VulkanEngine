@@ -9,7 +9,6 @@
 #ifndef VULKANENGINE_TESTS_FIXTURES_FRAMEINFOFIXTURE_HPP
 #define VULKANENGINE_TESTS_FIXTURES_FRAMEINFOFIXTURE_HPP
 
-#include <gtest/gtest.h>
 #include <memory>
 
 #include "Engine/Graphics/FrameInfo.hpp"

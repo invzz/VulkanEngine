@@ -1,9 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_ANIMATIONGRAPH_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_ANIMATIONGRAPH_HPP
 
-#include <glm/glm.hpp>
-
-#include <cstdint>
 #include <functional>
 #include <string>
 #include <unordered_map>

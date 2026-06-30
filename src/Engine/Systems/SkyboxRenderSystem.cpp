@@ -12,8 +12,6 @@
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Scene/Skybox.hpp"
 
-#include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/vector_float4.hpp"
 #include "vulkan/vulkan_core.h"
 
 namespace engine {

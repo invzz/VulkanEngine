@@ -9,7 +9,6 @@
 #ifndef VULKANENGINE_TESTS_FIXTURES_DESCRIPTORFIXTURE_HPP
 #define VULKANENGINE_TESTS_FIXTURES_DESCRIPTORFIXTURE_HPP
 
-#include <gtest/gtest.h>
 #include <memory>
 
 #include "Engine/Graphics/Descriptors.hpp"

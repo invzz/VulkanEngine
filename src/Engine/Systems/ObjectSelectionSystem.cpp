@@ -1,7 +1,6 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 
 #include <algorithm>
-#include <cstdint>
 #include <iterator>
 #include <vector>
 

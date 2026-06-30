@@ -6,7 +6,6 @@
  */
 
 #include <glm/glm.hpp>
-#include <glm/gtc/constants.hpp>
 
 #include <gtest/gtest.h>
 
