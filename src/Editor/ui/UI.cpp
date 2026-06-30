@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <string>
 
 #include "Editor/ui/Workspace/ThemeSystem.hpp"
 #include "Editor/ui/Workspace/WorkspaceManager.hpp"
@@ -120,6 +121,24 @@ namespace engine::ui {
         ImGui::Text("%s", icon);
         ImGui::SameLine(0.0f, 2.0f);
         return SmallButton(label);
+    }
+
+    bool UI::ToolbarIcon(const char* icon, bool active, const char* suffix) {
+        ImVec4 btnColor   = active ? ImVec4(0.15f, 0.15f, 0.18f, 1.0f) : ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
+        ImVec4 btnHovColor = active ? ImVec4(0.25f, 0.25f, 0.30f, 1.0f) : ImVec4(0.12f, 0.12f, 0.14f, 1.0f);
+        ImVec4 btnActColor = active ? ImVec4(0.35f, 0.35f, 0.40f, 1.0f) : ImVec4(0.15f, 0.15f, 0.18f, 1.0f);
+        ImVec4 textColor   = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.75f, 1.0f);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovColor);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnActColor);
+        ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 10.0f));
+        std::string id = std::string(icon) + "##toolbar_" + suffix;
+        bool clicked = ImGui::SmallButton(id.c_str());
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(4);
+        return clicked;
     }
 
     bool UI::DisabledButton(const char* label) {

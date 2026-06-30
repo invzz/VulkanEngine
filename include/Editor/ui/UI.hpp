@@ -82,6 +82,15 @@ namespace engine::ui {
         static bool IconButton(const char* icon, const char* label);
 
         /**
+     * @brief Render a toolbar icon button (square padding, active state).
+     * @param icon Unicode icon character.
+     * @param active Whether this button is currently active.
+     * @param suffix Unique ID suffix (appended with ##, e.g. "gizmo_translate").
+     * @return true if clicked.
+     */
+        static bool ToolbarIcon(const char* icon, bool active, const char* suffix = "");
+
+        /**
      * @brief Render a button that appears disabled (grayed out).
      * @param label Button text.
      * @return true if clicked (even when disabled).

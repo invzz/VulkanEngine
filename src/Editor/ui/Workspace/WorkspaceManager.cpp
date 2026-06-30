@@ -13,7 +13,7 @@ namespace engine {
     void WorkspaceManager::initialize(ImGuiManager& imguiManager) {
         imguiManager_ = &imguiManager;
         // Apply default theme
-        themeSystem_.applyPreset(0);
+        themeSystem_.applyTheme("dark");
     }
 
     void WorkspaceManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI) {

@@ -1,0 +1,42 @@
+{
+  "name": "Midnight",
+  "accent_color": "#80aaff",
+  "base_colors": {
+    "window_bg": "#0d0d14",
+    "title_bg": "#0a0a11",
+    "menu_bar_bg": "#141420",
+    "border": "#262640",
+    "border_shadow": "#00000000",
+    "text": "#ccccdd",
+    "text_disabled": "#666680",
+    "scrollbar_bg": "#0a0a11",
+    "scrollbar_grab": "#262640",
+    "scrollbar_grab_hovered": "#333355",
+    "scrollbar_grab_active": "#444466",
+    "tab": "#11111c",
+    "tab_active": "#1a1a33",
+    "tab_unfocused": "#0d0d14",
+    "tab_unfocused_active": "#1a1a33",
+    "drag_drop_target": "#ffcc33",
+    "header": "#1e1e33",
+    "separator": "#1e1e33",
+    "separator_active": "#282844",
+    "resize_grip": "#26264080",
+    "resize_grip_active": "#444466",
+    "text_selected_bg": "#334d8080",
+    "plot_lines": "#737399",
+    "modal_window_dim_bg": "#00000099"
+  },
+  "style": {
+    "window_rounding": 4.0,
+    "frame_rounding": 2.0,
+    "grab_rounding": 1.2,
+    "tab_rounding": 2.0,
+    "frame_padding_x": 8.0,
+    "frame_padding_y": 4.0,
+    "item_spacing_x": 8.0,
+    "item_spacing_y": 8.0,
+    "window_padding": 8.0,
+    "grab_min_size": 12.0
+  }
+}

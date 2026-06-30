@@ -236,6 +236,20 @@ target("Editor")
     end
     add_deps("Engine", "EngineImporters", "EngineSceneIO", "ImGuizmo")
 
+    -- Copy editor assets (themes, config, fonts) to build target directory
+    after_build(function (target)
+        local targetdir = target:targetdir()
+        local projectdir = os.projectdir()
+
+        -- assets/editor/themes/*.json
+        local editor_src = path.join(projectdir, "assets/editor")
+        local editor_dst = path.join(targetdir, "assets/editor")
+        if os.isdir(editor_src) then
+            os.mkdir(editor_dst)
+            os.cp(path.join(editor_src, "*"), editor_dst)
+        end
+    end)
+
 -- ============================================================================
 -- Tools
 -- ============================================================================
