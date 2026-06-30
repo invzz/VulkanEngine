@@ -136,10 +136,11 @@ namespace engine {
         renderPipeline = std::make_unique<RenderPipeline>(renderer);
         setupRenderGraph();
 
-        // Register offscreen color images with ImGui (one per frame-in-flight).
         viewport_.create(device, renderer);
         if (viewportPanel_) {
             viewportPanel_->setViewport(&viewport_, renderer.getSwapChainExtent());
+            viewportPanel_->setWindow(&window);
+            viewportPanel_->setMouse(engineState.getMouse());
             viewportPanel_->onResize = [this](VkExtent2D extent) {
                 // Defer resize to next frame start — we're inside ImGui
                 // rendering (mid command buffer) and can't recreate images.
@@ -334,19 +335,16 @@ namespace engine {
                                            ? engineState.system<AnimationSystem>().getMorphManager()
                                            : nullptr,
                 .extent              = renderer.getOffscreenExtent(),
+                .viewportMode        = engineState.editor().viewportSettings.mode,
                 .debugMode           = debugMode,
             };
 
-            // Mouse picking
-            static bool lastLeftClick = false;
-            int         leftClick     = glfwGetMouseButton(window.getGLFWwindow(), GLFW_MOUSE_BUTTON_LEFT);
-            if (leftClick == GLFW_PRESS && !lastLeftClick) {
-                double mouseX, mouseY;
-                glfwGetCursorPos(window.getGLFWwindow(), &mouseX, &mouseY);
-                float aspect     = static_cast<float>(renderer.getSwapChainExtent().width) / renderer.getSwapChainExtent().height;
-                auto  pickResult = pickingSystem.pick(frameInfo,
-                    mouseX / renderer.getSwapChainExtent().width,
-                    mouseY / renderer.getSwapChainExtent().height, aspect);
+            // Mouse picking: the ViewportPanel has already converted the click
+            // to viewport-normalized coordinates; just execute the ray-AABB test.
+            if (frameInfo.viewportMouseClicked) {
+                auto pickResult = pickingSystem.pickViewport(frameInfo,
+                    frameInfo.viewportMousePos.x,
+                    frameInfo.viewportMousePos.y);
                 if (pickResult.has_value()) {
                     frameInfo.selectedEntity   = pickResult.value();
                     frameInfo.selectedObjectId = static_cast<uint32_t>(pickResult.value());
@@ -355,11 +353,12 @@ namespace engine {
                     frameInfo.selectedObjectId = 0;
                 }
             }
-            lastLeftClick = (leftClick == GLFW_PRESS);
 
             renderPipeline->execute(frameInfo);
 
-            selectedObjectId = frameInfo.selectedObjectId;
+            // Persist mode changes made by the viewport panel back to EditorState.
+            engineState.editor().viewportSettings.mode = frameInfo.viewportMode;
+            selectedObjectId                           = frameInfo.selectedObjectId;
             engineState.setSelectedEntity(frameInfo.selectedEntity);
             engineState.setCameraEntity(frameInfo.cameraEntity);
 

@@ -5,6 +5,7 @@
 
 #include <cstddef>
 
+#include "Engine/EditorState.hpp"
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 
@@ -77,7 +78,10 @@ namespace engine {
         entt::entity             selectedEntity;              // Selected entity handle
         entt::entity             cameraEntity;                // Camera entity handle
         MorphTargetManager*      morphManager;                // Manager for morph target animations (nullptr if not used)
-        VkExtent2D               extent;                      // Screen extent
+        VkExtent2D               extent;                        // Screen extent
+        ViewportMode             viewportMode;                  // Current viewport interaction mode
+        glm::vec2                viewportMousePos{};          // Mouse position in viewport-normalized [0,1] (when available)
+        bool                     viewportMouseClicked{};      // True if a picking click started this frame in the viewport
         int                      debugMode{0};                // Mirrors GlobalUbo::debugMode for pipeline selection
         class ModelRenderSystem* modelRenderSystem{nullptr};  // Model rendering system
         class ShadowSystem*      shadowSystem{nullptr};       // Shadow rendering system

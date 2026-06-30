@@ -19,28 +19,9 @@ namespace engine {
     }
 
     void Mouse::lookAround(float deltaTime, TransformComponent& transform) {
-        // If cursor is manually shown (ESC pressed), don't do camera control
-        if (window.isCursorVisible()) {
-            // User wants cursor visible - unlock our internal state if needed
-            if (cursorLocked_) {
-                unlockCursor();
-            }
-            return;
-        }
-
-        // Auto-lock behavior when window is focused
-        if (!window.isFocused()) {
-            if (cursorLocked_) {
-                unlockCursor();
-            }
-            return;
-        }
-
-        if (!cursorLocked_) {
-            lockCursor();
-            return;
-        }
-
+        // With GLFW_CURSOR_DISABLED, GLFW reports unbounded virtual cursor
+        // movement even if the physical cursor stays centered. We just read
+        // consecutive positions and compute deltas; no manual recentering.
         double xpos;
         double ypos;
         std::tie(xpos, ypos) = getCursorPosition();
@@ -70,25 +51,6 @@ namespace engine {
         mouseInitialized_ = false;
         lastX             = 0.0;
         lastY             = 0.0;
-    }
-
-    void Mouse::lockCursor() {
-        cursorLocked_ = true;
-        glfwSetInputMode(getGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        recenterCursor();
-    }
-
-    void Mouse::unlockCursor() {
-        cursorLocked_ = false;
-        glfwSetInputMode(getGLFWwindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        reset();
-    }
-
-    void Mouse::recenterCursor() {
-        const double centerX = static_cast<double>(window.getWidth()) * 0.5;
-        const double centerY = static_cast<double>(window.getHeight()) * 0.5;
-        glfwSetCursorPos(getGLFWwindow(), centerX, centerY);
-        reset();
     }
 
 }  // namespace engine

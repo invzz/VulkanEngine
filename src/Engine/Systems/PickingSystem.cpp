@@ -59,12 +59,21 @@ namespace engine {
         return glm::normalize(worldFar - worldNear);
     }
 
+    std::optional<entt::entity> PickingSystem::pickViewport(FrameInfo& frameInfo, float viewportMouseX, float viewportMouseY) {
+        float ndcX = (viewportMouseX * 2.0f) - 1.0f;
+        float ndcY = -((viewportMouseY * 2.0f) - 1.0f);
+        return pickFromNdc(frameInfo, ndcX, ndcY);
+    }
+
     std::optional<entt::entity> PickingSystem::pick(FrameInfo& frameInfo, float mouseX, float mouseY, float aspectRatio) {
         (void) aspectRatio;
         float ndcX = (mouseX * 2.0f) - 1.0f;
         float ndcY = -((mouseY * 2.0f) - 1.0f);
+        return pickFromNdc(frameInfo, ndcX, ndcY);
+    }
 
-        glm::vec3 rayDir    = unprojectToWorldRay(ndcX, ndcY,
+    std::optional<entt::entity> PickingSystem::pickFromNdc(FrameInfo& frameInfo, float ndcX, float ndcY) {
+        glm::vec3 rayDir = unprojectToWorldRay(ndcX, ndcY,
             frameInfo.camera.getInverseView(),
             frameInfo.camera.getProjection());
         glm::vec3 rayOrigin = frameInfo.camera.getPosition();

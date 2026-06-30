@@ -12,7 +12,8 @@ namespace engine {
         renderer_.beginSwapChainRenderPass(frameInfo.commandBuffer);
 
         if (renderUI_) {
-            renderUI_(frameInfo, frameInfo.commandBuffer, window_.isCursorVisible());
+            // UI is always drawn; cursor visibility is only a consequence of viewport mode.
+            renderUI_(frameInfo, frameInfo.commandBuffer, true);
         }
 
         renderer_.endSwapChainRenderPass(frameInfo.commandBuffer);

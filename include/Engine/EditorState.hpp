@@ -9,6 +9,12 @@ namespace engine {
      * Separated from EngineState to keep runtime concerns clean.
      * For a headless/server build, this can be omitted entirely.
      */
+    enum class ViewportMode : uint8_t { Picking, Navigation };
+
+    struct ViewportSettings {
+        ViewportMode mode = ViewportMode::Picking;
+    };
+
     struct EditorState {
         entt::entity selectedEntity = entt::null;
 
@@ -19,6 +25,8 @@ namespace engine {
         bool debugMode              = false;
         bool physicsRunning         = false;
         bool solidGround            = true;
+
+        ViewportSettings viewportSettings{};
     };
 
 }  // namespace engine

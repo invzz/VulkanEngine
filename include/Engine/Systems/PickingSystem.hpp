@@ -20,12 +20,16 @@ namespace engine {
         PickingSystem() = default;
 
         /**
-         * @brief Perform picking for the given mouse coordinates.
+         * @brief Perform picking for the given normalized viewport coordinates.
          * @param frameInfo Contains the view/projection matrices and scene.
-         * @param mouseX X coordinate in [0, 1] (viewport space).
-         * @param mouseY Y coordinate in [0, 1] (viewport space).
-         * @param aspectRatio Viewport aspect ratio (width / height).
+         * @param viewportMouseX X coordinate in [0, 1] relative to the viewport content area.
+         * @param viewportMouseY Y coordinate in [0, 1] relative to the viewport content area.
          * @return The closest selected entity, or std::nullopt if nothing picked.
+         */
+        std::optional<entt::entity> pickViewport(FrameInfo& frameInfo, float viewportMouseX, float viewportMouseY);
+
+        /**
+         * @brief Legacy overload using raw NDC parameters.
          */
         std::optional<entt::entity> pick(FrameInfo& frameInfo, float mouseX, float mouseY, float aspectRatio);
 
@@ -39,6 +43,8 @@ namespace engine {
          * @brief Generate a world-space ray from normalized screen coordinates.
          */
         glm::vec3 unprojectToWorldRay(float ndcX, float ndcY, glm::mat4 invProj, glm::mat4 invView) const;
+
+        std::optional<entt::entity> pickFromNdc(FrameInfo& frameInfo, float ndcX, float ndcY);
     };
 
 }  // namespace engine

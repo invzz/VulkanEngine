@@ -285,9 +285,16 @@ namespace engine {
         }
     }
 
+    void Window::setCursorMode(bool navigation) {
+        cursorNavigationMode_ = navigation;
+        cursorVisible         = !navigation;
+        glfwSetInputMode(window, GLFW_CURSOR, navigation ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    }
+
     void Window::setCursorVisible(bool visible) {
-        cursorVisible = visible;
-        glfwSetInputMode(window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+        cursorVisible         = visible;
+        cursorNavigationMode_ = false;
+        glfwSetInputMode(window, GLFW_CURSOR, visible ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_HIDDEN);
     }
 
     void Window::toggleCursor() {

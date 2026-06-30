@@ -18,9 +18,6 @@ namespace engine {
         Keyboard& keyboard_;
         Mouse&    mouse_;
         Window&   window_;
-
-        // Toggle cursor state tracking
-        bool lastToggleKeyState_ = false;
     };
 
 }  // namespace engine

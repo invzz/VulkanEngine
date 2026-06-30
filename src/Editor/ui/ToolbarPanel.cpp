@@ -66,6 +66,13 @@ namespace engine {
             applyStylePreset(stylePreset_);
         }
 
+        // --- Viewport mode toggle ---
+        bool nav = (frameInfo.viewportMode == ViewportMode::Navigation);
+        ImGui::SameLine(0.0f, 16.0f);
+        if (ImGui::Checkbox("Navigation", &nav)) {
+            frameInfo.viewportMode = nav ? ViewportMode::Navigation : ViewportMode::Picking;
+        }
+
         // --- Right: Metrics ---
         float fps       = ImGui::GetIO().Framerate;
         float frameTime = frameTimeMs_ > 0.0f ? frameTimeMs_ : (1000.0f / std::max(fps, 1.0f));

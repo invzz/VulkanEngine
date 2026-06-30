@@ -184,6 +184,9 @@ namespace engine {
         void recreatePostProcessingSystem(Device& device, VkRenderPass rp);
 
         // ---- Non-owned deps ----
+        EditorState& editor() {
+            return editor_;
+        }
         const EditorState& editor() const {
             return editor_;
         }
@@ -192,6 +195,9 @@ namespace engine {
         }
         ResourceManager& resourceManager() {
             return *resourceManager_;
+        }
+        Mouse* getMouse() const {
+            return mouse_.get();
         }
 
        private:

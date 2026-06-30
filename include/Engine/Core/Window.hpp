@@ -67,10 +67,14 @@ namespace engine {
         }
 
         // Cursor control
+        void setCursorMode(bool navigation);
         void               setCursorVisible(bool visible);
         void               toggleCursor();
         [[nodiscard]] bool isCursorVisible() const {
             return cursorVisible;
+        }
+        [[nodiscard]] bool isCursorNavigationMode() const {
+            return cursorNavigationMode_;
         }
 
         // Fullscreen control (exclusive fullscreen)
@@ -96,7 +100,8 @@ namespace engine {
         std::atomic<uint64_t> lastResizeTimeNs{0};
 
         // Cursor visibility state
-        bool cursorVisible = true;
+        bool cursorVisible          = true;
+        bool cursorNavigationMode_  = false;
 
         // Atomic width/height to avoid data races with GLFW callback thread
         std::atomic<uint32_t> width;
