@@ -61,9 +61,8 @@ namespace engine {
             cameraEntity_ = entity;
         }
 
-        [[nodiscard]] bool isSeparateWindow() const override {
-            return true;
-        }
+        // ViewportPanel docks into the main dockspace like all other panels.
+        // The dock zone is configured via DockConstraints in app.cpp.
 
        private:
         void enterNavigation(FrameInfo& frameInfo);
@@ -76,8 +75,8 @@ namespace engine {
         Viewport*  viewport_ = nullptr;
         VkExtent2D extent_;
 
-        Window* window_ = nullptr;
-        class Mouse* mouse_ = nullptr;
+        Window*      window_ = nullptr;
+        class Mouse* mouse_  = nullptr;
 
         entt::entity cameraEntity_ = entt::null;
     };

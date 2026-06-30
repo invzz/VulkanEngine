@@ -53,6 +53,19 @@ namespace engine {
 
         mainDockspaceID_ = ImGui::GetID("MainDockSpace");
         ImGui::DockSpace(mainDockspaceID_, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+
+        // First frame (or after a Reset): build the dock tree from the registered
+        // panels' DockConstraints. Without this step, every panel falls back to
+        // a floating top-level window and docking does not work.
+        if (!layoutApplied_) {
+            LayoutBuilder builder;
+            for (const auto& name : panelRegistry_.getPanelNames()) {
+                builder.addEntry(name, panelRegistry_.getConstraints(name).preferredZone);
+            }
+            builder.apply(mainDockspaceID_, dockSize, currentLayout_);
+            layoutApplied_ = true;
+        }
+
         ImGui::End();
 
         // --- Render all visible panels ---
@@ -69,6 +82,11 @@ namespace engine {
 
     void WorkspaceManager::applyLayoutPreset(LayoutPreset preset) {
         currentLayout_ = preset;
+        layoutApplied_ = false;  // force a rebuild on next frame
+    }
+
+    void WorkspaceManager::resetLayout() {
+        applyLayoutPreset(currentLayout_);
     }
 
     void WorkspaceManager::registerPanel(const std::string& name, std::unique_ptr<UIPanel> panel,
@@ -78,6 +96,10 @@ namespace engine {
 
     void WorkspaceManager::setToolbarPanel(std::unique_ptr<class ToolbarPanel> toolbar) {
         toolbarPanel_ = std::move(toolbar);
+        if (toolbarPanel_) {
+            // Wire the toolbar's "Reset Layout" button to our resetLayout().
+            toolbarPanel_->setOnResetLayout([this]() { resetLayout(); });
+        }
     }
 
     void WorkspaceManager::addToolbarToggle(const std::string& label, UIPanel* panel) {
@@ -92,37 +114,47 @@ namespace engine {
     }
 
     bool WorkspaceManager::validateLayout() {
-        bool violationsFound = false;
-
-        // Validate all panels against their constraints
-        auto& registry = getPanelRegistry();
-        auto  panels   = registry.getAllPanels();
-
-        for (auto* panel : panels) {
-            // Check if panel is visible and has constraints
-            if (!panel->isVisible())
-                continue;
-
-            // Rule 1: Toolbar panel must be at top
-            // Rule 2: Viewport panel (future) must be center
-            // Rule 3: Inspector must be right
-            // Rule 4: Scene hierarchy must be left
-            // Rule 5: No panel should be floating outside dockspace
+        // Sanity invariants we can check without walking the dock tree:
+        //  1. The layout has been applied at least once.
+        //  2. Every registered panel has a non-empty name (the name is the
+        //     ImGui window title, an empty one would silently fail to dock).
+        //  3. Every constraint is within bounds (delegated to enforceConstraints).
+        if (!layoutApplied_) {
+            return false;
         }
 
-        return !violationsFound;
+        auto& registry = getPanelRegistry();
+        auto  names    = registry.getPanelNames();
+        if (names.empty()) {
+            return false;
+        }
+
+        for (const auto& name : names) {
+            if (name.empty()) {
+                return false;
+            }
+            if (!enforceConstraints(name, registry.getConstraints(name))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool WorkspaceManager::enforceConstraints(const std::string& name, const DockConstraints& constraints) {
-        // Validate constraints
+        // Currently a pure validator. The ImGui side enforces minSize on the
+        // window class; this method exists so callers can pre-check constraints
+        // before registration and so validateLayout() has a single place to
+        // extend with future rules.
+        if (name.empty()) {
+            return false;
+        }
         if (constraints.minSizeX < 50.0f || constraints.minSizeY < 50.0f) {
             return false;
         }
-
         if (constraints.minSizeX > 5000.0f || constraints.minSizeY > 5000.0f) {
             return false;
         }
-
         return true;
     }
 

@@ -32,10 +32,10 @@ namespace engine {
         }
 
         Window& window;
-        float   lookSpeed        = 1.5f;            // scalar multiplier for look sensitivity
-        float   pixelSensitivity = 45.0f / 180.0f;  // converts pixel delta to radians
-        double  lastX            = 0.0;
-        double  lastY            = 0.0;
+        float   lookSpeed         = 1.5f;            // scalar multiplier for look sensitivity
+        float   pixelSensitivity  = 45.0f / 180.0f;  // converts pixel delta to radians
+        double  lastX             = 0.0;
+        double  lastY             = 0.0;
         bool    mouseInitialized_ = false;
     };
 }  // namespace engine

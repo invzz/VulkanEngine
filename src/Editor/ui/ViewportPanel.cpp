@@ -114,9 +114,9 @@ namespace engine {
 
             ImVec2 local(mouseScreen.x - itemMin.x, mouseScreen.y - itemMin.y);
             if (itemSize.x > 0.0f && itemSize.y > 0.0f) {
-                frameInfo.viewportMousePos.x     = local.x / itemSize.x;
-                frameInfo.viewportMousePos.y     = local.y / itemSize.y;
-                frameInfo.viewportMouseClicked     = true;
+                frameInfo.viewportMousePos.x   = local.x / itemSize.x;
+                frameInfo.viewportMousePos.y   = local.y / itemSize.y;
+                frameInfo.viewportMouseClicked = true;
             }
         }
     }

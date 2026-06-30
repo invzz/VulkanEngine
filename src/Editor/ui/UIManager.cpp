@@ -18,8 +18,18 @@ namespace engine {
     }
 
     void UIManager::addPanel(std::unique_ptr<UIPanel> panel) {
+        // Backward-compat overload: derive a name from the panel. This is only
+        // safe if the caller never relies on the name afterwards (no constraint
+        // lookup, no getPanel<T> by key). Prefer the named overload.
+        const std::string name = typeid(*panel).name();
         workspaceManager_.getPanelRegistry().registerPanel(
-            typeid(*panel).name(), std::move(panel));
+            name, std::move(panel));
+    }
+
+    void UIManager::addPanel(const std::string& name, std::unique_ptr<UIPanel> panel) {
+        // The name doubles as the ImGui window title used by DockBuilderDockWindow,
+        // so the panel's render() MUST use the same string in its ImGui::Begin().
+        workspaceManager_.getPanelRegistry().registerPanel(name, std::move(panel));
     }
 
     void UIManager::setToolbarPanel(std::unique_ptr<ToolbarPanel> toolbar) {

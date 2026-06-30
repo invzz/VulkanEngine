@@ -9,6 +9,7 @@
 
 #include "Editor/ui/UIPanel.hpp"
 #include "Layout.hpp"
+#include "LayoutBuilder.hpp"
 #include "PanelRegistry.hpp"
 #include "ThemeSystem.hpp"
 #include "UIState.hpp"
@@ -71,8 +72,20 @@ namespace engine {
 
         /**
      * @brief Apply a layout preset.
+     *
+     * Tears down the current dock tree and rebuilds it from the registered
+     * panels' DockConstraints (via LayoutBuilder). Safe to call any time;
+     * typically called once on first frame or when the user clicks "Reset
+     * Layout" in the toolbar.
      */
         void applyLayoutPreset(LayoutPreset preset);
+
+        /**
+     * @brief Reset the layout to the current preset.
+     *
+     * Convenience alias for applyLayoutPreset(getCurrentLayout()).
+     */
+        void resetLayout();
 
         /**
      * @brief Register a panel with its docking constraints.
@@ -221,6 +234,10 @@ namespace engine {
 
         // Layout rules
         LayoutPreset currentLayout_ = LayoutPreset::Default;
+
+        // Whether the dock tree has been built at least once. The renderer
+        // queries this so it can apply the layout on the first valid frame.
+        bool layoutApplied_ = false;
 
         // Forward declarations for panel getters
         class ViewportPanel;

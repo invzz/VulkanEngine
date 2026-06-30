@@ -73,6 +73,14 @@ namespace engine {
             frameInfo.viewportMode = nav ? ViewportMode::Navigation : ViewportMode::Picking;
         }
 
+        // --- Layout reset ---
+        if (onResetLayout_) {
+            ImGui::SameLine(0.0f, 16.0f);
+            if (ImGui::Button("Reset Layout")) {
+                onResetLayout_();
+            }
+        }
+
         // --- Right: Metrics ---
         float fps       = ImGui::GetIO().Framerate;
         float frameTime = frameTimeMs_ > 0.0f ? frameTimeMs_ : (1000.0f / std::max(fps, 1.0f));

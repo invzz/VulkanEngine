@@ -1,6 +1,7 @@
 #ifndef EDITOR_TOOLBARPANEL_HPP
 #define EDITOR_TOOLBARPANEL_HPP
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -39,6 +40,17 @@ namespace engine {
             frameTimeMs_ = ms;
         }
 
+        /**
+         * @brief Set the "Reset Layout" callback.
+         *
+         * The toolbar will render a "Reset" button that invokes this callback.
+         * WorkspaceManager wires its own resetLayout() here so the user can
+         * rebuild the dock tree at any time.
+         */
+        void setOnResetLayout(std::function<void()> callback) {
+            onResetLayout_ = std::move(callback);
+        }
+
        private:
         struct ToggleEntry {
             std::string label;
@@ -48,6 +60,7 @@ namespace engine {
         std::vector<ToggleEntry> toggles_;
         int                      stylePreset_ = 0;  // 0=dark, 1=light, 2=midnight
         float                    frameTimeMs_ = 0.0f;
+        std::function<void()>    onResetLayout_;
 
         /** Apply an ImGui style preset. */
         void applyStylePreset(int preset);

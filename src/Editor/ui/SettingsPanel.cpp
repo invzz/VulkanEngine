@@ -1,5 +1,7 @@
 #include "Editor/ui/SettingsPanel.hpp"
 
+#include <imgui.h>
+
 #include "Engine/EngineState.hpp"
 
 #include "Editor/ui/CameraPanel.hpp"
@@ -25,50 +27,53 @@ namespace engine {
         if (!visible_ || engineState_ == nullptr)
             return;
 
+        // Window title "Settings" matches the registry key in app.cpp so
+        // DockBuilderDockWindow("Settings", nodeId) actually anchors this window.
         ui::UI::PushThemeStyle();
+        if (ImGui::Begin("Settings", &visible_)) {
+            ui::UI::Checkbox("Show Skybox##settings_skybox", &engineState_->showSkybox());
+            ui::UI::Checkbox("Show Grid##settings_grid", &engineState_->showGrid());
 
-        ui::UI::Checkbox("Show Skybox##settings_skybox", &engineState_->showSkybox());
-        ui::UI::Checkbox("Show Grid##settings_grid", &engineState_->showGrid());
+            std::string dbgLabel = engineState_->showDebugObjects() ? "Hide Debug Objects" : "Show Debug Objects";
+            if (ui::UI::Button(dbgLabel.c_str()))
+                engineState_->showDebugObjects() = !engineState_->showDebugObjects();
 
-        std::string dbgLabel = engineState_->showDebugObjects() ? "Hide Debug Objects" : "Show Debug Objects";
-        if (ui::UI::Button(dbgLabel.c_str()))
-            engineState_->showDebugObjects() = !engineState_->showDebugObjects();
+            ui::UI::Separator();
 
-        ui::UI::Separator();
+            if (ui::UI::Section("Sky")) {
+                ui::UI::Checkbox("Debug Cubemap Faces##sky_cubemap",
+                    &engineState_->skySettings().debugCubemapFaces);
+            }
 
-        if (ui::UI::Section("Sky")) {
-            ui::UI::Checkbox("Debug Cubemap Faces##sky_cubemap",
-                &engineState_->skySettings().debugCubemapFaces);
-        }
+            if (ui::UI::Section("Camera")) {
+                cameraPanel_->render(frameInfo);
+            }
 
-        if (ui::UI::Section("Camera")) {
-            cameraPanel_->render(frameInfo);
-        }
+            if (ui::UI::Section("Environment (IBL)")) {
+                iblPanel_->render(frameInfo);
+            }
 
-        if (ui::UI::Section("Environment (IBL)")) {
-            iblPanel_->render(frameInfo);
-        }
+            if (ui::UI::Section("Post Processing")) {
+                postProcessPanel_->render(frameInfo);
+            }
 
-        if (ui::UI::Section("Post Processing")) {
-            postProcessPanel_->render(frameInfo);
-        }
+            if (ui::UI::Section("Profiling")) {
+                debugPanel_->render(frameInfo);
+            }
 
-        if (ui::UI::Section("Profiling")) {
-            debugPanel_->render(frameInfo);
-        }
-
-        // Multithreaded recording toggle
-        if (ui::UI::Section("Rendering")) {
-            ui::UI::Checkbox("Multithreaded Recording", &multithreadedRecordingEnabled_);
-            if (multithreadedRecordingEnabled_) {
-                int threadCount = static_cast<int>(multithreadedRecordingThreads_);
-                if (ui::UI::InputInt("Thread Count", &threadCount, 1, 1)) {
-                    if (threadCount > 0)
-                        multithreadedRecordingThreads_ = static_cast<uint32_t>(threadCount);
+            // Multithreaded recording toggle
+            if (ui::UI::Section("Rendering")) {
+                ui::UI::Checkbox("Multithreaded Recording", &multithreadedRecordingEnabled_);
+                if (multithreadedRecordingEnabled_) {
+                    int threadCount = static_cast<int>(multithreadedRecordingThreads_);
+                    if (ui::UI::InputInt("Thread Count", &threadCount, 1, 1)) {
+                        if (threadCount > 0)
+                            multithreadedRecordingThreads_ = static_cast<uint32_t>(threadCount);
+                    }
                 }
             }
         }
-
+        ImGui::End();
         ui::UI::PopThemeStyle();
     }
 

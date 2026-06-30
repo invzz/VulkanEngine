@@ -73,7 +73,7 @@ namespace engine {
     }
 
     std::optional<entt::entity> PickingSystem::pickFromNdc(FrameInfo& frameInfo, float ndcX, float ndcY) {
-        glm::vec3 rayDir = unprojectToWorldRay(ndcX, ndcY,
+        glm::vec3 rayDir    = unprojectToWorldRay(ndcX, ndcY,
             frameInfo.camera.getInverseView(),
             frameInfo.camera.getProjection());
         glm::vec3 rayOrigin = frameInfo.camera.getPosition();

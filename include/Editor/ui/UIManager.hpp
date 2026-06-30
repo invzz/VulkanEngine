@@ -28,8 +28,21 @@ namespace engine {
 
         /**
         * @brief Add a panel to the manager
+        *
+        * The panel is registered under a name derived from typeid. This is
+        * fine for simple use cases but the named overload is preferred when
+        * you need constraint lookup or stable cross-version names.
         */
         void addPanel(std::unique_ptr<UIPanel> panel);
+
+        /**
+        * @brief Add a panel to the manager with a stable name.
+        *
+        * The name is used as the registry key, the ImGui window title, and
+        * the layout slot. Use this overload whenever you want the panel to
+        * participate in the docking layout.
+        */
+        void addPanel(const std::string& name, std::unique_ptr<UIPanel> panel);
 
         /**
         * @brief Render all panels

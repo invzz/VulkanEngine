@@ -168,6 +168,7 @@ target_sources(Editor PRIVATE
     src/Editor/ui/LightsPanel.cpp
     src/Editor/ui/DebugPanel.cpp
     src/Editor/ui/Workspace/UIState.cpp
+    src/Editor/ui/Workspace/LayoutBuilder.cpp
     src/Editor/ui/Workspace/PanelRegistry.cpp
     src/Editor/ui/Workspace/CommandSystem.cpp
     src/Editor/ui/Workspace/ShortcutManager.cpp

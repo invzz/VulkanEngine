@@ -180,7 +180,9 @@ namespace engine {
         auto& registry = uiManager->getPanelRegistry();
 
         auto scenePanel = std::make_unique<ScenePanel>(device, engineState);
-        registry.registerPanel("SceneHierarchy", std::move(scenePanel), DockConstraints{.preferredZone = DockZone::DockLeft, .minSizeX = 250.0f, .minSizeY = 200.0f});
+        // Registry key MUST match the panel's ImGui::Begin("...") title so
+        // DockBuilderDockWindow actually finds the window.
+        registry.registerPanel("Scene Objects", std::move(scenePanel), DockConstraints{.preferredZone = DockZone::DockLeft, .minSizeX = 250.0f, .minSizeY = 200.0f});
 
         auto inspectorPanel = std::make_unique<InspectorPanel>(engineState);
         registry.registerPanel("Inspector", std::move(inspectorPanel), DockConstraints{.preferredZone = DockZone::DockRight, .minSizeX = 300.0f, .minSizeY = 200.0f});
@@ -194,7 +196,7 @@ namespace engine {
 
         auto toolbar = std::make_unique<ToolbarPanel>();
         uiManager->setToolbarPanel(std::move(toolbar));
-        uiManager->addToolbarToggle("Scene", registry.getPanel("SceneHierarchy"));
+        uiManager->addToolbarToggle("Scene", registry.getPanel("Scene Objects"));
         uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
         uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
