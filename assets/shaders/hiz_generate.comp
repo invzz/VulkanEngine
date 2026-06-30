@@ -1,0 +1,43 @@
+#version 450
+layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
+
+layout(binding = 0) uniform sampler2D inputDepth;
+layout(binding = 1) uniform writeonly image2D outputDepth;
+
+layout(push_constant) uniform PushConstants
+{
+  uint mode; // 0 = copy, 1 = reduce
+}
+push;
+
+void main()
+{
+  ivec2 pos     = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 outSize = imageSize(outputDepth);
+
+  if (pos.x >= outSize.x || pos.y >= outSize.y)
+  {
+    return;
+  }
+
+  if (push.mode == 0)
+  {
+    // Copy mode (1:1)
+    float d = texelFetch(inputDepth, pos, 0).r;
+    imageStore(outputDepth, pos, vec4(d, 0.0, 0.0, 0.0));
+    return;
+  }
+
+  // Reduce mode (2:1)
+  ivec2 inPos = pos * 2;
+
+  float d1 = texelFetch(inputDepth, inPos + ivec2(0, 0), 0).r;
+  float d2 = texelFetch(inputDepth, inPos + ivec2(1, 0), 0).r;
+  float d3 = texelFetch(inputDepth, inPos + ivec2(0, 1), 0).r;
+  float d4 = texelFetch(inputDepth, inPos + ivec2(1, 1), 0).r;
+
+  // Simple MAX reduction
+  float maxDepth = max(max(d1, d2), max(d3, d4));
+
+  imageStore(outputDepth, pos, vec4(maxDepth, 0.0, 0.0, 0.0));
+}

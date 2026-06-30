@@ -1,0 +1,84 @@
+# Clang-Format configuration for VulkanEngine C++ codebase
+# Based on Google's style, with explicit overrides for namespaces, braces,
+# spacing, and include sorting tuned for a modern C++20 engine.
+
+BasedOnStyle: Google
+Language:        Cpp
+Standard:        Latest
+
+# Indentation and tabs
+IndentWidth:                4
+TabWidth:                   4
+UseTab:                     Never
+ContinuationIndentWidth:    4
+NamespaceIndentation:       All
+
+# Braces and control statements
+BreakBeforeBraces:          Attach
+BraceWrapping:
+  AfterClass:               true
+  AfterControlStatement:    false
+  AfterEnum:                true
+  AfterFunction:            true
+  AfterNamespace:           true
+  AfterStruct:              true
+  AfterUnion:               true
+  BeforeCatch:              true
+  BeforeElse:               true
+  SplitEmptyFunction:       false
+  SplitEmptyRecord:         false
+  SplitEmptyNamespace:      false
+
+# Alignment and line breaking
+AlignAfterOpenBracket:      DontAlign
+AlignOperands:              true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Column limit: 0 disables wrapping; rely on manual wrapping for engine code.
+ColumnLimit:                0
+
+# Spacing rules
+SpaceBeforeParens:          ControlStatements
+SpacesInParentheses:        false
+SpacesInAngles:             false
+SpaceInEmptyParentheses:    false
+SpaceAfterCStyleCast:       true
+SpaceBeforeAssignmentOperators: true
+
+# Includes: enable deterministic sorting and grouping
+SortIncludes:               true
+IncludeBlocks:              Regroup
+IncludeCategories:
+  - Regex:           '^<vulkan/.*>'
+    Priority:        1
+  - Regex:           '^<glm/.*>'
+    Priority:        2
+  - Regex:           '^<imgui\.h>'
+    Priority:        3    # must sort before ImGuizmo.h (compile-time dependency)
+  - Regex:           '^<ImGuizmo\.h>'
+    Priority:        4
+  - Regex:           '^<.*>'
+    Priority:        5
+  - Regex:           'Jolt/Jolt.h'
+    Priority:        6
+  - Regex:           'Jolt/.*'
+    Priority:        7
+  - Regex:           '^"Engine/.*"'
+    Priority:        8
+  - Regex:           '^".*"'
+    Priority:        9
+
+# Pointer and reference alignment
+PointerAlignment:           Left
+ReferenceAlignment:         Left
+
+# Miscellaneous
+SortUsingDeclarations:      true
+ReflowComments:             false
+FixNamespaceComments:       true
+
+# End of .clang-format

@@ -1,0 +1,129 @@
+{
+    "objects": [
+        {
+            "id": "1",
+            "name": "StaticBoxOffset",
+            "transform": {
+                "translation": [
+                    6.0,
+                    40.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "rigidBody": {
+                "mass": 1.0,
+                "velocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "acceleration": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "angularVelocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "isStatic": true,
+                "useGravity": false,
+                "friction": 0.0,
+                "restitution": 0.95,
+                "mode": "static"
+            },
+            "collider": {
+                "shape": "box",
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "radius": 0.5,
+                "centerOffset": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "isTrigger": false,
+                "collisionGroup": 0,
+                "collisionMask": 4294967295
+            }
+        },
+        {
+            "id": "2",
+            "name": "DynamicBox",
+            "transform": {
+                "translation": [
+                    0.0,
+                    35.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "rigidBody": {
+                "mass": 1.0,
+                "velocity": [
+                    0.0,
+                    10.0,
+                    0.0
+                ],
+                "acceleration": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "angularVelocity": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "isStatic": false,
+                "useGravity": false,
+                "friction": 0.0,
+                "restitution": 0.95,
+                "mode": "dynamic"
+            },
+            "collider": {
+                "shape": "box",
+                "size": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "radius": 0.5,
+                "centerOffset": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "isTrigger": false,
+                "collisionGroup": 0,
+                "collisionMask": 4294967295
+            }
+        }
+    ],
+    "settings": {
+        "physicsSimulationRunning": false
+    }
+}

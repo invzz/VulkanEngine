@@ -1,0 +1,98 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : enable
+
+// Work group size
+layout(local_size_x = 256) in;
+
+// Input: Base mesh vertices
+// Use scalar layout to match C++ struct packing exactly
+struct Vertex
+{
+  vec3 position;   // offset 0, size 12
+  vec3 color;      // offset 12, size 12
+  vec3 normal;     // offset 24, size 12
+  vec2 uv;         // offset 36, size 8
+  int  materialId; // offset 44, size 4
+  // Total: 48 bytes
+};
+
+layout(scalar, binding = 0) readonly buffer BaseVertices
+{
+  Vertex baseVertices[];
+};
+
+// Input: Morph target deltas (position and normal offsets)
+struct MorphDelta
+{
+  vec4 positionDelta; // vec4 for 16-byte alignment (w unused)
+  vec4 normalDelta;   // vec4 for 16-byte alignment (w unused)
+};
+
+layout(std430, binding = 1) readonly buffer MorphDeltas
+{
+  MorphDelta morphDeltas[];
+};
+
+// Input: Morph weights (one per morph target)
+layout(std430, binding = 2) readonly buffer MorphWeights
+{
+  float weights[];
+};
+
+// Output: Blended vertices
+layout(scalar, binding = 3) writeonly buffer OutputVertices
+{
+  Vertex outputVertices[];
+};
+
+// Push constants for configuration
+layout(push_constant) uniform PushConstants
+{
+  uint vertexOffset;     // Offset into vertex buffer
+  uint vertexCount;      // Number of vertices to process
+  uint morphTargetCount; // Number of morph targets
+  uint deltaOffset;      // Offset into morph delta buffer
+}
+params;
+
+void main()
+{
+  uint globalIndex = gl_GlobalInvocationID.x;
+
+  // Check if this thread is within bounds
+  if (globalIndex >= params.vertexCount)
+  {
+    return;
+  }
+
+  // Read base vertex at the correct offset
+  uint   baseVertexIndex = params.vertexOffset + globalIndex;
+  Vertex result          = baseVertices[baseVertexIndex];
+
+  // Apply each morph target
+  for (uint morphIdx = 0; morphIdx < params.morphTargetCount; morphIdx++)
+  {
+    float weight = weights[morphIdx];
+
+    // Skip if weight is zero (optimization)
+    if (abs(weight) < 0.0001)
+    {
+      continue;
+    }
+
+    // Calculate delta index: each morph target has vertexCount deltas
+    // Deltas are stored per-vertex, not globally indexed
+    uint deltaIndex = params.deltaOffset + morphIdx * params.vertexCount + globalIndex;
+
+    // Apply weighted delta (using .xyz to ignore padding)
+    result.position += morphDeltas[deltaIndex].positionDelta.xyz * weight;
+    result.normal += morphDeltas[deltaIndex].normalDelta.xyz * weight;
+  }
+
+  // Renormalize the normal after blending
+  result.normal = normalize(result.normal);
+
+  // Write result to output buffer at local index (not offset)
+  // The output buffer is sized for vertexCount, not the full vertex buffer
+  outputVertices[globalIndex] = result;
+}

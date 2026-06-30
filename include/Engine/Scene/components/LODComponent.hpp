@@ -1,0 +1,23 @@
+#ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_LODCOMPONENT_HPP
+#define VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_LODCOMPONENT_HPP
+
+#include <memory>
+#include <vector>
+
+#include "../Component.hpp"
+#include "ModelLib/Resources/Model.hpp"
+
+namespace engine {
+
+    struct LODLevel {
+        std::shared_ptr<Model> model;
+        float                  distance;  // Distance at which this LOD becomes active
+    };
+
+    struct LODComponent {
+        std::vector<LODLevel> levels;  // Should be sorted by distance
+    };
+
+}  // namespace engine
+
+#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_LODCOMPONENT_HPP
