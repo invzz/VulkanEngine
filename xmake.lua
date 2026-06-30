@@ -138,6 +138,16 @@ target("stb_provider")
     add_includedirs("include", {public = true})
     add_packages("stb")
 
+-- ImGuizmo — 3D transformation gizmo overlay for ImGui (vendored)
+target("ImGuizmo")
+    set_kind("static")
+    set_group("third_party")
+    set_default(false)
+    add_files("src/third_party/ImGuizmo/ImGuizmo.cpp")
+    add_includedirs("src/third_party/ImGuizmo", {public = true})
+    add_packages("imgui")
+    add_defines("IMGUI_DEFINE_MATH_OPERATORS")
+
 -- ============================================================================
 -- Core Libraries
 -- ============================================================================
@@ -218,14 +228,14 @@ target("Editor")
     set_group("editor")
     set_default(true)
     add_files("src/Editor/**.cpp")
-    add_includedirs("include", "src/Editor", {public = true})
+    add_includedirs("include", "src/Editor", "src/third_party/ImGuizmo", {public = true})
     add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
     if is_plat("linux") then
         add_packages("vulkan")
     elseif is_plat("windows") then
         add_syslinks("vulkan-1")
     end
-    add_deps("Engine", "EngineImporters", "EngineSceneIO")
+    add_deps("Engine", "EngineImporters", "EngineSceneIO", "ImGuizmo")
 
 -- ============================================================================
 -- Tools

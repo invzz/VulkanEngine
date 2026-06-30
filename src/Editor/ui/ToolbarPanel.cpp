@@ -1,8 +1,13 @@
 #include "Editor/ui/ToolbarPanel.hpp"
 
+// clang-format off
+// imgui.h MUST come before ImGuizmo.h — ImGuizmo uses types from it.
+#include <imgui.h>
+#include <ImGuizmo.h>
+// clang-format on
+
 #include <algorithm>
 #include <cmath>
-#include <imgui.h>
 
 namespace engine {
 
@@ -65,6 +70,41 @@ namespace engine {
         if (ImGui::Combo("##style", &stylePreset_, styleNames, IM_ARRAYSIZE(styleNames))) {
             applyStylePreset(stylePreset_);
         }
+
+        // --- Gizmo operation buttons (T / R / S) ---
+        ImGui::SameLine(0.0f, 16.0f);
+        ImGui::TextUnformatted("Gizmo:");
+        ImGui::SameLine(0.0f, 0.0f);
+
+        auto gOp = static_cast<ImGuizmo::OPERATION>(frameInfo.gizmoOperation);
+        bool tOp = (gOp & ImGuizmo::TRANSLATE) == ImGuizmo::TRANSLATE;
+        bool rOp = (gOp & ImGuizmo::ROTATE) == ImGuizmo::ROTATE;
+        bool sOp = (gOp & ImGuizmo::SCALE) == ImGuizmo::SCALE;
+
+        ImGui::BeginDisabled(!frameInfo.gizmoEnabled);
+        if (ImGui::Checkbox("T##gizmo_translate", &tOp)) {
+            frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::TRANSLATE);
+        }
+        ImGui::SameLine(0.0f, 0.0f);
+        if (ImGui::Checkbox("R##gizmo_rotate", &rOp)) {
+            frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::ROTATE);
+        }
+        ImGui::SameLine(0.0f, 0.0f);
+        if (ImGui::Checkbox("S##gizmo_scale", &sOp)) {
+            frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::SCALE);
+        }
+
+        // --- World / Local space toggle ---
+        ImGui::SameLine(0.0f, 8.0f);
+        bool isWorld = (frameInfo.gizmoMode == 1);  // ImGuizmo::WORLD = 1
+        if (ImGui::Checkbox("World##gizmo_space", &isWorld)) {
+            frameInfo.gizmoMode = isWorld ? 1 : 0;
+        }
+        ImGui::EndDisabled();
+
+        // --- Gizmo enable toggle ---
+        ImGui::SameLine(0.0f, 8.0f);
+        ImGui::Checkbox("Gizmo##gizmo_enable", &frameInfo.gizmoEnabled);
 
         // --- Viewport mode toggle ---
         bool nav = (frameInfo.viewportMode == ViewportMode::Navigation);

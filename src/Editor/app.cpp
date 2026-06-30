@@ -364,6 +364,9 @@ namespace engine {
                 .extent              = renderer.getOffscreenExtent(),
                 .viewportMode        = engineState.editor().viewportSettings.mode,
                 .debugMode           = debugMode,
+                .gizmoOperation      = engineState.editor().gizmoOperation,
+                .gizmoMode           = engineState.editor().gizmoMode,
+                .gizmoEnabled        = engineState.editor().gizmoEnabled,
             };
 
             // Mouse picking: the ViewportPanel has already converted the click
@@ -388,6 +391,9 @@ namespace engine {
             selectedObjectId                           = frameInfo.selectedObjectId;
             engineState.setSelectedEntity(frameInfo.selectedEntity);
             engineState.setCameraEntity(frameInfo.cameraEntity);
+            engineState.editor().gizmoOperation = frameInfo.gizmoOperation;
+            engineState.editor().gizmoMode      = frameInfo.gizmoMode;
+            engineState.editor().gizmoEnabled   = frameInfo.gizmoEnabled;
 
             renderer.endFrame();
         }

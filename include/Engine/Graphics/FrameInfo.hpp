@@ -85,6 +85,11 @@ namespace engine {
         int                      debugMode{0};                // Mirrors GlobalUbo::debugMode for pipeline selection
         class ModelRenderSystem* modelRenderSystem{nullptr};  // Model rendering system
         class ShadowSystem*      shadowSystem{nullptr};       // Shadow rendering system
+
+        // Gizmo state
+        int  gizmoOperation{0};  // ImGuizmo::OPERATION (TRANSLATE/ROTATE/SCALE)
+        int  gizmoMode{1};       // ImGuizmo::MODE (LOCAL=0, WORLD=1)
+        bool gizmoEnabled{true};
     };
 
 }  // namespace engine

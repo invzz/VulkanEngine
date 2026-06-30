@@ -2,6 +2,7 @@
 #define EDITOR_UI_VIEWPORT_PANEL_HPP
 
 #include <functional>
+#include <imgui.h>
 
 #include "Editor/ui/UIPanel.hpp"
 #include "vulkan/vulkan.h"
@@ -70,6 +71,7 @@ namespace engine {
         void updateModeFromUI(FrameInfo& frameInfo);
         void applyCursorState(ViewportMode mode);
         void handlePickingInput(FrameInfo& frameInfo);
+        void handleGizmo(FrameInfo& frameInfo, const ImVec2& topLeft, const ImVec2& size);
         void handleResize();
 
         Viewport*  viewport_ = nullptr;
