@@ -1,7 +1,8 @@
 #include "Editor/ui/Workspace/LayoutBuilder.hpp"
 
-#include <algorithm>
 #include <imgui.h>
+
+#include <algorithm>
 #include <imgui_internal.h>  // DockBuilder API
 
 namespace engine {

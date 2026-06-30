@@ -1,8 +1,9 @@
 #include "Editor/ui/LightsPanel.hpp"
 
+#include <imgui.h>
+
 #include <algorithm>
 #include <cmath>
-#include <imgui.h>
 #include <random>
 
 #include "Engine/Graphics/FrameInfo.hpp"

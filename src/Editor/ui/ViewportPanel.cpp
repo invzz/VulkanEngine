@@ -1,15 +1,13 @@
 #include "Editor/ui/ViewportPanel.hpp"
 
-// clang-format off
-// imgui.h MUST come before ImGuizmo.h — ImGuizmo uses types from it.
+#include <glm/gtc/type_ptr.hpp>
+
 #include <imgui.h>
+
 #include <ImGuizmo.h>
-// clang-format on
 
 #include <algorithm>
 #include <cstdint>
-
-#include <glm/gtc/type_ptr.hpp>
 
 #include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"

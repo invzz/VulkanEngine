@@ -1,7 +1,8 @@
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include <exception>
 #include <imgui.h>
+
+#include <exception>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 #include <iostream>

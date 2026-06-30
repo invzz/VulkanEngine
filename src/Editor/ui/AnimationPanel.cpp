@@ -1,7 +1,8 @@
 #include "Editor/ui/AnimationPanel.hpp"
 
-#include <algorithm>
 #include <imgui.h>
+
+#include <algorithm>
 #include <imgui_internal.h>
 #include <iomanip>
 #include <sstream>

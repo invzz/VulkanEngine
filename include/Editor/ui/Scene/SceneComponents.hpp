@@ -1,9 +1,10 @@
 #ifndef EDITOR_UI_SCENE_HPP
 #define EDITOR_UI_SCENE_HPP
 
+#include <imgui.h>
+
 #include <entt/entity/fwd.hpp>
 #include <functional>
-#include <imgui.h>
 #include <string>
 #include <vector>
 

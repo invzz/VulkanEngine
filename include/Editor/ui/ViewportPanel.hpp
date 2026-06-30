@@ -1,8 +1,9 @@
 #ifndef EDITOR_UI_VIEWPORT_PANEL_HPP
 #define EDITOR_UI_VIEWPORT_PANEL_HPP
 
-#include <functional>
 #include <imgui.h>
+
+#include <functional>
 
 #include "Editor/ui/UIPanel.hpp"
 #include "vulkan/vulkan.h"

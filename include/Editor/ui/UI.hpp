@@ -3,8 +3,9 @@
 
 #include <glm/glm.hpp>
 
-#include <functional>
 #include <imgui.h>
+
+#include <functional>
 
 namespace engine::ui {
 

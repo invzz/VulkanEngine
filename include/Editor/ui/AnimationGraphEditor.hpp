@@ -1,9 +1,10 @@
 #ifndef EDITOR_ANIMATION_GRAPH_EDITOR_HPP
 #define EDITOR_ANIMATION_GRAPH_EDITOR_HPP
 
+#include <imgui.h>
+
 #include <algorithm>
 #include <cstring>
-#include <imgui.h>
 #include <imgui_internal.h>
 #include <memory>
 #include <string>

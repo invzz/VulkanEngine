@@ -1,10 +1,8 @@
 #include "Editor/ui/ToolbarPanel.hpp"
 
-// clang-format off
-// imgui.h MUST come before ImGuizmo.h — ImGuizmo uses types from it.
 #include <imgui.h>
+
 #include <ImGuizmo.h>
-// clang-format on
 
 #include <algorithm>
 #include <cmath>

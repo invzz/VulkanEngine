@@ -1,10 +1,11 @@
 #include "Editor/ui/Scene/SceneComponents.hpp"
 
+#include <imgui.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <fstream>
-#include <imgui.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
