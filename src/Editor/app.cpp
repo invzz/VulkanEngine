@@ -300,23 +300,48 @@ namespace engine {
     }
 
     void App::render(float frameTime) {
-        // Process deferred viewport resize before any command buffer work.
-        // Must wait for GPU idle — FrameBuffer::resize() destroys images
-        // that may still be referenced by in-flight command buffers.
-        if (viewportResize_.pending_) {
-            vkDeviceWaitIdle(device.device());
-            viewport_.resize(device, renderer, viewportResize_.extent_);
-            viewportResize_.pending_ = false;
-            viewportPanel_->setViewport(&viewport_, viewportResize_.extent_);
+        // Pre-beginFrame resize: if the panel's current extent differs from
+        // the offscreen FB extent, resize the FB now (before we touch any
+        // command buffer). This catches:
+        //   1. The previous frame's onResize() (pending_ flag).
+        //   2. The first-frame case where the FB was created at swapchain
+        //      extent and the panel is smaller.
+        //   3. Any case where the panel's getExtent() drifted out of sync
+        //      with the FB (defensive).
+        //
+        // IMPORTANT: the FB MUST be resized BEFORE the render graph runs, not
+        // after. The render graph records commands that reference the FB's
+        // images, so destroying the FB mid-frame would create a use-after-free
+        // (the command buffer would hold a stale VkImageView, and the GPU
+        // would fault on submission with a GPUVM permission error).
+        {
+            VkExtent2D panelExtent = viewportPanel_ ? viewportPanel_->getExtent() : VkExtent2D{0, 0};
+            VkExtent2D fbExtent    = renderer.getOffscreenExtent();
+            bool       wantResize  = viewportResize_.pending_ ||
+                                     (panelExtent.width > 0 && panelExtent.height > 0 &&
+                                         (panelExtent.width != fbExtent.width || panelExtent.height != fbExtent.height));
+            if (wantResize) {
+                VkExtent2D targetExtent = (viewportResize_.pending_ && viewportResize_.extent_.width > 0)
+                                              ? viewportResize_.extent_
+                                              : panelExtent;
+                vkDeviceWaitIdle(device.device());
+                viewport_.resize(device, renderer, targetExtent);
+                viewportResize_.pending_ = false;
+                if (viewportPanel_) {
+                    viewportPanel_->setViewport(&viewport_, targetExtent);
+                }
+            }
         }
 
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
                 engineState.recreatePostProcessingSystem(device, renderer.getSwapChainRenderPass());
-                // Recreate offscreen FB and ImGui textures atomically —
-                // both must happen in the same frame to avoid stale descriptors.
-                renderer.recreateOffscreenFramebuffer();
-                viewport_.create(device, renderer);
+                // Do NOT recreate the offscreen FB here. The cached
+                // offscreenExtent_ is the OLD panel size (the panel hasn't
+                // been re-laid-out yet at beginFrame() time). The panel's
+                // render() in the composition pass will report the new size
+                // via onResize(), and the pre-beginFrame block at the start
+                // of the NEXT frame will resize the FB then.
             }
 
             int frameIndex = renderer.getFrameIndex();

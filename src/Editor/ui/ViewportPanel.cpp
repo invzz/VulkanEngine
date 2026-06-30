@@ -1,5 +1,7 @@
 #include "Editor/ui/ViewportPanel.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <imgui.h>
 
 #include "Engine/Core/Mouse.hpp"
@@ -27,11 +29,16 @@ namespace engine {
     }
 
     void ViewportPanel::render(FrameInfo& frameInfo) {
-        handleResize();
         updateModeFromUI(frameInfo);
         applyCursorState(frameInfo.viewportMode);
 
         ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoScrollbar);
+
+        // Resize MUST happen inside the window so GetContentRegionAvail()
+        // returns the actual viewport panel content area — calling it outside
+        // a window returns (0,0) and the offscreen FB is never resized,
+        // permanently stuck at the initial 400×300 extent.
+        handleResize();
 
         if (viewport_) {
             ImVec2 contentAvail = ImGui::GetContentRegionAvail();
@@ -122,15 +129,59 @@ namespace engine {
     }
 
     void ViewportPanel::handleResize() {
-        ImVec2 winSize = ImGui::GetWindowSize();
-        if (winSize.x > 0 && winSize.y > 0) {
-            VkExtent2D newExtent = {static_cast<uint32_t>(winSize.x), static_cast<uint32_t>(winSize.y)};
-            if (newExtent.width != extent_.width || newExtent.height != extent_.height) {
-                extent_ = newExtent;
-                if (onResize) {
-                    onResize(newExtent);
+        // Use the content region (not the window outer size). The ImGui::Image
+        // is drawn at GetContentRegionAvail() at the start of the panel, so
+        // the offscreen framebuffer MUST match that exact area — otherwise
+        // the texture gets stretched/squished to fit.
+        ImVec2 contentAvail = ImGui::GetContentRegionAvail();
+        if (contentAvail.x < 1.0f || contentAvail.y < 1.0f) {
+            return;  // panel is collapsed; nothing to do
+        }
+
+        // CRITICAL (HiDPI / fractional scaling): ImGui works in *logical*
+        // points, but the swapchain and offscreen framebuffer are sized in
+        // *physical* pixels. On a scaled display (e.g. Wayland fractional
+        // scaling) the physical pixels differ from logical points, so a
+        // content area of 628x843 logical points actually covers
+        // 628*scale x 843*scale physical pixels on screen. If we size the FB
+        // at the logical size, the scene is rendered at logical resolution
+        // and then upscaled by ImGui to the physical area → blurry / soft /
+        // "low resolution" even when the panel is held still.
+        //
+        // Determine the scale from the ground truth (GLFW framebuffer/window
+        // ratio) when a Window is available; fall back to ImGui's
+        // DisplayFramebufferScale otherwise. This makes the offscreen FB
+        // render at native physical resolution.
+        const ImGuiIO& io     = ImGui::GetIO();
+        float          scaleX = (io.DisplayFramebufferScale.x > 0.0f) ? io.DisplayFramebufferScale.x : 1.0f;
+        float          scaleY = (io.DisplayFramebufferScale.y > 0.0f) ? io.DisplayFramebufferScale.y : 1.0f;
+        if (window_ != nullptr) {
+            if (GLFWwindow* glfwWin = window_->getGLFWwindow()) {
+                int winW = 0, winH = 0, fbW = 0, fbH = 0;
+                glfwGetWindowSize(glfwWin, &winW, &winH);
+                glfwGetFramebufferSize(glfwWin, &fbW, &fbH);
+                if (winW > 0 && winH > 0 && fbW > 0 && fbH > 0) {
+                    scaleX = static_cast<float>(fbW) / static_cast<float>(winW);
+                    scaleY = static_cast<float>(fbH) / static_cast<float>(winH);
                 }
             }
+        }
+
+        // Floor + clamp to a sane minimum so a 0×0 panel never asks the GPU
+        // for a 0-sized image.
+        uint32_t newW = std::max(1u, static_cast<uint32_t>(contentAvail.x * scaleX));
+        uint32_t newH = std::max(1u, static_cast<uint32_t>(contentAvail.y * scaleY));
+        // 1px epsilon: ImGui's GetContentRegionAvail() can return sub-pixel
+        // wobble while the user holds the panel still (e.g. due to rounding
+        // after DPI changes). Avoids full FB recreations on no-op frames.
+        constexpr uint32_t kResizeEpsilon = 1;
+        if (std::abs(static_cast<int32_t>(newW) - static_cast<int32_t>(extent_.width)) <= static_cast<int32_t>(kResizeEpsilon) &&
+            std::abs(static_cast<int32_t>(newH) - static_cast<int32_t>(extent_.height)) <= static_cast<int32_t>(kResizeEpsilon)) {
+            return;
+        }
+        extent_ = {newW, newH};
+        if (onResize) {
+            onResize(extent_);
         }
     }
 
