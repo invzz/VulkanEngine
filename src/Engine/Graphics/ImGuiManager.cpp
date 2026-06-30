@@ -12,8 +12,8 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "vulkan/vulkan_core.h"
-#ifdef _WIN32
-#endif
+
+#include "IconsFontAwesome6.h"
 
 namespace engine {
 
@@ -42,6 +42,22 @@ namespace engine {
         (void) io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable keyboard controls
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable docking
+
+        // Load main font (default embedded font, 16px)
+        const float fontSize = 16.0f;
+        io.Fonts->AddFontDefault();
+
+        // Merge Font Awesome Solid icons into the main font
+        ImFontConfig iconConfig;
+        iconConfig.MergeMode = true;
+        iconConfig.PixelSnapH = true;
+
+        static const ImWchar iconRanges[] = {
+            ICON_MIN_FA, ICON_MAX_FA, 0
+        };
+
+        io.Fonts->AddFontFromFileTTF(
+            FONT_PATH "fa-solid-900.ttf", fontSize, &iconConfig, iconRanges);
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();

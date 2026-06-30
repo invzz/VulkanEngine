@@ -39,7 +39,8 @@ add_defines(
     "SHADER_PATH=\""  .. normpath(path.join(project_dir, "assets/shaders/compiled")) .. "/\"",
     "MODEL_PATH=\""   .. normpath(path.join(project_dir, "assets/models")) .. "/\"",
     "TEXTURE_PATH=\"" .. normpath(path.join(project_dir, "assets/textures")) .. "/\"",
-    "SCENE_PATH=\""   .. normpath(path.join(project_dir, "assets/scenes")) .. "/\""
+    "SCENE_PATH=\""   .. normpath(path.join(project_dir, "assets/scenes")) .. "/\"",
+    "FONT_PATH=\""    .. normpath(path.join(project_dir, "assets/fonts"))    .. "/\""
 )
 
 -- GLFW / GLM config
@@ -203,7 +204,7 @@ target("Engine")
     set_group("core")
     set_default(false)
     add_files("src/Engine/**.cpp")
-    add_includedirs("include", {public = true})
+    add_includedirs("include", "src/third_party", {public = true})
     add_packages(
         "glm", "glfw", "tinyexr", "tinygltf",
         "stb", "nlohmann_json", "meshoptimizer",
