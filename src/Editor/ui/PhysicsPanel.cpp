@@ -1,5 +1,6 @@
 #include "Editor/ui/PhysicsPanel.hpp"
 
+#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <string>
@@ -31,21 +32,21 @@ namespace engine {
             bool& solidGround = state_.solidGround();
             auto* jolt        = state_.systemPtr<JoltPhysicsSystem>();
 
-            if (ui::UI::Button(simRunning ? "Pause Physics##physics_pause" : "Play Physics##physics_play")) {
+            if (ui::UI::Button((std::string(simRunning ? ICON_FA_PAUSE : ICON_FA_PLAY) + "##physics_" + (simRunning ? "pause" : "play")).c_str())) {
                 simRunning = !simRunning;
             }
             std::string statusText = simRunning ? "Status: Running" : "Status: Stopped";
             ui::UI::TextDisabled(statusText.c_str());
             ui::UI::Separator();
 
-            if (ui::UI::Button(showWires ? "Hide Collider Wireframes" : "Show Collider Wireframes")) {
+            if (ui::UI::Button((std::string(showWires ? ICON_FA_EYE_SLASH : ICON_FA_EYE) + " Collider Wireframes").c_str())) {
                 showWires = !showWires;
             }
             std::string wireStatus = showWires ? "Collider Debug: On" : "Collider Debug: Off";
             ui::UI::TextDisabled(wireStatus.c_str());
             ui::UI::Separator();
 
-            if (ui::UI::Button(solidGround ? "Disable Solid Ground" : "Enable Solid Ground")) {
+            if (ui::UI::Button((std::string(solidGround ? ICON_FA_MOUNTAIN : ICON_FA_CIRCLE) + " Solid Ground").c_str())) {
                 solidGround = !solidGround;
                 if (jolt)
                     jolt->setGroundEnabled(solidGround);
@@ -66,10 +67,10 @@ namespace engine {
                 ui::UI::Separator();
 
                 if (!hasRigidBody) {
-                    if (ui::UI::Button("Add Rigid Body Component##physics_add_rb"))
+                    if (ui::UI::Button((std::string(ICON_FA_PLUS) + " Rigid Body##physics_add_rb").c_str()))
                         addPhysicsComponent(frameInfo);
                 } else {
-                    if (ui::UI::Button("Remove Rigid Body Component##physics_remove_rb")) {
+                    if (ui::UI::Button((std::string(ICON_FA_MINUS) + " Rigid Body##physics_remove_rb").c_str())) {
                         if (registry.all_of<RigidBodyComponent>(entity))
                             registry.remove<RigidBodyComponent>(entity);
                     }
@@ -77,7 +78,7 @@ namespace engine {
                 }
 
                 if (!hasCollider) {
-                    if (ui::UI::Button("Add Collider Component##physics_add_collider")) {
+                    if (ui::UI::Button((std::string(ICON_FA_PLUS) + " Collider##physics_add_collider").c_str())) {
                         auto& collider               = registry.emplace<ColliderComponent>(entity);
                         collider.shape               = ColliderComponent::ShapeType::Box;
                         collider.size                = glm::vec3(1.0f);
@@ -99,7 +100,7 @@ namespace engine {
                             registry.get<RigidBodyComponent>(entity).pendingBodyStateOverride = true;
                     }
                 } else {
-                    if (ui::UI::Button("Remove Collider Component##physics_remove_collider")) {
+                    if (ui::UI::Button((std::string(ICON_FA_MINUS) + " Collider##physics_remove_collider").c_str())) {
                         if (registry.all_of<ColliderComponent>(entity))
                             registry.remove<ColliderComponent>(entity);
                     }

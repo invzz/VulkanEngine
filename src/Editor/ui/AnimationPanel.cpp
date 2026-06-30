@@ -1,5 +1,6 @@
 #include "Editor/ui/AnimationPanel.hpp"
 
+#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <algorithm>
@@ -69,7 +70,7 @@ namespace engine {
         ui::UI::PushThemeStyle();
 
         // Use Section for the collapsible header
-        bool open = ui::UI::Section("Animation");
+        bool open = ui::UI::Section((std::string(ICON_FA_STOPWATCH) + " Animation").c_str());
         if (!open) {
             ui::UI::PopThemeStyle();
             return;
@@ -145,7 +146,7 @@ namespace engine {
 
         // ── Timeline ────────────────────────────────────────────────────
         ui::UI::Separator();
-        ui::UI::TextDisabled("Timeline");
+        ui::UI::TextDisabled((std::string(ICON_FA_TIMELINE) + " Timeline").c_str());
 
         float maxDuration = timeline_.totalDuration;
         if (maxDuration < 0.1f)
@@ -283,17 +284,17 @@ namespace engine {
 
         // Zoom controls
         ImGui::SameLine();
-        if (ui::UI::SmallButton("Zoom In##anim_zoom")) {
+        if (ui::UI::SmallButton((std::string(ICON_FA_MAGNIFYING_GLASS_PLUS) + "##anim_zoom_in").c_str())) {
             timeline_.zoom = std::min(timeline_.zoom * 1.5f, 10.0f);
         }
         ImGui::SameLine();
-        if (ui::UI::SmallButton("Zoom Out##anim_zoom")) {
+        if (ui::UI::SmallButton((std::string(ICON_FA_MAGNIFYING_GLASS_MINUS) + "##anim_zoom_out").c_str())) {
             timeline_.zoom = std::max(timeline_.zoom / 1.5f, 0.1f);
         }
 
         // ── Clip List ───────────────────────────────────────────────────
         ui::UI::Separator();
-        ui::UI::TextDisabled("Active Clips");
+        ui::UI::TextDisabled((std::string(ICON_FA_LIST) + " Active Clips").c_str());
 
         if (entityAnimData_.empty()) {
             ImGui::Indent();
@@ -319,7 +320,7 @@ namespace engine {
 
                 if (data.selectedClipIndex >= 0 && data.selectedClipIndex < static_cast<int>(data.clipNames.size())) {
                     std::string applyId = "Apply##apply_" + std::to_string(data.entityId);
-                    if (ui::UI::SmallButton(applyId.c_str())) {
+                    if (ui::UI::SmallButton((std::string(ICON_FA_ARROW_RIGHT) + " Apply").c_str())) {
                         auto view = scene_.getRegistry().view<AnimationComponent>();
                         for (auto entity : view) {
                             auto& anim = scene_.getRegistry().get<AnimationComponent>(entity);
@@ -344,9 +345,9 @@ namespace engine {
 
         // ── Playback Controls ───────────────────────────────────────────
         ui::UI::Separator();
-        ui::UI::TextDisabled("Playback");
+        ui::UI::TextDisabled((std::string(ICON_FA_CLOCK) + " Playback").c_str());
 
-        if (ui::UI::SmallButton("▶ Play All##anim_play")) {
+        if (ui::UI::SmallButton((std::string(ICON_FA_PLAY) + " Play All##anim_play").c_str())) {
             for (auto& data : entityAnimData_) {
                 auto view = scene_.getRegistry().view<AnimationComponent>();
                 for (auto entity : view) {
@@ -365,7 +366,7 @@ namespace engine {
             }
         }
         ImGui::SameLine();
-        if (ui::UI::SmallButton("⏹ Stop All##anim_stop")) {
+        if (ui::UI::SmallButton((std::string(ICON_FA_STOP) + " Stop All##anim_stop").c_str())) {
             for (auto& data : entityAnimData_) {
                 auto view = scene_.getRegistry().view<AnimationComponent>();
                 for (auto entity : view) {
@@ -429,7 +430,7 @@ namespace engine {
 
         // Toggle button in the panel
         ImGui::SameLine();
-        if (ui::UI::SmallButton("🔗 Graph Editor##anim_graph")) {
+        if (ui::UI::SmallButton((std::string(ICON_FA_LINK) + " Graph Editor##anim_graph").c_str())) {
             showGraphEditor_ = !showGraphEditor_;
         }
         if (ImGui::IsItemHovered()) {

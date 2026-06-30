@@ -76,40 +76,105 @@ namespace engine {
         ImGui::SameLine(0.0f, 0.0f);
 
         auto gOp = static_cast<ImGuizmo::OPERATION>(frameInfo.gizmoOperation);
-        bool tOp = (gOp & ImGuizmo::TRANSLATE) == ImGuizmo::TRANSLATE;
-        bool rOp = (gOp & ImGuizmo::ROTATE) == ImGuizmo::ROTATE;
-        bool sOp = (gOp & ImGuizmo::SCALE) == ImGuizmo::SCALE;
+        auto isEnabled = frameInfo.gizmoEnabled;
 
-        ImGui::BeginDisabled(!frameInfo.gizmoEnabled);
-        if (ImGui::Checkbox((std::string(ICON_FA_UP_DOWN_LEFT_RIGHT) + "##gizmo_translate").c_str(), &tOp)) {
-            frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::TRANSLATE);
-        }
-        ImGui::SameLine(0.0f, 0.0f);
-        if (ImGui::Checkbox((std::string(ICON_FA_ROTATE) + "##gizmo_rotate").c_str(), &rOp)) {
-            frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::ROTATE);
-        }
-        ImGui::SameLine(0.0f, 0.0f);
-        if (ImGui::Checkbox((std::string(ICON_FA_ARROWS_UP_DOWN) + "##gizmo_scale").c_str(), &sOp)) {
-            frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::SCALE);
-        }
+        auto gOpButton = [&](const char* icon, int mode, bool active) {
+            ImVec4 btnColor   = isEnabled ? ImVec4(0.15f, 0.15f, 0.18f, 1.0f) : ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
+            ImVec4 btnHovColor = isEnabled ? ImVec4(0.25f, 0.25f, 0.30f, 1.0f) : ImVec4(0.12f, 0.12f, 0.14f, 1.0f);
+            ImVec4 btnActColor = isEnabled ? ImVec4(0.35f, 0.35f, 0.40f, 1.0f) : ImVec4(0.15f, 0.15f, 0.18f, 1.0f);
+            ImVec4 textColor   = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.75f, 1.0f);
+            ImVec4 textHovColor = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.85f, 0.85f, 0.9f, 1.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnActColor);
+            ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+            ImGui::PushStyleColor(ImGuiCol_TextHoveredA, IM_COL32(255, 255, 255, 255));
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec4(6.0f, 6.0f, 4.0f, 4.0f));
+            bool clicked = ImGui::SmallButton(icon);
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(5);
+            if (clicked && isEnabled) {
+                frameInfo.gizmoOperation = (gOp == mode) ? ImGuizmo::TRANSLATE : mode;
+            }
+        };
+
+        gOpButton(ICON_FA_UP_DOWN_LEFT_RIGHT, ImGuizmo::TRANSLATE, (gOp & ImGuizmo::TRANSLATE) == ImGuizmo::TRANSLATE);
+        ImGui::SameLine(0.0f, 2.0f);
+        gOpButton(ICON_FA_ROTATE, ImGuizmo::ROTATE, (gOp & ImGuizmo::ROTATE) == ImGuizmo::ROTATE);
+        ImGui::SameLine(0.0f, 2.0f);
+        gOpButton(ICON_FA_ARROWS_UP_DOWN, ImGuizmo::SCALE, (gOp & ImGuizmo::SCALE) == ImGuizmo::SCALE);
 
         // --- World / Local space toggle ---
         ImGui::SameLine(0.0f, 8.0f);
-        bool isWorld = (frameInfo.gizmoMode == 1);  // ImGuizmo::WORLD = 1
-        if (ImGui::Checkbox((std::string(ICON_FA_GLOBE) + "##gizmo_space").c_str(), &isWorld)) {
-            frameInfo.gizmoMode = isWorld ? 1 : 0;
+        bool isWorld = (frameInfo.gizmoMode == 1);
+        {
+            bool active = isWorld;
+            ImVec4 btnColor   = isEnabled ? ImVec4(0.15f, 0.15f, 0.18f, 1.0f) : ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
+            ImVec4 btnHovColor = isEnabled ? ImVec4(0.25f, 0.25f, 0.30f, 1.0f) : ImVec4(0.12f, 0.12f, 0.14f, 1.0f);
+            ImVec4 btnActColor = isEnabled ? ImVec4(0.35f, 0.35f, 0.40f, 1.0f) : ImVec4(0.15f, 0.15f, 0.18f, 1.0f);
+            ImVec4 textColor   = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.75f, 1.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnActColor);
+            ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec4(6.0f, 6.0f, 4.0f, 4.0f));
+            bool clicked = ImGui::SmallButton(ICON_FA_GLOBE);
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(4);
+            if (clicked && isEnabled) {
+                frameInfo.gizmoMode = isWorld ? 0 : 1;
+            }
         }
-        ImGui::EndDisabled();
 
         // --- Gizmo enable toggle ---
         ImGui::SameLine(0.0f, 8.0f);
-        ImGui::Checkbox((std::string(ICON_FA_CROSSHAIRS) + "##gizmo_enable").c_str(), &frameInfo.gizmoEnabled);
+        {
+            bool active = frameInfo.gizmoEnabled;
+            ImVec4 btnColor   = ImVec4(0.15f, 0.15f, 0.18f, 1.0f);
+            ImVec4 btnHovColor = ImVec4(0.25f, 0.25f, 0.30f, 1.0f);
+            ImVec4 btnActColor = ImVec4(0.35f, 0.35f, 0.40f, 1.0f);
+            ImVec4 textColor   = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.75f, 1.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnActColor);
+            ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec4(6.0f, 6.0f, 4.0f, 4.0f));
+            bool clicked = ImGui::SmallButton(ICON_FA_CROSSHAIRS);
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(4);
+            if (clicked) {
+                frameInfo.gizmoEnabled = !frameInfo.gizmoEnabled;
+            }
+        }
 
         // --- Viewport mode toggle ---
-        bool nav = (frameInfo.viewportMode == ViewportMode::Navigation);
         ImGui::SameLine(0.0f, 16.0f);
-        if (ImGui::Checkbox((std::string(ICON_FA_COMPASS) + "##nav_mode").c_str(), &nav)) {
-            frameInfo.viewportMode = nav ? ViewportMode::Navigation : ViewportMode::Picking;
+        {
+            bool nav = (frameInfo.viewportMode == ViewportMode::Navigation);
+            bool active = nav;
+            ImVec4 btnColor   = ImVec4(0.15f, 0.15f, 0.18f, 1.0f);
+            ImVec4 btnHovColor = ImVec4(0.25f, 0.25f, 0.30f, 1.0f);
+            ImVec4 btnActColor = ImVec4(0.35f, 0.35f, 0.40f, 1.0f);
+            ImVec4 textColor   = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.75f, 1.0f);
+
+            ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovColor);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnActColor);
+            ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec4(6.0f, 6.0f, 4.0f, 4.0f));
+            bool clicked = ImGui::SmallButton(ICON_FA_COMPASS);
+            ImGui::PopStyleVar(2);
+            ImGui::PopStyleColor(4);
+            if (clicked) {
+                frameInfo.viewportMode = nav ? ViewportMode::Picking : ViewportMode::Navigation;
+            }
         }
 
         // --- Layout reset ---
