@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 
+#include <entt/entt.hpp>
 #include <memory>
 #include <string>
 #include <typeindex>
@@ -35,8 +36,6 @@
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
-
-#include <entt/entt.hpp>
 
 namespace engine {
 

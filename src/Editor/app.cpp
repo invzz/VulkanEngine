@@ -271,8 +271,8 @@ namespace engine {
                     0, nullptr, 0, nullptr, 1, &srcBarrier);
 
                 VkImageLayout const srcLayout = viewportInitialized_
-                                              ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                              : VK_IMAGE_LAYOUT_UNDEFINED;
+                                                    ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                    : VK_IMAGE_LAYOUT_UNDEFINED;
                 viewport_.transitionToTransferDst(frameInfo.commandBuffer, srcLayout);
                 viewportInitialized_ = true;
 
@@ -285,10 +285,10 @@ namespace engine {
                 copyRegion.dstSubresource                = copyRegion.srcSubresource;
                 copyRegion.dstOffset                     = {0, 0, 0};
 
-                VkExtent2D const texExtent     = viewport_.getExtent();
-                copyRegion.extent.width  = std::min(texExtent.width, frameInfo.extent.width);
-                copyRegion.extent.height = std::min(texExtent.height, frameInfo.extent.height);
-                copyRegion.extent.depth  = 1;
+                VkExtent2D const texExtent = viewport_.getExtent();
+                copyRegion.extent.width    = std::min(texExtent.width, frameInfo.extent.width);
+                copyRegion.extent.height   = std::min(texExtent.height, frameInfo.extent.height);
+                copyRegion.extent.depth    = 1;
 
                 vkCmdCopyImage(frameInfo.commandBuffer,
                     srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
