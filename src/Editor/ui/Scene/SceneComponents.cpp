@@ -1,5 +1,6 @@
 #include "Editor/ui/Scene/SceneComponents.hpp"
 
+#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <algorithm>
@@ -222,7 +223,7 @@ namespace engine::ui::SceneComponents {
         float const btnW = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
 
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        bool const open = UI::TreeNode(ICON_FA_CAMERA, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
 
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
 
@@ -261,7 +262,7 @@ namespace engine::ui::SceneComponents {
         ImGuiStyle const& style = ImGui::GetStyle();
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        bool const open = UI::TreeNode(ICON_FA_LIGHTBULB, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
         if (UI::SmallButton("+##add_light")) {
             ImGui::OpenPopup("AddLightPopup");
@@ -305,23 +306,23 @@ namespace engine::ui::SceneComponents {
         ImGui::PopID();
         if (open) {
             std::string dirHeader = "Directional (" + std::to_string(dirLights.size()) + ")";
-            if (UI::TreeNode("  ▶", dirHeader.c_str())) {
+            if (UI::TreeNode(ICON_FA_SUN, dirHeader.c_str())) {
                 for (auto entity : dirLights) {
-                    drawEntityRow(entity, "[DIR]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
+                    drawEntityRow(entity, ICON_FA_SUN, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
                 }
                 ImGui::TreePop();
             }
             std::string pntHeader = "Point (" + std::to_string(pointLights.size()) + ")";
-            if (UI::TreeNode("  ▶", pntHeader.c_str())) {
+            if (UI::TreeNode(ICON_FA_BULLSEYE, pntHeader.c_str())) {
                 for (auto entity : pointLights) {
-                    drawEntityRow(entity, "[PNT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
+                    drawEntityRow(entity, ICON_FA_BULLSEYE, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
                 }
                 ImGui::TreePop();
             }
             std::string sptHeader = "Spot (" + std::to_string(spotLights.size()) + ")";
-            if (UI::TreeNode("  ▶", sptHeader.c_str())) {
+            if (UI::TreeNode(ICON_FA_LOCATION_ARROW, sptHeader.c_str())) {
                 for (auto entity : spotLights) {
-                    drawEntityRow(entity, "[SPT]", ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
+                    drawEntityRow(entity, ICON_FA_LOCATION_ARROW, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
                 }
                 ImGui::TreePop();
             }
@@ -349,7 +350,7 @@ namespace engine::ui::SceneComponents {
         ImGuiStyle const& style = ImGui::GetStyle();
         float const       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
-        bool const open = UI::TreeNode("▶", header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+        bool const open = UI::TreeNode(ICON_FA_CUBE, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
         if (UI::SmallButton("+##add_model")) {
             ImGui::OpenPopup("AddModelPopup");
@@ -437,7 +438,7 @@ namespace engine::ui::SceneComponents {
         ImGui::PopID();
         if (open) {
             for (auto entity : models) {
-                drawEntityRow(entity, "[MDL]", ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
+                drawEntityRow(entity, ICON_FA_CUBE, ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
             }
             ImGui::TreePop();
         }

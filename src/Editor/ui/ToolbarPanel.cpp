@@ -1,5 +1,6 @@
 #include "Editor/ui/ToolbarPanel.hpp"
 
+#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <ImGuizmo.h>
@@ -71,7 +72,7 @@ namespace engine {
 
         // --- Gizmo operation buttons (T / R / S) ---
         ImGui::SameLine(0.0f, 16.0f);
-        ImGui::TextUnformatted("Gizmo:");
+        ImGui::Text("%s Gizmo:", ICON_FA_VECTOR_SQUARE);
         ImGui::SameLine(0.0f, 0.0f);
 
         auto gOp = static_cast<ImGuizmo::OPERATION>(frameInfo.gizmoOperation);
@@ -80,41 +81,41 @@ namespace engine {
         bool sOp = (gOp & ImGuizmo::SCALE) == ImGuizmo::SCALE;
 
         ImGui::BeginDisabled(!frameInfo.gizmoEnabled);
-        if (ImGui::Checkbox("T##gizmo_translate", &tOp)) {
+        if (ImGui::Checkbox((std::string(ICON_FA_UP_DOWN_LEFT_RIGHT) + "##gizmo_translate").c_str(), &tOp)) {
             frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::TRANSLATE);
         }
         ImGui::SameLine(0.0f, 0.0f);
-        if (ImGui::Checkbox("R##gizmo_rotate", &rOp)) {
+        if (ImGui::Checkbox((std::string(ICON_FA_ROTATE) + "##gizmo_rotate").c_str(), &rOp)) {
             frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::ROTATE);
         }
         ImGui::SameLine(0.0f, 0.0f);
-        if (ImGui::Checkbox("S##gizmo_scale", &sOp)) {
+        if (ImGui::Checkbox((std::string(ICON_FA_ARROWS_UP_DOWN) + "##gizmo_scale").c_str(), &sOp)) {
             frameInfo.gizmoOperation = static_cast<int>(ImGuizmo::SCALE);
         }
 
         // --- World / Local space toggle ---
         ImGui::SameLine(0.0f, 8.0f);
         bool isWorld = (frameInfo.gizmoMode == 1);  // ImGuizmo::WORLD = 1
-        if (ImGui::Checkbox("World##gizmo_space", &isWorld)) {
+        if (ImGui::Checkbox((std::string(ICON_FA_GLOBE) + "##gizmo_space").c_str(), &isWorld)) {
             frameInfo.gizmoMode = isWorld ? 1 : 0;
         }
         ImGui::EndDisabled();
 
         // --- Gizmo enable toggle ---
         ImGui::SameLine(0.0f, 8.0f);
-        ImGui::Checkbox("Gizmo##gizmo_enable", &frameInfo.gizmoEnabled);
+        ImGui::Checkbox((std::string(ICON_FA_CROSSHAIRS) + "##gizmo_enable").c_str(), &frameInfo.gizmoEnabled);
 
         // --- Viewport mode toggle ---
         bool nav = (frameInfo.viewportMode == ViewportMode::Navigation);
         ImGui::SameLine(0.0f, 16.0f);
-        if (ImGui::Checkbox("Navigation", &nav)) {
+        if (ImGui::Checkbox((std::string(ICON_FA_COMPASS) + "##nav_mode").c_str(), &nav)) {
             frameInfo.viewportMode = nav ? ViewportMode::Navigation : ViewportMode::Picking;
         }
 
         // --- Layout reset ---
         if (onResetLayout_) {
             ImGui::SameLine(0.0f, 16.0f);
-            if (ImGui::Button("Reset Layout")) {
+            if (ImGui::Button((std::string(ICON_FA_ROTATE_LEFT) + " Reset Layout").c_str())) {
                 onResetLayout_();
             }
         }
