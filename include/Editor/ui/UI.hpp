@@ -6,7 +6,6 @@
 #include <imgui.h>
 
 #include <entt/entity/fwd.hpp>
-
 #include <functional>
 #include <string>
 #include <vector>
@@ -14,35 +13,35 @@
 #include "Engine/Scene/SceneUtils.hpp"
 
 namespace engine {
-   class WorkspaceManager;
-   class Scene;
-   class ResourceManager;
-   struct FrameInfo;
-}
+    class WorkspaceManager;
+    class Scene;
+    class ResourceManager;
+    struct FrameInfo;
+}  // namespace engine
 
 namespace engine::ui {
 
-   struct ScenePendingModelLoad {
-      AsyncLoadId                                             id{0};
-      std::string                                             path;
-      std::string                                             name;
-      engine::ModelInsertionOptions                           options;
-      engine::ModelInsertionOptions::StaticColliderImportMode colliderMode{engine::ModelInsertionOptions::StaticColliderImportMode::AutoDetect};
-      bool                                                    cancelled = false;
-   };
+    struct ScenePendingModelLoad {
+        AsyncLoadId                                             id{0};
+        std::string                                             path;
+        std::string                                             name;
+        engine::ModelInsertionOptions                           options;
+        engine::ModelInsertionOptions::StaticColliderImportMode colliderMode{engine::ModelInsertionOptions::StaticColliderImportMode::AutoDetect};
+        bool                                                    cancelled = false;
+    };
 
-   struct SceneEntityCollection {
-      std::vector<entt::entity> cameras;
-      std::vector<entt::entity> dirLights;
-      std::vector<entt::entity> pointLights;
-      std::vector<entt::entity> spotLights;
-      std::vector<entt::entity> models;
-   };
+    struct SceneEntityCollection {
+        std::vector<entt::entity> cameras;
+        std::vector<entt::entity> dirLights;
+        std::vector<entt::entity> pointLights;
+        std::vector<entt::entity> spotLights;
+        std::vector<entt::entity> models;
+    };
 
-   /**
+    /**
  * @brief Bind the active workspace context used by UI helper functions.
  */
-   void SetActiveWorkspace(WorkspaceManager* wm);
+    void SetActiveWorkspace(WorkspaceManager* wm);
 
     /**
  * @brief Engine-safe UI abstraction layer over ImGui.
@@ -182,7 +181,7 @@ namespace engine::ui {
      */
         static bool CheckboxRow(const char* label, const char* description, bool* value);
 
-      /**
+        /**
     * @brief Render a two-line row with label/description and float drag control.
     * @param label Row title.
     * @param description Supporting text.
@@ -192,10 +191,10 @@ namespace engine::ui {
     * @param max Maximum value.
     * @return true if changed.
     */
-      static bool FloatRow(const char* label, const char* description, float* value,
-         float speed = 0.1f, float min = -1e10f, float max = 1e10f);
+        static bool FloatRow(const char* label, const char* description, float* value,
+            float speed = 0.1f, float min = -1e10f, float max = 1e10f);
 
-      /**
+        /**
     * @brief Render a two-line row with label/description and enum combo control.
     * @param label Row title.
     * @param description Supporting text.
@@ -204,8 +203,8 @@ namespace engine::ui {
     * @param count Number of items.
     * @return true if changed.
     */
-      static bool EnumRow(const char* label, const char* description, int* current_index,
-         const char* const items[], int count);
+        static bool EnumRow(const char* label, const char* description, int* current_index,
+            const char* const items[], int count);
 
         // ======================================================================
         // Properties (key-value display in inspector panels)
@@ -364,7 +363,7 @@ namespace engine::ui {
      * @return true if changed.
      */
         static bool Combo(const char* label, int* current_index,
-         const std::function<int(const char* const*& out_items)>& get_items_callback);
+            const std::function<int(const char* const*& out_items)>& get_items_callback);
 
         /**
      * @brief Render a checkbox with consistent spacing.
@@ -502,56 +501,57 @@ namespace engine::ui {
      */
         static bool ResetButton(const char* label);
 
-      // ======================================================================
-      // Scene Panel Facade
-      // ======================================================================
+        // ======================================================================
+        // Scene Panel Facade
+        // ======================================================================
 
-      static SceneEntityCollection CollectSceneEntities(const engine::Scene& scene);
+        static SceneEntityCollection CollectSceneEntities(const engine::Scene& scene);
 
-      static void EnforceSingleDirectionalLight(
-         std::vector<entt::entity>& dirLights,
-         std::vector<entt::entity>& toDelete);
+        static void EnforceSingleDirectionalLight(
+            std::vector<entt::entity>& dirLights,
+            std::vector<entt::entity>& toDelete);
 
-      static void DrawSceneCameraSection(
-         const std::vector<entt::entity>& cameras,
-         const char* filter,
-         FrameInfo& frameInfo,
-         engine::Scene& scene,
-         entt::registry& registry,
-         std::vector<entt::entity>& toDelete);
+        static void DrawSceneCameraSection(
+            const std::vector<entt::entity>& cameras,
+            const char*                      filter,
+            FrameInfo&                       frameInfo,
+            engine::Scene&                   scene,
+            entt::registry&                  registry,
+            std::vector<entt::entity>&       toDelete);
 
-      static void DrawSceneLightSection(
-         const std::vector<entt::entity>& dirLights,
-         const std::vector<entt::entity>& pointLights,
-         const std::vector<entt::entity>& spotLights,
-         const char* filter,
-         FrameInfo& frameInfo,
-         engine::Scene& scene,
-         entt::registry& registry,
-         std::vector<entt::entity>& toDelete);
+        static void DrawSceneLightSection(
+            const std::vector<entt::entity>& dirLights,
+            const std::vector<entt::entity>& pointLights,
+            const std::vector<entt::entity>& spotLights,
+            const char*                      filter,
+            FrameInfo&                       frameInfo,
+            engine::Scene&                   scene,
+            entt::registry&                  registry,
+            std::vector<entt::entity>&       toDelete);
 
-      static void DrawSceneModelSection(
-         const std::vector<entt::entity>& models,
-         const char* filter,
-         FrameInfo& frameInfo,
-         engine::Scene& scene,
-         entt::registry& registry,
-         std::vector<entt::entity>& toDelete,
-         ModelInsertionOptions::StaticColliderImportMode& colliderMode,
-         std::function<void(
-            const std::string&,
-            const std::string&,
-            const ModelInsertionOptions&,
-            ModelInsertionOptions::StaticColliderImportMode)> enqueueModelLoad);
+        static void DrawSceneModelSection(
+            const std::vector<entt::entity>&                 models,
+            const char*                                      filter,
+            FrameInfo&                                       frameInfo,
+            engine::Scene&                                   scene,
+            entt::registry&                                  registry,
+            std::vector<entt::entity>&                       toDelete,
+            ModelInsertionOptions::StaticColliderImportMode& colliderMode,
+            std::function<void(
+                const std::string&,
+                const std::string&,
+                const ModelInsertionOptions&,
+                ModelInsertionOptions::StaticColliderImportMode)>
+                enqueueModelLoad);
 
-      static void DrawScenePendingLoadsSection(
-         std::vector<ScenePendingModelLoad>& pendingLoads,
-         ResourceManager* resourceManager);
+        static void DrawScenePendingLoadsSection(
+            std::vector<ScenePendingModelLoad>& pendingLoads,
+            ResourceManager*                    resourceManager);
 
-      static bool ShouldCreateStaticCollider(
-         const std::string& path,
-         const std::string& name,
-         ModelInsertionOptions::StaticColliderImportMode mode);
+        static bool ShouldCreateStaticCollider(
+            const std::string&                              path,
+            const std::string&                              name,
+            ModelInsertionOptions::StaticColliderImportMode mode);
 
        private:
         // Helper to apply section header styling

@@ -1,6 +1,3 @@
-#include "Editor/ui/UI.hpp"
-
-#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <algorithm>
@@ -21,6 +18,9 @@
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+
+#include "Editor/ui/UI.hpp"
+#include "IconsFontAwesome6.h"
 #include "ModelLib/Resources/ResourceManager.hpp"
 
 namespace engine::ui {
@@ -35,8 +35,8 @@ namespace engine::ui {
         }
 
         bool shouldAutoCreateStaticCollider(const std::string& path, const std::string& name) {
-            const std::string combined = toLower(path + " " + name);
-            static const std::vector<std::string> tokens = {
+            const std::string                     combined = toLower(path + " " + name);
+            static const std::vector<std::string> tokens   = {
                 "col_", "ucx_", "collision", "collider", "wall", "floor", "ground", "world", "level", "static"};
 
             for (const auto& token : tokens) {
@@ -48,11 +48,11 @@ namespace engine::ui {
         }
 
         void drawEntityRow(
-            entt::entity entity,
-            const char* icon,
-            ImVec4 color,
-            FrameInfo& frameInfo,
-            const entt::registry& registry,
+            entt::entity               entity,
+            const char*                icon,
+            ImVec4                     color,
+            FrameInfo&                 frameInfo,
+            const entt::registry&      registry,
             std::vector<entt::entity>& toDelete) {
             const auto id = static_cast<uint32_t>(entity);
 
@@ -69,8 +69,8 @@ namespace engine::ui {
             UI::TextColored(icon, color);
             ImGui::SameLine();
 
-            const ImGuiStyle& style = ImGui::GetStyle();
-            float actionsWidth = 0.0f;
+            const ImGuiStyle& style        = ImGui::GetStyle();
+            float             actionsWidth = 0.0f;
 
             auto actionWidthForText = [&](const char* text) {
                 return ImGui::CalcTextSize(text).x + (style.FramePadding.x * 2.0f);
@@ -102,7 +102,7 @@ namespace engine::ui {
             ImGui::PopStyleColor(4);
             if (clicked) {
                 frameInfo.selectedObjectId = id;
-                frameInfo.selectedEntity = entity;
+                frameInfo.selectedEntity   = entity;
             }
 
             ImGui::SameLine(0.0f, 0.0f);
@@ -139,8 +139,8 @@ namespace engine::ui {
 
     SceneEntityCollection UI::CollectSceneEntities(const engine::Scene& scene) {
         SceneEntityCollection result;
-        auto& registry = scene.getRegistry();
-        auto view = registry.view<entt::entity>();
+        auto&                 registry = scene.getRegistry();
+        auto                  view     = registry.view<entt::entity>();
 
         result.cameras.reserve(view.size());
         result.dirLights.reserve(view.size());
@@ -190,13 +190,13 @@ namespace engine::ui {
 
     void UI::DrawSceneCameraSection(
         const std::vector<entt::entity>& cameras,
-        const char* filter,
-        FrameInfo& frameInfo,
-        engine::Scene& scene,
-        entt::registry& registry,
-        std::vector<entt::entity>& toDelete) {
-        (void)filter;
-        (void)toDelete;
+        const char*                      filter,
+        FrameInfo&                       frameInfo,
+        engine::Scene&                   scene,
+        entt::registry&                  registry,
+        std::vector<entt::entity>&       toDelete) {
+        (void) filter;
+        (void) toDelete;
 
         const std::string header = "Cameras (" + std::to_string(cameras.size()) + ")";
         ImGui::PushID("cameras_header");
@@ -230,18 +230,18 @@ namespace engine::ui {
         const std::vector<entt::entity>& dirLights,
         const std::vector<entt::entity>& pointLights,
         const std::vector<entt::entity>& spotLights,
-        const char* filter,
-        FrameInfo& frameInfo,
-        engine::Scene& scene,
-        entt::registry& registry,
-        std::vector<entt::entity>& toDelete) {
-        (void)filter;
+        const char*                      filter,
+        FrameInfo&                       frameInfo,
+        engine::Scene&                   scene,
+        entt::registry&                  registry,
+        std::vector<entt::entity>&       toDelete) {
+        (void) filter;
 
-        const size_t lightsTotal = dirLights.size() + pointLights.size() + spotLights.size();
-        const std::string header = "Lights (" + std::to_string(lightsTotal) + ")";
+        const size_t      lightsTotal = dirLights.size() + pointLights.size() + spotLights.size();
+        const std::string header      = "Lights (" + std::to_string(lightsTotal) + ")";
         ImGui::PushID("lights_header");
         const ImGuiStyle& style = ImGui::GetStyle();
-        const float btnW = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+        const float       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
         const bool open = UI::TreeNode(ICON_FA_LIGHTBULB, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
@@ -312,25 +312,26 @@ namespace engine::ui {
     }
 
     void UI::DrawSceneModelSection(
-        const std::vector<entt::entity>& models,
-        const char* filter,
-        FrameInfo& frameInfo,
-        engine::Scene& scene,
-        entt::registry& registry,
-        std::vector<entt::entity>& toDelete,
+        const std::vector<entt::entity>&                 models,
+        const char*                                      filter,
+        FrameInfo&                                       frameInfo,
+        engine::Scene&                                   scene,
+        entt::registry&                                  registry,
+        std::vector<entt::entity>&                       toDelete,
         ModelInsertionOptions::StaticColliderImportMode& colliderMode,
         std::function<void(
             const std::string&,
             const std::string&,
             const ModelInsertionOptions&,
-            ModelInsertionOptions::StaticColliderImportMode)> enqueueModelLoad) {
-        (void)filter;
-        (void)scene;
+            ModelInsertionOptions::StaticColliderImportMode)>
+            enqueueModelLoad) {
+        (void) filter;
+        (void) scene;
 
         const std::string header = "Models (" + std::to_string(models.size()) + ")";
         ImGui::PushID("models_header");
         const ImGuiStyle& style = ImGui::GetStyle();
-        const float btnW = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+        const float       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
         ImGui::SetNextItemAllowOverlap();
         const bool open = UI::TreeNode(ICON_FA_CUBE, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
         ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
@@ -342,8 +343,8 @@ namespace engine::ui {
             static char filterModel[128] = "";
             UI::InputText("Filter", filterModel, sizeof(filterModel));
 
-            int colliderModeIndex = static_cast<int>(colliderMode);
-            static const char* modeLabels[] = {"Auto Detect", "Force On", "Force Off"};
+            int                colliderModeIndex = static_cast<int>(colliderMode);
+            static const char* modeLabels[]      = {"Auto Detect", "Force On", "Force Off"};
             if (UI::Combo("Static Mesh Collider", &colliderModeIndex, modeLabels, 3)) {
                 colliderMode = static_cast<ModelInsertionOptions::StaticColliderImportMode>(colliderModeIndex);
             }
@@ -376,7 +377,7 @@ namespace engine::ui {
                         }
 
                         if (filterModel[0] != '\0') {
-                            std::string lowName = name;
+                            std::string lowName   = name;
                             std::string lowFilter = filterModel;
                             std::transform(lowName.begin(), lowName.end(), lowName.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                             std::transform(lowFilter.begin(), lowFilter.end(), lowFilter.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -401,8 +402,8 @@ namespace engine::ui {
                             }
 
                             ModelInsertionOptions opts;
-                            opts.enableTextures = true;
-                            opts.loadMaterials = true;
+                            opts.enableTextures     = true;
+                            opts.loadMaterials      = true;
                             opts.enableMorphTargets = true;
 
                             enqueueModelLoad(fullPath, name, opts, colliderMode);
@@ -428,7 +429,7 @@ namespace engine::ui {
 
     void UI::DrawScenePendingLoadsSection(
         std::vector<ScenePendingModelLoad>& pendingLoads,
-        ResourceManager* resourceManager) {
+        ResourceManager*                    resourceManager) {
         if (pendingLoads.empty()) {
             return;
         }
@@ -483,8 +484,8 @@ namespace engine::ui {
     }
 
     bool UI::ShouldCreateStaticCollider(
-        const std::string& path,
-        const std::string& name,
+        const std::string&                              path,
+        const std::string&                              name,
         ModelInsertionOptions::StaticColliderImportMode mode) {
         switch (mode) {
             case ModelInsertionOptions::StaticColliderImportMode::ForceOn:

@@ -12,20 +12,20 @@
 namespace engine::ui {
 
     namespace {
-        constexpr int kMaterialStyleVarCount = 3;
-        constexpr int kMaterialStyleColorCount = 1;
-        constexpr float kFrameBorderSize = 1.0f;
-        constexpr float kFrameRounding = 8.0f;
-        constexpr float kGrabRounding = 8.0f;
-        constexpr float kBorderAlpha = 0.75f;
-        constexpr ImVec2 kSurfaceFramePadding = ImVec2(12.0f, 8.0f);
-        constexpr ImVec2 kSurfaceItemSpacing = ImVec2(12.0f, 9.0f);
+        constexpr int    kMaterialStyleVarCount   = 3;
+        constexpr int    kMaterialStyleColorCount = 1;
+        constexpr float  kFrameBorderSize         = 1.0f;
+        constexpr float  kFrameRounding           = 8.0f;
+        constexpr float  kGrabRounding            = 8.0f;
+        constexpr float  kBorderAlpha             = 0.75f;
+        constexpr ImVec2 kSurfaceFramePadding     = ImVec2(12.0f, 8.0f);
+        constexpr ImVec2 kSurfaceItemSpacing      = ImVec2(12.0f, 9.0f);
         constexpr ImVec2 kSurfaceItemInnerSpacing = ImVec2(8.0f, 6.0f);
-        constexpr float kSurfaceVerticalInset = 3.0f;
-        constexpr float kRowControlWidthRatio = 0.42f;
-        constexpr float kRowControlMinWidth = 140.0f;
+        constexpr float  kSurfaceVerticalInset    = 3.0f;
+        constexpr float  kRowControlWidthRatio    = 0.42f;
+        constexpr float  kRowControlMinWidth      = 140.0f;
 
-        WorkspaceManager* s_activeWorkspace = nullptr;
+        WorkspaceManager*         s_activeWorkspace = nullptr;
         std::vector<ThemeSystem*> s_themeScopeStack;
 
         ImVec4 Mix(ImVec4 a, ImVec4 b, float t) {
@@ -121,7 +121,6 @@ namespace engine::ui {
     }
 
     bool UI::SmallButton(const char* label) {
-
         bool clicked = ImGui::SmallButton(label);
         return clicked;
     }
@@ -135,10 +134,10 @@ namespace engine::ui {
     bool UI::ToolbarIcon(const char* icon, bool active, const char* suffix) {
         std::string id = std::string(icon) + "##toolbar_" + suffix;
 
-        ImVec4 btn    = GetTheme().getColor(ImGuiCol_Button);
-        ImVec4 btnHov = GetTheme().getColor(ImGuiCol_ButtonHovered);
-        ImVec4 btnAct = GetTheme().getColor(ImGuiCol_ButtonActive);
-        ImVec4 text   = GetTheme().getTextColor();
+        ImVec4 btn      = GetTheme().getColor(ImGuiCol_Button);
+        ImVec4 btnHov   = GetTheme().getColor(ImGuiCol_ButtonHovered);
+        ImVec4 btnAct   = GetTheme().getColor(ImGuiCol_ButtonActive);
+        ImVec4 text     = GetTheme().getTextColor();
         ImVec4 disabled = GetTheme().getDisabledColor();
 
         if (active) {
@@ -151,7 +150,7 @@ namespace engine::ui {
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, disabled);
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, disabled);
             ImGui::PushStyleColor(ImGuiCol_Text, text);
-        }   
+        }
 
         float fontSize = ImGui::GetFontSize();
         float iconSize = std::max(20.0f, fontSize * 1.45f);
@@ -172,10 +171,10 @@ namespace engine::ui {
     }
 
     bool UI::PrimaryButton(const char* label, ImVec2 size) {
-        ImVec4 accent = GetTheme().getAccentColor();
-        ImVec4 text = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        ImVec4 accent  = GetTheme().getAccentColor();
+        ImVec4 text    = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
         ImVec4 hovered = Mix(accent, ImVec4(1.0f, 1.0f, 1.0f, accent.w), 0.18f);
-        ImVec4 active = Mix(accent, ImVec4(0.0f, 0.0f, 0.0f, accent.w), 0.20f);
+        ImVec4 active  = Mix(accent, ImVec4(0.0f, 0.0f, 0.0f, accent.w), 0.20f);
 
         ImGui::PushStyleColor(ImGuiCol_Button, accent);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
@@ -188,12 +187,12 @@ namespace engine::ui {
 
     bool UI::TonalButton(const char* label, ImVec2 size) {
         ImVec4 accent = GetTheme().getAccentColor();
-        ImVec4 frame = GetTheme().getColor(ImGuiCol_FrameBg);
-        ImVec4 text = GetTheme().getTextColor();
+        ImVec4 frame  = GetTheme().getColor(ImGuiCol_FrameBg);
+        ImVec4 text   = GetTheme().getTextColor();
 
-        ImVec4 tonal = Mix(frame, accent, 0.22f);
+        ImVec4 tonal   = Mix(frame, accent, 0.22f);
         ImVec4 hovered = Mix(frame, accent, 0.35f);
-        ImVec4 active = Mix(frame, accent, 0.45f);
+        ImVec4 active  = Mix(frame, accent, 0.45f);
 
         ImGui::PushStyleColor(ImGuiCol_Button, tonal);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
@@ -234,8 +233,8 @@ namespace engine::ui {
 
     void UI::SectionTitle(const char* label, const char* helper) {
         ImVec4 accent = GetTheme().getAccentColor();
-        ImVec4 text = GetTheme().getTextColor();
-        ImVec4 title = Mix(text, accent, 0.35f);
+        ImVec4 text   = GetTheme().getTextColor();
+        ImVec4 title  = Mix(text, accent, 0.35f);
 
         ImGui::TextColored(title, "%s", label);
         if ((helper != nullptr) && (helper[0] != '\0')) {
@@ -275,7 +274,7 @@ namespace engine::ui {
 
         ImGui::SameLine();
         float controlWidth = std::max(kRowControlMinWidth, ImGui::GetContentRegionAvail().x * kRowControlWidthRatio);
-        float controlX = ImGui::GetWindowContentRegionMax().x - controlWidth;
+        float controlX     = ImGui::GetWindowContentRegionMax().x - controlWidth;
         ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), controlX));
         ImGui::SetNextItemWidth(controlWidth);
         bool changed = UI::DragFloat("##value", value, speed, min, max);
@@ -295,7 +294,7 @@ namespace engine::ui {
 
         ImGui::SameLine();
         float controlWidth = std::max(kRowControlMinWidth, ImGui::GetContentRegionAvail().x * kRowControlWidthRatio);
-        float controlX = ImGui::GetWindowContentRegionMax().x - controlWidth;
+        float controlX     = ImGui::GetWindowContentRegionMax().x - controlWidth;
         ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), controlX));
         ImGui::SetNextItemWidth(controlWidth);
         bool changed = UI::Combo("##value", current_index, items, count);

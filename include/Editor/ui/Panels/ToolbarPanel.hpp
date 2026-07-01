@@ -66,9 +66,9 @@ namespace engine {
         };
 
         std::vector<ToggleEntry> toggles_;
-        UIPanel*                  settingsPanel_ = nullptr;
-        int                      stylePreset_ = 0;  // 0=dark, 1=light, 2=midnight
-        float                    frameTimeMs_ = 0.0f;
+        UIPanel*                 settingsPanel_ = nullptr;
+        int                      stylePreset_   = 0;  // 0=dark, 1=light, 2=midnight
+        float                    frameTimeMs_   = 0.0f;
         std::function<void()>    onResetLayout_;
 
         /** Apply an ImGui style preset. */

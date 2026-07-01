@@ -60,8 +60,8 @@ namespace engine {
         // same zone will share the node as tabs (this is the default DockBuilder
         // behavior when you dock several windows to the same node id).
         for (const auto& e : entries_) {
-            ImGuiID target = root;
-            bool shouldDock = true;
+            ImGuiID target     = root;
+            bool    shouldDock = true;
             switch (e.zone) {
                 case DockZone::DockLeft:
                     target = leftId;

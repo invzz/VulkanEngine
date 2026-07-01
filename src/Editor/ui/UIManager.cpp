@@ -22,8 +22,8 @@ namespace engine {
         // Backward-compat overload: derive a name from the panel. This is only
         // safe if the caller never relies on the name afterwards (no constraint
         // lookup, no getPanel<T> by key). Prefer the named overload.
-        UIPanel* const panelPtr = panel.get();
-        const std::string name = (panelPtr != nullptr) ? typeid(*panelPtr).name() : "UIPanel";
+        UIPanel* const    panelPtr = panel.get();
+        const std::string name     = (panelPtr != nullptr) ? typeid(*panelPtr).name() : "UIPanel";
         workspaceManager_.getPanelRegistry().registerPanel(
             name, std::move(panel));
     }

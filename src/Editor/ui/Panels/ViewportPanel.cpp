@@ -2,7 +2,6 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <ImGuizmo.h>
@@ -15,7 +14,9 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Viewport.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+
 #include "Editor/ui/UI.hpp"
+#include "IconsFontAwesome6.h"
 
 namespace engine {
 
@@ -107,7 +108,7 @@ namespace engine {
             }
         };
 
-        auto gOp = static_cast<ImGuizmo::OPERATION>(frameInfo.gizmoOperation);
+        auto gOp          = static_cast<ImGuizmo::OPERATION>(frameInfo.gizmoOperation);
         bool gizmoEnabled = frameInfo.gizmoEnabled;
 
         auto gOpButton = [&](const char* icon, int mode, bool active, const char* suffix, const char* tooltip) {
@@ -158,11 +159,11 @@ namespace engine {
     }
 
     void ViewportPanel::renderFpsBadge(const FrameInfo& frameInfo, const ImVec2& topLeft, const ImVec2& size) const {
-        float fps = (frameInfo.frameTime > 0.0f) ? (1.0f / frameInfo.frameTime) : 0.0f;
+        float fps     = (frameInfo.frameTime > 0.0f) ? (1.0f / frameInfo.frameTime) : 0.0f;
         float frameMs = frameInfo.frameTime * 1000.0f;
 
-        ImVec4 windowBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-        ImVec4 border = ui::UI::GetBorderColor();
+        ImVec4 windowBg  = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+        ImVec4 border    = ui::UI::GetBorderColor();
         ImVec4 textColor = ui::UI::GetTextColor();
 
         char perfText[96];
@@ -175,14 +176,14 @@ namespace engine {
             ICON_FA_GAUGE_HIGH,
             fps);
 
-        ImVec2 textSize = ImGui::CalcTextSize(perfText);
+        ImVec2          textSize           = ImGui::CalcTextSize(perfText);
         constexpr float kToolbarChipHeight = 36.0f;  // Matches viewport gizmo toolbar child height.
-        constexpr float kToolbarChipWidth = 180.0f;
-        ImVec2 badgeSize(kToolbarChipWidth, kToolbarChipHeight);
-        ImVec2 badgeMin(topLeft.x + size.x - badgeSize.x - 10.0f, topLeft.y + 10.0f);
-        ImVec2 badgeMax(badgeMin.x + badgeSize.x, badgeMin.y + badgeSize.y);
+        constexpr float kToolbarChipWidth  = 180.0f;
+        ImVec2          badgeSize(kToolbarChipWidth, kToolbarChipHeight);
+        ImVec2          badgeMin(topLeft.x + size.x - badgeSize.x - 10.0f, topLeft.y + 10.0f);
+        ImVec2          badgeMax(badgeMin.x + badgeSize.x, badgeMin.y + badgeSize.y);
 
-        ImVec4 badgeBg = ImVec4(windowBg.x, windowBg.y, windowBg.z, 0.92f);
+        ImVec4 badgeBg     = ImVec4(windowBg.x, windowBg.y, windowBg.z, 0.92f);
         ImVec4 badgeBorder = ImVec4(border.x, border.y, border.z, 0.85f);
 
         ImDrawList* fg = ImGui::GetForegroundDrawList();

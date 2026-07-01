@@ -1,23 +1,24 @@
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
 
-#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <ImGuizmo.h>
 
-#include "Editor/ui/UI.hpp"
 #include <algorithm>
 #include <cstdio>
+
+#include "Editor/ui/UI.hpp"
+#include "IconsFontAwesome6.h"
 
 namespace engine {
 
     ToolbarPanel::ToolbarPanel() = default;
 
     float ToolbarPanel::getPreferredHeight(float viewportWidth) const {
-        bool compact = viewportWidth < 1440.0f;
-        const ImGuiStyle& style = ImGui::GetStyle();
-        float rowHeight = ImGui::GetFontSize() + (style.FramePadding.y * 2.0f);
-        float padY = compact ? 5.0f : 6.0f;
+        bool              compact   = viewportWidth < 1440.0f;
+        const ImGuiStyle& style     = ImGui::GetStyle();
+        float             rowHeight = ImGui::GetFontSize() + (style.FramePadding.y * 2.0f);
+        float             padY      = compact ? 5.0f : 6.0f;
         return std::max(34.0f, rowHeight + (padY * 2.0f) + 2.0f);
     }
 
@@ -33,7 +34,7 @@ namespace engine {
         // Always render the toolbar at the very top of the viewport
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2         barPos{viewport->WorkPos.x, viewport->Pos.y};
-        bool           compact = viewport->WorkSize.x < 1440.0f;
+        bool           compact   = viewport->WorkSize.x < 1440.0f;
         float          barHeight = getPreferredHeight(viewport->WorkSize.x);
 
         ImGui::SetNextWindowPos(barPos);
@@ -51,10 +52,10 @@ namespace engine {
             ImGuiWindowFlags_NoFocusOnAppearing |
             ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-        ImVec4 bg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-        ImVec4 border = ImGui::GetStyleColorVec4(ImGuiCol_Border);
+        ImVec4 bg           = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+        ImVec4 border       = ImGui::GetStyleColorVec4(ImGuiCol_Border);
         ImVec4 textDisabled = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
-        ImVec4 accent = ui::UI::GetAccentColor();
+        ImVec4 accent       = ui::UI::GetAccentColor();
 
         // Render toolbar as a polished top strip
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
@@ -89,11 +90,11 @@ namespace engine {
             if (panel == nullptr) {
                 return;
             }
-            bool isActive = panel->isVisible();
-            ImVec4 chip = isActive ? ImVec4(accent.x, accent.y, accent.z, 0.28f) : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.12f);
-            ImVec4 chipH = isActive ? ImVec4(accent.x, accent.y, accent.z, 0.40f) : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.20f);
-            ImVec4 chipA = isActive ? ImVec4(accent.x, accent.y, accent.z, 0.50f) : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.28f);
-            ImVec4 txt = isActive ? ui::UI::GetTextColor() : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.95f);
+            bool   isActive = panel->isVisible();
+            ImVec4 chip     = isActive ? ImVec4(accent.x, accent.y, accent.z, 0.28f) : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.12f);
+            ImVec4 chipH    = isActive ? ImVec4(accent.x, accent.y, accent.z, 0.40f) : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.20f);
+            ImVec4 chipA    = isActive ? ImVec4(accent.x, accent.y, accent.z, 0.50f) : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.28f);
+            ImVec4 txt      = isActive ? ui::UI::GetTextColor() : ImVec4(textDisabled.x, textDisabled.y, textDisabled.z, 0.95f);
 
             ImGui::PushStyleColor(ImGuiCol_Button, chip);
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, chipH);
@@ -158,7 +159,5 @@ namespace engine {
         ImGui::PopStyleColor(2);
         ImGui::PopStyleVar(5);
     }
-
-    
 
 }  // namespace engine

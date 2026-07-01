@@ -11,9 +11,8 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 
-#include "vulkan/vulkan_core.h"
-
 #include "IconsFontAwesome6.h"
+#include "vulkan/vulkan_core.h"
 
 namespace engine {
 
@@ -49,12 +48,11 @@ namespace engine {
 
         // Merge Font Awesome Solid icons into the main font
         ImFontConfig iconConfig;
-        iconConfig.MergeMode = true;
+        iconConfig.MergeMode  = true;
         iconConfig.PixelSnapH = true;
 
         static const ImWchar iconRanges[] = {
-            ICON_MIN_FA, ICON_MAX_FA, 0
-        };
+            ICON_MIN_FA, ICON_MAX_FA, 0};
 
         io.Fonts->AddFontFromFileTTF(
             FONT_PATH "fa-solid-900.ttf", fontSize, &iconConfig, iconRanges);

@@ -1,6 +1,5 @@
 #include "Editor/ui/Panels/PhysicsPanel.hpp"
 
-#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <string>
@@ -13,6 +12,7 @@
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 
 #include "Editor/ui/UI.hpp"
+#include "IconsFontAwesome6.h"
 
 namespace engine {
 

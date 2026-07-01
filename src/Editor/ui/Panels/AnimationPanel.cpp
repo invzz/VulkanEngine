@@ -1,6 +1,5 @@
 #include "Editor/ui/Panels/AnimationPanel.hpp"
 
-#include "IconsFontAwesome6.h"
 #include <imgui.h>
 
 #include <algorithm>
@@ -15,6 +14,7 @@
 #include "Engine/Scene/components/ModelComponent.hpp"
 
 #include "Editor/ui/UI.hpp"
+#include "IconsFontAwesome6.h"
 
 namespace engine {
 

@@ -67,8 +67,8 @@ namespace {
 #include "Editor/ui/Panels/Scene/ScenePanel.hpp"
 #include "Editor/ui/Panels/SettingsPanel.hpp"
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
-#include "Editor/ui/UIManager.hpp"
 #include "Editor/ui/Panels/ViewportPanel.hpp"
+#include "Editor/ui/UIManager.hpp"
 
 namespace engine {
 

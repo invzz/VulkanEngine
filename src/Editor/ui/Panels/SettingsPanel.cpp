@@ -12,11 +12,11 @@
 
 namespace engine {
 
-        SettingsPanel::SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled,
-                uint32_t& multithreadedRecordingThreads, int& debugMode)
+    SettingsPanel::SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled,
+        uint32_t& multithreadedRecordingThreads, int& debugMode)
         : engineState_(engineState),
-                    multithreadedRecordingEnabled_(multithreadedRecordingEnabled),
-                    multithreadedRecordingThreads_(multithreadedRecordingThreads) {
+          multithreadedRecordingEnabled_(multithreadedRecordingEnabled),
+          multithreadedRecordingThreads_(multithreadedRecordingThreads) {
         cameraPanel_      = std::make_unique<CameraPanel>(*engineState_);
         iblPanel_         = std::make_unique<IBLPanel>(&engineState_->system<IBLSystem>());
         postProcessPanel_ = std::make_unique<PostProcessPanel>(engineState_->postProcess());
@@ -52,12 +52,12 @@ namespace engine {
 
         if (ImGui::Begin("Settings", &visible_, windowFlags)) {
             // Subtle dimmer for modal-like utility focus, excluding settings window itself.
-            ImDrawList* fg = ImGui::GetForegroundDrawList(viewport);
-            ImVec2 const vMin = viewport->Pos;
-            ImVec2 const vMax = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
-            ImVec2 const wMin = ImGui::GetWindowPos();
-            ImVec2 const wMax = ImVec2(wMin.x + ImGui::GetWindowSize().x, wMin.y + ImGui::GetWindowSize().y);
-            ImU32 const dimCol = IM_COL32(4, 8, 18, 110);
+            ImDrawList*  fg     = ImGui::GetForegroundDrawList(viewport);
+            ImVec2 const vMin   = viewport->Pos;
+            ImVec2 const vMax   = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
+            ImVec2 const wMin   = ImGui::GetWindowPos();
+            ImVec2 const wMax   = ImVec2(wMin.x + ImGui::GetWindowSize().x, wMin.y + ImGui::GetWindowSize().y);
+            ImU32 const  dimCol = IM_COL32(4, 8, 18, 110);
 
             // Top
             fg->AddRectFilled(vMin, ImVec2(vMax.x, wMin.y), dimCol);

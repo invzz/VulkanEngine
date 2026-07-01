@@ -7,10 +7,11 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 
-#include "ModelLib/Resources/PBRMaterial.hpp"
-#include "ModelLib/Resources/Texture.hpp"
-
 namespace engine {
+
+    class PBRMaterial;
+
+    class Texture;
 
     /**
  * @brief Manages material descriptor sets and default textures
