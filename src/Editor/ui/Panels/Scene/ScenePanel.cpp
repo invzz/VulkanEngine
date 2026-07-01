@@ -1,4 +1,4 @@
-#include "Editor/ui/Scene/ScenePanel.hpp"
+#include "Editor/ui/Panels/Scene/ScenePanel.hpp"
 
 #include <imgui.h>
 
@@ -14,7 +14,6 @@
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "Editor/ui/Scene/SceneComponents.hpp"
 #include "Editor/ui/UI.hpp"
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
@@ -45,7 +44,7 @@ namespace engine {
             ui::UI::Separator();
 
             // Pending loads
-            ui::SceneComponents::drawPendingLoadsSection(pendingLoads_, &rm);
+            ui::UI::DrawScenePendingLoadsSection(pendingLoads_, &rm);
 
             // Entity count
             auto view = registry.view<entt::entity>();
@@ -53,13 +52,13 @@ namespace engine {
                 ImVec4(0.6f, 0.6f, 0.7f, 1.0f));
             ui::UI::Separator();
 
-            auto collection = ui::SceneComponents::collectEntities(scene);
-            ui::SceneComponents::enforceSingleDirectionalLight(collection.dirLights, toDelete_);
+            auto collection = ui::UI::CollectSceneEntities(scene);
+            ui::UI::EnforceSingleDirectionalLight(collection.dirLights, toDelete_);
 
-            ui::SceneComponents::drawCameraSection(collection.cameras, searchFilter,
+            ui::UI::DrawSceneCameraSection(collection.cameras, searchFilter,
                 frameInfo, scene, registry, toDelete_);
 
-            ui::SceneComponents::drawLightSection(collection.dirLights, collection.pointLights,
+            ui::UI::DrawSceneLightSection(collection.dirLights, collection.pointLights,
                 collection.spotLights, searchFilter, frameInfo, scene, registry, toDelete_);
 
             auto enqueueModelLoad = [&](const std::string& fullPath, const std::string& name,
@@ -77,7 +76,7 @@ namespace engine {
                         reg.emplace<ModelComponent>(entity, modelPtr);
                         reg.emplace<NameComponent>(entity, name);
 
-                        if (ui::SceneComponents::shouldCreateStaticCollider(fullPath, name, colliderMode)) {
+                        if (ui::UI::ShouldCreateStaticCollider(fullPath, name, colliderMode)) {
                             auto& rb = reg.emplace<RigidBodyComponent>(entity);
                             rb.isStatic = true;
                             rb.mode = RigidBodyComponent::PhysicsMode::Static;
@@ -98,7 +97,7 @@ namespace engine {
                 pendingLoads_.push_back({id, fullPath, name, opts, colliderMode});
             };
 
-            ui::SceneComponents::drawModelSection(collection.models, searchFilter,
+            ui::UI::DrawSceneModelSection(collection.models, searchFilter,
                 frameInfo, scene, registry, toDelete_, colliderImportMode_, enqueueModelLoad);
         }
         ImGui::End();

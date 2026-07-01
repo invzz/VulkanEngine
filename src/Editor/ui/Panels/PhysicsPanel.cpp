@@ -1,4 +1,4 @@
-#include "Editor/ui/PhysicsPanel.hpp"
+#include "Editor/ui/Panels/PhysicsPanel.hpp"
 
 #include "IconsFontAwesome6.h"
 #include <imgui.h>

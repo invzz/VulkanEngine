@@ -1,4 +1,4 @@
-#include "ui/Workspace/ThemeLoader.hpp"
+#include "Editor/ui/Workspace/ThemeLoader.hpp"
 
 #include <fstream>
 #include <filesystem>

@@ -1,4 +1,4 @@
-#include "Editor/ui/DebugPanel.hpp"
+#include "Editor/ui/Panels/DebugPanel.hpp"
 
 #include <imgui.h>
 

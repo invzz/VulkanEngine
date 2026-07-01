@@ -4,7 +4,7 @@
 
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include "Editor/ui/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/ToolbarPanel.hpp"
 
 namespace engine {
 
@@ -31,7 +31,10 @@ namespace engine {
 
         // --- Main dockspace ---
         ImGuiViewport const* viewport = ImGui::GetMainViewport();
-        float                toolbarH = (toolbarVisible_ && toolbarPanel_ && toolbarPanel_->isVisible()) ? 64.0f : 0.0f;
+        float                toolbarH = 0.0f;
+        if (toolbarVisible_ && toolbarPanel_ && toolbarPanel_->isVisible()) {
+            toolbarH = toolbarPanel_->getPreferredHeight(viewport->WorkSize.x);
+        }
         ImVec2               dockPos  = ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + toolbarH);
         ImVec2               dockSize = ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - toolbarH);
 

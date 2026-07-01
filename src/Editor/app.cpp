@@ -62,13 +62,13 @@ namespace {
 #include "Editor/RenderContext.hpp"
 
 // UI Panels
-#include "Editor/ui/InspectorPanel.hpp"
-#include "Editor/ui/PhysicsPanel.hpp"
-#include "Editor/ui/Scene/ScenePanel.hpp"
-#include "Editor/ui/SettingsPanel.hpp"
-#include "Editor/ui/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/InspectorPanel.hpp"
+#include "Editor/ui/Panels/PhysicsPanel.hpp"
+#include "Editor/ui/Panels/Scene/ScenePanel.hpp"
+#include "Editor/ui/Panels/SettingsPanel.hpp"
+#include "Editor/ui/Panels/ToolbarPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
-#include "Editor/ui/ViewportPanel.hpp"
+#include "Editor/ui/Panels/ViewportPanel.hpp"
 
 namespace engine {
 
@@ -189,16 +189,17 @@ namespace engine {
 
         auto settingsPanel = std::make_unique<SettingsPanel>(&engineState,
             multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
-        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::DockBottom, .minSizeX = 400.0f, .minSizeY = 150.0f});
+        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::None, .dockable = false, .floatable = true, .minSizeX = 420.0f, .minSizeY = 260.0f});
+        registry.hidePanel("Settings");
 
         auto physicsPanel = std::make_unique<PhysicsPanel>(engineState);
         registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 300.0f, .minSizeY = 200.0f});
 
         auto toolbar = std::make_unique<ToolbarPanel>();
+        toolbar->setSettingsPanel(registry.getPanel("Settings"));
         uiManager->setToolbarPanel(std::move(toolbar));
         uiManager->addToolbarToggle("Scene", registry.getPanel("Scene Objects"));
         uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
-        uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
 
         auto vp        = std::make_unique<ViewportPanel>();

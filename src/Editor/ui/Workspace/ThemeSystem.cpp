@@ -1,5 +1,5 @@
 #include "Editor/ui/Workspace/ThemeSystem.hpp"
-#include "ui/Workspace/ThemeLoader.hpp"
+#include "Editor/ui/Workspace/ThemeLoader.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -72,6 +72,24 @@ void ThemeSystem::autoApplyAccentColor(const ImVec4& accent_color) {
         clamp(accent_color.z * 0.15f),
         0.45f
     };
+    ImVec4 scrollGrab = {
+        clamp(accent_color.x * 0.5f),
+        clamp(accent_color.y * 0.5f),
+        clamp(accent_color.z * 0.5f),
+        0.70f
+    };
+    ImVec4 scrollGrabHovered = {
+        clamp(accent_color.x * 0.7f),
+        clamp(accent_color.y * 0.7f),
+        clamp(accent_color.z * 0.7f),
+        0.85f
+    };
+    ImVec4 scrollGrabActive = {
+        clamp(accent_color.x ),
+        clamp(accent_color.y ),
+        clamp(accent_color.z ),
+        1.00f
+    };
 
     currentStyle_.Colors[ImGuiCol_Header]               = accent_color;
     currentStyle_.Colors[ImGuiCol_HeaderHovered]        = hovered;
@@ -84,6 +102,10 @@ void ThemeSystem::autoApplyAccentColor(const ImVec4& accent_color) {
     currentStyle_.Colors[ImGuiCol_FrameBg]              = muted;
     currentStyle_.Colors[ImGuiCol_FrameBgHovered]       = hovered;
     currentStyle_.Colors[ImGuiCol_FrameBgActive]        = active;
+
+    currentStyle_.Colors[ImGuiCol_ScrollbarGrab]        = scrollGrab;
+    currentStyle_.Colors[ImGuiCol_ScrollbarGrabHovered] = scrollGrabHovered;
+    currentStyle_.Colors[ImGuiCol_ScrollbarGrabActive]  = scrollGrabActive;
 
     currentStyle_.Colors[ImGuiCol_SliderGrab]           = active;
     currentStyle_.Colors[ImGuiCol_SliderGrabActive]     = accent_color;

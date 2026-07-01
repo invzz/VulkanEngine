@@ -1,4 +1,4 @@
-#include "Editor/ui/LightsPanel.hpp"
+#include "Editor/ui/Panels/LightsPanel.hpp"
 
 #include <imgui.h>
 

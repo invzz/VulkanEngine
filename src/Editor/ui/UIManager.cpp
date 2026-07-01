@@ -6,7 +6,7 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include "Editor/ui/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/ToolbarPanel.hpp"
 #include "Editor/ui/UI.hpp"
 #include "Editor/ui/UIPanel.hpp"
 #include "Editor/ui/Workspace/WorkspaceManager.hpp"

@@ -1,4 +1,4 @@
-#include "Editor/ui/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/ToolbarPanel.hpp"
 
 #include "IconsFontAwesome6.h"
 #include <imgui.h>
@@ -13,6 +13,14 @@ namespace engine {
 
     ToolbarPanel::ToolbarPanel() = default;
 
+    float ToolbarPanel::getPreferredHeight(float viewportWidth) const {
+        bool compact = viewportWidth < 1440.0f;
+        const ImGuiStyle& style = ImGui::GetStyle();
+        float rowHeight = ImGui::GetFontSize() + (style.FramePadding.y * 2.0f);
+        float padY = compact ? 5.0f : 6.0f;
+        return std::max(34.0f, rowHeight + (padY * 2.0f) + 2.0f);
+    }
+
     void ToolbarPanel::addToggle(const std::string& label, UIPanel* panel) {
         toggles_.push_back({label, panel});
     }
@@ -25,7 +33,8 @@ namespace engine {
         // Always render the toolbar at the very top of the viewport
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2         barPos{viewport->WorkPos.x, viewport->Pos.y};
-        float          barHeight = 52.0f;
+        bool           compact = viewport->WorkSize.x < 1440.0f;
+        float          barHeight = getPreferredHeight(viewport->WorkSize.x);
 
         ImGui::SetNextWindowPos(barPos);
         ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, barHeight));
@@ -50,9 +59,9 @@ namespace engine {
         // Render toolbar as a polished top strip
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 8.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 6.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(6.0f, 4.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, compact ? ImVec2(8.0f, 5.0f) : ImVec2(10.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, compact ? ImVec2(4.0f, 4.0f) : ImVec2(6.0f, 6.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, compact ? ImVec2(4.0f, 3.0f) : ImVec2(6.0f, 4.0f));
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(bg.x, bg.y, bg.z, 0.96f));
         ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(border.x, border.y, border.z, 0.8f));
 
@@ -68,6 +77,12 @@ namespace engine {
                 ImGui::GetColorU32(ImVec4(border.x, border.y, border.z, 0.55f)), 1.0f);
             ImGui::Dummy(ImVec2(2.0f, rowHeight));
             ImGui::SameLine(0.0f, extraPad);
+        };
+
+        auto showTooltip = [&](const char* text) {
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_Stationary)) {
+                ImGui::SetTooltip("%s", text);
+            }
         };
 
         auto panelChip = [&](const std::string& label, UIPanel* panel) {
@@ -92,83 +107,33 @@ namespace engine {
             if (clicked) {
                 panel->setVisible(!isActive);
             }
+
+            std::string tip = std::string(isActive ? "Hide " : "Show ") + label + " panel";
+            showTooltip(tip.c_str());
         };
 
         // Left brand
         ImGui::TextColored(ImVec4(accent.x, accent.y, accent.z, 1.0f), "%s", ICON_FA_CUBES_STACKED);
+        showTooltip("VulkanEngine Editor");
         ImGui::SameLine(0.0f, 6.0f);
         ImGui::AlignTextToFramePadding();
         ImGui::Text("VulkanEngine");
-        ImGui::SameLine(0.0f, 6.0f);
-        ImGui::TextColored(textDisabled, "EDITOR");
+        if (!compact) {
+            ImGui::SameLine(0.0f, 6.0f);
+            ImGui::TextColored(textDisabled, "EDITOR");
+        }
 
-        drawSectionDivider();
+        drawSectionDivider(compact ? 4.0f : 6.0f);
 
         // Panel toggles as chips
         for (const auto& toggle : toggles_) {
             panelChip(toggle.label, toggle.panel);
-            ImGui::SameLine(0.0f, 6.0f);
+            ImGui::SameLine(0.0f, compact ? 3.0f : 4.0f);
         }
 
-        drawSectionDivider();
+        drawSectionDivider(compact ? 4.0f : 6.0f);
 
-        // Gizmo tools
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(textDisabled, "Gizmo");
-        ImGui::SameLine(0.0f, 6.0f);
-
-        auto gOp = static_cast<ImGuizmo::OPERATION>(frameInfo.gizmoOperation);
-        auto isEnabled = frameInfo.gizmoEnabled;
-
-        auto gOpButton = [&](const char* icon, int mode, bool active, const char* suffix) {
-            bool clicked = ui::UI::ToolbarIcon(icon, active, suffix);
-            if (clicked && isEnabled) {
-                frameInfo.gizmoOperation = (gOp == mode) ? ImGuizmo::TRANSLATE : mode;
-            }
-        };
-
-        float spacing = 4.0f;
-
-        gOpButton(ICON_FA_UP_DOWN_LEFT_RIGHT, ImGuizmo::TRANSLATE, (gOp & ImGuizmo::TRANSLATE) == ImGuizmo::TRANSLATE, "translate");
-        ImGui::SameLine(0.0f, spacing);
-        gOpButton(ICON_FA_ROTATE, ImGuizmo::ROTATE, (gOp & ImGuizmo::ROTATE) == ImGuizmo::ROTATE, "rotate");
-        ImGui::SameLine(0.0f, spacing);
-        gOpButton(ICON_FA_ARROWS_UP_DOWN, ImGuizmo::SCALE, (gOp & ImGuizmo::SCALE) == ImGuizmo::SCALE, "scale");
-
-        // --- World / Local space toggle ---
-        ImGui::SameLine(0.0f, spacing);
-
-        bool isWorld = (frameInfo.gizmoMode == 1);
-        {
-            bool active = isWorld;
-            bool clicked = ui::UI::ToolbarIcon(ICON_FA_GLOBE, active, "space");
-            if (clicked && isEnabled) {
-                frameInfo.gizmoMode = isWorld ? 0 : 1;
-            }
-        }
-
-        // --- Gizmo enable toggle ---
-        ImGui::SameLine(0.0f, spacing);
-
-        {
-            bool active = frameInfo.gizmoEnabled;
-            bool clicked = ui::UI::ToolbarIcon(ICON_FA_CROSSHAIRS, active, "enable");
-            if (clicked) {
-                frameInfo.gizmoEnabled = !frameInfo.gizmoEnabled;
-            }
-        }
-
-        // --- Viewport mode toggle ---
-        ImGui::SameLine(0.0f, spacing);
-        {
-            bool nav = (frameInfo.viewportMode == ViewportMode::Navigation);
-            bool active = nav;
-            bool clicked = ui::UI::ToolbarIcon(ICON_FA_COMPASS, active, "viewport_mode");
-
-            if (clicked) {
-                frameInfo.viewportMode = nav ? ViewportMode::Picking : ViewportMode::Navigation;
-            }
-        }
+        float spacing = compact ? 2.0f : 3.0f;
 
         // Layout reset
         if (onResetLayout_) {
@@ -176,41 +141,18 @@ namespace engine {
             if (ui::UI::ToolbarIcon(ICON_FA_ROTATE_LEFT, false, "layout_reset")) {
                 onResetLayout_();
             }
+            showTooltip("Reset docking layout");
         }
 
-        // Right-aligned performance metrics
-        float fps       = ImGui::GetIO().Framerate;
-        float frameTime = frameTimeMs_ > 0.0f ? frameTimeMs_ : (1000.0f / std::max(fps, 1.0f));
-
-        // Color-code frame time
-        ImVec4 frameColor;
-        if (frameTime < 16.67f) {
-            frameColor = ImVec4(0.3f, 1.0f, 0.3f, 1.0f);  // green: <60fps
-        } else if (frameTime < 33.33f) {
-            frameColor = ImVec4(1.0f, 0.85f, 0.0f, 1.0f);  // yellow: 30-60fps
-        } else {
-            frameColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);  // red: <30fps
+        // Floating Settings launcher (opened from toolbar, closed from window close button)
+        if (settingsPanel_ != nullptr) {
+            ImGui::SameLine(0.0f, spacing);
+            bool active = settingsPanel_->isVisible();
+            if (ui::UI::ToolbarIcon(ICON_FA_GEAR, active, "open_settings")) {
+                settingsPanel_->setVisible(true);
+            }
+            showTooltip("Open Settings window");
         }
-
-        char perfText[64];
-        std::snprintf(perfText, sizeof(perfText), "%.1f ms  %.0f FPS", frameTime, fps);
-
-        float perfWidth = ImGui::CalcTextSize(perfText).x + 18.0f;
-        float perfX = ImGui::GetWindowContentRegionMax().x - perfWidth;
-        if (ImGui::GetCursorPosX() < perfX) {
-            ImGui::SetCursorPosX(perfX);
-        } else {
-            ImGui::SameLine(0.0f, 8.0f);
-        }
-
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(frameColor.x, frameColor.y, frameColor.z, 0.18f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(frameColor.x, frameColor.y, frameColor.z, 0.24f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(frameColor.x, frameColor.y, frameColor.z, 0.24f));
-        ImGui::PushStyleColor(ImGuiCol_Text, frameColor);
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
-        ImGui::Button(perfText, ImVec2(perfWidth, rowHeight));
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor(4);
 
         ImGui::End();
         ImGui::PopStyleColor(2);

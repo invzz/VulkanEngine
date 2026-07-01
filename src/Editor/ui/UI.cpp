@@ -153,10 +153,10 @@ namespace engine::ui {
             ImGui::PushStyleColor(ImGuiCol_Text, text);
         }   
 
-        auto fontSize = ImGui::GetFontSize();
-        
+        float fontSize = ImGui::GetFontSize();
+        float iconSize = std::max(20.0f, fontSize * 1.45f);
 
-        bool clicked = ImGui::Button(id.c_str(), ImVec2(fontSize * 2.0f, fontSize * 2.0f));
+        bool clicked = ImGui::Button(id.c_str(), ImVec2(iconSize, iconSize));
         ImGui::PopStyleColor(4);
         return clicked;
     }

@@ -1,13 +1,13 @@
-#include "Editor/ui/InspectorPanel.hpp"
+#include "Editor/ui/Panels/InspectorPanel.hpp"
 
 #include <imgui.h>
 
 #include "Engine/EngineState.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 
-#include "Editor/ui/AnimationPanel.hpp"
-#include "Editor/ui/LightsPanel.hpp"
-#include "Editor/ui/TransformPanel.hpp"
+#include "Editor/ui/Panels/AnimationPanel.hpp"
+#include "Editor/ui/Panels/LightsPanel.hpp"
+#include "Editor/ui/Panels/TransformPanel.hpp"
 #include "Editor/ui/UI.hpp"
 #include "entt/entity/entity.hpp"
 

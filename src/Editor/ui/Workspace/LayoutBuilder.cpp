@@ -61,6 +61,7 @@ namespace engine {
         // behavior when you dock several windows to the same node id).
         for (const auto& e : entries_) {
             ImGuiID target = root;
+            bool shouldDock = true;
             switch (e.zone) {
                 case DockZone::DockLeft:
                     target = leftId;
@@ -77,11 +78,19 @@ namespace engine {
                 case DockZone::DockTop:
                     target = root;
                     break;  // top-level overlay
+                case DockZone::None:
+                case DockZone::Top:
+                case DockZone::Bottom:
+                case DockZone::Left:
+                case DockZone::Right:
+                case DockZone::Center:
+                    shouldDock = false;
+                    break;  // keep floating / manually positioned
                 default:
                     target = centerId;
                     break;
             }
-            if (target != 0) {
+            if (shouldDock && target != 0) {
                 dockWindowToNode(target, e.panelName);
             }
         }

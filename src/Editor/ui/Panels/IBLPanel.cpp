@@ -1,4 +1,4 @@
-#include "Editor/ui/IBLPanel.hpp"
+#include "Editor/ui/Panels/IBLPanel.hpp"
 
 #include <algorithm>
 #include <cstdint>

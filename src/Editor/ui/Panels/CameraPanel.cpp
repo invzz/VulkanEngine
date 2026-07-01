@@ -1,4 +1,4 @@
-#include "Editor/ui/CameraPanel.hpp"
+#include "Editor/ui/Panels/CameraPanel.hpp"
 
 #include <imgui.h>
 

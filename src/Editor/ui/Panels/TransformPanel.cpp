@@ -1,4 +1,4 @@
-#include "Editor/ui/TransformPanel.hpp"
+#include "Editor/ui/Panels/TransformPanel.hpp"
 
 #include <imgui.h>
 

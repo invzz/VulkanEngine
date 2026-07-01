@@ -1,4 +1,4 @@
-#include "Editor/ui/AnimationPanel.hpp"
+#include "Editor/ui/Panels/AnimationPanel.hpp"
 
 #include "IconsFontAwesome6.h"
 #include <imgui.h>

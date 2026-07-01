@@ -1,4 +1,4 @@
-#include "Editor/ui/PostProcessPanel.hpp"
+#include "Editor/ui/Panels/PostProcessPanel.hpp"
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
