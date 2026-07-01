@@ -227,7 +227,7 @@ target("Editor")
     set_group("editor")
     set_default(true)
     add_files("src/Editor/**.cpp")
-    add_includedirs("include", "src/Editor", "src/third_party/ImGuizmo/src", {public = true})
+    add_includedirs("include", "src/Editor", "src/third_party/ImGuizmo/src", "src/third_party/ImViewGuizmo", {public = true})
     add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
     if is_plat("linux") then
         add_packages("vulkan")

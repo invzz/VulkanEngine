@@ -345,6 +345,10 @@ namespace engine {
                 settingsJson["debugMode"] = *settingsBindings_.debugMode;
             }
 
+            if (settingsBindings_.viewGizmoOrbitSelected != nullptr) {
+                settingsJson["viewGizmoOrbitSelected"] = *settingsBindings_.viewGizmoOrbitSelected;
+            }
+
             if (settingsBindings_.multithreadedRecordingEnabled != nullptr && settingsBindings_.multithreadedRecordingThreads != nullptr) {
                 settingsJson["performance"] = {
                     {"multithreadedRecordingEnabled", *settingsBindings_.multithreadedRecordingEnabled},
@@ -731,6 +735,12 @@ namespace engine {
 
             if (settingsBindings_.debugMode != nullptr) {
                 *settingsBindings_.debugMode = settingsJson.value("debugMode", *settingsBindings_.debugMode);
+            }
+
+            if (settingsBindings_.viewGizmoOrbitSelected != nullptr) {
+                *settingsBindings_.viewGizmoOrbitSelected = settingsJson.value(
+                    "viewGizmoOrbitSelected",
+                    *settingsBindings_.viewGizmoOrbitSelected);
             }
 
             if (settingsJson.contains("performance") && settingsBindings_.multithreadedRecordingEnabled != nullptr && settingsBindings_.multithreadedRecordingThreads != nullptr) {

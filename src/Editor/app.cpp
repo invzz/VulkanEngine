@@ -122,6 +122,7 @@ namespace engine {
             .multithreadedRecordingEnabled = &multithreadedRecordingEnabled,
             .multithreadedRecordingThreads = &multithreadedRecordingThreads,
             .debugMode                     = &debugMode,
+            .viewGizmoOrbitSelected        = &engineState.editor().viewGizmoOrbitSelected,
         });
 
         setupUI();
@@ -349,25 +350,26 @@ namespace engine {
 
             PickingSystem pickingSystem;
             FrameInfo     frameInfo{
-                .frameIndex          = frameIndex,
-                .frameTime           = frameTime,
-                .commandBuffer       = commandBuffer,
-                .camera              = *camera,
-                .globalDescriptorSet = engineState.renderContext().getGlobalDescriptorSet(frameIndex),
-                .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-                .scene               = &engineState.scene(),
-                .selectedObjectId    = selectedObjectId,
-                .selectedEntity      = engineState.selectedEntity(),
-                .cameraEntity        = engineState.cameraEntity(),
-                .morphManager        = engineState.systemPtr<AnimationSystem>()
-                                           ? engineState.system<AnimationSystem>().getMorphManager()
-                                           : nullptr,
-                .extent              = renderer.getOffscreenExtent(),
-                .viewportMode        = engineState.editor().viewportSettings.mode,
-                .debugMode           = debugMode,
-                .gizmoOperation      = engineState.editor().gizmoOperation,
-                .gizmoMode           = engineState.editor().gizmoMode,
-                .gizmoEnabled        = engineState.editor().gizmoEnabled,
+                .frameIndex             = frameIndex,
+                .frameTime              = frameTime,
+                .commandBuffer          = commandBuffer,
+                .camera                 = *camera,
+                .globalDescriptorSet    = engineState.renderContext().getGlobalDescriptorSet(frameIndex),
+                .globalTextureSet       = resourceManager.getTextureManager().getDescriptorSet(),
+                .scene                  = &engineState.scene(),
+                .selectedObjectId       = selectedObjectId,
+                .selectedEntity         = engineState.selectedEntity(),
+                .cameraEntity           = engineState.cameraEntity(),
+                .morphManager           = engineState.systemPtr<AnimationSystem>()
+                                              ? engineState.system<AnimationSystem>().getMorphManager()
+                                              : nullptr,
+                .extent                 = renderer.getOffscreenExtent(),
+                .viewportMode           = engineState.editor().viewportSettings.mode,
+                .debugMode              = debugMode,
+                .gizmoOperation         = engineState.editor().gizmoOperation,
+                .gizmoMode              = engineState.editor().gizmoMode,
+                .gizmoEnabled           = engineState.editor().gizmoEnabled,
+                .viewGizmoOrbitSelected = engineState.editor().viewGizmoOrbitSelected,
             };
 
             // Mouse picking: the ViewportPanel has already converted the click
@@ -392,9 +394,10 @@ namespace engine {
             selectedObjectId                           = frameInfo.selectedObjectId;
             engineState.setSelectedEntity(frameInfo.selectedEntity);
             engineState.setCameraEntity(frameInfo.cameraEntity);
-            engineState.editor().gizmoOperation = frameInfo.gizmoOperation;
-            engineState.editor().gizmoMode      = frameInfo.gizmoMode;
-            engineState.editor().gizmoEnabled   = frameInfo.gizmoEnabled;
+            engineState.editor().gizmoOperation         = frameInfo.gizmoOperation;
+            engineState.editor().gizmoMode              = frameInfo.gizmoMode;
+            engineState.editor().gizmoEnabled           = frameInfo.gizmoEnabled;
+            engineState.editor().viewGizmoOrbitSelected = frameInfo.viewGizmoOrbitSelected;
 
             renderer.endFrame();
         }
