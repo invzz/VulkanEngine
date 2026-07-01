@@ -1,0 +1,42 @@
+{
+  "name": "Dark",
+  "accent_color": "#66b3ff",
+  "base_colors": {
+    "window_bg": "#1a1a1e",
+    "title_bg": "#141418",
+    "menu_bar_bg": "#232329",
+    "border": "#4d4d59",
+    "border_shadow": "#00000000",
+    "text": "#e6e6e6",
+    "text_disabled": "#80808c",
+    "scrollbar_bg": "#141418",
+    "scrollbar_grab": "#4d4d59",
+    "scrollbar_grab_hovered": "#666672",
+    "scrollbar_grab_active": "#7a7a88",
+    "tab": "#262630",
+    "tab_active": "#33333a",
+    "tab_unfocused": "#1a1a1e",
+    "tab_unfocused_active": "#33333a",
+    "drag_drop_target": "#d9a800",
+    "header": "#404048",
+    "separator": "#404048",
+    "separator_active": "#585864",
+    "resize_grip": "#4d4d5980",
+    "resize_grip_active": "#7a7a88bf",
+    "text_selected_bg": "#4d609180",
+    "plot_lines": "#969696",
+    "modal_window_dim_bg": "#00000080"
+  },
+  "style": {
+    "window_rounding": 4.0,
+    "frame_rounding": 2.0,
+    "grab_rounding": 1.2,
+    "tab_rounding": 2.0,
+    "frame_padding_x": 8.0,
+    "frame_padding_y": 4.0,
+    "item_spacing_x": 8.0,
+    "item_spacing_y": 8.0,
+    "window_padding": 8.0,
+    "grab_min_size": 12.0
+  }
+}

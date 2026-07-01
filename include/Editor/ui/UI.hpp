@@ -5,9 +5,43 @@
 
 #include <imgui.h>
 
+#include <entt/entity/fwd.hpp>
 #include <functional>
+#include <string>
+#include <vector>
+
+#include "Engine/Scene/SceneUtils.hpp"
+
+namespace engine {
+    class WorkspaceManager;
+    class Scene;
+    class ResourceManager;
+    struct FrameInfo;
+}  // namespace engine
 
 namespace engine::ui {
+
+    struct ScenePendingModelLoad {
+        AsyncLoadId                                             id{0};
+        std::string                                             path;
+        std::string                                             name;
+        engine::ModelInsertionOptions                           options;
+        engine::ModelInsertionOptions::StaticColliderImportMode colliderMode{engine::ModelInsertionOptions::StaticColliderImportMode::AutoDetect};
+        bool                                                    cancelled = false;
+    };
+
+    struct SceneEntityCollection {
+        std::vector<entt::entity> cameras;
+        std::vector<entt::entity> dirLights;
+        std::vector<entt::entity> pointLights;
+        std::vector<entt::entity> spotLights;
+        std::vector<entt::entity> models;
+    };
+
+    /**
+ * @brief Bind the active workspace context used by UI helper functions.
+ */
+    void SetActiveWorkspace(WorkspaceManager* wm);
 
     /**
  * @brief Engine-safe UI abstraction layer over ImGui.
@@ -82,11 +116,95 @@ namespace engine::ui {
         static bool IconButton(const char* icon, const char* label);
 
         /**
+     * @brief Render a toolbar icon button (square padding, active state).
+     * @param icon Unicode icon character.
+     * @param active Whether this button is currently active.
+     * @param suffix Unique ID suffix (appended with ##, e.g. "gizmo_translate").
+     * @return true if clicked.
+     */
+        static bool ToolbarIcon(const char* icon, bool active, const char* suffix = "");
+
+        /**
      * @brief Render a button that appears disabled (grayed out).
      * @param label Button text.
      * @return true if clicked (even when disabled).
      */
         static bool DisabledButton(const char* label);
+
+        /**
+     * @brief Render a high-emphasis action button (material-style primary action).
+     * @param label Button text.
+     * @param size Optional custom size.
+     * @return true if clicked.
+     */
+        static bool PrimaryButton(const char* label, ImVec2 size = ImVec2(0.0f, 0.0f));
+
+        /**
+     * @brief Render a low-emphasis filled button for secondary actions.
+     * @param label Button text.
+     * @param size Optional custom size.
+     * @return true if clicked.
+     */
+        static bool TonalButton(const char* label, ImVec2 size = ImVec2(0.0f, 0.0f));
+
+        // ======================================================================
+        // Material Surfaces
+        // ======================================================================
+
+        /**
+     * @brief Begin a material-style surface card.
+     * @param id Unique id for internal draw calls.
+     * @param title Optional heading rendered at top of surface.
+     * @param subtitle Optional subtitle rendered below title.
+     * @return true if rendering should continue.
+     */
+        static bool BeginSurface(const char* id, const char* title = nullptr, const char* subtitle = nullptr);
+
+        /**
+     * @brief End a material-style surface card.
+     */
+        static void EndSurface();
+
+        /**
+     * @brief Render a consistent section title used inside surfaces.
+     * @param label Section title.
+     * @param helper Optional helper text shown below title.
+     */
+        static void SectionTitle(const char* label, const char* helper = nullptr);
+
+        /**
+     * @brief Render a two-line boolean row with title/description and checkbox.
+     * @param label Row title.
+     * @param description Supporting text.
+     * @param value Bound boolean value.
+     * @return true if changed.
+     */
+        static bool CheckboxRow(const char* label, const char* description, bool* value);
+
+        /**
+    * @brief Render a two-line row with label/description and float drag control.
+    * @param label Row title.
+    * @param description Supporting text.
+    * @param value Bound float value.
+    * @param speed Drag speed.
+    * @param min Minimum value.
+    * @param max Maximum value.
+    * @return true if changed.
+    */
+        static bool FloatRow(const char* label, const char* description, float* value,
+            float speed = 0.1f, float min = -1e10f, float max = 1e10f);
+
+        /**
+    * @brief Render a two-line row with label/description and enum combo control.
+    * @param label Row title.
+    * @param description Supporting text.
+    * @param current_index Selected enum index.
+    * @param items Display names.
+    * @param count Number of items.
+    * @return true if changed.
+    */
+        static bool EnumRow(const char* label, const char* description, int* current_index,
+            const char* const items[], int count);
 
         // ======================================================================
         // Properties (key-value display in inspector panels)
@@ -245,7 +363,7 @@ namespace engine::ui {
      * @return true if changed.
      */
         static bool Combo(const char* label, int* current_index,
-            std::function<int(const char* const*& out_items)> get_items_callback);
+            const std::function<int(const char* const*& out_items)>& get_items_callback);
 
         /**
      * @brief Render a checkbox with consistent spacing.
@@ -382,6 +500,58 @@ namespace engine::ui {
      * @return true if clicked.
      */
         static bool ResetButton(const char* label);
+
+        // ======================================================================
+        // Scene Panel Facade
+        // ======================================================================
+
+        static SceneEntityCollection CollectSceneEntities(const engine::Scene& scene);
+
+        static void EnforceSingleDirectionalLight(
+            std::vector<entt::entity>& dirLights,
+            std::vector<entt::entity>& toDelete);
+
+        static void DrawSceneCameraSection(
+            const std::vector<entt::entity>& cameras,
+            const char*                      filter,
+            FrameInfo&                       frameInfo,
+            engine::Scene&                   scene,
+            entt::registry&                  registry,
+            std::vector<entt::entity>&       toDelete);
+
+        static void DrawSceneLightSection(
+            const std::vector<entt::entity>& dirLights,
+            const std::vector<entt::entity>& pointLights,
+            const std::vector<entt::entity>& spotLights,
+            const char*                      filter,
+            FrameInfo&                       frameInfo,
+            engine::Scene&                   scene,
+            entt::registry&                  registry,
+            std::vector<entt::entity>&       toDelete);
+
+        static void DrawSceneModelSection(
+            const std::vector<entt::entity>&                 models,
+            const char*                                      filter,
+            FrameInfo&                                       frameInfo,
+            engine::Scene&                                   scene,
+            entt::registry&                                  registry,
+            std::vector<entt::entity>&                       toDelete,
+            ModelInsertionOptions::StaticColliderImportMode& colliderMode,
+            std::function<void(
+                const std::string&,
+                const std::string&,
+                const ModelInsertionOptions&,
+                ModelInsertionOptions::StaticColliderImportMode)>
+                enqueueModelLoad);
+
+        static void DrawScenePendingLoadsSection(
+            std::vector<ScenePendingModelLoad>& pendingLoads,
+            ResourceManager*                    resourceManager);
+
+        static bool ShouldCreateStaticCollider(
+            const std::string&                              path,
+            const std::string&                              name,
+            ModelInsertionOptions::StaticColliderImportMode mode);
 
        private:
         // Helper to apply section header styling
