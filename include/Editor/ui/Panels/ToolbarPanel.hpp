@@ -26,8 +26,16 @@ namespace engine {
 
         void render(FrameInfo& frameInfo) override;
 
+        /** Get the preferred toolbar height for the current DPI and viewport width. */
+        float getPreferredHeight(float viewportWidth) const;
+
         /** Register a panel that should appear as a toggle button in the toolbar. */
         void addToggle(const std::string& label, UIPanel* panel);
+
+        /** Register the floating settings panel launched from toolbar gear button. */
+        void setSettingsPanel(UIPanel* panel) {
+            settingsPanel_ = panel;
+        }
 
         /** Switch to a predefined ImGui style preset. */
         void setStylePreset(int preset);
@@ -58,6 +66,7 @@ namespace engine {
         };
 
         std::vector<ToggleEntry> toggles_;
+        UIPanel*                  settingsPanel_ = nullptr;
         int                      stylePreset_ = 0;  // 0=dark, 1=light, 2=midnight
         float                    frameTimeMs_ = 0.0f;
         std::function<void()>    onResetLayout_;

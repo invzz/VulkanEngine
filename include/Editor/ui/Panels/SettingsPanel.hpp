@@ -5,10 +5,10 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 
-#include "Editor/ui/CameraPanel.hpp"
-#include "Editor/ui/DebugPanel.hpp"
-#include "Editor/ui/IBLPanel.hpp"
-#include "Editor/ui/PostProcessPanel.hpp"
+#include "Editor/ui/Panels/CameraPanel.hpp"
+#include "Editor/ui/Panels/DebugPanel.hpp"
+#include "Editor/ui/Panels/IBLPanel.hpp"
+#include "Editor/ui/Panels/PostProcessPanel.hpp"
 #include "Editor/ui/UIPanel.hpp"
 
 namespace engine {
@@ -30,6 +30,9 @@ namespace engine {
         // Demo UI control for multithreaded recording (references owned by App)
         bool&     multithreadedRecordingEnabled_;
         uint32_t& multithreadedRecordingThreads_;
+
+       private:
+        bool wasVisibleLastFrame_ = false;
     };
 
 }  // namespace engine

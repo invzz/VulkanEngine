@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "Editor/ui/AnimationPanel.hpp"
-#include "Editor/ui/LightsPanel.hpp"
-#include "Editor/ui/TransformPanel.hpp"
+#include "Editor/ui/Panels/AnimationPanel.hpp"
+#include "Editor/ui/Panels/LightsPanel.hpp"
+#include "Editor/ui/Panels/TransformPanel.hpp"
 #include "Editor/ui/UIPanel.hpp"
 
 namespace engine {

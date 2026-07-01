@@ -11,7 +11,7 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Graphics/Viewport.hpp"
 
-#include "Editor/ui/ViewportPanel.hpp"
+#include "Editor/ui/Panels/ViewportPanel.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 

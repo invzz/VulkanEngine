@@ -7,7 +7,7 @@
 #include "Engine/Scene/SceneUtils.hpp"
 
 #include "Editor/ui/UIPanel.hpp"
-#include "SceneComponents.hpp"
+#include "Editor/ui/UI.hpp"
 
 namespace engine {
 
@@ -29,7 +29,7 @@ namespace engine {
         Device&                                            device_;
         EngineState&                                       state_;
         std::vector<entt::entity>                          toDelete_;
-        std::vector<ui::SceneComponents::PendingModelLoad> pendingLoads_;
+        std::vector<ui::ScenePendingModelLoad>             pendingLoads_;
         StaticColliderImportMode                           colliderImportMode_{StaticColliderImportMode::AutoDetect};
     };
 

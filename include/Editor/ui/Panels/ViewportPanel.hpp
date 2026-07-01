@@ -73,6 +73,8 @@ namespace engine {
         void applyCursorState(ViewportMode mode);
         void handlePickingInput(FrameInfo& frameInfo);
         void handleGizmo(FrameInfo& frameInfo, const ImVec2& topLeft, const ImVec2& size);
+        bool renderViewportToolbar(FrameInfo& frameInfo, const ImVec2& topLeft);
+        void renderFpsBadge(const FrameInfo& frameInfo, const ImVec2& topLeft, const ImVec2& size) const;
         void handleResize();
 
         Viewport*  viewport_ = nullptr;

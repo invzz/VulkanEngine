@@ -1,12 +1,12 @@
 {
   "name": "Midnight",
-  "accent_color": "#184B30",
+  "accent_color": "#8A0A5B",
   "base_colors": {
     "window_bg": "#0d0d14",
     "title_bg": "#0a0a11",
     "menu_bar_bg": "#141420",
-    "border": "#089827",
-    "border_shadow": "#00000000",
+    "border": "#460898",
+    "border_shadow": "#B99BC5EE",
     "text": "#ccccdd",
     "text_disabled": "#666680",
     "scrollbar_bg": "#0a0a11",
