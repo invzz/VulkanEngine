@@ -21,7 +21,7 @@ ImVec4 ThemeSystem::parseHexColor(const std::string& hex) const {
         result.x = std::stoi(hex.substr(1, 2), nullptr, 16) / 255.0f;
         result.y = std::stoi(hex.substr(3, 2), nullptr, 16) / 255.0f;
         result.z = std::stoi(hex.substr(5, 2), nullptr, 16) / 255.0f;
-    } else if (hex.size() == 8) {
+    } else if (hex.size() == 9) {
         // #RRGGBBAA
         result.x = std::stoi(hex.substr(1, 2), nullptr, 16) / 255.0f;
         result.y = std::stoi(hex.substr(3, 2), nullptr, 16) / 255.0f;
@@ -255,7 +255,7 @@ void ThemeSystem::pushStyle() const {
 }
 
 void ThemeSystem::popStyle() const {
-    ImGui::PopStyleColor(40);
+    ImGui::PopStyleColor(39);
     ImGui::PopStyleVar(10);
 }
 

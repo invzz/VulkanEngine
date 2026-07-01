@@ -21,8 +21,9 @@ namespace engine {
     }
 
     void InspectorPanel::render(FrameInfo& frameInfo) {
-        if (!visible_)
+        if (!visible_) {
             return;
+        }
 
         ui::UI::PushThemeStyle();
 
@@ -32,19 +33,20 @@ namespace engine {
                 if (!registry.valid(frameInfo.selectedEntity)) {
                     frameInfo.selectedEntity = entt::null;
                 } else {
-                    ui::UI::TextColored("Transform", ImVec4(0.6f, 0.85f, 1.0f, 1.0f));
-                    ui::UI::Separator();
+                    ui::UI::BeginSurface("inspector_transform");
+                    ui::UI::SectionTitle("Transform", "Position, rotation, scale");
                     transformPanel_->render(frameInfo);
-                    ui::UI::Separator();
+                    ui::UI::EndSurface();
 
-                    ui::UI::TextColored("Lights", ImVec4(1.0f, 0.9f, 0.3f, 1.0f));
-                    ui::UI::Separator();
+                    ui::UI::BeginSurface("inspector_lights");
+                    ui::UI::SectionTitle("Lights", "Shading and shadow parameters");
                     lightsPanel_->render(frameInfo);
-                    ui::UI::Separator();
+                    ui::UI::EndSurface();
 
-                    ui::UI::TextColored("Animation", ImVec4(0.5f, 1.0f, 0.6f, 1.0f));
-                    ui::UI::Separator();
+                    ui::UI::BeginSurface("inspector_animation");
+                    ui::UI::SectionTitle("Animation", "Playback and clip state");
                     animationPanel_->render(frameInfo);
+                    ui::UI::EndSurface();
                 }
             } else {
                 ui::UI::TextDisabled("No entity selected.");

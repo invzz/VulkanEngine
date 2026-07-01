@@ -4,52 +4,69 @@
 
 #include <algorithm>
 #include <string>
+#include <vector>
 
 #include "Editor/ui/Workspace/ThemeSystem.hpp"
 #include "Editor/ui/Workspace/WorkspaceManager.hpp"
 
 namespace engine::ui {
 
+    namespace {
+        constexpr int kMaterialStyleVarCount = 3;
+        constexpr int kMaterialStyleColorCount = 1;
+        constexpr float kFrameBorderSize = 1.0f;
+        constexpr float kFrameRounding = 8.0f;
+        constexpr float kGrabRounding = 8.0f;
+        constexpr float kBorderAlpha = 0.75f;
+        constexpr ImVec2 kSurfaceFramePadding = ImVec2(12.0f, 8.0f);
+        constexpr ImVec2 kSurfaceItemSpacing = ImVec2(12.0f, 9.0f);
+        constexpr ImVec2 kSurfaceItemInnerSpacing = ImVec2(8.0f, 6.0f);
+        constexpr float kSurfaceVerticalInset = 3.0f;
+        constexpr float kRowControlWidthRatio = 0.42f;
+        constexpr float kRowControlMinWidth = 140.0f;
+
+        WorkspaceManager* s_activeWorkspace = nullptr;
+        std::vector<ThemeSystem*> s_themeScopeStack;
+
+        ImVec4 Mix(ImVec4 a, ImVec4 b, float t) {
+            t = std::clamp(t, 0.0f, 1.0f);
+            return ImVec4(
+                (a.x + ((b.x - a.x) * t)),
+                (a.y + ((b.y - a.y) * t)),
+                (a.z + ((b.z - a.z) * t)),
+                (a.w + ((b.w - a.w) * t)));
+        }
+
+        ThemeSystem& GetTheme() {
+            static ThemeSystem fallback;
+            if (s_activeWorkspace != nullptr) {
+                return s_activeWorkspace->getThemeSystem();
+            }
+            return fallback;
+        }
+
+        UIState& GetUIState() {
+            static UIState fallback;
+            if (s_activeWorkspace != nullptr) {
+                return s_activeWorkspace->getUIState();
+            }
+            return fallback;
+        }
+    }  // namespace
+
     // ======================================================================
     // Implementation
     // ======================================================================
-
-    // Get the current WorkspaceManager (set by the active panel context)
-    static WorkspaceManager* s_activeWorkspace = nullptr;
-
-    /**
- * @brief Set the active workspace context for UI calls.
- * Call this at the start of each panel's render() method.
- */
-    void SetActiveWorkspace(WorkspaceManager* wm) {
-        s_activeWorkspace = wm;
-    }
-
-    // Helper to get the theme system
-    static ThemeSystem& GetTheme() {
-        static ThemeSystem fallback;
-        if (s_activeWorkspace) {
-            return s_activeWorkspace->getThemeSystem();
-        }
-        return fallback;
-    }
-
-    // Helper to get the UI state
-    static UIState& GetUIState() {
-        static UIState fallback;
-        if (s_activeWorkspace) {
-            return s_activeWorkspace->getUIState();
-        }
-        return fallback;
-    }
 
     // ======================================================================
     // Section / Grouping
     // ======================================================================
 
-    bool UI::Section(const char* label, bool* open_ptr) {
-        ImVec4 accent = GetTheme().getAccentColor();
+    void SetActiveWorkspace(WorkspaceManager* wm) {
+        s_activeWorkspace = wm;
+    }
 
+    bool UI::Section(const char* label, bool* open_ptr) {
         // Draw accent bar
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImGui::InvisibleButton("##section_space", ImVec2(3.0f, 0.0f));
@@ -66,6 +83,7 @@ namespace engine::ui {
     }
 
     bool UI::Section(const char* label, ImVec4 accent_color, bool* open_ptr) {
+        (void) accent_color;
         return Section(label, open_ptr);  // Uses accent color from theme
     }
 
@@ -103,17 +121,8 @@ namespace engine::ui {
     }
 
     bool UI::SmallButton(const char* label) {
-        ImVec4 btn    = GetTheme().getColor(ImGuiCol_Button);
-        ImVec4 btnHov = GetTheme().getColor(ImGuiCol_ButtonHovered);
-        ImVec4 btnAct = GetTheme().getColor(ImGuiCol_ButtonActive);
-        ImVec4 text   = GetTheme().getTextColor();
 
-        ImGui::PushStyleColor(ImGuiCol_Button, btn);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHov);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnAct);
-        ImGui::PushStyleColor(ImGuiCol_Text, text);
         bool clicked = ImGui::SmallButton(label);
-        ImGui::PopStyleColor(4);
         return clicked;
     }
 
@@ -124,19 +133,30 @@ namespace engine::ui {
     }
 
     bool UI::ToolbarIcon(const char* icon, bool active, const char* suffix) {
-        ImVec4 btnColor   = active ? ImVec4(0.15f, 0.15f, 0.18f, 1.0f) : ImVec4(0.08f, 0.08f, 0.10f, 1.0f);
-        ImVec4 btnHovColor = active ? ImVec4(0.25f, 0.25f, 0.30f, 1.0f) : ImVec4(0.12f, 0.12f, 0.14f, 1.0f);
-        ImVec4 btnActColor = active ? ImVec4(0.35f, 0.35f, 0.40f, 1.0f) : ImVec4(0.15f, 0.15f, 0.18f, 1.0f);
-        ImVec4 textColor   = active ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImVec4(0.7f, 0.7f, 0.75f, 1.0f);
-
-        ImGui::PushStyleColor(ImGuiCol_Button, btnColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnHovColor);
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnActColor);
-        ImGui::PushStyleColor(ImGuiCol_Text, textColor);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 10.0f));
         std::string id = std::string(icon) + "##toolbar_" + suffix;
-        bool clicked = ImGui::SmallButton(id.c_str());
-        ImGui::PopStyleVar(1);
+
+        ImVec4 btn    = GetTheme().getColor(ImGuiCol_Button);
+        ImVec4 btnHov = GetTheme().getColor(ImGuiCol_ButtonHovered);
+        ImVec4 btnAct = GetTheme().getColor(ImGuiCol_ButtonActive);
+        ImVec4 text   = GetTheme().getTextColor();
+        ImVec4 disabled = GetTheme().getDisabledColor();
+
+        if (active) {
+            ImGui::PushStyleColor(ImGuiCol_Button, btnAct);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, btnAct);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, btnAct);
+            ImGui::PushStyleColor(ImGuiCol_Text, text);
+        } else {
+            ImGui::PushStyleColor(ImGuiCol_Button, disabled);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, disabled);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, disabled);
+            ImGui::PushStyleColor(ImGuiCol_Text, text);
+        }   
+
+        auto fontSize = ImGui::GetFontSize();
+        
+
+        bool clicked = ImGui::Button(id.c_str(), ImVec2(fontSize * 2.0f, fontSize * 2.0f));
         ImGui::PopStyleColor(4);
         return clicked;
     }
@@ -149,6 +169,138 @@ namespace engine::ui {
         bool clicked = SmallButton(label);
         ImGui::PopStyleColor();
         return clicked;
+    }
+
+    bool UI::PrimaryButton(const char* label, ImVec2 size) {
+        ImVec4 accent = GetTheme().getAccentColor();
+        ImVec4 text = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        ImVec4 hovered = Mix(accent, ImVec4(1.0f, 1.0f, 1.0f, accent.w), 0.18f);
+        ImVec4 active = Mix(accent, ImVec4(0.0f, 0.0f, 0.0f, accent.w), 0.20f);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, accent);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, active);
+        ImGui::PushStyleColor(ImGuiCol_Text, text);
+        bool clicked = ImGui::Button(label, size);
+        ImGui::PopStyleColor(4);
+        return clicked;
+    }
+
+    bool UI::TonalButton(const char* label, ImVec2 size) {
+        ImVec4 accent = GetTheme().getAccentColor();
+        ImVec4 frame = GetTheme().getColor(ImGuiCol_FrameBg);
+        ImVec4 text = GetTheme().getTextColor();
+
+        ImVec4 tonal = Mix(frame, accent, 0.22f);
+        ImVec4 hovered = Mix(frame, accent, 0.35f);
+        ImVec4 active = Mix(frame, accent, 0.45f);
+
+        ImGui::PushStyleColor(ImGuiCol_Button, tonal);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, active);
+        ImGui::PushStyleColor(ImGuiCol_Text, text);
+        bool clicked = ImGui::Button(label, size);
+        ImGui::PopStyleColor(4);
+        return clicked;
+    }
+
+    bool UI::BeginSurface(const char* id, const char* title, const char* subtitle) {
+        ImGui::PushID(id);
+
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, kSurfaceFramePadding);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, kSurfaceItemSpacing);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, kSurfaceItemInnerSpacing);
+
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, kSurfaceVerticalInset));
+
+        if ((title != nullptr) && (title[0] != '\0')) {
+            ImGui::Text("%s", title);
+            if ((subtitle != nullptr) && (subtitle[0] != '\0')) {
+                UI::TextDisabled(subtitle);
+            }
+            UI::Divider();
+        }
+
+        return true;
+    }
+
+    void UI::EndSurface() {
+        ImGui::Dummy(ImVec2(0.0f, kSurfaceVerticalInset));
+        ImGui::Separator();
+        ImGui::PopStyleVar(3);
+        ImGui::PopID();
+    }
+
+    void UI::SectionTitle(const char* label, const char* helper) {
+        ImVec4 accent = GetTheme().getAccentColor();
+        ImVec4 text = GetTheme().getTextColor();
+        ImVec4 title = Mix(text, accent, 0.35f);
+
+        ImGui::TextColored(title, "%s", label);
+        if ((helper != nullptr) && (helper[0] != '\0')) {
+            UI::TextDisabled(helper);
+        }
+        UI::Divider();
+    }
+
+    bool UI::CheckboxRow(const char* label, const char* description, bool* value) {
+        std::string checkboxId = std::string("##row_") + label;
+
+        ImGui::PushID(label);
+        ImGui::BeginGroup();
+        ImGui::Text("%s", label);
+        if ((description != nullptr) && (description[0] != '\0')) {
+            UI::TextDisabled(description);
+        }
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        float checkX = ImGui::GetWindowContentRegionMax().x - ImGui::GetFrameHeight();
+        ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), checkX));
+        bool changed = UI::Checkbox(checkboxId.c_str(), value);
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool UI::FloatRow(const char* label, const char* description, float* value,
+        float speed, float min, float max) {
+        ImGui::PushID(label);
+        ImGui::BeginGroup();
+        ImGui::Text("%s", label);
+        if ((description != nullptr) && (description[0] != '\0')) {
+            UI::TextDisabled(description);
+        }
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        float controlWidth = std::max(kRowControlMinWidth, ImGui::GetContentRegionAvail().x * kRowControlWidthRatio);
+        float controlX = ImGui::GetWindowContentRegionMax().x - controlWidth;
+        ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), controlX));
+        ImGui::SetNextItemWidth(controlWidth);
+        bool changed = UI::DragFloat("##value", value, speed, min, max);
+        ImGui::PopID();
+        return changed;
+    }
+
+    bool UI::EnumRow(const char* label, const char* description, int* current_index,
+        const char* const items[], int count) {
+        ImGui::PushID(label);
+        ImGui::BeginGroup();
+        ImGui::Text("%s", label);
+        if ((description != nullptr) && (description[0] != '\0')) {
+            UI::TextDisabled(description);
+        }
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        float controlWidth = std::max(kRowControlMinWidth, ImGui::GetContentRegionAvail().x * kRowControlWidthRatio);
+        float controlX = ImGui::GetWindowContentRegionMax().x - controlWidth;
+        ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), controlX));
+        ImGui::SetNextItemWidth(controlWidth);
+        bool changed = UI::Combo("##value", current_index, items, count);
+        ImGui::PopID();
+        return changed;
     }
 
     // ======================================================================
@@ -173,7 +325,7 @@ namespace engine::ui {
         if (dot_color.w > 0.0f) {
             ImVec2 pos = ImGui::GetCursorScreenPos();
             ImGui::GetWindowDrawList()->AddCircleFilled(
-                ImVec2(pos.x - 5.0f, pos.y + ImGui::GetTextLineHeightWithSpacing() / 2.0f),
+                ImVec2(pos.x - 5.0f, pos.y + (ImGui::GetTextLineHeightWithSpacing() / 2.0f)),
                 3.0f, ImGui::GetColorU32(dot_color));
         }
         ImGui::TextColored(text, "%.2f", value);
@@ -381,7 +533,7 @@ namespace engine::ui {
     }
 
     bool UI::Combo(const char* label, int* current_index,
-        std::function<int(const char* const*& out_items)> get_items_callback) {
+        const std::function<int(const char* const*& out_items)>& get_items_callback) {
         ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
         ImVec4 frameBgHov = GetTheme().getColor(ImGuiCol_FrameBgHovered);
         ImVec4 border     = GetTheme().getBorderColor();
@@ -476,15 +628,33 @@ namespace engine::ui {
     // ======================================================================
 
     void UI::PushThemeStyle() {
-        if (!s_activeWorkspace)
+        if (s_activeWorkspace == nullptr) {
             return;
-        s_activeWorkspace->getThemeSystem().pushStyle();
+        }
+        ThemeSystem* const theme = &s_activeWorkspace->getThemeSystem();
+        theme->pushStyle();
+        s_themeScopeStack.push_back(theme);
+
+        ImVec4 border = GetTheme().getBorderColor();
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, kFrameBorderSize);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, kFrameRounding);
+        ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, kGrabRounding);
+        ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(border.x, border.y, border.z, kBorderAlpha));
     }
 
     void UI::PopThemeStyle() {
-        if (!s_activeWorkspace)
+        if (s_themeScopeStack.empty()) {
             return;
-        s_activeWorkspace->getThemeSystem().popStyle();
+        }
+
+        ThemeSystem* const theme = s_themeScopeStack.back();
+        s_themeScopeStack.pop_back();
+
+        ImGui::PopStyleColor(kMaterialStyleColorCount);
+        ImGui::PopStyleVar(kMaterialStyleVarCount);
+        if (theme != nullptr) {
+            theme->popStyle();
+        }
     }
 
     ImVec4 UI::GetFrameTimeColor(float frameTimeMs) {

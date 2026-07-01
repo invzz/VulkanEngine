@@ -22,16 +22,7 @@ namespace engine {
     LightsPanel::LightsPanel(Scene& scene) : scene_(scene) {}
 
     void LightsPanel::render(FrameInfo& frameInfo) {
-        if (!visible_)
-            return;
-
-        // Push theme style
-        ui::UI::PushThemeStyle();
-
-        // Use UI::Section for the collapsible header
-        bool open = ui::UI::Section("Lights");
-        if (!open) {
-            ui::UI::PopThemeStyle();
+        if (!visible_) {
             return;
         }
 
@@ -190,8 +181,6 @@ namespace engine {
             ui::UI::TextDisabled("No object selected");
             ui::UI::TextDisabled("Press Y/U to select objects");
         }
-
-        ui::UI::PopThemeStyle();
     }
 
 }  // namespace engine

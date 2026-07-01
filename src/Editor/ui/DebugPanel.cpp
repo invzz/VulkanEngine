@@ -40,18 +40,15 @@ namespace engine {
             }
         }
 
-        // Push theme style
-        ui::UI::PushThemeStyle();
-
-        // Combo widget
-        std::string comboLabel = "Debug View##debug_combo";
         // Extract labels for combo
         const char* comboLabels[14];
         for (int i = 0; i < 14; ++i) {
             comboLabels[i] = debugOptions[i].label;
         }
+
+        ui::UI::BeginSurface("debug_view", "Debug View", "Inspect material and lighting buffers");
         int tmpIdx = selectedIndex;
-        if (ui::UI::Combo(comboLabel.c_str(), &tmpIdx, comboLabels, 14)) {
+        if (ui::UI::EnumRow("Mode", "Choose visualization target", &tmpIdx, comboLabels, 14)) {
             debugMode_    = debugOptions[tmpIdx].value;
             selectedIndex = tmpIdx;
         }
@@ -81,6 +78,6 @@ namespace engine {
             ui::UI::TextDisabled("Shows BRDF LUT sample (used to compute specular energy). Expect a smooth 1D-like gradient across NdotV/roughness.");
         }
 
-        ui::UI::PopThemeStyle();
+        ui::UI::EndSurface();
     }
 }  // namespace engine
