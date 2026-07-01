@@ -90,6 +90,7 @@ namespace engine {
         int  gizmoOperation{0};  // ImGuizmo::OPERATION (TRANSLATE/ROTATE/SCALE)
         int  gizmoMode{1};       // ImGuizmo::MODE (LOCAL=0, WORLD=1)
         bool gizmoEnabled{true};
+        bool viewGizmoOrbitSelected{true};
     };
 
 }  // namespace engine

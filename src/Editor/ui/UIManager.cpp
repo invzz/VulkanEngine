@@ -6,7 +6,8 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 
-#include "Editor/ui/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/ToolbarPanel.hpp"
+#include "Editor/ui/UI.hpp"
 #include "Editor/ui/UIPanel.hpp"
 #include "Editor/ui/Workspace/WorkspaceManager.hpp"
 #include "vulkan/vulkan_core.h"
@@ -21,7 +22,8 @@ namespace engine {
         // Backward-compat overload: derive a name from the panel. This is only
         // safe if the caller never relies on the name afterwards (no constraint
         // lookup, no getPanel<T> by key). Prefer the named overload.
-        const std::string name = typeid(*panel).name();
+        UIPanel* const    panelPtr = panel.get();
+        const std::string name     = (panelPtr != nullptr) ? typeid(*panelPtr).name() : "UIPanel";
         workspaceManager_.getPanelRegistry().registerPanel(
             name, std::move(panel));
     }
@@ -45,6 +47,7 @@ namespace engine {
     }
 
     void UIManager::render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI) {
+        ui::SetActiveWorkspace(&workspaceManager_);
         workspaceManager_.render(frameInfo, commandBuffer, drawUI);
     }
 

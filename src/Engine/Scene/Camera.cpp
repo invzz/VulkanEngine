@@ -9,6 +9,31 @@
 
 namespace engine {
 
+    glm::quat Camera::rotationQuatFromYXZ(const glm::vec3& rotation) {
+        const glm::quat qy = glm::angleAxis(rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+        const glm::quat qx = glm::angleAxis(rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+        const glm::quat qz = glm::angleAxis(rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+        return qy * qx * qz;
+    }
+
+    glm::vec3 Camera::rotationYXZFromQuat(const glm::quat& q) {
+        const glm::mat3 m    = glm::mat3_cast(q);
+        const float     x    = std::asin(glm::clamp(-m[2][1], -1.0f, 1.0f));
+        const float     cosX = std::cos(x);
+        float           y;
+        float           z;
+
+        if (std::abs(cosX) > 1e-6f) {
+            y = std::atan2(m[2][0], m[2][2]);
+            z = std::atan2(m[0][1], m[1][1]);
+        } else {
+            y = std::atan2(-m[0][2], m[0][0]);
+            z = 0.0f;
+        }
+
+        return glm::vec3(x, y, z);
+    }
+
     void Camera::setPerspectiveProjection(float fovY, float aspect, float nearZ, float farZ) {
         assert(glm::abs(aspect - std::numeric_limits<float>::epsilon()) > 0.0f);
         auto tanHalfFovy       = tan(fovY / 2.f);

@@ -29,6 +29,7 @@ namespace engine {
         bool*                     multithreadedRecordingEnabled = nullptr;
         uint32_t*                 multithreadedRecordingThreads = nullptr;
         int*                      debugMode                     = nullptr;
+        bool*                     viewGizmoOrbitSelected        = nullptr;
     };
 
     class SceneSerializer {

@@ -6,9 +6,10 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
-#include "Engine/Scene/Scene.hpp"
 
 namespace engine {
+
+    class Scene;
 
     class LightSystem {
        public:

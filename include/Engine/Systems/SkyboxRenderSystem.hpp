@@ -10,9 +10,10 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
-#include "Engine/Scene/Skybox.hpp"
 
 namespace engine {
+
+    class Skybox;
 
     struct SkyboxSettings {
         bool debugCubemapFaces{false};

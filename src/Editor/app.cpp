@@ -62,13 +62,13 @@ namespace {
 #include "Editor/RenderContext.hpp"
 
 // UI Panels
-#include "Editor/ui/InspectorPanel.hpp"
-#include "Editor/ui/PhysicsPanel.hpp"
-#include "Editor/ui/Scene/ScenePanel.hpp"
-#include "Editor/ui/SettingsPanel.hpp"
-#include "Editor/ui/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/InspectorPanel.hpp"
+#include "Editor/ui/Panels/PhysicsPanel.hpp"
+#include "Editor/ui/Panels/ScenePanel.hpp"
+#include "Editor/ui/Panels/SettingsPanel.hpp"
+#include "Editor/ui/Panels/ToolbarPanel.hpp"
+#include "Editor/ui/Panels/ViewportPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
-#include "Editor/ui/ViewportPanel.hpp"
 
 namespace engine {
 
@@ -122,6 +122,7 @@ namespace engine {
             .multithreadedRecordingEnabled = &multithreadedRecordingEnabled,
             .multithreadedRecordingThreads = &multithreadedRecordingThreads,
             .debugMode                     = &debugMode,
+            .viewGizmoOrbitSelected        = &engineState.editor().viewGizmoOrbitSelected,
         });
 
         setupUI();
@@ -189,16 +190,17 @@ namespace engine {
 
         auto settingsPanel = std::make_unique<SettingsPanel>(&engineState,
             multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
-        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::DockBottom, .minSizeX = 400.0f, .minSizeY = 150.0f});
+        registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::None, .dockable = false, .floatable = true, .minSizeX = 420.0f, .minSizeY = 260.0f});
+        registry.hidePanel("Settings");
 
         auto physicsPanel = std::make_unique<PhysicsPanel>(engineState);
         registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 300.0f, .minSizeY = 200.0f});
 
         auto toolbar = std::make_unique<ToolbarPanel>();
+        toolbar->setSettingsPanel(registry.getPanel("Settings"));
         uiManager->setToolbarPanel(std::move(toolbar));
         uiManager->addToolbarToggle("Scene", registry.getPanel("Scene Objects"));
         uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
-        uiManager->addToolbarToggle("Settings", registry.getPanel("Settings"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
 
         auto vp        = std::make_unique<ViewportPanel>();
@@ -348,25 +350,26 @@ namespace engine {
 
             PickingSystem pickingSystem;
             FrameInfo     frameInfo{
-                .frameIndex          = frameIndex,
-                .frameTime           = frameTime,
-                .commandBuffer       = commandBuffer,
-                .camera              = *camera,
-                .globalDescriptorSet = engineState.renderContext().getGlobalDescriptorSet(frameIndex),
-                .globalTextureSet    = resourceManager.getTextureManager().getDescriptorSet(),
-                .scene               = &engineState.scene(),
-                .selectedObjectId    = selectedObjectId,
-                .selectedEntity      = engineState.selectedEntity(),
-                .cameraEntity        = engineState.cameraEntity(),
-                .morphManager        = engineState.systemPtr<AnimationSystem>()
-                                           ? engineState.system<AnimationSystem>().getMorphManager()
-                                           : nullptr,
-                .extent              = renderer.getOffscreenExtent(),
-                .viewportMode        = engineState.editor().viewportSettings.mode,
-                .debugMode           = debugMode,
-                .gizmoOperation      = engineState.editor().gizmoOperation,
-                .gizmoMode           = engineState.editor().gizmoMode,
-                .gizmoEnabled        = engineState.editor().gizmoEnabled,
+                .frameIndex             = frameIndex,
+                .frameTime              = frameTime,
+                .commandBuffer          = commandBuffer,
+                .camera                 = *camera,
+                .globalDescriptorSet    = engineState.renderContext().getGlobalDescriptorSet(frameIndex),
+                .globalTextureSet       = resourceManager.getTextureManager().getDescriptorSet(),
+                .scene                  = &engineState.scene(),
+                .selectedObjectId       = selectedObjectId,
+                .selectedEntity         = engineState.selectedEntity(),
+                .cameraEntity           = engineState.cameraEntity(),
+                .morphManager           = engineState.systemPtr<AnimationSystem>()
+                                              ? engineState.system<AnimationSystem>().getMorphManager()
+                                              : nullptr,
+                .extent                 = renderer.getOffscreenExtent(),
+                .viewportMode           = engineState.editor().viewportSettings.mode,
+                .debugMode              = debugMode,
+                .gizmoOperation         = engineState.editor().gizmoOperation,
+                .gizmoMode              = engineState.editor().gizmoMode,
+                .gizmoEnabled           = engineState.editor().gizmoEnabled,
+                .viewGizmoOrbitSelected = engineState.editor().viewGizmoOrbitSelected,
             };
 
             // Mouse picking: the ViewportPanel has already converted the click
@@ -386,14 +389,19 @@ namespace engine {
 
             renderPipeline->execute(frameInfo);
 
+            if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {
+                scenePanel->processDelayedDeletions(frameInfo.selectedEntity, frameInfo.selectedObjectId);
+            }
+
             // Persist mode changes made by the viewport panel back to EditorState.
             engineState.editor().viewportSettings.mode = frameInfo.viewportMode;
             selectedObjectId                           = frameInfo.selectedObjectId;
             engineState.setSelectedEntity(frameInfo.selectedEntity);
             engineState.setCameraEntity(frameInfo.cameraEntity);
-            engineState.editor().gizmoOperation = frameInfo.gizmoOperation;
-            engineState.editor().gizmoMode      = frameInfo.gizmoMode;
-            engineState.editor().gizmoEnabled   = frameInfo.gizmoEnabled;
+            engineState.editor().gizmoOperation         = frameInfo.gizmoOperation;
+            engineState.editor().gizmoMode              = frameInfo.gizmoMode;
+            engineState.editor().gizmoEnabled           = frameInfo.gizmoEnabled;
+            engineState.editor().viewGizmoOrbitSelected = frameInfo.viewGizmoOrbitSelected;
 
             renderer.endFrame();
         }

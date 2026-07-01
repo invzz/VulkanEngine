@@ -1,3 +1,9 @@
 [submodule "third_party/xatlas"]
 	path = third_party/xatlas
 	url = https://github.com/jpcy/xatlas.git
+[submodule "src/third_party/ImGuizmo"]
+	path = src/third_party/ImGuizmo
+	url = https://github.com/CedricGuillemet/ImGuizmo.git
+[submodule "src/third_party/ImViewGuizmo"]
+	path = src/third_party/ImViewGuizmo
+	url = https://github.com/Ka1serM/ImViewGuizmo

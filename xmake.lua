@@ -39,7 +39,8 @@ add_defines(
     "SHADER_PATH=\""  .. normpath(path.join(project_dir, "assets/shaders/compiled")) .. "/\"",
     "MODEL_PATH=\""   .. normpath(path.join(project_dir, "assets/models")) .. "/\"",
     "TEXTURE_PATH=\"" .. normpath(path.join(project_dir, "assets/textures")) .. "/\"",
-    "SCENE_PATH=\""   .. normpath(path.join(project_dir, "assets/scenes")) .. "/\""
+    "SCENE_PATH=\""   .. normpath(path.join(project_dir, "assets/scenes")) .. "/\"",
+    "FONT_PATH=\""    .. normpath(path.join(project_dir, "assets/fonts"))    .. "/\""
 )
 
 -- GLFW / GLM config
@@ -186,8 +187,6 @@ target("EngineImporters")
     set_kind("static")
     set_group("core")
     set_default(false)
-    -- No source files: resource implementations were moved into ModelLib.
-    -- Keep include paths and packages for any header-only helpers or future code.
     add_includedirs("include", {public = true})
     add_packages(
         "glm", "glfw", "tinyobjloader", "tinygltf",
@@ -205,7 +204,7 @@ target("Engine")
     set_group("core")
     set_default(false)
     add_files("src/Engine/**.cpp")
-    add_includedirs("include", {public = true})
+    add_includedirs("include", "src/third_party", {public = true})
     add_packages(
         "glm", "glfw", "tinyexr", "tinygltf",
         "stb", "nlohmann_json", "meshoptimizer",
@@ -228,7 +227,7 @@ target("Editor")
     set_group("editor")
     set_default(true)
     add_files("src/Editor/**.cpp")
-    add_includedirs("include", "src/Editor", "src/third_party/ImGuizmo/src", {public = true})
+    add_includedirs("include", "src/Editor", "src/third_party/ImGuizmo/src", "src/third_party/ImViewGuizmo", {public = true})
     add_packages("glm", "glfw", "imgui", "entt", "nlohmann_json", "tinygltf", "tinyexr")
     if is_plat("linux") then
         add_packages("vulkan")
@@ -236,6 +235,20 @@ target("Editor")
         add_syslinks("vulkan-1")
     end
     add_deps("Engine", "EngineImporters", "EngineSceneIO", "ImGuizmo")
+
+    -- Copy editor assets (themes, config, fonts) to build target directory
+    after_build(function (target)
+        local targetdir = target:targetdir()
+        local projectdir = os.projectdir()
+
+        -- assets/editor/themes/*.json
+        local editor_src = path.join(projectdir, "assets/editor")
+        local editor_dst = path.join(targetdir, "assets/editor")
+        if os.isdir(editor_src) then
+            os.mkdir(editor_dst)
+            os.cp(path.join(editor_src, "*"), editor_dst)
+        end
+    end)
 
 -- ============================================================================
 -- Tools
@@ -263,28 +276,13 @@ target("Shaders")
     set_kind("phony")
     set_group("utility")
     set_default(false)
+
     on_build(function ()
-        if is_host("windows") then
-            os.exec("powershell -ExecutionPolicy Bypass -File " .. project_dir .. "/compile_shaders.ps1")
-        else
-            os.exec("bash " .. project_dir .. "/compile_shaders.sh")
-        end
+        os.execv("python3", {
+            path.join(os.projectdir(), "compile_shaders.py")
+        })
     end)
 
-target("Coverage")
-    set_kind("phony")
-    set_group("utility")
-    set_default(false)
-    add_deps("Tests")
-    on_build(function ()
-        if is_host("windows") then
-            -- Pass -SkipBuild since we already built Tests via add_deps
-            local script = path.join(project_dir, "run_coverage.ps1")
-            os.execv("powershell", {"-ExecutionPolicy", "Bypass", "-File", script, "-SkipBuild"})
-        else
-            print("Coverage is only supported on Windows with OpenCppCoverage")
-        end
-    end)
 
 -- ============================================================================
 -- Tests
@@ -329,3 +327,47 @@ target("Tests")
             os.cp(path.join(scenes_src, "*"), scenes_dst)
         end
     end)
+
+
+
+-- rule("compile_glsl_shader")
+--     set_extensions(".vert", ".frag", ".comp", ".mesh", ".task")
+
+--     on_config(function (target)
+--         import("core.project.config")
+--     end)
+
+--     on_build_file(function (target, sourcefile, opt)
+
+--         import("core.project.depend")
+
+--         local shader_dir = path.directory(sourcefile)
+--         local filename = path.filename(sourcefile)
+--         local outdir = path.join(target:targetdir(), "shaders")
+
+--         os.mkdir(outdir)
+
+--         local ext = path.extension(sourcefile)
+--         local out = path.join(outdir, filename .. ".spv")
+
+--         -- dependency tracking (IMPORTANT for includes)
+--         depend.on_changed(function ()
+
+--             local args = {
+--                 "glslc",
+--                 "--target-spv=spv1.5",
+--                 "-I", shader_dir,
+--                 "-I", path.join(shader_dir, "includes"),
+--                 sourcefile,
+--                 "-o", out
+--             }
+
+--             os.vrunv(args[1], {table.unpack(args, 2)})
+
+--             print("[SHADER] " .. sourcefile .. " -> " .. out)
+--         end, {
+--             files = {sourcefile},
+--             changed = true
+--         })
+--     end)
+-- rule_end()
