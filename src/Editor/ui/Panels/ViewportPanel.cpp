@@ -4,10 +4,6 @@
 
 #include <ImGuizmo.h>
 
-#define IMVIEWGUIZMO_IMPLEMENTATION
-#include "ImViewGuizmo.h"
-#undef IMVIEWGUIZMO_IMPLEMENTATION
-
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -21,6 +17,7 @@
 #include "Editor/ui/Panels/ViewportObjectGizmo.hpp"
 #include "Editor/ui/Panels/ViewportToolbar.hpp"
 #include "Editor/ui/Panels/ViewportViewGizmo.hpp"
+#include "ImViewGuizmo.h"
 
 namespace engine {
 

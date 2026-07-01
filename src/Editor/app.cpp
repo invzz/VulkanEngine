@@ -64,7 +64,7 @@ namespace {
 // UI Panels
 #include "Editor/ui/Panels/InspectorPanel.hpp"
 #include "Editor/ui/Panels/PhysicsPanel.hpp"
-#include "Editor/ui/Panels/Scene/ScenePanel.hpp"
+#include "Editor/ui/Panels/ScenePanel.hpp"
 #include "Editor/ui/Panels/SettingsPanel.hpp"
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
 #include "Editor/ui/Panels/ViewportPanel.hpp"
@@ -388,6 +388,10 @@ namespace engine {
             }
 
             renderPipeline->execute(frameInfo);
+
+            if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {
+                scenePanel->processDelayedDeletions(frameInfo.selectedEntity, frameInfo.selectedObjectId);
+            }
 
             // Persist mode changes made by the viewport panel back to EditorState.
             engineState.editor().viewportSettings.mode = frameInfo.viewportMode;

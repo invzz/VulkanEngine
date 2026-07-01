@@ -1,15 +1,17 @@
 #include "Editor/ui/Panels/ViewportViewGizmo.hpp"
 
 #include <algorithm>
-
 #include <entt/entt.hpp>
 
+#define IMVIEWGUIZMO_IMPLEMENTATION
 #include "ImViewGuizmo.h"
+#undef IMVIEWGUIZMO_IMPLEMENTATION
 
-#include "Editor/ui/ViewportGizmoCoordinates.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+
+#include "Editor/ui/ViewportGizmoCoordinates.hpp"
 
 namespace {
 

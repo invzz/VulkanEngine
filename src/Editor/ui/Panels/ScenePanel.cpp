@@ -1,4 +1,4 @@
-#include "Editor/ui/Panels/Scene/ScenePanel.hpp"
+#include "Editor/ui/Panels/ScenePanel.hpp"
 
 #include <imgui.h>
 
