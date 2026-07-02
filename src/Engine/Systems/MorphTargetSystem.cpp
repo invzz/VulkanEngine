@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -15,9 +16,9 @@ namespace engine {
     MorphTargetSystem::MorphTargetSystem(Device& device) {
         try {
             manager_ = std::make_unique<MorphTargetManager>(device);
-            std::cout << "[MorphTargetSystem] Initialized successfully" << '\n';
+            engine::Logger::info(engine::LogChannel::Render, "[MorphTargetSystem] Initialized successfully");
         } catch (const std::exception& e) {
-            std::cerr << "[MorphTargetSystem] ERROR: " << e.what() << '\n';
+            engine::Logger::error(engine::LogChannel::Render, "[MorphTargetSystem] ERROR: ", e.what());
             throw;
         }
     }
@@ -39,7 +40,7 @@ namespace engine {
                     try {
                         manager_->initializeModel(modelComp.model);
                     } catch (const std::exception& e) {
-                        std::cerr << "[MorphTargetSystem] ERROR initializing object " << (uint32_t) entity << ": " << e.what() << '\n';
+                        engine::Logger::error(engine::LogChannel::Render, "[MorphTargetSystem] ERROR initializing object ", (uint32_t)entity, ": ", e.what());
                         continue;  // Skip this object
                     }
                 }

@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <thread>
 #include <unordered_set>
-
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 
@@ -50,7 +50,7 @@ namespace engine {
             }
 
             loggedSummaries.insert(summary);
-            std::cout << "[MaterialBinding] " << summary << '\n';
+            engine::Logger::info(engine::LogChannel::Render, "[MaterialBinding] ", summary);
         }
     }  // namespace
 

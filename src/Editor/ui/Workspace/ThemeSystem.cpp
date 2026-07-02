@@ -2,8 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
+#include <sstream>
 
+#include "Engine/Core/Logger.hpp"
 #include "Editor/ui/Workspace/ThemeLoader.hpp"
 
 namespace engine {
@@ -180,8 +181,7 @@ namespace engine {
             Theme theme = parseTheme(json);
             applyTheme(theme);
         } catch (const std::exception& e) {
-            std::cerr << "ThemeSystem: Failed to load theme '" << theme_name
-                      << "': " << e.what() << std::endl;
+            engine::Logger::error(engine::LogChannel::General, "ThemeSystem: Failed to load theme '", theme_name, "': ", e.what());
         }
     }
 
@@ -210,7 +210,7 @@ namespace engine {
 
         // Push to ImGui
         ImGui::GetStyle() = currentStyle_;
-        std::cout << "ThemeSystem: Applied theme '" << theme.name << "'" << std::endl;
+        engine::Logger::info(engine::LogChannel::General, "ThemeSystem: Applied theme '", theme.name, "'");
     }
 
     ImVec4 ThemeSystem::getAccentColor() const {

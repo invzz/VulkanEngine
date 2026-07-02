@@ -1,8 +1,9 @@
 #include "Engine/Graphics/DebugMessenger.hpp"
 
-#include <iostream>
+#include <sstream>
 
 #include "Engine/Core/Exceptions.hpp"
+#include "Engine/Core/Logger.hpp"
 
 namespace {
     VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -10,11 +11,11 @@ namespace {
         const VkDebugUtilsMessengerCallbackDataEXT*                                     pCallbackData,
         void* /*pUserData*/) {
         if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) != 0u) {
-            std::cerr << "[ " << "GENERAL" << " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::debug(engine::LogChannel::Render, "[GENERAL] ", pCallbackData->pMessage);
         } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0u) {
-            std::cerr << "[ " << "VALIDATION" << " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::debug(engine::LogChannel::Render, "[VALIDATION] ", pCallbackData->pMessage);
         } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0u) {
-            std::cerr << "[ " << "PERFORMANCE" << " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::debug(engine::LogChannel::Render, "[PERFORMANCE] ", pCallbackData->pMessage);
         }
         return VK_FALSE;
     }

@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
+#include <sstream>
+
+#include "Engine/Core/Logger.hpp"
 
 namespace engine {
 
@@ -14,7 +16,7 @@ namespace engine {
         }
         nlohmann::json j;
         file >> j;
-        std::cout << "ThemeLoader: parseFile Loaded theme file " << path << std::endl;
+        engine::Logger::info(engine::LogChannel::General, "ThemeLoader: parseFile Loaded theme file ", path);
         return j;
     }
 
@@ -28,10 +30,9 @@ namespace engine {
                 try {
                     auto j = parseFile(entry.path().string());
                     themes.push_back(j);
-                    std::cout << "ThemeLoader: loadAll Loaded theme " << entry.path().filename() << std::endl;
+                    engine::Logger::info(engine::LogChannel::General, "ThemeLoader: loadAll Loaded theme ", entry.path().filename());
                 } catch (const std::exception& e) {
-                    std::cerr << "ThemeLoader: loadAll Failed to load theme " << entry.path().filename()
-                              << ": " << e.what() << std::endl;
+                    engine::Logger::error(engine::LogChannel::General, "ThemeLoader: loadAll Failed to load theme ", entry.path().filename(), ": ", e.what());
                 }
             }
         }
@@ -47,7 +48,7 @@ namespace engine {
             std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
             std::transform(lower_lookup.begin(), lower_lookup.end(), lower_lookup.begin(), ::tolower);
             if (lower_name == lower_lookup) {
-                std::cout << "ThemeLoader: load by name " << name << std::endl;
+                engine::Logger::info(engine::LogChannel::General, "ThemeLoader: load by name ", name);
                 return j;
             }
         }
@@ -57,10 +58,10 @@ namespace engine {
     std::string ThemeLoader::loadCurrentTheme(const std::string& config_path) {
         try {
             auto j = parseFile(config_path);
-            std::cout << "ThemeLoader: Current theme is " << j.value("current_theme", "dark") << std::endl;
+            engine::Logger::info(engine::LogChannel::General, "ThemeLoader: Current theme is ", j.value("current_theme", "dark"));
             return j.value("current_theme", "dark");
         } catch (const std::exception& e) {
-            std::cerr << "ThemeLoader: Failed to load config: " << e.what() << std::endl;
+            engine::Logger::error(engine::LogChannel::General, "ThemeLoader: Failed to load config: ", e.what());
             return "dark";
         }
     }
@@ -74,7 +75,7 @@ namespace engine {
             file << j.dump(2);
             file.close();
         } else {
-            std::cerr << "ThemeLoader: Failed to save config: " << config_path << std::endl;
+            engine::Logger::error(engine::LogChannel::General, "ThemeLoader: Failed to save config: ", config_path);
         }
     }
 

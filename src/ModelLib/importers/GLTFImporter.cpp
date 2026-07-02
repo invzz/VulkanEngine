@@ -225,6 +225,9 @@ namespace engine {
         // Load animations
         loadAnimations(builder, gltfModel);
 
+        // Load KHR_lights_punctual lights
+        loadLights(builder, gltfModel);
+
         std::cout << GREEN << "[GLTFImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << '\n';
 
         // Load nodes (store original transforms before animation)
@@ -1115,6 +1118,101 @@ namespace engine {
 
             builder.animations.push_back(animation);
             std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << '\n';
+        }
+    }
+
+    void GLTFImporter::loadLights(Model::Builder& builder, const tinygltf::Model& gltfModel) {
+        // Check if the model uses KHR_lights_punctual
+        bool const hasExtension = gltfModel.extensions.count("KHR_lights_punctual") > 0;
+        if (!hasExtension || gltfModel.lights.empty()) {
+            return;
+        }
+
+        std::cout << GREEN << "[GLTFImporter] Loading " << gltfModel.lights.size() << " KHR_lights_punctual lights" << RESET << '\n';
+
+        // Build a map: nodeIndex -> lightIndex for quick lookup
+        std::unordered_map<int, int> nodeToLight;
+        for (size_t nodeIdx = 0; nodeIdx < gltfModel.nodes.size(); ++nodeIdx) {
+            auto it = gltfModel.nodes[nodeIdx].extensions.find("KHR_lights_punctual");
+            if (it != gltfModel.nodes[nodeIdx].extensions.end()) {
+                auto const& lightExt = it->second;
+                if (lightExt.IsObject()) {
+                    auto const& obj = lightExt.Get<std::map<std::string, tinygltf::Value>>();
+                    auto it2 = obj.find("light");
+                    if (it2 != obj.end() && it2->second.IsInt()) {
+                        nodeToLight[static_cast<int>(nodeIdx)] = static_cast<int>(it2->second.Get<int>());
+                    }
+                }
+            }
+        }
+
+        // Parse lights — apply default intensity for zero-intensity export bugs
+        for (size_t i = 0; i < gltfModel.lights.size(); ++i) {
+            auto const& gltfLight = gltfModel.lights[i];
+
+            Model::LightInfo light;
+            light.name = gltfLight.name.empty() ? "light_" + std::to_string(i) : gltfLight.name;
+
+            // Map tinygltf light type to our enum
+            if (gltfLight.type == "directional") {
+                light.type = Model::LightType::Directional;
+            } else if (gltfLight.type == "spot") {
+                light.type = Model::LightType::Spot;
+            } else {
+                light.type = Model::LightType::Point;
+            }
+
+            // Color: default to white if not present
+            if (gltfLight.color.size() >= 3) {
+                light.color = glm::vec3(
+                    static_cast<float>(gltfLight.color[0]),
+                    static_cast<float>(gltfLight.color[1]),
+                    static_cast<float>(gltfLight.color[2])
+                );
+            } else {
+                light.color = glm::vec3(1.0f);
+            }
+
+            // Intensity: apply reasonable defaults for zero-intensity export bugs
+            // Sponza-intel has all lights at intensity=0.0 — this is a known export issue
+            if (gltfLight.intensity <= 0.0) {
+                // Apply type-based defaults for broken exports
+                if (gltfLight.type == "directional") {
+                    light.intensity = 10.0f;  // Directional lights need high intensity
+                } else if (gltfLight.type == "spot") {
+                    light.intensity = 10.0f;    // Spot lights
+                } else {
+                    light.intensity = 10.0f;    // Point lights (default)
+                }
+                std::cout << YELLOW << "[GLTFImporter]   Light '" << light.name << "': intensity=0 -> " << light.intensity << " (default)" << RESET << '\n';
+            } else {
+                light.intensity = static_cast<float>(gltfLight.intensity);
+            }
+
+            // Range: 0.0 = infinite
+            light.range = static_cast<float>(gltfLight.range);
+
+            // Spot-specific angles (tinygltf SpotLight uses innerConeAngle/outerConeAngle)
+            if (gltfLight.type == "spot") {
+                light.innerCutoffAngle = static_cast<float>(gltfLight.spot.innerConeAngle);
+                light.outerCutoffAngle = static_cast<float>(gltfLight.spot.outerConeAngle);
+            }
+
+            // Collect node indices that reference this light
+            for (auto const& [nodeIdx, lightIdx] : nodeToLight) {
+                if (lightIdx == static_cast<int>(i)) {
+                    light.nodeIndices.push_back(nodeIdx);
+                }
+            }
+
+            builder.lights.push_back(light);
+        }
+
+        // Log node-to-light mapping for debugging
+        if (!nodeToLight.empty()) {
+             for (auto const& [nodeIdx, lightIdx] : nodeToLight) {
+                std::cout << GREEN << "[GLTFImporter] Node-to-light mapping:" << RESET << " Node -> " << nodeIdx << " -> Light '" << builder.lights[lightIdx].name << "'\n";
+            }
         }
     }
 

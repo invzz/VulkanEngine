@@ -6,7 +6,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
-
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Components/AnimationController.hpp"
@@ -23,9 +23,9 @@ namespace engine {
     AnimationSystem::AnimationSystem(Device& device) : device_(device) {
         try {
             morphManager_ = std::make_unique<MorphTargetManager>(device);
-            std::cout << "[AnimationSystem] Initialized successfully" << '\n';
+            engine::Logger::info(engine::LogChannel::Render, "[AnimationSystem] Initialized successfully");
         } catch (const std::exception& e) {
-            std::cerr << "[AnimationSystem] ERROR: " << e.what() << '\n';
+            engine::Logger::error(engine::LogChannel::Render, "[AnimationSystem] ERROR: ", e.what());
             throw;
         }
     }
@@ -144,7 +144,7 @@ namespace engine {
                     try {
                         morphManager_->initializeModel(modelComp.model);
                     } catch (const std::exception& e) {
-                        std::cerr << "[AnimationSystem] ERROR initializing morph for object " << (uint32_t) entity << ": " << e.what() << '\n';
+                        engine::Logger::error(engine::LogChannel::Render, "[AnimationSystem] ERROR initializing morph for object ", (uint32_t)entity, ": ", e.what());
                         continue;
                     }
                 }

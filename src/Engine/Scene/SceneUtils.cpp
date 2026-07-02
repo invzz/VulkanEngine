@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include <iostream>
-
+#include <sstream>
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -88,7 +88,7 @@ namespace engine {
             }
         }
 
-        std::cout << "[Model] Added to scene: " << path << "\n";
+        engine::Logger::info(engine::LogChannel::Scene, "[Model] Added to scene: ", path);
         return entity;
     }
 

@@ -49,6 +49,8 @@ namespace engine {
 
         static void loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
 
+        static void loadLights(Model::Builder& builder, const tinygltf::Model& model);
+
         [[nodiscard]] static glm::mat4 computeNodeTransform(const tinygltf::Node& node);
 
         static void processMesh(Model::Builder&             builder,

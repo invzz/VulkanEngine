@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
-#include <iostream>
+#include <sstream>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -181,10 +181,10 @@ namespace engine {
         }
 
         // Primary allocation failed — emit diagnostics
-        std::cerr << "vkAllocateDescriptorSets failed (result=" << result << ") on primary pool\n";
-        std::cerr << "  pool.maxSets=" << maxSets << ", pool.flags=" << poolFlags << "\n";
+        engine::Logger::error(engine::LogChannel::Resource, "vkAllocateDescriptorSets failed (result=", result, ") on primary pool");
+        engine::Logger::error(engine::LogChannel::Resource, "  pool.maxSets=", maxSets, ", pool.flags=", poolFlags);
         for (const auto& ps : poolSizes) {
-            std::cerr << "  poolSize: type=" << ps.type << " count=" << ps.descriptorCount << "\n";
+            engine::Logger::error(engine::LogChannel::Resource, "  poolSize: type=", ps.type, " count=", ps.descriptorCount);
         }
 
         if (!allowOverflow) {
@@ -194,9 +194,9 @@ namespace engine {
                 std::string("Descriptor allocation failed without overflow (VkResult=") + std::to_string(result) + ")");
             Logger::error(LogChannel::Resource, "Descriptor allocation failed without overflow (VkResult=", result, ")");
             if (result == VK_ERROR_FRAGMENTED_POOL) {
-                std::cerr << "  Suggestion: pool is fragmented; consider using resetPool() or creating a larger pool.\n";
+                engine::Logger::warn(engine::LogChannel::Resource, "  Suggestion: pool is fragmented; consider using resetPool() or creating a larger pool.");
             } else if (result == VK_ERROR_OUT_OF_POOL_MEMORY) {
-                std::cerr << "  Suggestion: increase pool size for the descriptor type(s) in use.\n";
+                engine::Logger::warn(engine::LogChannel::Resource, "  Suggestion: increase pool size for the descriptor type(s) in use.");
             }
             return false;
         }
@@ -228,7 +228,7 @@ namespace engine {
         if (vkCreateDescriptorPool(device.device(), &fallbackInfo, nullptr, &fallbackPool) != VK_SUCCESS) {
             ErrorState::report(ErrorCode::DescriptorPoolCreationError, ErrorBoundary::Fatal, "Descriptor overflow pool creation failed");
             Logger::error(LogChannel::Resource, "Descriptor overflow pool creation failed");
-            std::cerr << "DescriptorPool: fallback pool creation failed\n";
+            engine::Logger::error(engine::LogChannel::Resource, "DescriptorPool: fallback pool creation failed");
             return false;
         }
 
@@ -247,7 +247,7 @@ namespace engine {
                 ErrorBoundary::Fatal,
                 std::string("Descriptor allocation from overflow pool failed (VkResult=") + std::to_string(fallbackResult) + ")");
             Logger::error(LogChannel::Resource, "Descriptor allocation from overflow pool failed (VkResult=", fallbackResult, ")");
-            std::cerr << "DescriptorPool: allocation from fallback pool failed (result=" << fallbackResult << ")\n";
+            engine::Logger::error(engine::LogChannel::Resource, "Descriptor allocation from overflow pool failed (result=", fallbackResult, ")");
             vkDestroyDescriptorPool(device.device(), fallbackPool, nullptr);
             return false;
         }
@@ -261,7 +261,7 @@ namespace engine {
         descriptor = fallbackSet;
         ErrorState::report(ErrorCode::DescriptorPoolOverflowUsed, ErrorBoundary::Recoverable, "Descriptor overflow pool used");
         Logger::warn(LogChannel::Resource, "Descriptor allocation succeeded from overflow pool (fallback)");
-        std::cerr << "DescriptorPool: allocation succeeded from overflow pool (fallback).\n";
+        engine::Logger::warn(engine::LogChannel::Resource, "Descriptor allocation succeeded from overflow pool (fallback).");
         return true;
     }
 
@@ -337,7 +337,6 @@ namespace engine {
                     if (outResult != nullptr) {
                         *outResult = VK_ERROR_INITIALIZATION_FAILED;
                     }
-                    std::cerr << "DescriptorWriter::build(): missing write for binding " << binding << "\n";
                     return false;
                 }
             }

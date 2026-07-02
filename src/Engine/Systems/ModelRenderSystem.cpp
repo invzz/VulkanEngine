@@ -710,7 +710,7 @@ namespace engine {
         if (materialBindings_ != nullptr) {
             if (!materialBindings_->frameDescriptorSetValid(frameInfo.frameIndex)) {
                 // Defensive: fail early and fall back to serial path in non-release builds so the test fails with a clear message.
-                std::cerr << "[ModelRenderSystem] ERROR: material descriptor set for frame " << frameInfo.frameIndex << " is VK_NULL_HANDLE before multithreaded recording\n";
+                engine::Logger::error(engine::LogChannel::Render, "[ModelRenderSystem] ERROR: material descriptor set for frame ", frameInfo.frameIndex, " is VK_NULL_HANDLE before multithreaded recording");
                 assert(false && "material descriptor set invalid before multithreaded recording");
             }
         }

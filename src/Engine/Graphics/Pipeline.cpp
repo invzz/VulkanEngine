@@ -4,13 +4,13 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Logger.hpp"
-#include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/ShaderMonitor.hpp"
 
@@ -62,8 +62,7 @@ namespace engine {
         shaderMonitor_->addShader(fragFilePath);
 
         createGraphicsPipeline(vertFilePath_, fragFilePath_, configInfo_);
-        std::cout << "[" << GREEN << "Pipeline" << RESET << "] vert: " << BLUE << std::filesystem::path(vertFilePath).filename().string() << " frag: " << BLUE
-                  << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
+        engine::Logger::info(engine::LogChannel::Render, "[Pipeline] vert: ", std::filesystem::path(vertFilePath).filename().string(), " frag: ", std::filesystem::path(fragFilePath).filename().string());
     }
 
     Pipeline::Pipeline(Device& device, const std::string& taskFilePath, const std::string& meshFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo) : device(device) {
@@ -80,8 +79,7 @@ namespace engine {
         shaderMonitor_->addShader(fragFilePath);
 
         createMeshPipeline(taskFilePath_, meshFilePath_, fragFilePath_, configInfo_);
-        std::cout << "[" << GREEN << "Pipeline" << RESET << "] task: " << BLUE << std::filesystem::path(taskFilePath).filename().string() << " mesh: " << BLUE
-                  << std::filesystem::path(meshFilePath).filename().string() << " frag: " << BLUE << std::filesystem::path(fragFilePath).filename().string() << RESET << '\n';
+        engine::Logger::info(engine::LogChannel::Render, "[Pipeline] task: ", std::filesystem::path(taskFilePath).filename().string(), " mesh: ", std::filesystem::path(meshFilePath).filename().string(), " frag: ", std::filesystem::path(fragFilePath).filename().string());
     }
 
     void Pipeline::destroyPipelineResources() {

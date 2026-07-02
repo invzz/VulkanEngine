@@ -3,14 +3,15 @@
 #include <vulkan/vulkan_core.h>
 
 #include <cstring>
-#include <iostream>
+
+#include "Engine/Core/Logger.hpp"
 
 namespace engine {
 
     std::vector<VkExtensionProperties> enumerateInstanceExtensions() {
         uint32_t extensionCount = 0;
         if (vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr) != VK_SUCCESS) {
-            std::cerr << "[ExtensionHelpers] vkEnumerateInstanceExtensionProperties failed" << std::endl;
+            engine::Logger::error(engine::LogChannel::Render, "[ExtensionHelpers] vkEnumerateInstanceExtensionProperties failed");
             return {};
         }
         std::vector<VkExtensionProperties> available(extensionCount);
@@ -23,7 +24,7 @@ namespace engine {
     std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice device) {
         uint32_t extensionCount = 0;
         if (vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr) != VK_SUCCESS) {
-            std::cerr << "[ExtensionHelpers] vkEnumerateDeviceExtensionProperties failed" << std::endl;
+            engine::Logger::error(engine::LogChannel::Render, "[ExtensionHelpers] vkEnumerateDeviceExtensionProperties failed");
             return {};
         }
         std::vector<VkExtensionProperties> available(extensionCount);

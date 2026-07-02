@@ -1,8 +1,7 @@
 #include "Engine/Core/Window.hpp"
-
+#include "Engine/Core/Logger.hpp"
 #include <chrono>
 #include <climits>
-#include <iostream>
 #include <string>
 #include <thread>
 #include <utility>
@@ -15,7 +14,7 @@
 #endif
 
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Core/ansi_colors.hpp"
+
 
 // Forward ImGui GLFW callbacks so the app can choose to install or forward
 // events instead of relying on the backend to auto-install them.
@@ -113,8 +112,9 @@ namespace {
             return;
         int const xpos = mx + ((mode->width - width) / 2);
         int const ypos = my + ((mode->height - height) / 2);
-        std::cout << "[" << BLUE << "Window" << RESET << "]" << YELLOW << ((glfwGetMonitorName(monitor) != nullptr) ? glfwGetMonitorName(monitor) : "unknown") << "' at (" << xpos << ", " << ypos << ")"
-                  << RESET << "\n";
+        engine::Logger::info(engine::LogChannel::General, "Window on monitor '",
+                  ((glfwGetMonitorName(monitor) != nullptr) ? glfwGetMonitorName(monitor) : "unknown"), "' at (",
+                  xpos, ", ", ypos, ")");
         glfwSetWindowPos(window, xpos, ypos);
     }
 
@@ -150,7 +150,7 @@ namespace engine {
         win->height.store(static_cast<uint32_t>(height));
         win->framebufferResized.store(true);
 
-        std::cout << "[Window] framebuffer resized to " << width << "x" << height << " (ts=" << nowNs << ")" << '\n';
+        engine::Logger::info(engine::LogChannel::General, "[Window] framebuffer resized to ", width, "x", height, " (ts=", nowNs, ")");
     }
 
     void Window::initWindow() {
@@ -254,8 +254,8 @@ namespace engine {
                 int const ypos = my + ((mode->height - height) / 2);
 
                 auto monitorName = glfwGetMonitorName(targetMonitor);
-                std::cout << "[ " << BLUE << "Window" << RESET << " ] " << YELLOW << ((monitorName != nullptr) ? monitorName : "unknown") << BLUE << " position (" << xpos << ", " << ypos << ")" << RESET
-                          << "\n";
+                engine::Logger::info(engine::LogChannel::General, "Window position (",
+                          xpos, ", ", ypos, ")");
                 glfwSetWindowPos(window, xpos, ypos);
             }
         }

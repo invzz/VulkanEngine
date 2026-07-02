@@ -2,12 +2,12 @@
 
 #include <cmath>
 #include <cstdint>
-#include <iostream>
 #include <memory>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
-#include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/CubeShadowMap.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
@@ -74,8 +74,7 @@ namespace engine {
         createCubeMeshPipelineLayout();
         createCubeMeshPipeline();
 
-        std::cout << "[" << GREEN << "ShadowSystem" << RESET << "] Initialized with " << MAX_SHADOW_MAPS << " 2D shadow maps and " << MAX_CUBE_SHADOW_MAPS << " cube shadow maps (" << shadowMapSize << "x"
-                  << shadowMapSize << "), mesh shader culling (Level 3)\n";
+        engine::Logger::info(engine::LogChannel::Render, "ShadowSystem initialized with ", MAX_SHADOW_MAPS, " 2D shadow maps and ", MAX_CUBE_SHADOW_MAPS, " cube shadow maps (", shadowMapSize, "x", shadowMapSize, "), mesh shader culling (Level 3)");
     }
 
     ShadowSystem::~ShadowSystem() {

@@ -1,12 +1,12 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include <chrono>
-#include <iostream>
+#include <sstream>
 #include <thread>
 
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Window.hpp"
-#include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/DebugMessenger.hpp"
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/ExtensionHelpers.hpp"
@@ -37,28 +37,28 @@ namespace {
         void* /*pUserData*/) {
         if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) != 0u) {
             // General message
-            std::cerr << "[ " << GREEN "GENERAL" RESET;
+            engine::Logger::debug(engine::LogChannel::Render, "[GENERAL] ", pCallbackData->pMessage);
         } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0u) {
             // Validation message
-            std::cerr << "[ " << YELLOW "VALIDATION" RESET;
+            engine::Logger::debug(engine::LogChannel::Render, "[VALIDATION] ", pCallbackData->pMessage);
         } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0u) {
             // Performance message
-            std::cerr << "[ " << BLUE "PERFORMANCE" RESET;
+            engine::Logger::debug(engine::LogChannel::Render, "[PERFORMANCE] ", pCallbackData->pMessage);
         }
         if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
-            std::cerr << RED " ERROR" RESET " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::error(engine::LogChannel::Render, "[Vulkan] ERROR ", pCallbackData->pMessage);
             return VK_FALSE;
         }
         if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0) {
-            std::cerr << YELLOW " WARNING" RESET " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::warn(engine::LogChannel::Render, "[Vulkan] WARNING ", pCallbackData->pMessage);
             return VK_FALSE;
         }
         if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) != 0) {
-            std::cerr << BLUE " INFO" RESET " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::info(engine::LogChannel::Render, "[Vulkan] INFO ", pCallbackData->pMessage);
             return VK_FALSE;
         }
         if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) != 0) {
-            std::cerr << CYAN " VERBOSE" RESET " ] " << pCallbackData->pMessage << "\n";
+            engine::Logger::debug(engine::LogChannel::Render, "[Vulkan] VERBOSE ", pCallbackData->pMessage);
             return VK_FALSE;
         }
         return VK_FALSE;
@@ -223,8 +223,7 @@ namespace engine {
  * @param window Reference to the main application window.
  */
     Device::Device(Window& window) : enableValidationLayers(resolveValidationLayersEnabled()), window{window} {
-        std::cout << "[Device] Validation layers " << (enableValidationLayers ? "enabled" : "disabled") << " (build_default="
-                  << (kBuildValidationLayersEnabled ? "on" : "off") << ")\n";
+        engine::Logger::info(engine::LogChannel::General, "[Device] Validation layers ", (enableValidationLayers ? "enabled" : "disabled"), " (build_default=", (kBuildValidationLayersEnabled ? "on" : "off"), ")");
         createInstance();
         setupDebugMessenger();
         createSurface();
@@ -253,26 +252,26 @@ namespace engine {
                     flushAllDeferred();
                 }
             } catch (const std::exception& e) {
-                std::cerr << "[Device::~Device] flushAllDeferred threw: " << e.what() << "\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] flushAllDeferred threw: ", e.what());
             } catch (...) {
-                std::cerr << "[Device::~Device] flushAllDeferred threw unknown exception\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] flushAllDeferred threw unknown exception");
             }
 
             try {
                 destroySamplerCache();
             } catch (const std::exception& e) {
-                std::cerr << "[Device::~Device] destroySamplerCache threw: " << e.what() << "\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] destroySamplerCache threw: ", e.what());
             } catch (...) {
-                std::cerr << "[Device::~Device] destroySamplerCache threw unknown exception\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] destroySamplerCache threw unknown exception");
             }
 
             // ensure helper is destroyed before device/command pool teardown
             try {
                 memory_.reset();
             } catch (const std::exception& e) {
-                std::cerr << "[Device::~Device] DeviceMemory destructor threw: " << e.what() << "\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DeviceMemory destructor threw: ", e.what());
             } catch (...) {
-                std::cerr << "[Device::~Device] DeviceMemory destructor threw unknown exception\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DeviceMemory destructor threw unknown exception");
             }
 
             // Destroy any thread-local command pools before destroying the device
@@ -283,9 +282,9 @@ namespace engine {
                     threadLocalCommandPools_.reset();
                 }
             } catch (const std::exception& e) {
-                std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw: " << e.what() << "\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] destroyAll threadLocalCommandPools threw: ", e.what());
             } catch (...) {
-                std::cerr << "[Device::~Device] destroyAll threadLocalCommandPools threw unknown exception\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] destroyAll threadLocalCommandPools threw unknown exception");
             }
 
             if (device_ != VK_NULL_HANDLE && singleTimeFence_ != VK_NULL_HANDLE) {
@@ -309,9 +308,9 @@ namespace engine {
                     try {
                         debugMessenger.reset();
                     } catch (const std::exception& e) {
-                        std::cerr << "[Device::~Device] DebugMessenger destructor threw: " << e.what() << "\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DebugMessenger destructor threw: ", e.what());
                     } catch (...) {
-                        std::cerr << "[Device::~Device] DebugMessenger destructor threw unknown exception\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DebugMessenger destructor threw unknown exception");
                     }
                 }
 
@@ -324,9 +323,9 @@ namespace engine {
                 instance = VK_NULL_HANDLE;
             }
         } catch (const std::exception& e) {
-            std::cerr << "[Device::~Device] Exception during shutdown: " << e.what() << "\n";
+            engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] Exception during shutdown: ", e.what());
         } catch (...) {
-            std::cerr << "[Device::~Device] Unknown exception during shutdown\n";
+            engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] Unknown exception during shutdown");
         }
     }
 
@@ -420,7 +419,7 @@ namespace engine {
 
         physicalDevice = bestDevice;
         properties     = best;
-        std::cout << "physical device: " << properties.deviceName << "\n";
+        engine::Logger::info(engine::LogChannel::General, "physical device: ", properties.deviceName);
     }
 
     void Device::createLogicalDevice() {
@@ -556,7 +555,7 @@ namespace engine {
 
         vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT) vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");
         if (vkCmdDrawMeshTasksEXT == nullptr) {
-            std::cerr << "Failed to load vkCmdDrawMeshTasksEXT function pointer!" << "\n";
+            engine::Logger::error(engine::LogChannel::Render, "Failed to load vkCmdDrawMeshTasksEXT function pointer!");
         }
     }
 
@@ -601,11 +600,11 @@ namespace engine {
             }
 
             uint32_t cbCount = (submitInfo != nullptr) ? submitInfo->commandBufferCount : 0u;
-            std::cerr << "[Device] submitGraphics failed: VkResult=" << lastRes << " commandBuffers=" << cbCount << " attempt=" << attempt << " thread=" << std::this_thread::get_id() << "\n";
+            engine::Logger::error(engine::LogChannel::Render, "[Device] submitGraphics failed: VkResult=", lastRes, " commandBuffers=", cbCount, " attempt=", attempt, " thread=", std::this_thread::get_id());
 
             if (lastRes == VK_ERROR_DEVICE_LOST) {
                 // Dump physical device info to help debugging device lost errors
-                std::cerr << "[Device] VK_ERROR_DEVICE_LOST: physical device: " << properties.deviceName << " vendor=" << properties.vendorID << " driver=" << properties.driverVersion << "\n";
+                engine::Logger::error(engine::LogChannel::Render, "[Device] VK_ERROR_DEVICE_LOST: physical device=", properties.deviceName, " vendor=", properties.vendorID, " driver=", properties.driverVersion);
                 break;  // no point retrying
             }
 
@@ -804,21 +803,17 @@ namespace engine {
 
         // If we get here, no suitable format was found. Log details for debugging.
         std::string tilingStr = (tiling == VK_IMAGE_TILING_LINEAR) ? "LINEAR" : "OPTIMAL";
-        std::cerr << "[ " << RED "ERROR" RESET " ] findSupportedFormat failed:\n"
-                  << "  Tiling: " << tilingStr << "\n"
-                  << "  Required features: 0x" << std::hex << features << std::dec << "\n"
-                  << "  Tested " << candidates.size() << " candidate formats:\n";
+        engine::Logger::error(engine::LogChannel::Render, "[Vulkan] findSupportedFormat failed: tiling=", tilingStr, " features=0x", std::hex, features, std::dec, " tested=", candidates.size(), " formats");
 
         for (size_t i = 0; i < candidates.size(); ++i) {
             VkFormatProperties formatProperties;
             vkGetPhysicalDeviceFormatProperties(physicalDevice, candidates[i], &formatProperties);
-            std::cerr << "    [" << i << "] Format " << candidates[i] << ": ";
+            engine::Logger::error(engine::LogChannel::Render, "  Format ", candidates[i], ": ");
             if (tiling == VK_IMAGE_TILING_LINEAR) {
-                std::cerr << "linear=0x" << std::hex << formatProperties.linearTilingFeatures << std::dec;
+                engine::Logger::error(engine::LogChannel::Render, " linear=0x", std::hex, formatProperties.linearTilingFeatures, std::dec);
             } else {
-                std::cerr << "optimal=0x" << std::hex << formatProperties.optimalTilingFeatures << std::dec;
+                engine::Logger::error(engine::LogChannel::Render, " optimal=0x", std::hex, formatProperties.optimalTilingFeatures, std::dec);
             }
-            std::cerr << "\n";
         }
 
         throw engine::RuntimeException("failed to find supported format! See error output above for details.");

@@ -2,13 +2,12 @@
 
 #include <cstring>
 #include <fstream>
-#include <iostream>
-#include <stdexcept>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Core/ansi_colors.hpp"
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 
@@ -21,7 +20,7 @@ namespace engine {
         createComputePipeline();
         createDescriptorPool();
 
-        std::cout << "[" << GREEN << "MorphTargetCompute" << RESET << "] Compute pipeline created" << '\n';
+        engine::Logger::info(engine::LogChannel::Render, "[MorphTargetCompute] Compute pipeline created");
     }
 
     MorphTargetCompute::~MorphTargetCompute() {
@@ -50,11 +49,11 @@ namespace engine {
     void MorphTargetCompute::createComputePipeline() {
         // Read compiled compute shader
         std::string const shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
-        std::cout << "[MorphTargetCompute] Loading shader from: " << shaderPath << '\n';
+        engine::Logger::info(engine::LogChannel::Render, "[MorphTargetCompute] Loading shader from: ", shaderPath);
         std::ifstream file(shaderPath, std::ios::ate | std::ios::binary);
 
         if (!file.is_open()) {
-            std::cerr << "[MorphTargetCompute] Failed to open shader file: " << shaderPath << '\n';
+            engine::Logger::error(engine::LogChannel::Resource, "[MorphTargetCompute] Failed to open shader file: ", shaderPath);
             throw ReadFileException(std::string("Failed to open compute shader: " + shaderPath).c_str());
         }
 

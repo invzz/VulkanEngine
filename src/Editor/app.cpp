@@ -5,10 +5,11 @@
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <filesystem>
-#include <iostream>
+#include <sstream>
 #include <memory>
 #include <string>
 
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
@@ -87,9 +88,9 @@ namespace engine {
             resourceManager.updateAsyncCallbacks();
             device.WaitIdle();
         } catch (const std::exception& e) {
-            std::cerr << "[App::~App] Shutdown drain failed: " << e.what() << '\n';
+            engine::Logger::error(engine::LogChannel::General, "[App::~App] Shutdown drain failed: ", e.what());
         } catch (...) {
-            std::cerr << "[App::~App] Shutdown drain failed\n";
+            engine::Logger::error(engine::LogChannel::General, "[App::~App] Shutdown drain failed");
         }
         GpuProfiler::instance().shutdown();
     }
@@ -128,9 +129,9 @@ namespace engine {
         setupUI();
 
         if (std::filesystem::exists("scene.json")) {
-            std::cout << "[App] Loading scene.json at startup...\n";
+            engine::Logger::info(engine::LogChannel::General, "[App] Loading scene.json at startup...");
             if (engineState.loadScene("scene.json")) {
-                std::cout << "[App] Loaded scene.json\n";
+                engine::Logger::info(engine::LogChannel::General, "[App] Loaded scene.json");
             }
         }
 

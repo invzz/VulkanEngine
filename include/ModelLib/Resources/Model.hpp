@@ -208,13 +208,14 @@ namespace engine {
         };
 
         struct LightInfo {
-            std::string name;
-            LightType   type{LightType::Point};
-            glm::vec3   color{1.0f};
-            float       intensity{1.0f};
-            float       range{0.0f};  // 0.0 = infinite
-            float       innerCutoffAngle{12.5f};  // for spot lights (degrees)
-            float       outerCutoffAngle{17.5f};  // for spot lights (degrees)
+            std::string       name;
+            LightType         type{LightType::Point};
+            glm::vec3         color{1.0f};
+            float             intensity{1.0f};
+            float             range{0.0f};  // 0.0 = infinite
+            float             innerCutoffAngle{12.5f};  // for spot lights (degrees)
+            float             outerCutoffAngle{17.5f};  // for spot lights (degrees)
+            std::vector<int>  nodeIndices;  // node indices that reference this light
         };
 
         struct Builder {
@@ -230,7 +231,6 @@ namespace engine {
             std::unordered_map<std::string, uint32_t> primitiveVertexCounts;   // key: "node_prim" -> vertex count
             std::vector<MorphTargetSet>               morphTargetSets;         // Morph targets per mesh
             std::vector<LightInfo>                    lights;                  // KHR_lights_punctual lights
-            std::string                               filePath;
             std::string                               filePath;
 
             void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
