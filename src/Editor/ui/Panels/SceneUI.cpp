@@ -355,6 +355,33 @@ namespace engine::ui {
             }
             UI::Separator();
 
+            // Manual path input for .gltf / .glb files
+            static char customPath[512] = "";
+            UI::InputText("Path (.gltf/.glb)", customPath, sizeof(customPath));
+            ImGui::SameLine();
+            if (UI::SmallButton("Load Path")) {
+                if (customPath[0] != '\0') {
+                    std::filesystem::path p(customPath);
+                    if (std::filesystem::exists(p)) {
+                        std::string ext = p.extension().string();
+                        if (ext == ".gltf" || ext == ".glb") {
+                            std::string name = p.stem().string();
+                            ModelInsertionOptions opts;
+                            opts.enableTextures     = true;
+                            opts.loadMaterials      = true;
+                            opts.enableMorphTargets = true;
+                            enqueueModelLoad(customPath, name, opts, colliderMode);
+                            customPath[0] = '\0';
+                            ImGui::CloseCurrentPopup();
+                        } else {
+                            UI::TextDisabled(("Unsupported format: " + std::string(ext)).c_str());
+                        }
+                    } else {
+                        UI::TextDisabled(("File not found: " + std::string(customPath)).c_str());
+                    }
+                }
+            }
+
             const std::string indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
             try {
                 std::ifstream f(indexPath);

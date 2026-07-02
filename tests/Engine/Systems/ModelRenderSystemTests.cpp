@@ -3,6 +3,7 @@
 #include <thread>
 #include <vector>
 
+#include "Engine/EditorState.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Systems/MaterialRenderBindings.hpp"
@@ -140,7 +141,7 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
 
     Camera    camera;
     Scene     scene;
-    FrameInfo frameInfo{0, 0.0f, serialCB, camera, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, 0};
+    FrameInfo frameInfo{0, 0.0f, serialCB, camera, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, ViewportMode::Picking, {}, false, 0};
 
     mrb.enableBindCapture(true);
     mrb.bindMaterial(frameInfo, pipelineLayout, nullptr, 0.0f);
@@ -211,7 +212,7 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
 
     Camera    camera;
     Scene     scene;
-    FrameInfo frameInfo{0, 0.0f, serialCB, camera, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, 0};
+    FrameInfo frameInfo{0, 0.0f, serialCB, camera, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, ViewportMode::Picking, {}, false, 0};
 
     mrb.enableBindCapture(true);
     mrb.bindMaterial(frameInfo, pipelineLayout, nullptr, 0.0f);
@@ -233,7 +234,7 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
             }
 
             if (beginSecondary(localCb) == VK_SUCCESS) {
-                FrameInfo localFrame{0, 0.0f, localCb, cam, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, 0};
+                FrameInfo localFrame{0, 0.0f, localCb, cam, VK_NULL_HANDLE, VK_NULL_HANDLE, &scene, 0, entt::null, entt::null, nullptr, {8, 8}, ViewportMode::Picking, {}, false, 0};
                 mrb.bindMaterial(localFrame, pipelineLayout, nullptr, 0.0f);
                 vkEndCommandBuffer(localCb);
             }

@@ -349,6 +349,7 @@ namespace engine {
             int frameIndex = renderer.getFrameIndex();
 
             PickingSystem pickingSystem;
+            pickingSystem.setSpatialSystem(&engineState.spatialSystem());
             FrameInfo     frameInfo{
                 .frameIndex             = frameIndex,
                 .frameTime              = frameTime,

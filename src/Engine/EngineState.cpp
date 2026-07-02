@@ -94,6 +94,7 @@ namespace engine {
         models_->enableMultiThreadedRecording(mt, th);
         light_ = std::make_unique<LightSystem>(d, rp, sl);
         registerSystem(light_);
+        spatial_ = std::make_unique<SpatialSystem>();
     }
 
     void EngineState::initDescriptorResources(Device& d, Renderer& r) {

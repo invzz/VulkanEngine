@@ -347,6 +347,83 @@ TEST(ModelNode, GivenNodeWithChildren_WhenInspected_ThenChildrenAccessible) {
     EXPECT_EQ(node.children[2], 3);
 }
 
+TEST(ModelNode, GivenNodeWithMatrix_WhenLocalTransformCalculated_ThenReturnsMatrixOnly) {
+    Model::Node node;
+    node.hasMatrix = true;
+    node.matrix   = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 20.0f, 30.0f));
+
+    // TRS is non-identity but hasMatrix=true should ignore it
+    node.translation = glm::vec3(999.0f, 999.0f, 999.0f);
+    node.scale       = glm::vec3(2.0f, 2.0f, 2.0f);
+
+    glm::mat4 transform = node.getLocalTransform();
+    glm::vec4 origin    = transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+    EXPECT_NEAR(origin.x, 10.0f, 1e-5f);
+    EXPECT_NEAR(origin.y, 20.0f, 1e-5f);
+    EXPECT_NEAR(origin.z, 30.0f, 1e-5f);
+}
+
+TEST(ModelNode, GivenNodeWithTRSNoMatrix_WhenLocalTransformCalculated_ThenTRSApplied) {
+    Model::Node node;
+    node.hasMatrix = false;
+    node.translation = glm::vec3(5.0f, 10.0f, 15.0f);
+    node.scale       = glm::vec3(2.0f, 3.0f, 4.0f);
+
+    glm::mat4 transform = node.getLocalTransform();
+
+    // With T * R * S order: S*(1,1,1) = (2,3,4), T+(2,3,4) = (7,13,19)
+    glm::vec4 point     = transform * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    EXPECT_NEAR(point.x, 7.0f, 1e-5f);
+    EXPECT_NEAR(point.y, 13.0f, 1e-5f);
+    EXPECT_NEAR(point.z, 19.0f, 1e-5f);
+
+    // Translation offset alone (transform the origin)
+    glm::vec4 origin = transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    EXPECT_NEAR(origin.x, 5.0f, 1e-5f);
+    EXPECT_NEAR(origin.y, 10.0f, 1e-5f);
+    EXPECT_NEAR(origin.z, 15.0f, 1e-5f);
+}
+
+TEST(ModelNode, GivenNodeWithMatrixAndTRS_WhenHasMatrixTrue_ThenTRSIsIgnored) {
+    Model::Node node;
+    node.hasMatrix = true;
+
+    // Set a 2x scale matrix
+    node.matrix = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
+
+    // Set conflicting TRS — should be ignored
+    node.translation = glm::vec3(100.0f, 100.0f, 100.0f);
+    node.scale       = glm::vec3(0.01f, 0.01f, 0.01f);
+
+    glm::mat4 transform = node.getLocalTransform();
+    glm::vec4 point     = transform * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    EXPECT_NEAR(point.x, 2.0f, 1e-5f);
+    EXPECT_NEAR(point.y, 2.0f, 1e-5f);
+    EXPECT_NEAR(point.z, 2.0f, 1e-5f);
+}
+
+TEST(ModelNode, GivenNodeWithIdentityMatrix_WhenHasMatrixTrue_ThenReturnsIdentity) {
+    Model::Node node;
+    node.hasMatrix = true;
+    node.matrix    = glm::mat4(1.0f);
+
+    glm::mat4 transform = node.getLocalTransform();
+    glm::mat4 identity  = glm::mat4(1.0f);
+
+    for (int i = 0; i < 4; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            EXPECT_NEAR(transform[i][j], identity[i][j], 1e-5f);
+        }
+    }
+}
+
+TEST(ModelNode, GivenDefaultNode_WhenHasMatrix_ThenHasMatrixIsFalse) {
+    Model::Node node;
+    EXPECT_FALSE(node.hasMatrix);
+}
+
 // =============================================================================
 // Model::MeshletBuildConfig Tests
 // =============================================================================

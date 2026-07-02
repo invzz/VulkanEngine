@@ -4,6 +4,7 @@ build/
 assets/shaders/compiled/*.spv
 assets/shaders/compiled/*.spv.json
 assets/shaders/compiled/*.spv.map
+assets/models/**
 .cache/
 .idea/
 **/.vscode/

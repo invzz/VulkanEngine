@@ -161,12 +161,18 @@ namespace engine {
             glm::quat          rotation    = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
             glm::vec3          scale       = glm::vec3(1.0f);
             glm::mat4          matrix      = glm::mat4(1.0f);
+            bool               hasMatrix   = false;  // true when glTF node has a precomputed matrix
             std::vector<int>   children;
             int                mesh = -1;
             std::vector<float> morphWeights;  // Current morph target weights
 
             [[nodiscard]] glm::mat4 getLocalTransform() const {
-                return glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale) * matrix;
+                if (hasMatrix) {
+                    // Per glTF 2.0 spec: matrix overrides TRS entirely (mutually exclusive)
+                    return matrix;
+                }
+                // Construct from TRS: T * R * S (glTF standard order)
+                return glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale);
             }
         };
 
@@ -195,6 +201,22 @@ namespace engine {
             float radius;
         };
 
+        enum class LightType : uint8_t {
+            Point,
+            Directional,
+            Spot,
+        };
+
+        struct LightInfo {
+            std::string name;
+            LightType   type{LightType::Point};
+            glm::vec3   color{1.0f};
+            float       intensity{1.0f};
+            float       range{0.0f};  // 0.0 = infinite
+            float       innerCutoffAngle{12.5f};  // for spot lights (degrees)
+            float       outerCutoffAngle{17.5f};  // for spot lights (degrees)
+        };
+
         struct Builder {
             std::vector<Vertex>                       vertices;
             std::vector<uint32_t>                     indices;
@@ -207,6 +229,8 @@ namespace engine {
             std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;  // key: "node_prim" -> vertex offset
             std::unordered_map<std::string, uint32_t> primitiveVertexCounts;   // key: "node_prim" -> vertex count
             std::vector<MorphTargetSet>               morphTargetSets;         // Morph targets per mesh
+            std::vector<LightInfo>                    lights;                  // KHR_lights_punctual lights
+            std::string                               filePath;
             std::string                               filePath;
 
             void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
@@ -273,6 +297,14 @@ namespace engine {
         }
         std::vector<MorphTargetSet>& getMorphTargetSets() {
             return morphTargetSets_;
+        }
+
+        // Light support (KHR_lights_punctual)
+        [[nodiscard]] bool hasLights() const {
+            return !lights_.empty();
+        }
+        [[nodiscard]] const std::vector<LightInfo>& getLights() const {
+            return lights_;
         }
 
         // Buffer access for compute operations
@@ -377,6 +409,7 @@ namespace engine {
         std::vector<Animation>       animations_;           // Animations from glTF
         std::vector<Node>            nodes_;                // Scene graph nodes
         std::vector<MorphTargetSet>  morphTargetSets_;      // Morph targets
+        std::vector<LightInfo>       lights_;               // KHR_lights_punctual lights
 
         AABB localBounds_;  // Object-space bounding box
 

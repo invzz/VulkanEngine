@@ -33,6 +33,7 @@
 #include "Engine/Systems/SelectionOutlineSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
+#include "Engine/Scene/SpatialSystem.hpp"
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
@@ -183,6 +184,11 @@ namespace engine {
         // ---- Post-processing ----
         void recreatePostProcessingSystem(Device& device, VkRenderPass rp);
 
+        // ---- Spatial acceleration ----
+        SpatialSystem& spatialSystem() {
+            return *spatial_;
+        }
+
         // ---- Non-owned deps ----
         EditorState& editor() {
             return editor_;
@@ -233,6 +239,7 @@ namespace engine {
         std::unique_ptr<PhysicsSystem>             phys_;
         std::unique_ptr<JoltPhysicsSystem>         jolt_;
         std::unique_ptr<MorphTargetManager>        morph_;
+        std::unique_ptr<SpatialSystem>             spatial_;
         std::unique_ptr<Keyboard>                  kbd_;
         std::unique_ptr<Mouse>                     mouse_;
 

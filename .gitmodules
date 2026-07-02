@@ -7,3 +7,6 @@
 [submodule "src/third_party/ImViewGuizmo"]
 	path = src/third_party/ImViewGuizmo
 	url = https://github.com/Ka1serM/ImViewGuizmo
+[submodule "assets/models/glTF/sponzanew"]
+	path = assets/models/glTF/sponzanew
+	url = https://github.com/Ludicon/sponza-gltf

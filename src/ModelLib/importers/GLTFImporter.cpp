@@ -117,6 +117,30 @@ namespace engine {
                 return "";
             }
 
+            // Fallback: image data is in image.image directly (common for .glb files
+            // where tinygltf decodes the buffer directly rather than via a bufferView).
+            if (!image.image.empty()) {
+                std::string extension = ".png";  // Default to PNG
+                if (image.mimeType == "image/jpeg") {
+                    extension = ".jpg";
+                } else if (image.mimeType == "image/png") {
+                    extension = ".png";
+                }
+
+                std::string cachePath = cacheDir + "/embedded_buffer_image_" + std::to_string(texture.source) + extension;
+
+                std::filesystem::create_directories(cacheDir);
+
+                std::ofstream outFile(cachePath, std::ios::binary);
+                if (outFile.is_open()) {
+                    outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
+                    outFile.close();
+                    return cachePath;
+                }
+
+                std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write image from buffer: " << cachePath << RESET << '\n';
+            }
+
             return "";
         }
     }  // namespace
@@ -214,6 +238,7 @@ namespace engine {
 
             if (gltfNode.matrix.size() == 16) {
                 node.matrix = glm::make_mat4(gltfNode.matrix.data());
+                node.hasMatrix  = true;
             } else {
                 if (gltfNode.translation.size() == 3) {
                     node.translation = glm::vec3(gltfNode.translation[0], gltfNode.translation[1], gltfNode.translation[2]);
@@ -449,6 +474,18 @@ namespace engine {
                 matInfo.pbrMaterial.alphaCutoff = static_cast<float>(gltfMat.alphaCutoff);
             } else if (gltfMat.alphaMode == "BLEND") {
                 matInfo.pbrMaterial.alphaMode = AlphaMode::Blend;
+
+                // Repair decal overlays with broken baseColorFactor.a.
+                // Many exporters incorrectly set baseColorFactor.a < 1 for decals
+                // when the texture alpha channel should be the sole opacity source.
+                // This heuristic fixes those while leaving intentional tinted glass/plastics alone.
+                if (matInfo.name.find("decal") != std::string::npos) {
+                    float const rgbAvg = (pbr.baseColorFactor[0] + pbr.baseColorFactor[1] + pbr.baseColorFactor[2]) / 3.0f;
+                    if (pbr.baseColorFactor[3] < 1.0f && rgbAvg > 0.9f) {
+                        // White/near-white albedo with low alpha = almost certainly a decal opacity error
+                        matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], 1.0f);
+                    }
+                }
             } else {
                 matInfo.pbrMaterial.alphaMode = AlphaMode::Opaque;
             }

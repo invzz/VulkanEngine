@@ -306,7 +306,7 @@ namespace engine {
     }
 
     Model::Model(Device& device, const Builder& builder)
-        : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, meshPrimaryMaterial_{builder.meshPrimaryMaterial}, animations_{builder.animations}, nodes_{builder.nodes}, morphTargetSets_{builder.morphTargetSets}, filePath{builder.filePath} {
+        : device{device}, materials_{builder.materials}, subMeshes_{builder.subMeshes}, meshPrimaryMaterial_{builder.meshPrimaryMaterial}, animations_{builder.animations}, nodes_{builder.nodes}, morphTargetSets_{builder.morphTargetSets}, lights_{builder.lights}, filePath{builder.filePath} {
         createVertexBuffers(builder.vertices);
         createIndexBuffers(builder.indices);
         generateMeshlets(builder.vertices, builder.indices);

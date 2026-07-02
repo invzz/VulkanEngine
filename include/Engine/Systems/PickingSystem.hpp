@@ -4,10 +4,13 @@
 
 #include <entt/entt.hpp>
 #include <optional>
+#include <unordered_map>
+#include <vector>
 
 namespace engine {
 
     class FrameInfo;
+    class SpatialSystem;
 
     /**
      * @brief Viewport picking system with ray-triangle precision.
@@ -25,6 +28,17 @@ namespace engine {
     class PickingSystem {
        public:
         PickingSystem() = default;
+        ~PickingSystem() = default;
+
+        /**
+         * @brief Set the spatial acceleration structure.
+         *
+         * If set, the BVH is rebuilt each frame and used as broadphase
+         * culling before per-triangle intersection.
+         */
+        void setSpatialSystem(SpatialSystem* spatial) {
+            spatial_ = spatial;
+        }
 
         /**
          * @brief Pick the entity under the given normalized viewport coordinates.
@@ -60,6 +74,9 @@ namespace engine {
 
         /** Screen-space pick radius in pixels (for cameras, lights, etc.). */
         static constexpr float kPickRadiusPx = 18.0f;
+
+        // Spatial acceleration (optional).
+        SpatialSystem* spatial_{nullptr};
     };
 
 }  // namespace engine

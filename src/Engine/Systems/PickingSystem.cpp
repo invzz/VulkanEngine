@@ -7,6 +7,7 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/SpatialSystem.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -31,15 +32,43 @@ namespace engine {
         const float vpW      = static_cast<float>(frameInfo.extent.width);
         const float vpH      = static_cast<float>(frameInfo.extent.height);
 
+        // --- Broadphase culling via SpatialSystem (optional) -------------------
+        std::vector<entt::entity> candidates;
+        bool useBvh = false;
+        if (spatial_) {
+            // Collect model bounds for BVH rebuild.
+            std::unordered_map<entt::entity, const AABB*> modelBounds;
+            auto modelView = registry.view<ModelComponent>();
+            for (auto e : modelView) {
+                const auto& mc = registry.get<ModelComponent>(e);
+                if (mc.model) {
+                    const auto* lb = &mc.model->getLocalBounds();
+                    if (lb->isValid()) {
+                        modelBounds[e] = lb;
+                    }
+                }
+            }
+            spatial_->rebuild(registry, std::move(modelBounds));
+
+            // Use BVH raycast to get candidate entities.
+            if (auto hit = spatial_->raycast({ray.origin, ray.direction})) {
+                candidates.push_back(hit->entity);
+                useBvh = true;
+            }
+        }
+
         entt::entity bestEntity = entt::null;
         float        bestT      = std::numeric_limits<float>::max();
 
         // ------------------------------------------------------------------
         // 2) Models — ray-triangle intersection using collision geometry.
+        //    If BVH is active, only test BVH-candidate entities.
         // ------------------------------------------------------------------
         {
-            auto view = registry.view<ModelComponent, TransformComponent>();
-            for (auto entity : view) {
+            auto modelView = registry.view<ModelComponent, TransformComponent>();
+            for (auto entity : modelView) {
+                if (useBvh && candidates[0] != entity) continue;
+
                 const auto& transform = registry.get<TransformComponent>(entity);
                 const auto& modelComp = registry.get<ModelComponent>(entity);
                 const auto* model     = modelComp.model.get();
