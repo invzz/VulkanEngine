@@ -52,6 +52,7 @@ namespace {
 #include "Engine/Graphics/Passes/DepthPrepass.hpp"
 #include "Engine/Graphics/Passes/ForwardPass.hpp"
 #include "Engine/Graphics/Passes/GbufferPass.hpp"
+#include "Engine/Graphics/Passes/PostProcessPass.hpp"
 #include "Engine/Graphics/Passes/ShadowPass.hpp"
 #include "Engine/Graphics/Passes/UpdatePass.hpp"
 
@@ -249,6 +250,8 @@ namespace engine {
                 renderer.transitionColorToShaderReadOnly(frameInfo.commandBuffer);
             }));
 
+        graph->addPass(std::make_unique<PostProcessPass>(renderer, engineState));
+
         graph->addPass(std::make_unique<CompositionPass>(renderer, [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) { uiManager->render(frameInfo, cmd, cursorVisible); }, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
@@ -300,12 +303,18 @@ namespace engine {
                 if (viewportPanel_ != nullptr) {
                     viewportPanel_->setViewport(&viewport_, targetExtent);
                 }
+
+                // Post-process descriptor sets reference the offscreen color/depth
+                // images which were just destroyed and recreated — update them.
+                for (int i = 0; i < SwapChain::maxFramesInFlight(); ++i) {
+                    engineState.updatePostProcessDescriptors(i, renderer);
+                }
             }
         }
 
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
-                engineState.recreatePostProcessingSystem(device, renderer.getSwapChainRenderPass());
+                engineState.recreatePostProcessingSystem(device, renderer.getPostFxRenderPass());
             }
 
             int frameIndex = renderer.getFrameIndex();

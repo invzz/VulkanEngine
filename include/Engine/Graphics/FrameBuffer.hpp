@@ -42,6 +42,9 @@ namespace engine {
         [[nodiscard]] VkRenderPass getDeferredLightingRenderPass() const {
             return deferredLightingRenderPass;
         }
+        [[nodiscard]] VkRenderPass getPostFxRenderPass() const {
+            return postFxRenderPass;
+        }
         [[nodiscard]] uint32_t getMipLevels() const {
             return mipLevels;
         }
@@ -57,6 +60,7 @@ namespace engine {
         void        beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
         void        beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex, bool allowSecondaryCommandBuffers = false);
         void        beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void        beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
         static void endRenderPass(VkCommandBuffer commandBuffer);
         void        generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
         void        generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
@@ -109,6 +113,17 @@ namespace engine {
             return sceneColorTargets[frameIndex].getImage();
         }
 
+        [[nodiscard]] VkImageView getPostFxImageView(int frameIndex) const {
+            return postFxTargets[frameIndex].getView();
+        }
+        [[nodiscard]] VkImage getPostFxImage(int frameIndex) const {
+            return postFxTargets[frameIndex].getImage();
+        }
+        [[nodiscard]] VkSampler getPostFxSampler(int frameIndex) const {
+            return postFxTargets[frameIndex].getSampler();
+        }
+        [[nodiscard]] VkDescriptorImageInfo getPostFxDescriptorImageInfo(int frameIndex) const;
+
        private:
         void createRenderPass();
         void createImages();
@@ -127,6 +142,7 @@ namespace engine {
         VkRenderPass renderPassLoadColorDepth{VK_NULL_HANDLE};
         VkRenderPass gbufferRenderPass{VK_NULL_HANDLE};
         VkRenderPass deferredLightingRenderPass{VK_NULL_HANDLE};
+        VkRenderPass postFxRenderPass{VK_NULL_HANDLE};
 
         std::vector<RenderTarget> colorTargets;
 
@@ -140,12 +156,15 @@ namespace engine {
 
         std::vector<RenderTarget> depthTargets;
 
+        std::vector<RenderTarget> postFxTargets;
+
         std::vector<VkFramebuffer> framebuffers;
         std::vector<VkFramebuffer> depthPrepassFramebuffers;
         std::vector<VkFramebuffer> loadDepthFramebuffers;
         std::vector<VkFramebuffer> loadColorDepthFramebuffers;
         std::vector<VkFramebuffer> gbufferFramebuffers;
         std::vector<VkFramebuffer> deferredLightingFramebuffers;
+        std::vector<VkFramebuffer> postFxFramebuffers;
     };
 
 }  // namespace engine

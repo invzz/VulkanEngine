@@ -126,7 +126,7 @@ namespace engine {
 
     void EngineState::initPostProcessing(Device& d, Renderer& r) {
         descriptors_->recreatePostProcessDescriptorSets(d, r, VK_NULL_HANDLE);
-        postProc_ = std::make_unique<PostProcessingSystem>(d, r.getSwapChainRenderPass(),
+        postProc_ = std::make_unique<PostProcessingSystem>(d, r.getPostFxRenderPass(),
             std::vector<VkDescriptorSetLayout>{descriptors_->postProcessSetLayout().getDescriptorSetLayout()});
         registerSystem(postProc_);
     }
@@ -353,6 +353,10 @@ namespace engine {
     void EngineState::recreatePostProcessingSystem(Device& d, VkRenderPass rp) {
         postProc_ = std::make_unique<PostProcessingSystem>(d, rp, std::vector<VkDescriptorSetLayout>{postProcessSetLayout().getDescriptorSetLayout()});
         registerSystem(postProc_);
+    }
+
+    void EngineState::updatePostProcessDescriptors(int frameIndex, Renderer& renderer) {
+        descriptors_->updatePostProcessDescriptors(frameIndex, renderer);
     }
 
 }  // namespace engine

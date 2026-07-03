@@ -31,6 +31,7 @@ namespace engine {
         void beginOffscreenRenderPassLoadColorDepth(VkCommandBuffer commandBuffer);
         void beginGbufferRenderPass(VkCommandBuffer commandBuffer, bool allowSecondaryCommandBuffers = false);
         void beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer);
+        void beginPostFxRenderPass(VkCommandBuffer commandBuffer);
         void endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
         void generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
         void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
@@ -57,6 +58,9 @@ namespace engine {
         [[nodiscard]] VkRenderPass getDeferredLightingRenderPass() const {
             return offscreenFrameBuffer->getDeferredLightingRenderPass();
         }
+        [[nodiscard]] VkRenderPass getPostFxRenderPass() const {
+            return offscreenFrameBuffer->getPostFxRenderPass();
+        }
 
         [[nodiscard]] VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getDepthImageInfo(int index) const;
@@ -73,6 +77,16 @@ namespace engine {
         }
         [[nodiscard]] VkSampler getOffscreenColorSampler(int index) const {
             return offscreenFrameBuffer->getColorSampler(index);
+        }
+
+        [[nodiscard]] VkImageView getPostFxColorImageView(int index) const {
+            return offscreenFrameBuffer->getPostFxImageView(index);
+        }
+        [[nodiscard]] VkSampler getPostFxColorSampler(int index) const {
+            return offscreenFrameBuffer->getPostFxSampler(index);
+        }
+        [[nodiscard]] VkDescriptorImageInfo getPostFxImageInfo(int index) const {
+            return offscreenFrameBuffer->getPostFxDescriptorImageInfo(index);
         }
 
         /** Resize the offscreen framebuffer to match viewport panel size. */

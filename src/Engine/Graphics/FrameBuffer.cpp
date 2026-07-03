@@ -44,6 +44,7 @@ namespace engine {
         vkDestroyRenderPass(device.device(), renderPassLoadColorDepth, nullptr);
         vkDestroyRenderPass(device.device(), gbufferRenderPass, nullptr);
         vkDestroyRenderPass(device.device(), deferredLightingRenderPass, nullptr);
+        vkDestroyRenderPass(device.device(), postFxRenderPass, nullptr);
     }
 
     void FrameBuffer::cleanup() {
@@ -68,6 +69,10 @@ namespace engine {
         }
 
         for (auto framebuffer : deferredLightingFramebuffers) {
+            vkDestroyFramebuffer(device.device(), framebuffer, nullptr);
+        }
+
+        for (auto framebuffer : postFxFramebuffers) {
             vkDestroyFramebuffer(device.device(), framebuffer, nullptr);
         }
 
@@ -100,6 +105,11 @@ namespace engine {
             target.destroy(device);
         }
         depthTargets.clear();
+
+        for (auto& target : postFxTargets) {
+            target.destroy(device);
+        }
+        postFxTargets.clear();
     }
 
     void FrameBuffer::resize(VkExtent2D newExtent) {
@@ -484,6 +494,58 @@ namespace engine {
         if (vkCreateRenderPass(device.device(), &litInfo, nullptr, &deferredLightingRenderPass) != VK_SUCCESS) {
             throw std::runtime_error("failed to create deferred lighting render pass!");
         }
+
+        // --- Post-Fx render pass ---
+        {
+            VkAttachmentDescription postFxColor{};
+            postFxColor.format         = VK_FORMAT_R8G8B8A8_UNORM;
+            postFxColor.samples        = VK_SAMPLE_COUNT_1_BIT;
+            postFxColor.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            postFxColor.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+            postFxColor.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            postFxColor.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            postFxColor.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+            postFxColor.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkAttachmentReference postFxColorRef{};
+            postFxColorRef.attachment = 0;
+            postFxColorRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+            VkSubpassDescription postFxSubpass{};
+            postFxSubpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            postFxSubpass.colorAttachmentCount = 1;
+            postFxSubpass.pColorAttachments    = &postFxColorRef;
+
+            std::array<VkSubpassDependency, 2> postFxDeps{};
+            postFxDeps[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+            postFxDeps[0].dstSubpass      = 0;
+            postFxDeps[0].srcStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            postFxDeps[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            postFxDeps[0].srcAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            postFxDeps[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            postFxDeps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+            postFxDeps[1].srcSubpass      = 0;
+            postFxDeps[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+            postFxDeps[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            postFxDeps[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            postFxDeps[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            postFxDeps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            postFxDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+            VkRenderPassCreateInfo postFxInfo{};
+            postFxInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            postFxInfo.attachmentCount = 1;
+            postFxInfo.pAttachments    = &postFxColor;
+            postFxInfo.subpassCount    = 1;
+            postFxInfo.pSubpasses      = &postFxSubpass;
+            postFxInfo.dependencyCount = static_cast<uint32_t>(postFxDeps.size());
+            postFxInfo.pDependencies   = postFxDeps.data();
+
+            if (vkCreateRenderPass(device.device(), &postFxInfo, nullptr, &postFxRenderPass) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create post-fx render pass!");
+            }
+        }
     }
 
     void FrameBuffer::createImages() {
@@ -499,6 +561,7 @@ namespace engine {
         gbufferAlbedoTargets.resize(frameCount);
         gbufferMaterialTargets.resize(frameCount);
         depthTargets.resize(frameCount);
+        postFxTargets.resize(frameCount);
 
         VkFormat const colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
         VkFormat const depthFormat =
@@ -592,6 +655,13 @@ namespace engine {
                 false,
                 false,
                 nullptr);
+            makeTarget(postFxTargets[i], VK_FORMAT_R8G8B8A8_UNORM, 1,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                false,
+                true,
+                true,
+                &linearSamplerInfo);
         }
     }
 
@@ -602,6 +672,7 @@ namespace engine {
         loadColorDepthFramebuffers.resize(frameCount);
         gbufferFramebuffers.resize(frameCount);
         deferredLightingFramebuffers.resize(frameCount);
+        postFxFramebuffers.resize(frameCount);
 
         for (size_t i = 0; i < frameCount; i++) {
             std::array<VkImageView, 2> attachments = {colorTargets[i].getAttachmentView(), depthTargets[i].getAttachmentView()};
@@ -669,6 +740,20 @@ namespace engine {
             if (vkCreateFramebuffer(device.device(), &litFbInfo, nullptr, &deferredLightingFramebuffers[i]) != VK_SUCCESS) {
                 throw std::runtime_error("failed to create deferred lighting framebuffer!");
             }
+
+            std::array<VkImageView, 1> postFxAttachments = {postFxTargets[i].getAttachmentView()};
+            VkFramebufferCreateInfo    postFxInfo{};
+            postFxInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            postFxInfo.renderPass      = postFxRenderPass;
+            postFxInfo.attachmentCount = static_cast<uint32_t>(postFxAttachments.size());
+            postFxInfo.pAttachments    = postFxAttachments.data();
+            postFxInfo.width           = extent.width;
+            postFxInfo.height          = extent.height;
+            postFxInfo.layers          = 1;
+
+            if (vkCreateFramebuffer(device.device(), &postFxInfo, nullptr, &postFxFramebuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create post-fx framebuffer!");
+            }
         }
     }
 
@@ -708,6 +793,14 @@ namespace engine {
         return VkDescriptorImageInfo{
             .sampler     = colorTargets[index].getSampler(),
             .imageView   = gbufferMaterialTargets[index].getView(),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+    }
+
+    VkDescriptorImageInfo FrameBuffer::getPostFxDescriptorImageInfo(int index) const {
+        return VkDescriptorImageInfo{
+            .sampler     = postFxTargets[index].getSampler(),
+            .imageView   = postFxTargets[index].getView(),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
@@ -816,6 +909,23 @@ namespace engine {
 
         renderPassInfo.clearValueCount = 0;
         renderPassInfo.pClearValues    = nullptr;
+
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }
+
+    void FrameBuffer::beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex) {
+        VkClearValue clearValues[] = {
+            {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
+        };
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass        = postFxRenderPass;
+        renderPassInfo.framebuffer       = postFxFramebuffers[frameIndex];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = extent;
+        renderPassInfo.clearValueCount   = static_cast<uint32_t>(std::size(clearValues));
+        renderPassInfo.pClearValues      = clearValues;
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     }

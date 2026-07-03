@@ -85,9 +85,16 @@ namespace engine {
         void updateShadowDescriptors(int frameIndex, class ShadowSystem& shadowSystem, Device& device);
 
         /**
-     * @brief Recreate post-processing descriptor sets with an existing layout.
-     */
-        void recreatePostProcessDescriptorSets(Device& device, Renderer& renderer, VkDescriptorSetLayout existingLayout);
+                 * @brief Update post-processing descriptors with the current offscreen
+                 * color and depth image views. Must be called after offscreen framebuffer
+                 * resize so the descriptor set points to the new (valid) images.
+                 */
+                void updatePostProcessDescriptors(int frameIndex, Renderer& renderer);
+
+                /**
+                 * @brief Recreate post-processing descriptor sets with an existing layout.
+                 */
+                void recreatePostProcessDescriptorSets(Device& device, Renderer& renderer, VkDescriptorSetLayout existingLayout);
 
        private:
         std::unique_ptr<DescriptorPool>      gbufferPool_;

@@ -412,6 +412,27 @@ namespace engine {
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
 
+    void Renderer::beginPostFxRenderPass(VkCommandBuffer commandBuffer) {
+        assert(isFrameStarted && "Can't begin render pass when frame not in progress");
+        assert(commandBuffer == getCurrentCommandBuffer() && "Can't begin render pass on a command buffer from a different frame");
+
+        offscreenFrameBuffer->beginPostFxRenderPass(commandBuffer, currentFrameIndex);
+
+        VkViewport viewport{};
+        viewport.x        = 0.0f;
+        viewport.y        = 0.0f;
+        viewport.width    = static_cast<float>(offscreenExtent_.width);
+        viewport.height   = static_cast<float>(offscreenExtent_.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = offscreenExtent_;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    }
+
     void Renderer::endOffscreenRenderPass(VkCommandBuffer commandBuffer) const {
         assert(isFrameStarted && "Can't end render pass when frame not in progress");
         assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different frame");

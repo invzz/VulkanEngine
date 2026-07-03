@@ -20,8 +20,8 @@ namespace engine {
     void Viewport::registerAllFrames(Device& device, Renderer& renderer) {
         const int maxFrames = SwapChain::maxFramesInFlight();
         for (int i = 0; i < maxFrames; ++i) {
-            VkImageView imageView = renderer.getOffscreenColorImageView(i);
-            VkSampler   sampler   = renderer.getOffscreenColorSampler(i);
+            VkImageView imageView = renderer.getPostFxColorImageView(i);
+            VkSampler   sampler   = renderer.getPostFxColorSampler(i);
 
             if (imageView == VK_NULL_HANDLE || sampler == VK_NULL_HANDLE) {
                 imTextureIDs_[static_cast<size_t>(i)] = (ImTextureID) nullptr;

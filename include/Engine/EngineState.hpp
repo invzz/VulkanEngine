@@ -176,6 +176,13 @@ namespace engine {
 
         void recreatePostProcessingSystem(Device& device, VkRenderPass rp);
 
+        /**
+         * @brief Update post-processing descriptors to point to the current
+         * offscreen color/depth images. Must be called after offscreen framebuffer
+         * resize so descriptors don't reference destroyed image views.
+         */
+        void updatePostProcessDescriptors(int frameIndex, Renderer& renderer);
+
         SpatialSystem& spatialSystem() {
             return *spatial_;
         }

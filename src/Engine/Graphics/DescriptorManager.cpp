@@ -206,6 +206,20 @@ namespace engine {
         vkUpdateDescriptorSets(device.device(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 
+    void DescriptorManager::updatePostProcessDescriptors(int frameIndex, Renderer& renderer) {
+        if (frameIndex < 0 || frameIndex >= static_cast<int>(postProcessDescriptorSets_.size()) || postProcessDescriptorSets_[frameIndex] == VK_NULL_HANDLE) {
+            return;
+        }
+
+        auto imageInfo = renderer.getOffscreenImageInfo(frameIndex);
+        auto depthInfo = renderer.getDepthImageInfo(frameIndex);
+
+        DescriptorWriter(*postProcessSetLayout_, *postProcessPool_)
+            .writeImage(0, &imageInfo)
+            .writeImage(1, &depthInfo)
+            .overwrite(postProcessDescriptorSets_[frameIndex]);
+    }
+
     void DescriptorManager::recreatePostProcessDescriptorSets(Device& device, Renderer& renderer, VkDescriptorSetLayout existingLayout) {
         postProcessSetLayout_ = DescriptorSetLayout::Builder(device)
                                     .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
