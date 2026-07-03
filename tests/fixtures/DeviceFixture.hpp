@@ -13,7 +13,7 @@
  *   class MyTest : public DeviceFixtureWithSetup {
  *     void SetUp() override {
  *       DeviceFixtureWithSetup::SetUp();
- *       // your per-test setup
+ *       
  *     }
  *   };
  */
@@ -57,7 +57,6 @@ namespace engine::test {
         }
 
        protected:
-        // Accessors for derived test classes
         static Window& window() {
             return *sharedWindow;
         }
@@ -65,7 +64,6 @@ namespace engine::test {
             return *sharedDevice;
         }
 
-        // Raw pointer accessors (for APIs that need pointers)
         static Window* windowPtr() {
             return sharedWindow.get();
         }
@@ -89,16 +87,14 @@ namespace engine::test {
     class DeviceFixtureWithSetup : public DeviceFixture {
        protected:
         void SetUp() override {
-            // Ensure device is idle before each test
             device().WaitIdle();
         }
 
         void TearDown() override {
-            // Ensure all GPU work completes after each test
             device().WaitIdle();
         }
     };
 
 }  // namespace engine::test
 
-#endif  // VULKANENGINE_TESTS_FIXTURES_DEVICEFIXTURE_HPP
+#endif

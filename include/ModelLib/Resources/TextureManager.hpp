@@ -22,7 +22,6 @@ namespace engine {
         TextureManager(const TextureManager&)            = delete;
         TextureManager& operator=(const TextureManager&) = delete;
 
-        // Returns the global index of the texture
         uint32_t addTexture(const std::shared_ptr<Texture>& texture);
 
         [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const {
@@ -47,10 +46,9 @@ namespace engine {
         std::vector<std::shared_ptr<Texture>>  textures;
         std::unordered_map<Texture*, uint32_t> textureIndexMap;
 
-        // Placeholder texture for empty slots
         std::shared_ptr<Texture> placeholderTexture;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTUREMANAGER_HPP
+#endif

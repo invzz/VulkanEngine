@@ -36,4 +36,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_SWAPCHAINRECREATIONCOORDINATOR_HPP
+#endif

@@ -29,7 +29,6 @@ namespace engine {
 
             [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const;
 
-            // For VTEX I/O
             [[nodiscard]] VkImage image() const {
                 return image_;
             }
@@ -65,4 +64,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_IBL_PREFILTEREDENVIBL_HPP
+#endif

@@ -12,8 +12,7 @@
 namespace engine {
 
     namespace {
-        // Validation toggle for compact G-buffer formats. Switch to false to A/B test
-        // against higher-precision reference formats.
+
         constexpr bool kUseCompactGbufferFormats = true;
 
         constexpr VkFormat kGbufferNormalFormatCompact     = VK_FORMAT_R16G16_SNORM;
@@ -114,7 +113,6 @@ namespace engine {
         VkFormat const depthFormat =
             device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-        // 1) Default offscreen render pass (clears color + depth)
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format         = VK_FORMAT_R16G16B16A16_SFLOAT;
         colorAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
@@ -187,7 +185,6 @@ namespace engine {
             throw std::runtime_error("failed to create frame buffer render pass!");
         }
 
-        // 2) Depth prepass render pass (depth clear, no color attachments used)
         VkAttachmentDescription prepassColorAttachment = colorAttachment;
         prepassColorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         prepassColorAttachment.storeOp                 = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -245,7 +242,6 @@ namespace engine {
             throw std::runtime_error("failed to create depth prepass render pass!");
         }
 
-        // 3) Main pass variant that LOADs depth (used after depth prepass)
         VkAttachmentDescription loadColorAttachment = colorAttachment;
         loadColorAttachment.initialLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -304,7 +300,6 @@ namespace engine {
             throw std::runtime_error("failed to create load-depth render pass!");
         }
 
-        // 4) Main pass variant that LOADs BOTH color + depth
         VkAttachmentDescription loadColorDepthColorAttachment = colorAttachment;
         loadColorDepthColorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_LOAD;
         loadColorDepthColorAttachment.initialLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -315,7 +310,7 @@ namespace engine {
         }
 
         VkAttachmentDescription loadColorDepthDepthAttachment = loadDepthAttachment;
-        // After the first main pass we end in SHADER_READ_ONLY_OPTIMAL; allow the render pass to transition from there.
+
         loadColorDepthDepthAttachment.loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD;
         loadColorDepthDepthAttachment.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         loadColorDepthDepthAttachment.finalLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -365,7 +360,6 @@ namespace engine {
             throw std::runtime_error("failed to create load-color-depth render pass!");
         }
 
-        // 5) G-buffer render pass: write normal/albedo/material + emissive(HDR color) + depth
         VkAttachmentDescription gN{};
         gN.format         = kSelectedGbufferNormalFormat;
         gN.samples        = VK_SAMPLE_COUNT_1_BIT;
@@ -376,16 +370,12 @@ namespace engine {
         gN.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
         gN.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-        // Albedo format is controlled by the compact/reference toggle above.
         VkAttachmentDescription gA = gN;
         gA.format                  = kSelectedGbufferAlbedoFormat;
 
-        // Material format is controlled by the compact/reference toggle above.
         VkAttachmentDescription gM = gN;
         gM.format                  = kSelectedGbufferMaterialFormat;
 
-        // Emissive is written directly into the HDR color buffer during the opaque/G-buffer pass.
-        // This ensures emissive contributes to post/bloom and is visible in the scene color copy.
         VkAttachmentDescription gHdr = colorAttachment;
         gHdr.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
         gHdr.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
@@ -395,7 +385,7 @@ namespace engine {
         VkAttachmentDescription gDepth{};
         gDepth.format  = depthFormat;
         gDepth.samples = VK_SAMPLE_COUNT_1_BIT;
-        // Load depth produced by the depth prepass (HZB restores depth to ATTACHMENT_OPTIMAL).
+
         gDepth.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
         gDepth.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
         gDepth.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -409,7 +399,6 @@ namespace engine {
         gbufferColorRefs[2] = VkAttachmentReference{2, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         gbufferColorRefs[3] = VkAttachmentReference{3, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
-        // Depth is attachment index 4
         VkAttachmentReference const gbufferDepthRef{4, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
 
         VkSubpassDescription gbufferSubpass{};
@@ -421,8 +410,7 @@ namespace engine {
         std::array<VkSubpassDependency, 2> gbufferDeps{};
         gbufferDeps[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         gbufferDeps[0].dstSubpass = 0;
-        // Depth is produced by the depth prepass (and optionally touched by HZB compute barriers).
-        // Ensure depth writes are visible before the G-buffer subpass loads/tests depth.
+
         gbufferDeps[0].srcStageMask    = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         gbufferDeps[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         gbufferDeps[0].srcAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -452,13 +440,9 @@ namespace engine {
             throw std::runtime_error("failed to create gbuffer render pass!");
         }
 
-        // 6) Deferred lighting pass: fullscreen lighting into HDR color.
-        // NOTE: Emissive was already written into the HDR color during the G-buffer pass, so we LOAD here.
-        // NOTE: We sample depth as a texture in the shader, so we must NOT also bind the depth image as an attachment here.
         VkAttachmentDescription litColor = colorAttachment;
         litColor.loadOp                  = VK_ATTACHMENT_LOAD_OP_LOAD;
-        // Depth prepass leaves the (unused) HDR color attachment in COLOR_ATTACHMENT_OPTIMAL.
-        // We clear it here anyway, so starting from COLOR_ATTACHMENT_OPTIMAL avoids layout mismatches.
+
         litColor.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         litColor.finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         VkAttachmentReference const litColorRef{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
@@ -563,8 +547,7 @@ namespace engine {
         nearestSamplerInfo.magFilter           = VK_FILTER_NEAREST;
         nearestSamplerInfo.minFilter           = VK_FILTER_NEAREST;
         nearestSamplerInfo.mipmapMode          = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-        // Depth is only sampled at mip level 0; clamp maxLod to 1 to avoid
-        // referencing unused mip levels whose layout is UNDEFINED.
+
         nearestSamplerInfo.maxLod = 1.0f;
 
         VkImageUsageFlags colorUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -579,8 +562,7 @@ namespace engine {
 
         for (uint32_t i = 0; i < frameCount; ++i) {
             makeTarget(colorTargets[i], colorFormat, mipLevels, colorUsage, VK_IMAGE_ASPECT_COLOR_BIT, false, true, true, &linearSamplerInfo);
-            // Depth image does not need mipmaps — only mip level 0 is used as an attachment
-            // and sampled. Use mipLevels=1 to avoid referencing unused mip levels.
+
             makeTarget(depthTargets[i], depthFormat, 1, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_ASPECT_DEPTH_BIT, false, true, true, &nearestSamplerInfo);
             makeTarget(sceneColorTargets[i], colorFormat, mipLevels,
                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
@@ -655,7 +637,6 @@ namespace engine {
                 throw std::runtime_error("failed to create load-color-depth framebuffer!");
             }
 
-            // G-buffer framebuffer: N, Albedo, Material, HDR (emissive), Depth
             std::array<VkImageView, 5> gbufferAttachments =
                 {gbufferNormalTargets[i].getView(),
                     gbufferAlbedoTargets[i].getView(),
@@ -675,7 +656,6 @@ namespace engine {
                 throw std::runtime_error("failed to create gbuffer framebuffer!");
             }
 
-            // Deferred lighting framebuffer (HDR color + depth)
             std::array<VkImageView, 1> litAttachments = {colorTargets[i].getAttachmentView()};
             VkFramebufferCreateInfo    litFbInfo{};
             litFbInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -813,10 +793,10 @@ namespace engine {
         renderPassInfo.renderArea.extent = extent;
 
         std::array<VkClearValue, 5> clearValues{};
-        clearValues[0].color        = {{0.0f, 0.0f, 1.0f, 0.0f}};  // default normal
-        clearValues[1].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};  // albedo
-        clearValues[2].color        = {{0.0f, 1.0f, 1.0f, 1.5f}};  // roughness/metallic/ao/ior defaults (rough=0, metal=1?) updated in shader anyway
-        clearValues[3].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};  // HDR emissive base
+        clearValues[0].color        = {{0.0f, 0.0f, 1.0f, 0.0f}};
+        clearValues[1].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};
+        clearValues[2].color        = {{0.0f, 1.0f, 1.0f, 1.5f}};
+        clearValues[3].color        = {{0.0f, 0.0f, 0.0f, 1.0f}};
         clearValues[4].depthStencil = {1.0f, 0};
 
         renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -863,7 +843,6 @@ namespace engine {
         barrier.subresourceRange.layerCount     = 1;
         barrier.subresourceRange.levelCount     = 1;
 
-        // Transition Mip 0 to TRANSFER_SRC
         barrier.subresourceRange.baseMipLevel = 0;
         barrier.oldLayout                     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         barrier.newLayout                     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -873,7 +852,6 @@ namespace engine {
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
         for (uint32_t i = 1; i < mipLevels; i++) {
-            // Transition Mip i from UNDEFINED to TRANSFER_DST (mips are initially uninitialized)
             barrier.subresourceRange.baseMipLevel = i;
             barrier.oldLayout                     = VK_IMAGE_LAYOUT_UNDEFINED;
             barrier.newLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -898,7 +876,6 @@ namespace engine {
 
             vkCmdBlitImage(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
 
-            // Transition Mip i-1 to SHADER_READ_ONLY
             barrier.subresourceRange.baseMipLevel = i - 1;
             barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
             barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -907,7 +884,6 @@ namespace engine {
 
             vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-            // Transition Mip i to TRANSFER_SRC (for next loop)
             if (i < mipLevels - 1) {
                 barrier.subresourceRange.baseMipLevel = i;
                 barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -926,7 +902,6 @@ namespace engine {
             }
         }
 
-        // Transition Last Mip to SHADER_READ_ONLY
         barrier.subresourceRange.baseMipLevel = mipLevels - 1;
         barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -955,7 +930,6 @@ namespace engine {
         barrier.subresourceRange.layerCount     = 1;
         barrier.subresourceRange.levelCount     = 1;
 
-        // Transition Mip 0 (just copied) to TRANSFER_SRC
         barrier.subresourceRange.baseMipLevel = 0;
         barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         barrier.newLayout                     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -965,7 +939,6 @@ namespace engine {
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
         for (uint32_t i = 1; i < mipLevels; i++) {
-            // Transition Mip i to TRANSFER_DST
             barrier.subresourceRange.baseMipLevel = i;
             barrier.oldLayout                     = VK_IMAGE_LAYOUT_UNDEFINED;
             barrier.newLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -990,7 +963,6 @@ namespace engine {
 
             vkCmdBlitImage(commandBuffer, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
 
-            // Transition Mip i-1 to SHADER_READ_ONLY
             barrier.subresourceRange.baseMipLevel = i - 1;
             barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
             barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -999,7 +971,6 @@ namespace engine {
 
             vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-            // Transition Mip i to TRANSFER_SRC for next loop
             if (i < mipLevels - 1) {
                 barrier.subresourceRange.baseMipLevel = i;
                 barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -1018,7 +989,6 @@ namespace engine {
             }
         }
 
-        // Transition Last Mip to SHADER_READ_ONLY
         barrier.subresourceRange.baseMipLevel = mipLevels - 1;
         barrier.oldLayout                     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         barrier.newLayout                     = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1033,16 +1003,10 @@ namespace engine {
             return;
         }
 
-        // Depth targets now have only 1 mip level (no mipmaps needed for depth),
-        // so this is a no-op. Kept for API compatibility in case depth mipmaps
-        // are re-enabled in the future.
         if (depthTargets.front().getMipLevels() <= 1) {
             return;
         }
 
-        // Mip level 0 was already transitioned to SHADER_READ_ONLY_OPTIMAL by the
-        // G-buffer render pass dependency (finalLayout). Only mip levels 1..N-1 need
-        // an explicit barrier from DEPTH_STENCIL_ATTACHMENT_OPTIMAL to SHADER_READ_ONLY_OPTIMAL.
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;

@@ -8,18 +8,16 @@ namespace engine {
     struct CameraComponent {
         Camera camera;
 
-        // Perspective settings
         float fovY  = 80.0f;
         float nearZ = 0.1f;
         float farZ  = 100.0f;
 
-        // Orthographic settings
-        float orthoSize = 10.0f;  // Vertical size
+        float orthoSize = 10.0f;
 
         bool isOrthographic = false;
-        bool isPrimary      = true;  // To identify the main camera if multiple exist
+        bool isPrimary      = true;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_CAMERACOMPONENT_HPP
+#endif

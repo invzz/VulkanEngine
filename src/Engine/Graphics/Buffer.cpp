@@ -2,10 +2,15 @@
  * Encapsulates a vulkan buffer
  *
  * Initially based off VulkanBuffer by Sascha Willems -
- * https://github.com/SaschaWillems/Vulkan/blob/master/base/VulkanBuffer.h
+ * https:
  */
 
 #include "Engine/Graphics/Buffer.hpp"
+
+#include <cassert>
+#include <cstdlib>
+#include <cstring>
+#include <string>
 
 #include "Engine/Core/ErrorCodes.hpp"
 #include "Engine/Core/Exceptions.hpp"
@@ -13,12 +18,6 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "vulkan/vulkan_core.h"
-
-// std
-#include <cassert>
-#include <cstdlib>
-#include <cstring>
-#include <string>
 
 namespace engine {
 
@@ -83,8 +82,6 @@ namespace engine {
     Buffer::~Buffer() {
         unmap();
 
-        // Defer actual Vulkan destroys until the frame that will safely allow
-        // resources to be released (avoids vkDestroy* called while buffer still in use).
         VkBuffer       buf = buffer;
         VkDeviceMemory mem = memory;
         device.deferDestroy([buf, mem](VkDevice dev) {

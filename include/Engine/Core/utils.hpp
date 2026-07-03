@@ -33,7 +33,6 @@ namespace engine {
         }
     }  // namespace detail
 
-    // from https://stackoverflow.com/a/57595105
     template <typename T, typename... Rest>
     void hashCombine(std::size_t& seed, const T& value, const Rest&... args) {
         detail::hashCombineOne(seed, value);
@@ -41,4 +40,4 @@ namespace engine {
     }
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_CORE_UTILS_HPP
+#endif

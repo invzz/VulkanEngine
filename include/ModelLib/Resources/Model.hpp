@@ -70,14 +70,12 @@ namespace engine {
     class Model {
        public:
         struct MeshletBuildConfig {
-            size_t maxVertices  = 64;    // upper bound of unique vertices per meshlet
-            size_t maxTriangles = 124;   // upper bound of triangles per meshlet
-            float  coneWeight   = 0.0f;  // 0 = favor locality, 1 = favor backface culling
-            float  maxRadius    = 0.0f;  // max bounding sphere radius in model units (0 = no limit)
-                                         // Recommended: 2-4m for indoor scenes, 1-2m for detailed objects
+            size_t maxVertices  = 64;
+            size_t maxTriangles = 124;
+            float  coneWeight   = 0.0f;
+            float  maxRadius    = 0.0f;
         };
 
-        // Global configuration for meshlet building
         static void                                    setMeshletBuildConfig(const MeshletBuildConfig& cfg);
         [[nodiscard]] static const MeshletBuildConfig& getMeshletBuildConfig();
         struct Vertex {
@@ -85,7 +83,7 @@ namespace engine {
             glm::vec3                                             color;
             glm::vec3                                             normal;
             glm::vec2                                             uv;
-            int                                                   materialId{-1};  // Material index for this vertex
+            int                                                   materialId{-1};
             static std::vector<VkVertexInputBindingDescription>   getBindingDescriptions();
             static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions();
             bool                                                  operator==(const Vertex& other) const {
@@ -96,8 +94,8 @@ namespace engine {
         struct MaterialInfo {
             std::string name;
             PBRMaterial pbrMaterial;
-            int         materialId;  // Index in the materials array
-            // Texture paths from MTL file (relative to OBJ file location)
+            int         materialId;
+
             std::string diffuseTexPath;
             std::string normalTexPath;
             std::string roughnessTexPath;
@@ -110,16 +108,14 @@ namespace engine {
             std::string clearcoatNormalTexPath;
         };
 
-        // Sub-mesh: a portion of the model using one material
         struct SubMesh {
-            uint32_t indexOffset;  // Offset into the index buffer
-            uint32_t indexCount;   // Number of indices for this sub-mesh
-            int      materialId;   // Index into materials array
+            uint32_t indexOffset;
+            uint32_t indexCount;
+            int      materialId;
             uint32_t meshletOffset = 0;
             uint32_t meshletCount  = 0;
         };
 
-        // Animation structures
         struct AnimationSampler {
             enum Interpolation : std::uint8_t {
                 LINEAR,
@@ -127,11 +123,11 @@ namespace engine {
                 CUBICSPLINE
             };
 
-            std::vector<float>              times;         // Keyframe timestamps
-            std::vector<glm::vec3>          translations;  // For translation channels
-            std::vector<glm::quat>          rotations;     // For rotation channels
-            std::vector<glm::vec3>          scales;        // For scale channels
-            std::vector<std::vector<float>> morphWeights;  // For morph target weight channels
+            std::vector<float>              times;
+            std::vector<glm::vec3>          translations;
+            std::vector<glm::quat>          rotations;
+            std::vector<glm::vec3>          scales;
+            std::vector<std::vector<float>> morphWeights;
             Interpolation                   interpolation = LINEAR;
         };
 
@@ -140,17 +136,17 @@ namespace engine {
                 TRANSLATION,
                 ROTATION,
                 SCALE,
-                WEIGHTS  // Morph target weights
+                WEIGHTS
             };
 
-            int        targetNode;  // Index into the node array
+            int        targetNode;
             TargetPath path;
             int        samplerIndex;
         };
 
         struct Animation {
             std::string                   name;
-            float                         duration = 0.0f;  // In seconds
+            float                         duration = 0.0f;
             std::vector<AnimationChannel> channels;
             std::vector<AnimationSampler> samplers;
         };
@@ -161,34 +157,32 @@ namespace engine {
             glm::quat          rotation    = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
             glm::vec3          scale       = glm::vec3(1.0f);
             glm::mat4          matrix      = glm::mat4(1.0f);
-            bool               hasMatrix   = false;  // true when glTF node has a precomputed matrix
+            bool               hasMatrix   = false;
             std::vector<int>   children;
             int                mesh = -1;
-            std::vector<float> morphWeights;  // Current morph target weights
+            std::vector<float> morphWeights;
 
             [[nodiscard]] glm::mat4 getLocalTransform() const {
                 if (hasMatrix) {
-                    // Per glTF 2.0 spec: matrix overrides TRS entirely (mutually exclusive)
                     return matrix;
                 }
-                // Construct from TRS: T * R * S (glTF standard order)
+
                 return glm::translate(glm::mat4(1.0f), translation) * glm::mat4_cast(rotation) * glm::scale(glm::mat4(1.0f), scale);
             }
         };
 
-        // Morph target (blend shape) data
         struct MorphTarget {
-            std::vector<glm::vec3> positionDeltas;  // Position offsets from base mesh
-            std::vector<glm::vec3> normalDeltas;    // Normal offsets from base mesh
+            std::vector<glm::vec3> positionDeltas;
+            std::vector<glm::vec3> normalDeltas;
             std::string            name;
         };
 
         struct MorphTargetSet {
-            std::vector<MorphTarget> targets;          // All morph targets for this mesh
-            std::vector<float>       weights;          // Current blend weights [0-1]
-            uint32_t                 vertexOffset;     // Offset into vertex buffer
-            uint32_t                 vertexCount;      // Number of vertices affected
-            std::vector<uint32_t>    positionIndices;  // Mapping from vertex to original glTF position index
+            std::vector<MorphTarget> targets;
+            std::vector<float>       weights;
+            uint32_t                 vertexOffset;
+            uint32_t                 vertexCount;
+            std::vector<uint32_t>    positionIndices;
         };
 
         struct Meshlet {
@@ -208,29 +202,29 @@ namespace engine {
         };
 
         struct LightInfo {
-            std::string       name;
-            LightType         type{LightType::Point};
-            glm::vec3         color{1.0f};
-            float             intensity{1.0f};
-            float             range{0.0f};  // 0.0 = infinite
-            float             innerCutoffAngle{12.5f};  // for spot lights (degrees)
-            float             outerCutoffAngle{17.5f};  // for spot lights (degrees)
-            std::vector<int>  nodeIndices;  // node indices that reference this light
+            std::string      name;
+            LightType        type{LightType::Point};
+            glm::vec3        color{1.0f};
+            float            intensity{1.0f};
+            float            range{0.0f};
+            float            innerCutoffAngle{12.5f};
+            float            outerCutoffAngle{17.5f};
+            std::vector<int> nodeIndices;
         };
 
         struct Builder {
             std::vector<Vertex>                       vertices;
             std::vector<uint32_t>                     indices;
-            std::vector<MaterialInfo>                 materials;               // Materials loaded from MTL file
-            std::vector<SubMesh>                      subMeshes;               // Sub-meshes by material
-            std::unordered_map<int, int>              meshPrimaryMaterial;     // map meshIndex -> representative materialId
-            std::vector<Animation>                    animations;              // Animations from glTF
-            std::vector<Node>                         nodes;                   // Scene graph nodes
-            std::unordered_map<int, std::vector<int>> nodePrimitiveIndices;    // map nodeIndex -> primitiveIndices
-            std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;  // key: "node_prim" -> vertex offset
-            std::unordered_map<std::string, uint32_t> primitiveVertexCounts;   // key: "node_prim" -> vertex count
-            std::vector<MorphTargetSet>               morphTargetSets;         // Morph targets per mesh
-            std::vector<LightInfo>                    lights;                  // KHR_lights_punctual lights
+            std::vector<MaterialInfo>                 materials;
+            std::vector<SubMesh>                      subMeshes;
+            std::unordered_map<int, int>              meshPrimaryMaterial;
+            std::vector<Animation>                    animations;
+            std::vector<Node>                         nodes;
+            std::unordered_map<int, std::vector<int>> nodePrimitiveIndices;
+            std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
+            std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
+            std::vector<MorphTargetSet>               morphTargetSets;
+            std::vector<LightInfo>                    lights;
             std::string                               filePath;
 
             void loadModelFromFile(const std::string& filepath, bool flipX = false, bool flipY = false, bool flipZ = false);
@@ -240,7 +234,6 @@ namespace engine {
         explicit Model(Device& device, const Builder& builder);
         ~Model();
 
-        // delete copy and move constructors and assignment operators
         Model(const Model&)            = delete;
         Model& operator=(const Model&) = delete;
 
@@ -250,13 +243,10 @@ namespace engine {
         void bind(VkCommandBuffer commandBuffer) const;
         void draw(VkCommandBuffer commandBuffer) const;
 
-        // Draw a specific sub-mesh
         void drawSubMesh(VkCommandBuffer commandBuffer, size_t subMeshIndex) const;
 
-        // Get representative material for a mesh (returns -1 if none)
         [[nodiscard]] int getPrimaryMaterialForMesh(int meshIndex) const;
 
-        // Get materials loaded from MTL file
         [[nodiscard]] const std::vector<MaterialInfo>& getMaterials() const {
             return materials_;
         }
@@ -264,17 +254,14 @@ namespace engine {
             return materials_;
         }
 
-        // Get sub-meshes
         [[nodiscard]] const std::vector<SubMesh>& getSubMeshes() const {
             return subMeshes_;
         }
 
-        // Check if model has multiple materials
         [[nodiscard]] bool hasMultipleMaterials() const {
             return subMeshes_.size() > 1;
         }
 
-        // Animation support
         [[nodiscard]] bool hasAnimations() const {
             return !animations_.empty();
         }
@@ -288,7 +275,6 @@ namespace engine {
             return nodes_;
         }
 
-        // Morph target support
         [[nodiscard]] bool hasMorphTargets() const {
             return !morphTargetSets_.empty();
         }
@@ -299,7 +285,6 @@ namespace engine {
             return morphTargetSets_;
         }
 
-        // Light support (KHR_lights_punctual)
         [[nodiscard]] bool hasLights() const {
             return !lights_.empty();
         }
@@ -307,7 +292,6 @@ namespace engine {
             return lights_;
         }
 
-        // Buffer access for compute operations
         [[nodiscard]] VkBuffer getVertexBuffer() const {
             return vertexBuffer->getBuffer();
         }
@@ -341,7 +325,6 @@ namespace engine {
             return meshId;
         }
 
-        // Meshlet support
         [[nodiscard]] const std::vector<Meshlet>& getMeshlets() const {
             return meshlets;
         }
@@ -358,12 +341,10 @@ namespace engine {
             return static_cast<uint32_t>(meshlets.size());
         }
 
-        // Bounding box support
         [[nodiscard]] const AABB& getLocalBounds() const {
             return localBounds_;
         }
 
-        // Index/vertex counts for indirect draws
         [[nodiscard]] uint32_t getIndexCount() const {
             return indexCount;
         }
@@ -374,7 +355,6 @@ namespace engine {
             return hasIndexBuffer;
         }
 
-        // CPU-side collision geometry used by physics mesh collider construction.
         [[nodiscard]] const std::vector<glm::vec3>& getCollisionVertices() const {
             return collisionVertices_;
         }
@@ -383,7 +363,6 @@ namespace engine {
         }
 
        private:
-        // Global meshlet build configuration (shared across all models)
         static MeshletBuildConfig s_meshletConfig_;
         Device&                   device;
         std::string               filePath;
@@ -397,21 +376,20 @@ namespace engine {
         std::unique_ptr<Buffer> indexBuffer;
         uint32_t                indexCount = 0;
 
-        // Meshlet buffers
         std::vector<Meshlet>    meshlets;
         std::unique_ptr<Buffer> meshletBuffer;
         std::unique_ptr<Buffer> meshletVerticesBuffer;
         std::unique_ptr<Buffer> meshletTrianglesBuffer;
 
-        std::vector<MaterialInfo>    materials_;            // Materials from MTL file
-        std::vector<SubMesh>         subMeshes_;            // Sub-meshes by material
-        std::unordered_map<int, int> meshPrimaryMaterial_;  // map meshIndex -> representative materialId
-        std::vector<Animation>       animations_;           // Animations from glTF
-        std::vector<Node>            nodes_;                // Scene graph nodes
-        std::vector<MorphTargetSet>  morphTargetSets_;      // Morph targets
-        std::vector<LightInfo>       lights_;               // KHR_lights_punctual lights
+        std::vector<MaterialInfo>    materials_;
+        std::vector<SubMesh>         subMeshes_;
+        std::unordered_map<int, int> meshPrimaryMaterial_;
+        std::vector<Animation>       animations_;
+        std::vector<Node>            nodes_;
+        std::vector<MorphTargetSet>  morphTargetSets_;
+        std::vector<LightInfo>       lights_;
 
-        AABB localBounds_;  // Object-space bounding box
+        AABB localBounds_;
 
         std::vector<glm::vec3> collisionVertices_;
         std::vector<uint32_t>  collisionIndices_;

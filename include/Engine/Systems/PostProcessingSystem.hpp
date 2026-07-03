@@ -27,12 +27,11 @@ namespace engine {
         int   debugMode{0};
         float ssaoRadius{0.5f};
         float ssaoBias{0.025f};
-        int   toneMappingMode{1};  // 0: None, 1: ACES
+        int   toneMappingMode{1};
         alignas(16) glm::mat4 inverseProjection{1.0f};
         alignas(16) glm::mat4 projection{1.0f};
     };
 
-    // Compile-time checks to ensure C++ push-constant layout matches GLSL expectations
     static_assert(offsetof(PostProcessPushConstants, inverseProjection) == 64, "Unexpected offset for inverseProjection; does GLSL push layout match C++?");
     static_assert(sizeof(PostProcessPushConstants) == 192, "Unexpected PostProcessPushConstants size; expected 192 bytes per std140-like packing");
     static_assert(sizeof(PostProcessPushConstants) <= 256, "PostProcessPushConstants size exceeds 256 bytes and may exceed typical GPU push constant limits");
@@ -58,4 +57,4 @@ namespace engine {
     };
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_POSTPROCESSINGSYSTEM_HPP
+#endif

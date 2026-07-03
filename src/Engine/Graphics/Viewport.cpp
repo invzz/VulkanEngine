@@ -12,10 +12,8 @@ namespace engine {
     }
 
     void Viewport::resize(Device& device, Renderer& renderer, VkExtent2D newExtent) {
-        // Resize the offscreen framebuffer to match the viewport panel.
         renderer.resizeOffscreenFramebuffer(newExtent);
 
-        // Re-register with ImGui — the old textures are invalid after resize.
         registerAllFrames(device, renderer);
     }
 

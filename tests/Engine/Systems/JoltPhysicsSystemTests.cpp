@@ -130,8 +130,6 @@ namespace engine {
         JoltPhysicsSystem physicsSystem;
         stepPhysics(physicsSystem, *scene, 60);
 
-        // If collision response works, the top center should not move far below the bottom center.
-        // With unit boxes, center separation should be around 1.0 at contact.
         EXPECT_LT(topTransform.translation.y - bottomTransform.translation.y, 3.0f);
     }
 

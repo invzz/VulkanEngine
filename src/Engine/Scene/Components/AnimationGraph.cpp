@@ -115,34 +115,30 @@ namespace engine {
 
         auto trans = getTransitions(current->id);
 
-        // Check explicit conditions first (prioritized)
         for (const auto* t : trans) {
             switch (t->condition) {
                 case TransitionCondition::NONE:
-                    return t;  // Always fires, prefer non-default
+                    return t;
                 case TransitionCondition::TIME_BASED:
-                    // Handled in step() with elapsed time check
+
                     break;
                 case TransitionCondition::EVENT_BASED:
-                    // Handled externally via event callback
+
                     break;
                 case TransitionCondition::PARAM_BASED:
-                    // Handled externally via parameter check
+
                     break;
                 case TransitionCondition::BLEND_COMPLETE:
                     break;
             }
         }
 
-        // Check time-based transitions
         for (const auto* t : trans) {
             if (t->condition == TransitionCondition::TIME_BASED) {
-                // Time check done in step() — return for evaluation
                 return t;
             }
         }
 
-        // Default transition (auto on exit)
         return getDefaultTransition(current->id);
     }
 
@@ -156,12 +152,10 @@ namespace engine {
 
         elapsedSinceEntry_ += deltaTime;
 
-        // Evaluate time-based transitions
         auto trans = getTransitions(current->id);
         for (const auto* t : trans) {
             if (t->condition == TransitionCondition::TIME_BASED) {
                 if (elapsedSinceEntry_ >= t->timeThreshold) {
-                    // Trigger transition
                     setCurrentNode(t->targetNodeId);
                     elapsedSinceEntry_    = 0.0f;
                     trigger.targetNodeId  = t->targetNodeId;
@@ -173,7 +167,6 @@ namespace engine {
             }
         }
 
-        // Check default transition
         if (!trigger.triggered) {
             const auto* defaultTrans = getDefaultTransition(current->id);
             if (defaultTrans) {
@@ -186,7 +179,6 @@ namespace engine {
             }
         }
 
-        // Update node state — access via mutable reference
         if (currentNodeId_ >= 0 && static_cast<size_t>(currentNodeId_) < nodes_.size()) {
             nodes_[static_cast<size_t>(currentNodeId_)].active = true;
         }

@@ -33,9 +33,6 @@ namespace engine {
      */
         void allocatePerFrameDescriptors(Renderer& renderer);
 
-        // --- Accessors ---
-
-        // G-buffer
         [[nodiscard]] DescriptorPool& gbufferPool() const {
             return *gbufferPool_;
         }
@@ -45,7 +42,6 @@ namespace engine {
         [[nodiscard]] VkDescriptorSet  gbufferDescriptorSet(int frameIndex) const;
         [[nodiscard]] VkDescriptorSet& gbufferDescriptorSetRef(int frameIndex);
 
-        // Deferred IBL
         [[nodiscard]] DescriptorPool& deferredIblPool() const {
             return *deferredIblPool_;
         }
@@ -55,7 +51,6 @@ namespace engine {
         [[nodiscard]] VkDescriptorSet               deferredIblDescriptorSet(int frameIndex) const;
         [[nodiscard]] std::vector<VkDescriptorSet>& deferredIblDescriptorSets();
 
-        // Deferred Shadow
         [[nodiscard]] DescriptorPool& deferredShadowPool() const {
             return *deferredShadowPool_;
         }
@@ -65,7 +60,6 @@ namespace engine {
         [[nodiscard]] VkDescriptorSet  deferredShadowDescriptorSet(int frameIndex) const;
         [[nodiscard]] VkDescriptorSet& deferredShadowDescriptorSetRef(int frameIndex);
 
-        // Post-processing
         [[nodiscard]] DescriptorPool& postProcessPool() const {
             return *postProcessPool_;
         }
@@ -96,22 +90,18 @@ namespace engine {
         void recreatePostProcessDescriptorSets(Device& device, Renderer& renderer, VkDescriptorSetLayout existingLayout);
 
        private:
-        // G-buffer
         std::unique_ptr<DescriptorPool>      gbufferPool_;
         std::unique_ptr<DescriptorSetLayout> gbufferSetLayout_;
         std::vector<VkDescriptorSet>         gbufferDescriptorSets_;
 
-        // Deferred IBL
         std::unique_ptr<DescriptorPool>      deferredIblPool_;
         std::unique_ptr<DescriptorSetLayout> deferredIblSetLayout_;
         std::vector<VkDescriptorSet>         deferredIblDescriptorSets_;
 
-        // Deferred Shadow
         std::unique_ptr<DescriptorPool>      deferredShadowPool_;
         std::unique_ptr<DescriptorSetLayout> deferredShadowSetLayout_;
         std::vector<VkDescriptorSet>         deferredShadowDescriptorSets_;
 
-        // Post-processing
         std::unique_ptr<DescriptorPool>      postProcessPool_;
         std::unique_ptr<DescriptorSetLayout> postProcessSetLayout_;
         std::vector<VkDescriptorSet>         postProcessDescriptorSets_;
@@ -119,4 +109,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // ENGINE_DESCRIPTORMANAGER_HPP
+#endif

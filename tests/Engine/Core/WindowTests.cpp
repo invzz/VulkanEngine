@@ -4,18 +4,11 @@
 
 using namespace engine;
 
-// =============================================================================
-// Window Construction Tests
-// =============================================================================
 TEST(Window, GivenValidParameters_WhenConstructed_ThenWindowIsCreated) {
     Window window(64, 64, "Construction Test");
 
     EXPECT_TRUE(window.getGLFWwindow() != nullptr);
 }
-
-// =============================================================================
-// Window GLFW Handle Tests
-// =============================================================================
 
 TEST(Window, GivenWindow_WhenGetGLFWwindow_ThenReturnsValidHandle) {
     Window window(64, 64, "GLFW Handle Test");
@@ -24,10 +17,6 @@ TEST(Window, GivenWindow_WhenGetGLFWwindow_ThenReturnsValidHandle) {
     EXPECT_NE(glfwWindow, nullptr);
 }
 
-// =============================================================================
-// Window Resize Flag Tests
-// =============================================================================
-
 TEST(Window, GivenWindow_WhenResetWindowResizedFlag_ThenFlagIsFalse) {
     Window window(64, 64, "Reset Resize Test");
 
@@ -35,10 +24,6 @@ TEST(Window, GivenWindow_WhenResetWindowResizedFlag_ThenFlagIsFalse) {
 
     EXPECT_FALSE(window.wasWindowResized());
 }
-
-// =============================================================================
-// Window Cursor Tests
-// =============================================================================
 
 TEST(Window, GivenNewWindow_WhenIsCursorVisible_ThenReturnsTrue) {
     Window window(64, 64, "Cursor Test");
@@ -84,23 +69,14 @@ TEST(Window, GivenHiddenCursor_WhenToggleCursor_ThenCursorBecomesVisible) {
     EXPECT_TRUE(window.isCursorVisible());
 }
 
-// =============================================================================
-// Window shouldClose Tests
-// =============================================================================
-
 TEST(Window, GivenNewWindow_WhenShouldClose_ThenReturnsFalse) {
     Window window(64, 64, "Should Close Test");
 
     EXPECT_FALSE(window.shouldClose());
 }
 
-// =============================================================================
-// Window Resize Stability Tests
-// =============================================================================
-
 TEST(Window, GivenNoResize_WhenIsResizeStable_ThenReturnsFalse) {
     Window window(64, 64, "Stable Resize Test");
 
-    // No resize has occurred, so it should not be "stable"
     EXPECT_FALSE(window.isResizeStable(100));
 }

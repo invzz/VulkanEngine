@@ -18,11 +18,8 @@ namespace engine {
 
         ~Instance();
 
-        // Create an instance with the given extension and layer lists. Throws
-        // engine::RuntimeException on failure.
         void create(const std::vector<const char*>& extensions = {}, const std::vector<const char*>& layers = {});
 
-        // Destroy the instance if created.
         void reset() noexcept;
 
         VkInstance get() const {
@@ -38,4 +35,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_INSTANCE_HPP
+#endif

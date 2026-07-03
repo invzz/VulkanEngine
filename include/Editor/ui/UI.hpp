@@ -12,6 +12,9 @@
 
 #include "Engine/Scene/SceneUtils.hpp"
 
+#include "Editor/ui/ModelInsertionOptions.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
+
 namespace engine {
     class WorkspaceManager;
     class Scene;
@@ -58,10 +61,6 @@ namespace engine::ui {
  */
     class UI {
        public:
-        // ======================================================================
-        // Section / Grouping
-        // ======================================================================
-
         /**
      * @brief Render a collapsible section header with consistent styling.
      * @param label Section title.
@@ -88,10 +87,6 @@ namespace engine::ui {
      * @brief Render a thin horizontal divider with subtle color.
      */
         static void Divider();
-
-        // ======================================================================
-        // Buttons
-        // ======================================================================
 
         /**
      * @brief Render a styled button with consistent sizing.
@@ -146,10 +141,6 @@ namespace engine::ui {
      * @return true if clicked.
      */
         static bool TonalButton(const char* label, ImVec2 size = ImVec2(0.0f, 0.0f));
-
-        // ======================================================================
-        // Material Surfaces
-        // ======================================================================
 
         /**
      * @brief Begin a material-style surface card.
@@ -206,10 +197,6 @@ namespace engine::ui {
         static bool EnumRow(const char* label, const char* description, int* current_index,
             const char* const items[], int count);
 
-        // ======================================================================
-        // Properties (key-value display in inspector panels)
-        // ======================================================================
-
         /**
      * @brief Render a property row (label on left, value on right).
      * @param label Property name (displayed in theme disabled color).
@@ -232,10 +219,6 @@ namespace engine::ui {
      * @return true if changed.
      */
         static bool PropertyBool(const char* label, bool* value);
-
-        // ======================================================================
-        // Tree / Hierarchy
-        // ======================================================================
 
         /**
      * @brief Render a tree node with consistent styling.
@@ -261,10 +244,6 @@ namespace engine::ui {
      * @return true if clicked.
      */
         static bool Selectable(const char* label, bool selected = false, ImGuiSelectableFlags flags = ImGuiSelectableFlags_None);
-
-        // ======================================================================
-        // Input Controls
-        // ======================================================================
 
         /**
      * @brief Render a styled input text field with consistent padding.
@@ -373,10 +352,6 @@ namespace engine::ui {
      */
         static bool Checkbox(const char* label, bool* value);
 
-        // ======================================================================
-        // Display Helpers
-        // ======================================================================
-
         /**
      * @brief Render text in the theme's disabled color.
      * @param text Text to render.
@@ -422,10 +397,6 @@ namespace engine::ui {
      */
         static void WarningTooltip(const char* tooltip);
 
-        // ======================================================================
-        // Layout Helpers
-        // ======================================================================
-
         /**
      * @brief Push the current theme style vars onto the ImGui stack.
      * Call before panel rendering.
@@ -468,10 +439,6 @@ namespace engine::ui {
      */
         static ImVec4 GetTextColor();
 
-        // ======================================================================
-        // Popup / Menu Helpers
-        // ======================================================================
-
         /**
      * @brief Render a small button that opens a popup.
      * @param label Button text (must include ##unique ID).
@@ -500,10 +467,6 @@ namespace engine::ui {
      * @return true if clicked.
      */
         static bool ResetButton(const char* label);
-
-        // ======================================================================
-        // Scene Panel Facade
-        // ======================================================================
 
         static SceneEntityCollection CollectSceneEntities(const engine::Scene& scene);
 
@@ -554,10 +517,9 @@ namespace engine::ui {
             ModelInsertionOptions::StaticColliderImportMode mode);
 
        private:
-        // Helper to apply section header styling
         static void ApplySectionStyle(bool open);
     };
 
 }  // namespace engine::ui
 
-#endif  // EDITOR_UI_ABSTRACTION_HPP
+#endif

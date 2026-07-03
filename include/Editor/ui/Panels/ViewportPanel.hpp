@@ -63,9 +63,6 @@ namespace engine {
             cameraEntity_ = entity;
         }
 
-        // ViewportPanel docks into the main dockspace like all other panels.
-        // The dock zone is configured via DockConstraints in app.cpp.
-
        private:
         void enterNavigation(FrameInfo& frameInfo);
         void exitNavigation(FrameInfo& frameInfo);
@@ -85,4 +82,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_UI_VIEWPORT_PANEL_HPP
+#endif

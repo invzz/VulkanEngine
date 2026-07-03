@@ -32,7 +32,7 @@ namespace engine {
         createDescriptorPool();
         createGlobalSetLayout();
         createUBOBuffers();
-        // Start with a conservative capacity and grow on demand.
+
         createLightBuffers(64, 16, 64);
         createGlobalDescriptorSets();
 
@@ -44,9 +44,9 @@ namespace engine {
     void RenderContext::createDescriptorPool() {
         globalPool_ = DescriptorPool::Builder(device_)
                           .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
-                          // Two UBO bindings (hot + cold) per set.
+
                           .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
-                          // Storage buffers: mesh buffer + 3 light buffers per set.
+
                           .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
                           .build();
     }
@@ -55,11 +55,11 @@ namespace engine {
         globalSetLayout_ = DescriptorSetLayout::Builder(device_)
                                .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
-                               // Dynamic lights
+
                                .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
-                               // Cold frame data (rarely changed values)
+
                                .addBinding(6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .build();
     }
@@ -129,9 +129,6 @@ namespace engine {
             auto dirInfo        = directionalLightBuffers_[i]->descriptorInfo();
             auto spotInfo       = spotLightBuffers_[i]->descriptorInfo();
 
-            // Write all bindings required by the layout (including light buffers) so
-            // DescriptorWriter's defensive check succeeds. We still update light
-            // counts later as needed via updateLightDescriptorSets.
             DescriptorWriter(*globalSetLayout_, *globalPool_)
                 .writeBuffer(0, &bufferInfo)
                 .writeBuffer(1, &meshInfo)
@@ -177,7 +174,6 @@ namespace engine {
     }
 
     RenderContext::LightCounts RenderContext::updateLightBuffers(int frameIndex, Scene& scene) {
-        // Gather lights from the scene.
         std::vector<PointLight>       pointLights;
         std::vector<DirectionalLight> dirLights;
         std::vector<SpotLight>        spotLights;
@@ -197,7 +193,6 @@ namespace engine {
         }
 
         {
-            // Only a single directional light is supported at runtime — take the first one found.
             auto view = registry.view<DirectionalLightComponent, TransformComponent>();
             for (auto entity : view) {
                 auto [dir, transform] = view.get<DirectionalLightComponent, TransformComponent>(entity);
@@ -205,13 +200,12 @@ namespace engine {
 
                 glm::vec3 direction = transform.getForwardDir();
                 if (!std::isfinite(direction.x) || !std::isfinite(direction.y) || !std::isfinite(direction.z) || glm::dot(direction, direction) < 1e-8f) {
-                    // Fallback to a stable default sun direction if transform forward is invalid.
                     direction = glm::vec3(0.0f, -1.0f, 0.0f);
                 }
                 dl.direction = glm::vec4(glm::normalize(direction), 0.f);
                 dl.color     = glm::vec4(dir.color, dir.intensity);
                 dirLights.push_back(dl);
-                break;  // only keep the first directional light
+                break;
             }
         }
 
@@ -260,13 +254,11 @@ namespace engine {
         }
 
         if (resized) {
-            // Recreate all per-frame buffers so every in-flight frame has matching capacity.
             createLightBuffers(pointLightCapacity_, directionalLightCapacity_, spotLightCapacity_);
             for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
                 updateLightDescriptorSets(i);
             }
         } else {
-            // Always refresh descriptors for this frame (cheap), in case buffers were re-created earlier.
             updateLightDescriptorSets(frameIndex);
         }
 
@@ -289,7 +281,5 @@ namespace engine {
         counts.spot        = static_cast<int>(spotLights.size());
         return counts;
     }
-
-    // Shadow descriptors removed - to be reimplemented later
 
 }  // namespace engine

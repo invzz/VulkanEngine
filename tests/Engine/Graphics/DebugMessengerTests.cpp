@@ -5,10 +5,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// DebugMessenger Tests
-// =============================================================================
-
 TEST(DebugMessenger, GivenDefaultMessenger_WhenCreated_ThenIsInvalidHandle) {
     DebugMessenger dbg;
     EXPECT_FALSE(dbg);

@@ -3,7 +3,7 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Scene/Scene.hpp"
-#include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Scene/SceneUtils.hpp"
 #include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
@@ -13,7 +13,7 @@ namespace engine {
 
     ShadowPass::ShadowPass(ShadowSystem& shadow, IRenderContextPort& renderCtx,
         Scene& scene, ShadowSettings& shadowSettings)
-        : shadow_(shadow), renderCtx_(renderCtx), scene_(scene), shadowSettings_(shadowSettings) {}
+        : RenderPassBase("Shadow"), shadow_(shadow), renderCtx_(renderCtx), scene_(scene), shadowSettings_(shadowSettings) {}
 
     void ShadowPass::execute(FrameInfo& frameInfo) {
         LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
@@ -32,12 +32,7 @@ namespace engine {
         ubo.invProjection = glm::inverse(ubo.projection);
         ubo.invView       = glm::inverse(ubo.view);
 
-        if (scene_.getRegistry().valid(frameInfo.cameraEntity) && scene_.getRegistry().all_of<TransformComponent>(frameInfo.cameraEntity)) {
-            ubo.cameraPosition = glm::vec4(
-                scene_.getRegistry().get<TransformComponent>(frameInfo.cameraEntity).translation, 1.0f);
-        } else {
-            ubo.cameraPosition = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        }
+        ubo.cameraPosition = getCameraPosition(scene_, frameInfo.cameraEntity);
 
         ubo.shadowLightCount = shadow_.getShadowLightCount();
 
@@ -64,11 +59,6 @@ namespace engine {
 
         GlobalUboCold uboCold{};
         renderCtx_.updateUBO(frameInfo.frameIndex, ubo, uboCold);
-    }
-
-    const std::string& ShadowPass::getName() const {
-        static std::string n = "Shadow";
-        return n;
     }
 
 }  // namespace engine

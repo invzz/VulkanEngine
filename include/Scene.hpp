@@ -8,4 +8,4 @@
 #include "Engine/Scene/SceneUtils.hpp"
 #include "Engine/Scene/Skybox.hpp"
 
-#endif  // VULKANENGINE_INCLUDE_SCENE_HPP
+#endif

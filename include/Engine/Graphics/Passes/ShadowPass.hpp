@@ -9,13 +9,12 @@ namespace engine {
     class Scene;
     struct ShadowSettings;
 
-    class ShadowPass : public IRenderPass {
+    class ShadowPass : public RenderPassBase {
        public:
         ShadowPass(ShadowSystem& shadow, IRenderContextPort& renderCtx,
             Scene& scene, ShadowSettings& shadowSettings);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override;
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         ShadowSystem&       shadow_;

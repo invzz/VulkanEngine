@@ -6,10 +6,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// DescriptorWriter Tests
-// =============================================================================
-
 TEST(DescriptorWriter, GivenExhaustedPool_WhenBuildCalled_ThenReturnsFalse) {
     Window window(1, 1, "DescriptorWriterTest");
     Device device(window);
@@ -18,7 +14,6 @@ TEST(DescriptorWriter, GivenExhaustedPool_WhenBuildCalled_ThenReturnsFalse) {
 
     auto layout = DescriptorSetLayout::Builder(device).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-    // Create a buffer for descriptor writes
     VkBuffer       buf;
     VkDeviceMemory bufMem;
     device.getMemory().createBuffer(256, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buf, bufMem);
@@ -72,7 +67,6 @@ TEST(DescriptorWriter, GivenPoolWithOverflowEnabled_WhenPoolExhausted_ThenFallba
     ASSERT_EQ(r0, VK_SUCCESS);
     ASSERT_NE(ds0, VK_NULL_HANDLE);
 
-    // Second allocation should succeed via overflow fallback
     VkResult r1  = VK_SUCCESS;
     bool     ok1 = DescriptorWriter(*layout, *pool).writeBuffer(0, &bufInfo).build(ds1, &r1);
     EXPECT_TRUE(ok1);
@@ -98,7 +92,6 @@ TEST(DescriptorWriter, GivenLayoutWithMultipleBindings_WhenBindingMissing_ThenBu
     VkDescriptorSet       ds = VK_NULL_HANDLE;
     VkDescriptorImageInfo dummy{};
 
-    // Only write binding 0, leave binding 1 missing — build() must fail
     VkResult result = VK_SUCCESS;
     bool     ok     = DescriptorWriter(*layout, *pool).writeImage(0, &dummy).build(ds, &result);
 

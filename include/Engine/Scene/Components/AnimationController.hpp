@@ -151,8 +151,6 @@ namespace engine {
             return clips_;
         }
 
-        // ── Graph Integration ─────────────────────────────────────────────
-
         /**
      * @brief Set the animation graph for this controller
      */
@@ -235,26 +233,22 @@ namespace engine {
         EventCallback              eventCallback_;
         AnimationClip::Mode        defaultMode_{AnimationClip::OVERRIDE};
 
-        // Temporarily accumulates fired events during update(), drained by takeEvents()
         std::vector<std::pair<std::string, void*>> firedEvents_;
 
-        // Animation graph integration
         std::shared_ptr<AnimationGraph> graph_;
         int                             currentGraphNodeId_{-1};
         int                             transitioningToNode_{-1};
         float                           transitionTimer_{0.0f};
 
-        // Internal: apply a single clip's transforms to accumulators
         void applyClipToAccumulators(const AnimationClip& clip, const Model& model,
             std::vector<glm::vec3>& outTranslations,
             std::vector<glm::quat>& outRotations,
             std::vector<glm::vec3>& outScales,
             bool                    isFirst) const;
 
-        // Internal: find the highest-priority active clip for a given bone
         int findDominantClipForBone(int boneIndex) const;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_ANIMATIONCONTROLLER_HPP
+#endif

@@ -27,7 +27,6 @@ namespace engine {
         std::unique_ptr<PostProcessPanel> postProcessPanel_;
         std::unique_ptr<DebugPanel>       debugPanel_;
 
-        // Demo UI control for multithreaded recording (references owned by App)
         bool&     multithreadedRecordingEnabled_;
         uint32_t& multithreadedRecordingThreads_;
 
@@ -37,4 +36,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_SETTINGSPANEL_HPP
+#endif

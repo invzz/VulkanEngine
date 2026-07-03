@@ -40,139 +40,129 @@ layout(set = 3, binding = 0) uniform samplerCube irradianceMap;
 layout(set = 3, binding = 1) uniform samplerCube prefilterMap;
 layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
 
-struct SurfaceLite
-{
-  vec3  albedo;
-  float alpha;
-  float metallic;
-  float roughness;
-  vec3  N;
-  vec3  V;
-  vec3  F0;
-  float transmission;
+struct SurfaceLite {
+    vec3  albedo;
+    float alpha;
+    float metallic;
+    float roughness;
+    vec3  N;
+    vec3  V;
+    vec3  F0;
+    float transmission;
 };
 
-vec3 sampleSpecularIBL(vec3 N, vec3 V, vec3 F0, float roughness)
-{
-  float NdotV = clamp(dot(N, V), 0.0, 1.0);
-  vec3  R     = reflect(-V, N);
+vec3 sampleSpecularIBL(vec3 N, vec3 V, vec3 F0, float roughness) {
+    float NdotV = clamp(dot(N, V), 0.0, 1.0);
+    vec3  R     = reflect(-V, N);
 
-  vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * kMaxReflectionLod).rgb;
-  vec2 brdf             = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+    vec3 prefilteredColor = textureLod(prefilterMap, R, roughness * kMaxReflectionLod).rgb;
+    vec2 brdf             = texture(brdfLUT, vec2(NdotV, roughness)).rg;
 
-  // Split-sum approximation.
-  return prefilteredColor * (F0 * brdf.x + brdf.y);
+    // Split-sum approximation.
+    return prefilteredColor * (F0 * brdf.x + brdf.y);
 }
 
-SurfaceLite getSurfaceCompositor(AlphaOnly alphaOnly)
-{
-  vec2 uv = material_getUv(fragUV);
+SurfaceLite getSurfaceCompositor(AlphaOnly alphaOnly) {
+    vec2 uv = material_getUv(fragUV);
 
-  float metallic  = material.params[0][0];
-  float roughness = material.params[0][1];
-  material_decodeMetallicRoughness(uv, metallic, roughness);
+    float metallic  = material.params[0][0];
+    float roughness = material.params[0][1];
+    material_decodeMetallicRoughness(uv, metallic, roughness);
 
-  vec3 N = material_decodeNormalWorld(uv, fragmentNormalWorld);
+    vec3 N = material_decodeNormalWorld(uv, fragmentNormalWorld);
 
-  vec3 V = normalize(ubo.cameraPosition.xyz - fragmentWorldPos);
+    vec3 V = normalize(ubo.cameraPosition.xyz - fragmentWorldPos);
 
-  vec3  F0           = material_computeF0(alphaOnly.albedo, metallic);
-  float transmission = material_decodeTransmission(uv);
+    vec3  F0           = material_computeF0(alphaOnly.albedo, metallic);
+    float transmission = material_decodeTransmission(uv);
 
-  SurfaceLite surf;
-  surf.albedo       = alphaOnly.albedo;
-  surf.alpha        = alphaOnly.alpha;
-  surf.metallic     = metallic;
-  surf.roughness    = roughness;
-  surf.N            = N;
-  surf.V            = V;
-  surf.F0           = F0;
-  surf.transmission = transmission;
-  return surf;
+    SurfaceLite surf;
+    surf.albedo       = alphaOnly.albedo;
+    surf.alpha        = alphaOnly.alpha;
+    surf.metallic     = metallic;
+    surf.roughness    = roughness;
+    surf.N            = N;
+    surf.V            = V;
+    surf.F0           = F0;
+    surf.transmission = transmission;
+    return surf;
 }
 
-vec2 getScreenUv()
-{
-  vec2 size = vec2(textureSize(sceneColor, 0));
-  return clamp(gl_FragCoord.xy / max(size, vec2(1.0)), vec2(0.0), vec2(1.0));
+vec2 getScreenUv() {
+    vec2 size = vec2(textureSize(sceneColor, 0));
+    return clamp(gl_FragCoord.xy / max(size, vec2(1.0)), vec2(0.0), vec2(1.0));
 }
 
 #if PBR_ENABLE_TRANSMISSION
-vec3 sampleRefractedSceneColor(SurfaceLite surf)
-{
-  float thickness           = material.params[3][3];
-  vec3  attenuationColor    = material.attenuationColorAndDist.rgb;
-  float attenuationDistance = material.attenuationColorAndDist.a;
-  float ior                 = material.params[2][1];
+vec3 sampleRefractedSceneColor(SurfaceLite surf) {
+    float thickness           = material.params[3][3];
+    vec3  attenuationColor    = material.attenuationColorAndDist.rgb;
+    float attenuationDistance = material.attenuationColorAndDist.a;
+    float ior                 = material.params[2][1];
 
-  vec3 Nf = (dot(surf.N, surf.V) < 0.0) ? -surf.N : surf.N;
+    vec3 Nf = (dot(surf.N, surf.V) < 0.0) ? -surf.N : surf.N;
 
-  vec3 volumeTransmission = vec3(1.0);
-  if (thickness > 0.0 && attenuationDistance > 0.0)
-  {
-    vec3 safeAttenuationColor = max(attenuationColor, vec3(1e-4));
-    vec3 sigma                = -log(safeAttenuationColor) / attenuationDistance;
-    volumeTransmission        = exp(-sigma * thickness);
-  }
+    vec3 volumeTransmission = vec3(1.0);
+    if (thickness > 0.0 && attenuationDistance > 0.0) {
+        vec3 safeAttenuationColor = max(attenuationColor, vec3(1e-4));
+        vec3 sigma                = -log(safeAttenuationColor) / attenuationDistance;
+        volumeTransmission        = exp(-sigma * thickness);
+    }
 
-  vec3  refractedDir = refract(-surf.V, Nf, 1.0 / max(ior, 1.0001));
-  float hasRefract   = step(1e-6, dot(refractedDir, refractedDir));
+    vec3  refractedDir = refract(-surf.V, Nf, 1.0 / max(ior, 1.0001));
+    float hasRefract   = step(1e-6, dot(refractedDir, refractedDir));
 
-  vec3 refractPos = fragmentWorldPos + refractedDir * thickness;
-  vec4 clip       = ubo.proj * ubo.view * vec4(refractPos, 1.0);
+    vec3 refractPos = fragmentWorldPos + refractedDir * thickness;
+    vec4 clip       = ubo.proj * ubo.view * vec4(refractPos, 1.0);
 
-  vec2 refractUv = getScreenUv();
-  if (clip.w > 1e-6)
-  {
-    vec2 ndc  = clip.xy / clip.w;
-    refractUv = clamp(ndc * 0.5 + 0.5, vec2(0.0), vec2(1.0));
-  }
+    vec2 refractUv = getScreenUv();
+    if (clip.w > 1e-6) {
+        vec2 ndc  = clip.xy / clip.w;
+        refractUv = clamp(ndc * 0.5 + 0.5, vec2(0.0), vec2(1.0));
+    }
 
-  float sceneMaxLod = max(float(textureQueryLevels(sceneColor)) - 1.0, 0.0);
-  float sceneLod    = clamp(surf.roughness * sceneMaxLod, 0.0, sceneMaxLod);
-  vec3  sceneSample = textureLod(sceneColor, refractUv, sceneLod).rgb;
+    float sceneMaxLod = max(float(textureQueryLevels(sceneColor)) - 1.0, 0.0);
+    float sceneLod    = clamp(surf.roughness * sceneMaxLod, 0.0, sceneMaxLod);
+    vec3  sceneSample = textureLod(sceneColor, refractUv, sceneLod).rgb;
 
-  return sceneSample * volumeTransmission * surf.albedo * hasRefract;
+    return sceneSample * volumeTransmission * surf.albedo * hasRefract;
 }
 #endif
 
-void main()
-{
-  vec2        uv           = material_getUv(fragUV);
-  AlphaOnly   alphaOnly    = material_computeAlphaOnly(uv);
-  SurfaceLite surf         = getSurfaceCompositor(alphaOnly);
-  vec3        emissive     = material_decodeEmissive(uv);
-  bool        isAlphaBlend = (material.flagsAndIndices0.y == 2u);
+void main() {
+    vec2        uv           = material_getUv(fragUV);
+    AlphaOnly   alphaOnly    = material_computeAlphaOnly(uv);
+    SurfaceLite surf         = getSurfaceCompositor(alphaOnly);
+    vec3        emissive     = material_decodeEmissive(uv);
+    bool        isAlphaBlend = (material.flagsAndIndices0.y == 2u);
 
-  float effectiveTransmission = 0.0;
+    float effectiveTransmission = 0.0;
 #if PBR_ENABLE_TRANSMISSION
-  bool hasTransmission  = (surf.transmission > kFeatureEps);
-  effectiveTransmission = hasTransmission ? (surf.transmission * (1.0 - surf.metallic)) : 0.0;
+    bool hasTransmission  = (surf.transmission > kFeatureEps);
+    effectiveTransmission = hasTransmission ? (surf.transmission * (1.0 - surf.metallic)) : 0.0;
 
-  // Transmission compositor (fixed-function blending is disabled for the transmission pipeline).
-  if (hasTransmission)
-  {
-    vec3 Nf          = (dot(surf.N, surf.V) < 0.0) ? -surf.N : surf.N;
-    vec3 reflected   = sampleSpecularIBL(normalize(Nf), normalize(surf.V), surf.F0, surf.roughness);
-    vec3 transmitted = sampleRefractedSceneColor(surf);
-    vec3 F           = fresnelSchlick(clamp(dot(Nf, surf.V), 0.0, 1.0), surf.F0);
-    vec3 composite   = mix(transmitted, reflected, F);
-    vec3 finalColor  = mix(reflected, composite, effectiveTransmission) + emissive;
-    outColor         = vec4(finalColor, 1.0);
-    return;
-  }
+    // Transmission compositor (fixed-function blending is disabled for the transmission pipeline).
+    if (hasTransmission) {
+        vec3 Nf          = (dot(surf.N, surf.V) < 0.0) ? -surf.N : surf.N;
+        vec3 reflected   = sampleSpecularIBL(normalize(Nf), normalize(surf.V), surf.F0, surf.roughness);
+        vec3 transmitted = sampleRefractedSceneColor(surf);
+        vec3 F           = fresnelSchlick(clamp(dot(Nf, surf.V), 0.0, 1.0), surf.F0);
+        vec3 composite   = mix(transmitted, reflected, F);
+        vec3 finalColor  = mix(reflected, composite, effectiveTransmission) + emissive;
+        outColor         = vec4(finalColor, 1.0);
+        return;
+    }
 #endif
 
-  // Alpha-blend compositor: premultiplied coverage (pipeline uses ONE / ONE_MINUS_SRC_ALPHA).
-  if (isAlphaBlend)
-  {
-    float a           = clamp(surf.alpha, 0.0, 1.0);
-    vec3  specularIBL = sampleSpecularIBL(normalize(surf.N), normalize(surf.V), surf.F0, surf.roughness);
-    vec3  rgb         = (surf.albedo * a) + (specularIBL * a) + emissive;
-    outColor          = vec4(rgb, a);
-    return;
-  }
+    // Alpha-blend compositor: premultiplied coverage (pipeline uses ONE / ONE_MINUS_SRC_ALPHA).
+    if (isAlphaBlend) {
+        float a           = clamp(surf.alpha, 0.0, 1.0);
+        vec3  specularIBL = sampleSpecularIBL(normalize(surf.N), normalize(surf.V), surf.F0, surf.roughness);
+        vec3  rgb         = (surf.albedo * a) + (specularIBL * a) + emissive;
+        outColor          = vec4(rgb, a);
+        return;
+    }
 
-  // Fallback for non-hybrid forward paths: unlit albedo + emissive.
-  outColor = vec4(surf.albedo + emissive, 1.0);
+    // Fallback for non-hybrid forward paths: unlit albedo + emissive.
+    outColor = vec4(surf.albedo + emissive, 1.0);
 }

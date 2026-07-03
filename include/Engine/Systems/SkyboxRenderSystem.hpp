@@ -30,7 +30,6 @@ namespace engine {
         SkyboxRenderSystem(Device& device, VkRenderPass renderPass);
         ~SkyboxRenderSystem();
 
-        // Non-copyable
         SkyboxRenderSystem(const SkyboxRenderSystem&)            = delete;
         SkyboxRenderSystem& operator=(const SkyboxRenderSystem&) = delete;
 
@@ -55,10 +54,9 @@ namespace engine {
         VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
         std::unique_ptr<engine::DescriptorPool> descriptorPool_;
 
-        // Pre-allocated descriptor sets per frame
         std::vector<VkDescriptorSet> descriptorSets_;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP
+#endif

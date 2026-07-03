@@ -6,8 +6,6 @@
 namespace engine {
 
     void IBLSystem::resetToFallback() {
-        // Destroy current IBL resources (environment + BRDF LUT), then recreate the tiny black fallbacks.
-        // We intentionally reset everything so descriptor infos always point at valid views/samplers.
         irradiance_->deferDestroyImageResources();
         prefiltered_->deferDestroyImageResources();
         brdfLUT_->deferDestroyImageResources();
@@ -27,10 +25,8 @@ namespace engine {
     void IBLSystem::cleanup() {
         VkDevice dev = device_.device();
 
-        // Cleanup is a hard tear-down and may run while frames are still queued.
         vkDeviceWaitIdle(dev);
 
-        // Ensure any previously deferred destroys are executed before we start tearing down.
         device_.flushAllDeferred();
 
         generated_ = false;

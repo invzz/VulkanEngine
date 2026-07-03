@@ -18,4 +18,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // CUBE_SCENELOADER_HPP
+#endif

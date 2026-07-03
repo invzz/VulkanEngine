@@ -18,7 +18,7 @@ namespace engine {
 
     struct SkyboxPushConstants {
         glm::mat4 viewProjection;
-        glm::vec4 debugParams;  // x = debugCubemapFaces (1/0)
+        glm::vec4 debugParams;
     };
 
     SkyboxRenderSystem::SkyboxRenderSystem(Device& device, VkRenderPass renderPass) : device_{device} {
@@ -87,20 +87,15 @@ namespace engine {
         PipelineConfigInfo configInfo{};
         Pipeline::defaultPipelineConfigInfo(configInfo);
 
-        // No vertex input - we generate vertices in the shader
         configInfo.bindingDescriptions.clear();
         configInfo.attributeDescriptions.clear();
 
-        // Draw triangles
         configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-        // Skybox runs after opaque in the hybrid pipeline.
-        // Render at far depth (z=1) and only pass where the depth buffer is still 1.0.
         configInfo.depthStencilInfo.depthTestEnable  = VK_TRUE;
         configInfo.depthStencilInfo.depthWriteEnable = VK_FALSE;
         configInfo.depthStencilInfo.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-        // Disable culling for debugging
         configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
         configInfo.renderPass     = renderPass;
@@ -114,15 +109,13 @@ namespace engine {
             return;
         }
 
-        // Create view-projection matrix without translation
         glm::mat4 view = frameInfo.camera.getView();
-        view[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);  // Remove translation
+        view[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
         SkyboxPushConstants push{};
         push.viewProjection = frameInfo.camera.getProjection() * view;
         push.debugParams    = glm::vec4(settings.debugCubemapFaces ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
 
-        // Update descriptor set with skybox texture
         VkDescriptorImageInfo const imageInfo = skybox->getDescriptorInfo();
 
         VkWriteDescriptorSet descriptorWrite{};
@@ -142,15 +135,14 @@ namespace engine {
         vkCmdBindDescriptorSets(frameInfo.commandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             pipelineLayout_,
-            0,  // first set
-            1,  // set count
+            0,
+            1,
             &descriptorSets_[frameInfo.frameIndex],
             0,
             nullptr);
 
         vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SkyboxPushConstants), &push);
 
-        // Fullscreen triangle
         vkCmdDraw(frameInfo.commandBuffer, 3, 1, 0, 0);
     }
 

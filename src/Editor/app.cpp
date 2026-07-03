@@ -5,14 +5,15 @@
 #include <GLFW/glfw3.h>
 #include <chrono>
 #include <filesystem>
-#include <sstream>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
+#include "Engine/Graphics/GpuProfiler.hpp"
 #include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
@@ -21,19 +22,12 @@
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-
-#include "EngineSceneIO/Scene/SceneSerializer.hpp"
-#include "ModelLib/Resources/ResourceManager.hpp"
-#include "ModelLib/Resources/TextureManager.hpp"
-#include "vulkan/vulkan_core.h"
-
-// Systems
-#include "Engine/Graphics/GpuProfiler.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
 #include "Engine/Systems/DeferredLightingSystem.hpp"
 #include "Engine/Systems/GridRenderSystem.hpp"
+#include "Engine/Systems/IBL/VTexIO.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/InputSystem.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
@@ -44,13 +38,14 @@
 #include "Engine/Systems/SelectionOutlineSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
-// Force VTexIO linkage from ModelLib/Texture.cpp symbols.
-#include "Engine/Systems/IBL/VTexIO.hpp"
+#include "EngineSceneIO/Scene/SceneSerializer.hpp"
+#include "ModelLib/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/TextureManager.hpp"
+#include "vulkan/vulkan_core.h"
 namespace {
     auto const _vtex_link = &engine::ibl_detail::vtex::loadImage;
 }
 
-// Render Passes
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
 #include "Engine/Graphics/Passes/ComputePass.hpp"
 #include "Engine/Graphics/Passes/DeferredLightingPass.hpp"
@@ -61,8 +56,6 @@ namespace {
 #include "Engine/Graphics/Passes/UpdatePass.hpp"
 
 #include "Editor/RenderContext.hpp"
-
-// UI Panels
 #include "Editor/ui/Panels/InspectorPanel.hpp"
 #include "Editor/ui/Panels/PhysicsPanel.hpp"
 #include "Editor/ui/Panels/ScenePanel.hpp"
@@ -108,7 +101,6 @@ namespace engine {
             multithreadedRecordingEnabled, multithreadedRecordingThreads);
         engineState.setSerializer(&sceneSerializer);
 
-        // Sceneserializer bindings
         sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
             .showSkybox                    = &engineState.showSkybox(),
             .showGrid                      = &engineState.showGrid(),
@@ -144,8 +136,6 @@ namespace engine {
             viewportPanel_->setWindow(&window);
             viewportPanel_->setMouse(engineState.getMouse());
             viewportPanel_->onResize = [this](VkExtent2D extent) {
-                // Defer resize to next frame start — we're inside ImGui
-                // rendering (mid command buffer) and can't recreate images.
                 viewportResize_.pending_ = true;
                 viewportResize_.extent_  = extent;
             };
@@ -182,8 +172,7 @@ namespace engine {
         auto& registry = uiManager->getPanelRegistry();
 
         auto scenePanel = std::make_unique<ScenePanel>(device, engineState);
-        // Registry key MUST match the panel's ImGui::Begin("...") title so
-        // DockBuilderDockWindow actually finds the window.
+
         registry.registerPanel("Scene Objects", std::move(scenePanel), DockConstraints{.preferredZone = DockZone::DockLeft, .minSizeX = 250.0f, .minSizeY = 200.0f});
 
         auto inspectorPanel = std::make_unique<InspectorPanel>(engineState);
@@ -212,7 +201,6 @@ namespace engine {
     void App::setupRenderGraph() {
         auto graph = std::make_unique<RenderGraph>();
 
-        // UpdatePass
         graph->addPass(std::make_unique<UpdatePass>(
             engineState.systemPtr<ObjectSelectionSystem>(),
             engineState.systemPtr<InputSystem>(),
@@ -220,35 +208,29 @@ namespace engine {
             engineState.physicsRunning(),
             renderer));
 
-        // ComputePass
         graph->addPass(std::make_unique<ComputePass>(engineState.systemPtr<AnimationSystem>()));
 
-        // ShadowPass
         graph->addPass(std::make_unique<ShadowPass>(
             engineState.system<ShadowSystem>(),
             engineState.renderContext(),
             engineState.scene(),
             engineState.shadowSettings()));
 
-        // DepthPrepass
         graph->addPass(std::make_unique<DepthPrepass>(
             engineState.system<ModelRenderSystem>(),
             renderer));
 
-        // GbufferPass (systems via DI, descriptors via EngineState per-frame)
         graph->addPass(std::make_unique<GbufferPass>(
             engineState.system<ModelRenderSystem>(),
             engineState, renderer,
             engineState.renderContext()));
 
-        // DeferredLightingPass
         graph->addPass(std::make_unique<DeferredLightingPass>(
             engineState.system<DeferredLightingSystem>(),
             engineState.system<ShadowSystem>(),
             engineState, renderer, device,
             engineState.renderContext()));
 
-        // ForwardPass (transparency + debug + mipmaps)
         graph->addPass(std::make_unique<ForwardPass>(
             engineState.system<ModelRenderSystem>(),
             engineState.system<GridRenderSystem>(),
@@ -259,15 +241,11 @@ namespace engine {
             renderer,
             engineState.editor()));
 
-        // TransitionColorToReadOnly — transition offscreen color from
-        // COLOR_ATTACHMENT_OPTIMAL to SHADER_READ_ONLY_OPTIMAL
-        // so ImGui can sample it directly (no copy needed).
         graph->addPass(std::make_unique<LambdaRenderPass>("TransitionToReadOnly",
             [this](FrameInfo& frameInfo) {
                 renderer.transitionColorToShaderReadOnly(frameInfo.commandBuffer);
             }));
 
-        // CompositionPass — UI overlay via callback instead of port interface
         graph->addPass(std::make_unique<CompositionPass>(renderer, [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) { uiManager->render(frameInfo, cmd, cursorVisible); }, window));
 
         renderPipeline->setRenderGraph(std::move(graph));
@@ -303,20 +281,6 @@ namespace engine {
     }
 
     void App::render(float frameTime) {
-        // Pre-beginFrame resize: if the panel's current extent differs from
-        // the offscreen FB extent, resize the FB now (before we touch any
-        // command buffer). This catches:
-        //   1. The previous frame's onResize() (pending_ flag).
-        //   2. The first-frame case where the FB was created at swapchain
-        //      extent and the panel is smaller.
-        //   3. Any case where the panel's getExtent() drifted out of sync
-        //      with the FB (defensive).
-        //
-        // IMPORTANT: the FB MUST be resized BEFORE the render graph runs, not
-        // after. The render graph records commands that reference the FB's
-        // images, so destroying the FB mid-frame would create a use-after-free
-        // (the command buffer would hold a stale VkImageView, and the GPU
-        // would fault on submission with a GPUVM permission error).
         {
             VkExtent2D panelExtent = viewportPanel_ ? viewportPanel_->getExtent() : VkExtent2D{0, 0};
             VkExtent2D fbExtent    = renderer.getOffscreenExtent();
@@ -339,19 +303,13 @@ namespace engine {
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
                 engineState.recreatePostProcessingSystem(device, renderer.getSwapChainRenderPass());
-                // Do NOT recreate the offscreen FB here. The cached
-                // offscreenExtent_ is the OLD panel size (the panel hasn't
-                // been re-laid-out yet at beginFrame() time). The panel's
-                // render() in the composition pass will report the new size
-                // via onResize(), and the pre-beginFrame block at the start
-                // of the NEXT frame will resize the FB then.
             }
 
             int frameIndex = renderer.getFrameIndex();
 
             PickingSystem pickingSystem;
             pickingSystem.setSpatialSystem(&engineState.spatialSystem());
-            FrameInfo     frameInfo{
+            FrameInfo frameInfo{
                 .frameIndex             = frameIndex,
                 .frameTime              = frameTime,
                 .commandBuffer          = commandBuffer,
@@ -374,8 +332,6 @@ namespace engine {
                 .viewGizmoOrbitSelected = engineState.editor().viewGizmoOrbitSelected,
             };
 
-            // Mouse picking: the ViewportPanel has already converted the click
-            // to viewport-normalized coordinates; just execute the ray-AABB test.
             if (frameInfo.viewportMouseClicked) {
                 auto pickResult = pickingSystem.pickViewport(frameInfo,
                     frameInfo.viewportMousePos.x,
@@ -395,7 +351,6 @@ namespace engine {
                 scenePanel->processDelayedDeletions(frameInfo.selectedEntity, frameInfo.selectedObjectId);
             }
 
-            // Persist mode changes made by the viewport panel back to EditorState.
             engineState.editor().viewportSettings.mode = frameInfo.viewportMode;
             selectedObjectId                           = frameInfo.selectedObjectId;
             engineState.setSelectedEntity(frameInfo.selectedEntity);

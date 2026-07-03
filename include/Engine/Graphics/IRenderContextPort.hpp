@@ -10,8 +10,6 @@ namespace engine {
     struct GlobalUbo;
     struct GlobalUboCold;
 
-    /// Port for render-context operations — the only remaining interface.
-    /// EngineState depends on this to avoid coupling to the Editor layer.
     class IRenderContextPort {
        public:
         virtual ~IRenderContextPort() = default;

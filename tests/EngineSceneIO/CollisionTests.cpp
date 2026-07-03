@@ -15,10 +15,6 @@ using namespace engine;
 
 class CollisionTest : public engine::test::SceneFixture {};
 
-// =============================================================================
-// Physics Collision Tests
-// =============================================================================
-
 TEST_F(CollisionTest, GivenShouldBounceScene_WhenSimulated_ThenDynamicCubeBouncesOffStaticBody) {
     std::string const path = "assets/scenes/test/should_bounce_scene.json";
 
@@ -51,19 +47,17 @@ TEST_F(CollisionTest, GivenShouldBounceScene_WhenSimulated_ThenDynamicCubeBounce
     auto& staticBody       = scene.getRegistry().get<RigidBodyComponent>(staticEntity);
     auto& dynamicBody      = scene.getRegistry().get<RigidBodyComponent>(dynamicEntity);
 
-    // Position static floor above dynamic cube so the cube rises and hits it.
     staticTransform.translation.y        = 40.0f;
     dynamicTransform.translation.y       = 35.0f;
     staticBody.pendingBodyStateOverride  = true;
     dynamicBody.pendingBodyStateOverride = true;
 
-    // Force elastic, frictionless contact so the bounce signal is deterministic.
     staticBody.restitution               = 0.95f;
     dynamicBody.restitution              = 0.95f;
     staticBody.friction                  = 0.0f;
     dynamicBody.friction                 = 0.0f;
     dynamicBody.useGravity               = false;
-    dynamicBody.velocity                 = glm::vec3(0.0f, 10.0f, 0.0f);  // moving toward static body
+    dynamicBody.velocity                 = glm::vec3(0.0f, 10.0f, 0.0f);
     dynamicBody.pendingBodyStateOverride = true;
 
     float const startY = dynamicTransform.translation.y;
@@ -101,9 +95,8 @@ TEST_F(CollisionTest, GivenShouldBounceScene_WhenSimulated_ThenDynamicCubeBounce
         previousY = dynamicTransform.translation.y;
     }
 
-    // The cube should have moved toward the static body.
     EXPECT_GT(dynamicTransform.translation.y, startY);
-    // Full bounce signature: upward motion, contact, then rebound.
+
     EXPECT_TRUE(sawUpwardMotion) << "Dynamic body never moved upward";
     EXPECT_TRUE(sawContact) << "Bodies never came into contact";
     EXPECT_TRUE(sawReboundAfterContact) << "Dynamic body did not rebound after contact";

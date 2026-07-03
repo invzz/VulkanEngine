@@ -29,7 +29,7 @@ namespace engine {
 
     void DebugMessenger::create(VkInstance instance) {
         if (messenger_ != VK_NULL_HANDLE) {
-            return;  // already created
+            return;
         }
 
         instance_ = instance;

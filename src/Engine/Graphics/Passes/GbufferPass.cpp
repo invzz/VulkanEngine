@@ -10,7 +10,7 @@ namespace engine {
 
     GbufferPass::GbufferPass(ModelRenderSystem& models, EngineState& engine,
         Renderer& renderer, IRenderContextPort& renderCtx)
-        : models_(models), engine_(engine), renderer_(renderer), renderCtx_(renderCtx) {}
+        : RenderPassBase("Gbuffer"), models_(models), engine_(engine), renderer_(renderer), renderCtx_(renderCtx) {}
 
     void GbufferPass::execute(FrameInfo& frameInfo) {
         models_.beginFrame(frameInfo.frameIndex);
@@ -41,11 +41,6 @@ namespace engine {
             .writeImage(2, &mInfo)
             .writeImage(3, &dInfo)
             .overwrite(engine_.gbufferDescriptorSetRef(frameIndex));
-    }
-
-    const std::string& GbufferPass::getName() const {
-        static std::string n = "Gbuffer";
-        return n;
     }
 
 }  // namespace engine

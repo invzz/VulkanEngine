@@ -15,18 +15,11 @@
 
 namespace engine {
 
-    // ==========================================================================
-    // Public API
-    // ==========================================================================
-
-    void SpatialSystem::rebuild(entt::registry& registry,
-                                const std::unordered_map<entt::entity, const AABB*>& modelBounds) {
-        // Collect leaves: all entities with TransformComponent.
+    void SpatialSystem::rebuild(entt::registry&              registry,
+        const std::unordered_map<entt::entity, const AABB*>& modelBounds) {
         leaves_.clear();
         nodes_.clear();
 
-        // Iterate all entities with TransformComponent.
-        // We also check for ModelComponent to get local bounds.
         auto view = registry.view<TransformComponent>();
         for (auto entity : view) {
             const auto& transform = registry.get<TransformComponent>(entity);
@@ -34,21 +27,17 @@ namespace engine {
             AABB bounds;
             bool hasBounds = false;
 
-            // Try to get model local bounds first.
             if (const auto* localBoundsPtr = modelBounds.count(entity) ? modelBounds.at(entity) : nullptr;
                 localBoundsPtr && localBoundsPtr->isValid()) {
-                // Transform local AABB to world space.
                 const glm::mat4& worldMat = transform.modelTransform();
-                bounds = transformAABB(*localBoundsPtr, worldMat);
-                hasBounds = true;
+                bounds                    = transformAABB(*localBoundsPtr, worldMat);
+                hasBounds                 = true;
             }
 
             if (!hasBounds) {
-                // No model bounds — use the transform position as a point
-                // and expand to a default size (1 unit).
                 const glm::vec3& pos = transform.translation;
-                bounds.min = pos - glm::vec3(0.5f);
-                bounds.max = pos + glm::vec3(0.5f);
+                bounds.min           = pos - glm::vec3(0.5f);
+                bounds.max           = pos + glm::vec3(0.5f);
             }
 
             leaves_.emplace_back(entity, bounds);
@@ -59,7 +48,6 @@ namespace engine {
             return;
         }
 
-        // Initialize root node containing all leaves.
         AABB rootBounds;
         rootBounds.min = glm::vec3(std::numeric_limits<float>::max());
         rootBounds.max = glm::vec3(-std::numeric_limits<float>::max());
@@ -71,7 +59,7 @@ namespace engine {
         nodes_.clear();
         nodes_.emplace_back();
         nodes_.back().bounds = rootBounds;
-        root_ = 0;
+        root_                = 0;
 
         buildTree();
     }
@@ -86,17 +74,11 @@ namespace engine {
         return out;
     }
 
-    // ==========================================================================
-    // BVH construction
-    // ==========================================================================
-
     uint32_t SpatialSystem::insertLeaf(uint32_t nodeIdx, AABB bounds, entt::entity entity) {
-        // Expand node storage if needed.
         if (nodeIdx >= nodes_.size()) {
             nodes_.resize(nodeIdx + 1);
         }
 
-        // This node becomes a leaf.
         nodes_[nodeIdx].bounds = bounds;
         nodes_[nodeIdx].entity = entity;
         nodes_[nodeIdx].left   = UINT32_MAX;
@@ -106,14 +88,14 @@ namespace engine {
     }
 
     void SpatialSystem::buildTree() {
-        if (leaves_.empty()) return;
+        if (leaves_.empty())
+            return;
 
         buildRecursive(root_, 0, static_cast<uint32_t>(leaves_.size()));
     }
 
     void SpatialSystem::buildRecursive(uint32_t nodeIdx, uint32_t leafStart, uint32_t leafCount) {
         if (leafCount <= 1) {
-            // Single leaf — make this node a leaf.
             if (leafCount == 1) {
                 const auto& [ent, bnd] = leaves_[leafStart];
                 nodes_[nodeIdx].bounds = bnd;
@@ -124,7 +106,6 @@ namespace engine {
             return;
         }
 
-        // Compute bounds of all leaves in this range.
         AABB bounds;
         bounds.min = glm::vec3(std::numeric_limits<float>::max());
         bounds.max = glm::vec3(-std::numeric_limits<float>::max());
@@ -134,44 +115,36 @@ namespace engine {
         }
         nodes_[nodeIdx].bounds = bounds;
 
-        // Find the axis with the largest extent.
         const glm::vec3 extents = bounds.max - bounds.min;
-        int axis = 0;
-        if (extents.y > extents.x && extents.y > extents.z) axis = 1;
-        else if (extents.z > extents.x) axis = 2;
+        int             axis    = 0;
+        if (extents.y > extents.x && extents.y > extents.z)
+            axis = 1;
+        else if (extents.z > extents.x)
+            axis = 2;
 
-        // Sort leaves by the midpoint on that axis.
         const float mid = (bounds.min[axis] + bounds.max[axis]) * 0.5f;
         std::sort(leaves_.begin() + leafStart,
-                  leaves_.begin() + leafStart + leafCount,
-                  [axis, mid](const auto& a, const auto& b) {
-                      const float aMid = (a.second.min[axis] + a.second.max[axis]) * 0.5f;
-                      const float bMid = (b.second.min[axis] + b.second.max[axis]) * 0.5f;
-                      return aMid < bMid;
-                  });
+            leaves_.begin() + leafStart + leafCount,
+            [axis, mid](const auto& a, const auto& b) {
+                const float aMid = (a.second.min[axis] + a.second.max[axis]) * 0.5f;
+                const float bMid = (b.second.min[axis] + b.second.max[axis]) * 0.5f;
+                return aMid < bMid;
+            });
 
-        // Split at the midpoint.
-        const uint32_t leftCount = leafCount / 2;
+        const uint32_t leftCount  = leafCount / 2;
         const uint32_t rightCount = leafCount - leftCount;
 
-        // Create left child.
         const uint32_t leftChild = static_cast<uint32_t>(nodes_.size());
         nodes_.emplace_back();
         nodes_[nodeIdx].left = leftChild;
 
-        // Create right child.
         const uint32_t rightChild = static_cast<uint32_t>(nodes_.size());
         nodes_.emplace_back();
         nodes_[nodeIdx].right = rightChild;
 
-        // Recurse.
         buildRecursive(leftChild, leafStart, leftCount);
         buildRecursive(rightChild, leafStart + leftCount, rightCount);
     }
-
-    // ==========================================================================
-    // Ray-AABB intersection
-    // ==========================================================================
 
     bool SpatialSystem::intersectRayAABB(const Ray& ray, const AABB& aabb, float& tNear) const {
         const glm::vec3 invDir = glm::vec3(1.0f) / ray.direction;
@@ -184,32 +157,30 @@ namespace engine {
         const float tEntry = glm::max(glm::max(t1.x, t1.y), t1.z);
         const float tExit  = glm::min(glm::min(t2.x, t2.y), t2.z);
 
-        if (tEntry > tExit || tExit < 0.0f) return false;
+        if (tEntry > tExit || tExit < 0.0f)
+            return false;
 
         tNear = (tEntry > 0.0f) ? tEntry : 0.0f;
         return true;
     }
 
-    // ==========================================================================
-    // Raycast traversal
-    // ==========================================================================
-
     std::optional<SpatialSystem::RayHit> SpatialSystem::raycastTraversal(const Ray& ray) const {
-        if (root_ == UINT32_MAX) return std::nullopt;
+        if (root_ == UINT32_MAX)
+            return std::nullopt;
 
         std::optional<RayHit> bestHit;
-        float bestT = std::numeric_limits<float>::max();
+        float                 bestT = std::numeric_limits<float>::max();
 
-        // Iterative traversal using a stack.
         struct StackEntry {
             uint32_t nodeIdx;
-            float    tMin;  // t-entry for this node
+            float    tMin;
         };
         std::vector<StackEntry> stack;
         stack.reserve(64);
 
         float rootT = 0.0f;
-        if (!intersectRayAABB(ray, nodes_[root_].bounds, rootT)) return std::nullopt;
+        if (!intersectRayAABB(ray, nodes_[root_].bounds, rootT))
+            return std::nullopt;
 
         stack.emplace_back(root_, rootT);
 
@@ -220,24 +191,21 @@ namespace engine {
             const uint32_t nodeIdx = entry.nodeIdx;
             const float    tMin    = entry.tMin;
 
-            // If this node is a leaf.
             if (nodes_[nodeIdx].left == UINT32_MAX) {
-                // Leaf node — check if we already found a closer hit.
-                if (tMin >= bestT) continue;
+                if (tMin >= bestT)
+                    continue;
 
                 const float tEntry = tMin;
-                if (bestHit.has_value() && tEntry >= bestHit->distance) continue;
+                if (bestHit.has_value() && tEntry >= bestHit->distance)
+                    continue;
 
-                // Compute hit position.
                 const glm::vec3 hitPos = ray.origin + ray.direction * tEntry;
 
                 bestHit = RayHit{nodes_[nodeIdx].entity, tEntry, hitPos};
-                bestT = tEntry;
+                bestT   = tEntry;
                 continue;
             }
 
-            // Internal node — traverse children.
-            // Push the farther child first so the closer child is processed first.
             const uint32_t left  = nodes_[nodeIdx].left;
             const uint32_t right = nodes_[nodeIdx].right;
 
@@ -248,7 +216,6 @@ namespace engine {
             const bool rightHit = intersectRayAABB(ray, nodes_[right].bounds, tRight);
 
             if (leftHit && rightHit) {
-                // Both hit — push farther first.
                 if (tLeft < tRight) {
                     stack.emplace_back(left, tLeft);
                     stack.emplace_back(right, tRight);
@@ -266,14 +233,10 @@ namespace engine {
         return bestHit;
     }
 
-    // ==========================================================================
-    // AABB query traversal
-    // ==========================================================================
-
     void SpatialSystem::queryAABBT(const AABB& bounds, std::vector<entt::entity>& out) const {
-        if (root_ == UINT32_MAX) return;
+        if (root_ == UINT32_MAX)
+            return;
 
-        // Use a simple iterative traversal.
         struct StackEntry {
             uint32_t nodeIdx;
         };
@@ -285,22 +248,20 @@ namespace engine {
             const uint32_t nodeIdx = stack.back().nodeIdx;
             stack.pop_back();
 
-            // Check AABB overlap.
             const AABB& nodeBounds = nodes_[nodeIdx].bounds;
-            const bool overlaps =
+            const bool  overlaps =
                 nodeBounds.min.x <= bounds.max.x && nodeBounds.max.x >= bounds.min.x &&
                 nodeBounds.min.y <= bounds.max.y && nodeBounds.max.y >= bounds.min.y &&
                 nodeBounds.min.z <= bounds.max.z && nodeBounds.max.z >= bounds.min.z;
 
-            if (!overlaps) continue;
+            if (!overlaps)
+                continue;
 
-            // Leaf node.
             if (nodes_[nodeIdx].left == UINT32_MAX) {
                 out.push_back(nodes_[nodeIdx].entity);
                 continue;
             }
 
-            // Internal node — push children.
             stack.emplace_back(nodes_[nodeIdx].left);
             stack.emplace_back(nodes_[nodeIdx].right);
         }

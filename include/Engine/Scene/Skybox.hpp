@@ -90,9 +90,9 @@ namespace engine {
 
         VkFormat imageFormat_ = VK_FORMAT_UNDEFINED;
 
-        int size_ = 0;  // Width/height of each face (assumed square)
+        int size_ = 0;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
+#endif

@@ -7,10 +7,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// Device Tests
-// =============================================================================
-
 TEST(Device, GivenThreadLocalPoolsEnabled_WhenThreadsUseCommands_ThenCleanupSucceeds) {
     Window window(1, 1, "DeviceTest");
     {
@@ -26,7 +22,6 @@ TEST(Device, GivenThreadLocalPoolsEnabled_WhenThreadsUseCommands_ThenCleanupSucc
                     VkCommandBuffer cmd = device.beginSingleTimeCommands();
                     device.endSingleTimeCommands(cmd);
                 } catch (...) {
-                    // Swallow to ensure thread completion
                 }
             });
         }
@@ -35,6 +30,5 @@ TEST(Device, GivenThreadLocalPoolsEnabled_WhenThreadsUseCommands_ThenCleanupSucc
             t.join();
     }
 
-    // If we reach here the destructor didn't abort the process
     SUCCEED();
 }

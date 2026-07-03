@@ -13,16 +13,16 @@ namespace engine {
  */
     enum class DockZone {
         None,
-        Top,         // Above viewport (toolbar, etc.)
-        Bottom,      // Below viewport
-        Left,        // Left of viewport
-        Right,       // Right of viewport
-        Center,      // Overlapping viewport (floating/overlay)
-        DockTop,     // Docked to top of dockspace
-        DockBottom,  // Docked to bottom of dockspace
-        DockLeft,    // Docked to left of dockspace
-        DockRight,   // Docked to right of dockspace
-        DockCenter,  // Docked to center of dockspace (default)
+        Top,
+        Bottom,
+        Left,
+        Right,
+        Center,
+        DockTop,
+        DockBottom,
+        DockLeft,
+        DockRight,
+        DockCenter,
     };
 
     /**
@@ -38,7 +38,7 @@ namespace engine {
         bool        floatable     = true;
         float       minSizeX      = 200.0f;
         float       minSizeY      = 150.0f;
-        std::string dockToPanel;  // Optional: prefer docking next to another panel
+        std::string dockToPanel;
     };
 
     /**
@@ -47,13 +47,13 @@ namespace engine {
  * Presets define a complete layout configuration that can be applied at once.
  */
     enum class LayoutPreset {
-        Default,    // Scene left, Inspector right, toolbar top
-        Minimal,    // Maximize viewport, hide panels
-        Modeling,   // Scene left, Inspector right, Viewport center
-        Rendering,  // Viewport center, Inspector right, Settings bottom
-        Custom,     // User-defined layout
+        Default,
+        Minimal,
+        Modeling,
+        Rendering,
+        Custom,
     };
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_LAYOUT_HPP
+#endif

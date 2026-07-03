@@ -107,25 +107,19 @@ namespace engine {
             int idleId = graph.addNode("Idle", 0);
             int walkId = graph.addNode("Walk", 1);
 
-            // Set current node to idle
             graph.setCurrentNode(idleId);
 
-            // Before step: elapsed time = 0
-            // Add time-based transition with threshold 2.0s
             graph.addTransition(idleId, walkId, "ToWalk",
                 TransitionCondition::TIME_BASED,
                 2.0f);
 
-            // Step with 1.0f — should not trigger (below threshold)
             auto trigger = graph.step(1.0f);
             ASSERT_FALSE(trigger.triggered);
 
-            // Step with 2.0f — should trigger
             trigger = graph.step(2.0f);
             ASSERT_TRUE(trigger.triggered);
             ASSERT_EQ(trigger.targetNodeId, walkId);
 
-            // Current node should now be walkId
             ASSERT_EQ(graph.getCurrentNode()->id, walkId);
         }
 

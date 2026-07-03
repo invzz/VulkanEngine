@@ -13,7 +13,6 @@ namespace engine {
        public:
         explicit DeviceMemory(Device& device);
 
-        // Memory & buffer helper functions
         [[nodiscard]] uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags) const;
 
         void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryPropertyFlags, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
@@ -27,9 +26,8 @@ namespace engine {
 
         void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t layerCount) const;
 
-        // More flexible transfer helpers (multiple mips/layers).
         void copyBufferToImage(VkBuffer buffer, VkImage image, const std::vector<VkBufferImageCopy>& regions, VkImageLayout imageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) const;
-        // copy from `srcImageLayout` and optionally restore to `finalImageLayout` if not VK_IMAGE_LAYOUT_UNDEFINED.
+
         void copyImageToBuffer(VkImage            image,
             VkBuffer                              buffer,
             const std::vector<VkBufferImageCopy>& regions,
@@ -44,4 +42,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICEMEMORY_HPP
+#endif

@@ -27,7 +27,7 @@ namespace engine {
      */
     class PickingSystem {
        public:
-        PickingSystem() = default;
+        PickingSystem()  = default;
         ~PickingSystem() = default;
 
         /**
@@ -51,10 +51,9 @@ namespace engine {
             float viewportX, float viewportY);
 
        private:
-        // --- Ray helpers -------------------------------------------------------
         struct Ray {
             glm::vec3 origin;
-            glm::vec3 direction;  // normalized
+            glm::vec3 direction;
         };
 
         /** Build a world-space ray from normalized viewport coordinates. */
@@ -63,7 +62,6 @@ namespace engine {
         /** Project a world-space point to viewport-normalized [0,1]². */
         glm::vec2 worldToViewport(FrameInfo& frameInfo, const glm::vec3& worldPos) const;
 
-        // --- Intersection tests ------------------------------------------------
         bool intersectRayAABB(const Ray& ray,
             const glm::vec3& aabbMin, const glm::vec3& aabbMax,
             float& tNear) const;
@@ -75,7 +73,6 @@ namespace engine {
         /** Screen-space pick radius in pixels (for cameras, lights, etc.). */
         static constexpr float kPickRadiusPx = 18.0f;
 
-        // Spatial acceleration (optional).
         SpatialSystem* spatial_{nullptr};
     };
 

@@ -36,7 +36,6 @@ namespace engine {
         IBLSystem(Device& device);
         ~IBLSystem();
 
-        // Non-copyable
         IBLSystem(const IBLSystem&)            = delete;
         IBLSystem& operator=(const IBLSystem&) = delete;
 
@@ -46,16 +45,9 @@ namespace engine {
    */
         void generateFromSkybox(Skybox& skybox);
 
-        // Preferred workflow: load prebaked IBL assets from disk.
-        // Directory convention (recommended):
-        //   <dir>/irradiance.vtex
-        //   <dir>/prefilter.vtex
-        //   <dir>/brdf_lut.vtex
         [[nodiscard]] bool loadFromDisk(const std::string& directory);
         [[nodiscard]] bool saveToDisk(const std::string& directory) const;
 
-        // Drop current environment IBL and restore black fallback textures.
-        // Useful when the user disables the skybox/environment.
         void resetToFallback();
 
         void requestRegeneration(const Settings& settings, Skybox& skybox);
@@ -73,13 +65,10 @@ namespace engine {
             return generated_;
         }
 
-        // Incremented whenever the underlying IBL image views/samplers change.
-        // Useful for callers to refresh descriptor sets after regeneration.
         [[nodiscard]] uint64_t getGenerationCounter() const {
             return generationCounter_;
         }
 
-        // Accessors for descriptor binding
         [[nodiscard]] VkDescriptorImageInfo getIrradianceDescriptorInfo() const;
         [[nodiscard]] VkDescriptorImageInfo getPrefilteredDescriptorInfo() const;
         [[nodiscard]] VkDescriptorImageInfo getBRDFLUTDescriptorInfo() const;
@@ -99,7 +88,6 @@ namespace engine {
         std::unique_ptr<ibl::PrefilteredEnvIBL> prefiltered_;
         std::unique_ptr<ibl::BRDFLUT>           brdfLUT_;
 
-        // Deferred regeneration state
         bool     regenerationRequested_ = false;
         Settings nextSettings_;
         Skybox*  nextSkybox_ = nullptr;
@@ -107,4 +95,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_IBLSYSTEM_HPP
+#endif

@@ -34,7 +34,6 @@ namespace engine {
     }
 
     void CubeShadowMap::createDepthResources() {
-        // Create cube map image
         VkImageCreateInfo imageInfo{};
         imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -43,7 +42,7 @@ namespace engine {
         imageInfo.extent.height = size_;
         imageInfo.extent.depth  = 1;
         imageInfo.mipLevels     = 1;
-        imageInfo.arrayLayers   = 6;  // 6 faces for cube map
+        imageInfo.arrayLayers   = 6;
         imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -55,7 +54,6 @@ namespace engine {
             throw std::runtime_error("Failed to create cube shadow map image");
         }
 
-        // Allocate memory
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), depthImage_, &memRequirements);
 
@@ -70,7 +68,6 @@ namespace engine {
 
         vkBindImageMemory(device_.device(), depthImage_, depthImageMemory_, 0);
 
-        // Create cube image view (for sampling in shader)
         VkImageViewCreateInfo cubeViewInfo{};
         cubeViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         cubeViewInfo.image                           = depthImage_;
@@ -86,7 +83,6 @@ namespace engine {
             throw std::runtime_error("Failed to create cube shadow map image view");
         }
 
-        // Create individual face image views (for rendering)
         for (int i = 0; i < 6; i++) {
             VkImageViewCreateInfo faceViewInfo{};
             faceViewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -104,7 +100,6 @@ namespace engine {
             }
         }
 
-        // Transition to READ_ONLY_OPTIMAL initially so it's valid for binding
         VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
 
         VkImageMemoryBarrier barrier{};
@@ -135,7 +130,7 @@ namespace engine {
         depthAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
         depthAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        // Since we transition per-layer before and after, use same layout
+
         depthAttachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         depthAttachment.finalLayout   = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -148,7 +143,6 @@ namespace engine {
         subpass.colorAttachmentCount    = 0;
         subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-        // Add subpass dependencies for proper synchronization
         std::array<VkSubpassDependency, 2> dependencies;
 
         dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
@@ -212,7 +206,7 @@ namespace engine {
         samplerInfo.minLod        = 0.0f;
         samplerInfo.maxLod        = 1.0f;
         samplerInfo.borderColor   = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-        samplerInfo.compareEnable = VK_FALSE;  // We'll compare manually in shader
+        samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp     = VK_COMPARE_OP_LESS;
 
         if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &sampler_) != VK_SUCCESS) {
@@ -221,32 +215,30 @@ namespace engine {
     }
 
     glm::mat4 CubeShadowMap::getFaceViewMatrix(const glm::vec3& lightPos, int face) {
-        // Face directions: +X, -X, +Y, -Y, +Z, -Z
         static const glm::vec3 targets[6] = {
-            glm::vec3(1.0f, 0.0f, 0.0f),   // +X
-            glm::vec3(-1.0f, 0.0f, 0.0f),  // -X
-            glm::vec3(0.0f, 1.0f, 0.0f),   // +Y
-            glm::vec3(0.0f, -1.0f, 0.0f),  // -Y
-            glm::vec3(0.0f, 0.0f, 1.0f),   // +Z
-            glm::vec3(0.0f, 0.0f, -1.0f),  // -Z
+            glm::vec3(1.0f, 0.0f, 0.0f),
+            glm::vec3(-1.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f),
+            glm::vec3(0.0f, -1.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f),
+            glm::vec3(0.0f, 0.0f, -1.0f),
         };
 
         static const glm::vec3 ups[6] = {
-            glm::vec3(0.0f, -1.0f, 0.0f),  // +X
-            glm::vec3(0.0f, -1.0f, 0.0f),  // -X
-            glm::vec3(0.0f, 0.0f, 1.0f),   // +Y
-            glm::vec3(0.0f, 0.0f, -1.0f),  // -Y
-            glm::vec3(0.0f, -1.0f, 0.0f),  // +Z
-            glm::vec3(0.0f, -1.0f, 0.0f),  // -Z
+            glm::vec3(0.0f, -1.0f, 0.0f),
+            glm::vec3(0.0f, -1.0f, 0.0f),
+            glm::vec3(0.0f, 0.0f, 1.0f),
+            glm::vec3(0.0f, 0.0f, -1.0f),
+            glm::vec3(0.0f, -1.0f, 0.0f),
+            glm::vec3(0.0f, -1.0f, 0.0f),
         };
 
         return glm::lookAt(lightPos, lightPos + targets[face], ups[face]);
     }
 
     glm::mat4 CubeShadowMap::getProjectionMatrix(float nearPlane, float farPlane) {
-        // 90 degree FOV for cube faces
         glm::mat4 proj = glm::perspective(glm::radians(90.0f), 1.0f, nearPlane, farPlane);
-        // Vulkan Y flip
+
         proj[1][1] *= -1;
         return proj;
     }
@@ -285,11 +277,9 @@ namespace engine {
     }
 
     void CubeShadowMap::transitionToAttachmentLayout(VkCommandBuffer commandBuffer) {
-        // Transition ALL 6 layers from shader read (or undefined) to attachment
-        // optimal
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;  // Don't care about previous contents
+        barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
         barrier.newLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
@@ -298,7 +288,7 @@ namespace engine {
         barrier.subresourceRange.baseMipLevel   = 0;
         barrier.subresourceRange.levelCount     = 1;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount     = 6;  // All 6 faces
+        barrier.subresourceRange.layerCount     = 6;
 
         barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
         barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -307,7 +297,6 @@ namespace engine {
     }
 
     void CubeShadowMap::transitionToShaderReadLayout(VkCommandBuffer commandBuffer) {
-        // Transition ALL 6 layers from attachment optimal to shader read
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout                       = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -319,7 +308,7 @@ namespace engine {
         barrier.subresourceRange.baseMipLevel   = 0;
         barrier.subresourceRange.levelCount     = 1;
         barrier.subresourceRange.baseArrayLayer = 0;
-        barrier.subresourceRange.layerCount     = 6;  // All 6 faces
+        barrier.subresourceRange.layerCount     = 6;
 
         barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;

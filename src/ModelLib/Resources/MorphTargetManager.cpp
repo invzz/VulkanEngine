@@ -16,10 +16,9 @@
 
 namespace engine {
 
-    // MorphDelta structure matching the shader (vec4 for 16-byte alignment)
     struct MorphDelta {
-        glm::vec4 positionDelta;  // w component unused but needed for alignment
-        glm::vec4 normalDelta;    // w component unused but needed for alignment
+        glm::vec4 positionDelta;
+        glm::vec4 normalDelta;
     };
 
     MorphTargetManager::MorphTargetManager(Device& device) : device_(device) {
@@ -33,7 +32,6 @@ namespace engine {
 
         const Model* modelPtr = model.get();
 
-        // Skip if already initialized
         if (modelData_.contains(modelPtr)) {
             return;
         }
@@ -52,19 +50,15 @@ namespace engine {
             return;
         }
 
-        // For simplicity, handle the first morph target set
-        // In a full implementation, you'd handle multiple sets
         const auto& morphSet = morphTargetSets[0];
 
         data.morphTargetCount = static_cast<uint32_t>(morphSet.targets.size());
         data.vertexCount      = morphSet.vertexCount;
         data.vertexOffset     = morphSet.vertexOffset;
 
-        // Calculate buffer sizes
         size_t const morphDeltaCount = data.morphTargetCount * data.vertexCount;
         size_t const weightsCount    = data.morphTargetCount;
 
-        // Create morph delta buffer (position and normal deltas)
         std::vector<MorphDelta> deltas;
         deltas.reserve(morphDeltaCount);
 
@@ -72,7 +66,6 @@ namespace engine {
             for (uint32_t vertexIndex = 0; vertexIndex < data.vertexCount; vertexIndex++) {
                 MorphDelta delta{};
 
-                // Use position index mapping if available, otherwise direct indexing
                 uint32_t     posIdx       = vertexIndex;
                 size_t const vertexIndexS = static_cast<size_t>(vertexIndex);
                 if (!morphSet.positionIndices.empty() && vertexIndexS < morphSet.positionIndices.size()) {
@@ -84,7 +77,6 @@ namespace engine {
                 deltas.push_back(delta);
             }
 
-            // Debug: verify mapping is working
             if (&target == morphSet.targets.data()) {
                 std::cout << "[MorphTargetManager] Position index mapping sample: ";
                 for (size_t i = 0; i < std::min(static_cast<size_t>(6), morphSet.positionIndices.size()); i++) {
@@ -100,7 +92,6 @@ namespace engine {
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        // Upload delta data
         Buffer stagingBuffer{device_,
             sizeof(MorphDelta),
             static_cast<uint32_t>(deltas.size()),
@@ -117,7 +108,6 @@ namespace engine {
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_ACCESS_SHADER_READ_BIT);
 
-        // Create weights buffer (will be updated each frame)
         data.weightsBuffer = std::make_unique<Buffer>(device_,
             sizeof(float),
             static_cast<uint32_t>(weightsCount),
@@ -126,7 +116,6 @@ namespace engine {
 
         data.weightsBuffer->map();
 
-        // Initialize with default weights
         std::vector<float> initialWeights(weightsCount, 0.0f);
         if (!morphSet.weights.empty()) {
             for (size_t i = 0; i < std::min(weightsCount, morphSet.weights.size()); i++) {
@@ -135,7 +124,6 @@ namespace engine {
         }
         data.weightsBuffer->writeToBuffer(initialWeights.data(), sizeof(float) * weightsCount);
 
-        // Create blended output buffer (will store computed vertices)
         data.blendedBuffer = std::make_unique<Buffer>(device_,
             sizeof(Model::Vertex),
             static_cast<uint32_t>(data.vertexCount),
@@ -152,21 +140,18 @@ namespace engine {
         auto         it       = modelData_.find(modelPtr);
 
         if (it == modelData_.end()) {
-            // Not initialized, skip
             return;
         }
 
         auto& data = it->second;
 
-        // Get current morph weights from model nodes
-        // For simplicity, take weights from the first node that has them
         const auto&        nodes = model->getNodes();
         std::vector<float> currentWeights(data.morphTargetCount, 0.0f);
 
         for (const auto& node : nodes) {
             if (!node.morphWeights.empty()) {
                 static int debugFrameCount = 0;
-                if (debugFrameCount++ < 5) {  // Only print first 5 frames
+                if (debugFrameCount++ < 5) {
                     std::cout << "[MorphTargetManager] Frame weights: ";
                     for (float morphWeight : node.morphWeights) {
                         std::cout << morphWeight << " ";
@@ -176,14 +161,12 @@ namespace engine {
                 for (size_t i = 0; i < std::min(currentWeights.size(), node.morphWeights.size()); i++) {
                     currentWeights[i] = node.morphWeights[i];
                 }
-                break;  // Use the first node with weights
+                break;
             }
         }
 
-        // Update weights buffer
         data.weightsBuffer->writeToBuffer(currentWeights.data(), sizeof(float) * currentWeights.size());
 
-        // Debug: print weights
         static int frameCount = 0;
         if (frameCount++ < 3) {
             std::cout << "[MorphTargetManager] Weights: ";
@@ -193,7 +176,6 @@ namespace engine {
             std::cout << '\n';
         }
 
-        // Setup push constants
         MorphTargetCompute::PushConstants const pushConstants{
             .vertexOffset     = data.vertexOffset,
             .vertexCount      = static_cast<uint32_t>(data.vertexCount),
@@ -201,7 +183,6 @@ namespace engine {
             .deltaOffset      = 0,
         };
 
-        // Debug: print push constants
         static bool printedOnce = false;
         if (!printedOnce) {
             std::cout << "[MorphTargetManager] Compute dispatch: offset=" << pushConstants.vertexOffset << " count=" << pushConstants.vertexCount << " morphTargets=" << pushConstants.morphTargetCount
@@ -209,7 +190,6 @@ namespace engine {
             printedOnce = true;
         }
 
-        // Dispatch compute shader and cache descriptor set
         data.descriptorSet = compute_->blend(commandBuffer,
             data.descriptorSet,
             model->getVertexBuffer(),
@@ -218,7 +198,6 @@ namespace engine {
             data.blendedBuffer->getBuffer(),
             pushConstants);
 
-        // Add memory barrier between compute and graphics
         VkBufferMemoryBarrier const barrier{
             .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
             .srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT,

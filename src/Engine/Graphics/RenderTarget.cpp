@@ -65,9 +65,6 @@ namespace engine {
             throw std::runtime_error("Failed to create render target image view");
         }
 
-        // Always create a single-mip-level attachment view when the image
-        // has multiple mip levels. getAttachmentView() is used for framebuffer
-        // attachments which require exactly 1 mip level per VUID-00883.
         if (info.createAttachmentView || info.mipLevels > 1) {
             VkImageViewCreateInfo attachmentViewInfo           = viewInfo;
             attachmentViewInfo.subresourceRange.baseMipLevel   = info.createAttachmentView ? info.attachmentBaseMipLevel : 0;

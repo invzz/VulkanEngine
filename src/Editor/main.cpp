@@ -3,8 +3,9 @@
 #include <sstream>
 #include <string>
 
-#include "Editor/app.hpp"
 #include "Engine/Core/Logger.hpp"
+
+#include "Editor/app.hpp"
 
 #ifndef SHADER_PATH
 #define SHADER_PATH "assets/shaders/compiled/"
@@ -44,7 +45,6 @@ int main(int argc, char** argv) {
     try {
         app.run();
     } catch (const std::exception& e) {
-        // Handle exceptions appropriately
         engine::Logger::error(engine::LogChannel::General, "Error: ", e.what());
         return EXIT_FAILURE;
     }

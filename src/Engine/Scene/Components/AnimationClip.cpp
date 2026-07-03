@@ -12,23 +12,20 @@ namespace engine {
         if (!active || weight <= 0.0f || clipIndex < 0)
             return;
 
-        // Get the animation data
         const auto& animations = model.getAnimations();
         if (clipIndex >= static_cast<int>(animations.size()))
             return;
         const auto& animation = animations[static_cast<size_t>(clipIndex)];
 
-        // Step time
         currentTime += deltaTime * speed;
 
-        // Handle looping
         if (currentTime > animation.duration) {
             if (loop) {
                 currentTime = fmod(currentTime, animation.duration);
             } else {
                 currentTime = animation.duration;
                 active      = false;
-                return;  // Finished, no more transforms
+                return;
             }
         }
 
@@ -36,7 +33,6 @@ namespace engine {
         const auto& channels = animation.channels;
         const auto& nodes    = model.getNodes();
 
-        // Interpolate each channel and accumulate into output vectors
         for (const auto& channel : channels) {
             if (channel.targetNode < 0 || channel.targetNode >= static_cast<int>(nodes.size()))
                 continue;
@@ -152,7 +148,6 @@ namespace engine {
                 }
 
                 case Model::AnimationChannel::WEIGHTS: {
-                    // Morph target weights — stored per-node, handled separately
                     break;
                 }
             }

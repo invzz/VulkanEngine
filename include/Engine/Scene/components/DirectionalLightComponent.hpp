@@ -14,11 +14,10 @@ namespace engine {
         bool      useTargetPoint{false};
         glm::vec3 targetPoint{0.0f, 0.0f, 0.0f};
 
-        // Light baking metadata
         bool          bake{false};
         LightMobility lightType{LightMobility::Static};
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_DIRECTIONALLIGHTCOMPONENT_HPP
+#endif

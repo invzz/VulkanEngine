@@ -6,10 +6,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// Renderer Construction Tests
-// =============================================================================
-
 class RendererTest : public engine::test::DeviceFixture {};
 
 TEST_F(RendererTest, GivenValidWindowAndDevice_WhenRendererCreated_ThenNoThrow) {
@@ -65,10 +61,6 @@ TEST_F(RendererTest, GivenRenderer_WhenGetOffscreenRenderPassLoadColorDepth_Then
     EXPECT_NE(renderPass, VK_NULL_HANDLE);
 }
 
-// =============================================================================
-// Renderer State Tests
-// =============================================================================
-
 TEST_F(RendererTest, GivenNewRenderer_WhenFrameNotStarted_ThenIsFrameInProgressReturnsFalse) {
     Renderer renderer(window(), device());
 
@@ -78,7 +70,6 @@ TEST_F(RendererTest, GivenNewRenderer_WhenFrameNotStarted_ThenIsFrameInProgressR
 TEST_F(RendererTest, GivenNewRenderer_WhenSwapChainRecreatedOnConstruction_ThenWasSwapChainRecreatedReturnsTrue) {
     Renderer renderer(window(), device());
 
-    // SwapChain is created during Renderer construction, so this is expected to be true initially
     EXPECT_TRUE(renderer.wasSwapChainRecreated());
 }
 
@@ -96,10 +87,6 @@ TEST_F(RendererTest, GivenRenderer_WhenGetSwapChainExtent_ThenReturnsValidDimens
     EXPECT_GT(extent.width, 0u);
     EXPECT_GT(extent.height, 0u);
 }
-
-// =============================================================================
-// Renderer Descriptor Info Tests
-// =============================================================================
 
 TEST_F(RendererTest, GivenRenderer_WhenGetOffscreenImageInfo_ThenReturnsValidInfo) {
     Renderer renderer(window(), device());
@@ -151,21 +138,15 @@ TEST_F(RendererTest, GivenRenderer_WhenGetOffscreenColorImage_ThenReturnsValidHa
     EXPECT_NE(image, VK_NULL_HANDLE);
 }
 
-// =============================================================================
-// Renderer Frame Lifecycle Tests
-// =============================================================================
-
 TEST_F(RendererTest, GivenRenderer_WhenBeginFrameCalled_ThenReturnsValidCommandBuffer) {
     Renderer renderer(window(), device());
 
     VkCommandBuffer cmdBuffer = renderer.beginFrame();
 
-    // If window is minimized, beginFrame returns nullptr which is valid
     if (cmdBuffer != nullptr) {
         EXPECT_NE(cmdBuffer, VK_NULL_HANDLE);
         EXPECT_TRUE(renderer.isFrameInProgress());
 
-        // Must end frame to clean up
         renderer.endFrame();
     }
 }
@@ -176,21 +157,18 @@ TEST_F(RendererTest, GivenRenderer_WhenMultipleFramesRendered_ThenFrameIndexRota
     int firstIndex  = -1;
     int secondIndex = -1;
 
-    // First frame
     VkCommandBuffer cmd1 = renderer.beginFrame();
     if (cmd1 != nullptr) {
         firstIndex = renderer.getFrameIndex();
         renderer.endFrame();
     }
 
-    // Second frame
     VkCommandBuffer cmd2 = renderer.beginFrame();
     if (cmd2 != nullptr) {
         secondIndex = renderer.getFrameIndex();
         renderer.endFrame();
     }
 
-    // Frame indices should rotate (0, 1, 0, 1...)
     if (firstIndex >= 0 && secondIndex >= 0) {
         EXPECT_NE(firstIndex, secondIndex);
     }

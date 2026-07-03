@@ -55,14 +55,11 @@ namespace engine {
         pipelineConfig.renderPass     = renderPass;
         pipelineConfig.pipelineLayout = pipelineLayout;
 
-        // Disable depth test/write for post process quad
         pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
-        // Rasterization: Cull mode none
         pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
-        // Empty vertex input state (generating vertices in shader)
         pipelineConfig.bindingDescriptions.clear();
         pipelineConfig.attributeDescriptions.clear();
 
@@ -72,7 +69,6 @@ namespace engine {
     void PostProcessingSystem::render(FrameInfo& frameInfo, VkDescriptorSet descriptorSet, const PostProcessPushConstants& push) {
         pipeline->bind(frameInfo.commandBuffer);
 
-        // Defensive: validate descriptor set before binding
         assert(descriptorSet != VK_NULL_HANDLE && "PostProcessingSystem: descriptor set is null");
 
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);

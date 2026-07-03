@@ -25,7 +25,6 @@ namespace engine {
     }
 
     Skybox::Skybox(Device& device, uint32_t size) : device_(device), size_(static_cast<int>(size)) {
-        // Create cubemap image for rendering
         imageFormat_ = VK_FORMAT_R16G16B16A16_SFLOAT;
         VkImageCreateInfo imageInfo{};
         imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -34,7 +33,7 @@ namespace engine {
         imageInfo.extent.height = size;
         imageInfo.extent.depth  = 1;
         imageInfo.mipLevels     = 1;
-        imageInfo.arrayLayers   = 6;  // 6 faces
+        imageInfo.arrayLayers   = 6;
         imageInfo.format        = imageFormat_;
         imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -47,7 +46,6 @@ namespace engine {
             throw std::runtime_error("Failed to create skybox image");
         }
 
-        // Allocate memory
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), image_, &memRequirements);
 
@@ -67,12 +65,6 @@ namespace engine {
     }
 
     Skybox::~Skybox() {
-        // Important: Skybox can be disabled while command buffers from previous
-        // frames are still in flight. Destroying its image/view/sampler immediately
-        // can cause a GPU use-after-free and crash.
-        //
-        // Use the engine's deferred destruction queue (flushed after per-frame
-        // fence waits) to make teardown safe.
         VkSampler      sampler = sampler_;
         VkImageView    view    = imageView_;
         VkImage        image   = image_;
@@ -99,19 +91,18 @@ namespace engine {
 
     std::unique_ptr<Skybox> Skybox::loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension) {
         std::array<std::string, 6> const facePaths = {
-            folderPath + "/posx." + extension,  // +X (right)
-            folderPath + "/negx." + extension,  // -X (left)
-            folderPath + "/posy." + extension,  // +Y (top)
-            folderPath + "/negy." + extension,  // -Y (bottom)
-            folderPath + "/posz." + extension,  // +Z (front)
-            folderPath + "/negz." + extension,  // -Z (back)
+            folderPath + "/posx." + extension,
+            folderPath + "/negx." + extension,
+            folderPath + "/posy." + extension,
+            folderPath + "/negy." + extension,
+            folderPath + "/posz." + extension,
+            folderPath + "/negz." + extension,
         };
 
         return std::make_unique<Skybox>(device, facePaths);
     }
 
     void Skybox::createCubemapImage(const std::array<std::string, 6>& facePaths) {
-        // Load all 6 faces and determine size
         std::array<unsigned char*, 6> faceData{};
         int                           width    = 0;
         int                           height   = 0;
@@ -120,14 +111,12 @@ namespace engine {
         for (int i = 0; i < 6; i++) {
             faceData[i] = stbi_load(facePaths[i].c_str(), &width, &height, &channels, STBI_rgb_alpha);
             if (faceData[i] == nullptr) {
-                // Clean up already loaded faces
                 for (int j = 0; j < i; j++) {
                     stbi_image_free(faceData[j]);
                 }
                 throw std::runtime_error("Failed to load skybox face: " + facePaths[i]);
             }
 
-            // Verify all faces are same size
             if (i == 0) {
                 size_ = width;
                 if (width != height) {
@@ -142,9 +131,8 @@ namespace engine {
             }
         }
 
-        VkDeviceSize const faceSize = static_cast<VkDeviceSize>(size_) * size_ * 4;  // RGBA
+        VkDeviceSize const faceSize = static_cast<VkDeviceSize>(size_) * size_ * 4;
 
-        // Create staging buffer with all face data
         Buffer stagingBuffer{
             device_,
             faceSize,
@@ -160,7 +148,6 @@ namespace engine {
         }
         stagingBuffer.unmap();
 
-        // Create cubemap image
         VkImageCreateInfo imageInfo{};
         imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -168,7 +155,7 @@ namespace engine {
         imageInfo.extent.height = static_cast<uint32_t>(size_);
         imageInfo.extent.depth  = 1;
         imageInfo.mipLevels     = 1;
-        imageInfo.arrayLayers   = 6;  // 6 faces
+        imageInfo.arrayLayers   = 6;
         imageInfo.format        = imageFormat_;
         imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -181,7 +168,6 @@ namespace engine {
             throw std::runtime_error("Failed to create cubemap image");
         }
 
-        // Allocate memory
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), image_, &memRequirements);
 
@@ -196,10 +182,8 @@ namespace engine {
 
         vkBindImageMemory(device_.device(), image_, imageMemory_, 0);
 
-        // Transition to transfer destination
         transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-        // Copy each face from staging buffer
         VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
 
         std::array<VkBufferImageCopy, 6> regions{};
@@ -219,7 +203,6 @@ namespace engine {
 
         device_.memory().endSingleTimeCommands(commandBuffer);
 
-        // Transition to shader read
         transitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 

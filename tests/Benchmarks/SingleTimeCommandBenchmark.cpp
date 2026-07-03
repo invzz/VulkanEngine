@@ -26,7 +26,7 @@ class SingleTimeCommandBenchmarkTest : public ::testing::Test {
         auto worker = [this](int loops) {
             for (int i = 0; i < loops; ++i) {
                 VkCommandBuffer cmd = device->beginSingleTimeCommands();
-                // No real commands; just begin/end to measure allocation/free overhead
+
                 device->endSingleTimeCommands(cmd);
             }
         };
@@ -49,21 +49,16 @@ TEST_F(SingleTimeCommandBenchmarkTest, GivenMultipleThreads_WhenComparingPoolStr
     const int threadCount = 8;
     const int loops       = 100;
 
-    // Warm-up
     runBenchmark(1, 10);
 
-    // Per-call pools (default)
     long perCallMs = runBenchmark(threadCount, loops);
     std::cout << "Per-call pools: " << perCallMs << "ms" << std::endl;
 
-    // Enable thread-local pools
     device->enableThreadLocalCommandPools();
     long threadLocalMs = runBenchmark(threadCount, loops);
     std::cout << "Thread-local pools: " << threadLocalMs << "ms" << std::endl;
 
-    // Sanity check: thread-local should not be dramatically slower than per-call.
-    EXPECT_LE(threadLocalMs, perCallMs * 5 + 1000);  // allow generous slack on CI
+    EXPECT_LE(threadLocalMs, perCallMs * 5 + 1000);
 
-    // Print for developer info (not strict)
     std::cout << "Benchmark: per-call=" << perCallMs << "ms, thread-local=" << threadLocalMs << "ms\n";
 }

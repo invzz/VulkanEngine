@@ -120,4 +120,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_CORE_EXCEPTIONS_HPP
+#endif

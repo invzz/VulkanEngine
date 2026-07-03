@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <thread>
 #include <unordered_set>
+
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
@@ -99,7 +100,6 @@ namespace engine {
         cacheStats_ = MaterialDescriptorCacheStats{};
     }
 
-    // Return true if the per-frame descriptor set (used for material binding) is present and non-null.
     bool MaterialRenderBindings::frameDescriptorSetValid(int frameIndex) const {
         if (frameIndex < 0)
             return false;
@@ -274,22 +274,21 @@ namespace engine {
                 matData.specularGlossinessFactor = glm::vec4(material.specularFactor, material.glossinessFactor);
                 matData.attenuationColorAndDist  = glm::vec4(material.attenuationColor, material.attenuationDistance);
 
-                // Col 0
                 matData.params[0][0] = material.metallic;
                 matData.params[0][1] = material.roughness;
                 matData.params[0][2] = material.ao;
                 matData.params[0][3] = isSelected;
-                // Col 1
+
                 matData.params[1][0] = material.clearcoat;
                 matData.params[1][1] = material.clearcoatRoughness;
                 matData.params[1][2] = material.anisotropic;
                 matData.params[1][3] = material.anisotropicRotation;
-                // Col 2
+
                 matData.params[2][0] = material.transmission;
                 matData.params[2][1] = material.ior;
                 matData.params[2][2] = material.iridescence;
                 matData.params[2][3] = material.iridescenceIOR;
-                // Col 3
+
                 matData.params[3][0] = material.iridescenceThickness;
                 matData.params[3][1] = material.uvScale;
                 matData.params[3][2] = material.alphaCutoff;
@@ -312,32 +311,32 @@ namespace engine {
 
                 matData.indices3.x = clearcoatRoughnessIndex;
                 matData.indices3.y = clearcoatNormalIndex;
-                matData.indices3.z = 0;  // Reserved (was lightmapIndex)
+                matData.indices3.z = 0;
             } else {
                 matData.albedo                   = glm::vec4(1.0f);
                 matData.emissiveInfo             = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
                 matData.specularGlossinessFactor = glm::vec4(1.0f);
                 matData.attenuationColorAndDist  = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-                matData.params[0][0] = 0.0f;  // metallic
-                matData.params[0][1] = 0.5f;  // roughness
-                matData.params[0][2] = 1.0f;  // ao
+                matData.params[0][0] = 0.0f;
+                matData.params[0][1] = 0.5f;
+                matData.params[0][2] = 1.0f;
                 matData.params[0][3] = isSelected;
 
-                matData.params[1][0] = 0.0f;   // clearcoat
-                matData.params[1][1] = 0.03f;  // clearcoatRoughness
-                matData.params[1][2] = 0.0f;   // anisotropic
-                matData.params[1][3] = 0.0f;   // anisotropicRotation
+                matData.params[1][0] = 0.0f;
+                matData.params[1][1] = 0.03f;
+                matData.params[1][2] = 0.0f;
+                matData.params[1][3] = 0.0f;
 
-                matData.params[2][0] = 0.0f;  // transmission
-                matData.params[2][1] = 1.5f;  // ior
-                matData.params[2][2] = 0.0f;  // iridescence
-                matData.params[2][3] = 1.3f;  // iridescenceIOR
+                matData.params[2][0] = 0.0f;
+                matData.params[2][1] = 1.5f;
+                matData.params[2][2] = 0.0f;
+                matData.params[2][3] = 1.3f;
 
-                matData.params[3][0] = 100.0f;  // iridescenceThickness
-                matData.params[3][1] = 1.0f;    // uvScale
-                matData.params[3][2] = 0.5f;    // alphaCutoff
-                matData.params[3][3] = 0.0f;    // thickness
+                matData.params[3][0] = 100.0f;
+                matData.params[3][1] = 1.0f;
+                matData.params[3][2] = 0.5f;
+                matData.params[3][3] = 0.0f;
 
                 matData.flagsAndIndices0 = glm::uvec4(0);
                 matData.indices1         = glm::uvec4(0);
@@ -362,7 +361,6 @@ namespace engine {
         {
             std::lock_guard<std::mutex> allocLk(allocMutex_);
 
-            // Defensive: ensure the per-frame descriptor set is valid before binding.
             if (descriptorSets_[frameInfo.frameIndex] == VK_NULL_HANDLE) {
                 return;
             }
@@ -374,7 +372,6 @@ namespace engine {
             assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "MaterialRenderBindings: descriptor set is null");
             vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, kMaterialSetIndex, 1, &descriptorSets_[frameInfo.frameIndex], 1, &dynamicOffset);
 
-            // Capture bind for diagnostic/tests (thread-safe)
             {
                 std::lock_guard<std::mutex> lk(captureMutex_);
                 if (captureEnabled_) {

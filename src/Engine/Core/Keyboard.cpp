@@ -12,7 +12,6 @@
 
 namespace engine {
 
-    // namespace engine
     void engine::Keyboard::moveInPlaneXZ(float deltaTime, TransformComponent& transform) const {
         glm::vec3 rotation{0.0f};
         if (isKeyPressed(mappings.lookRight)) {
@@ -32,7 +31,6 @@ namespace engine {
             transform.rotation += lookSpeed * deltaTime * glm::normalize(rotation);
         }
 
-        // clamp the pitch rotation to avoid flipping
         transform.rotation.x = glm::clamp(transform.rotation.x, -1.5f, 1.5f);
         transform.rotation.y = glm::mod(transform.rotation.y, glm::two_pi<float>());
 

@@ -25,16 +25,14 @@ namespace engine {
     struct AnimationComponent {
         std::shared_ptr<Model>               model;
         std::shared_ptr<AnimationController> controller;
-        std::shared_ptr<AnimationGraph>      graph;  // Animation graph for state transitions
+        std::shared_ptr<AnimationGraph>      graph;
 
-        // Backward-compatible query fields (mirrors controller state)
         int   currentAnimationIndex{-1};
         float currentTime{0.0f};
         float playbackSpeed{1.0f};
         bool  isPlaying{false};
         bool  loop{true};
 
-        // Global transforms for each node (computed by AnimationSystem)
         std::vector<glm::mat4> nodeTransforms;
 
         AnimationComponent(std::shared_ptr<Model> m = nullptr) : model(m) {
@@ -42,8 +40,6 @@ namespace engine {
                 nodeTransforms.resize(model->getNodes().size(), glm::mat4(1.0f));
             }
         }
-
-        // ── Convenience methods (backward-compatible wrappers) ─────────
 
         /** Play an animation clip (stops all others, starts fresh) */
         void play(int animationIndex = 0, bool shouldLoop = true) {
@@ -68,8 +64,6 @@ namespace engine {
             currentTime = 0.0f;
             controller->stopAll();
         }
-
-        // ── Multi-clip methods ──────────────────────────────────────────
 
         /** Add a clip without stopping others (layered) */
         void addClip(int animationIndex, int priority = 0) {
@@ -112,8 +106,6 @@ namespace engine {
             return controller ? controller->takeEvents() : std::vector<std::pair<std::string, void*>>{};
         }
 
-        // ── Graph methods ───────────────────────────────────────────────
-
         /** Set the animation graph for state transitions */
         void setGraph(std::shared_ptr<AnimationGraph> g) {
             graph = g;
@@ -155,4 +147,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_ANIMATIONCOMPONENT_HPP
+#endif

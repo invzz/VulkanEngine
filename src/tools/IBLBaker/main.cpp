@@ -17,7 +17,6 @@ int main(int argc, char** argv) {
         std::string const outputDir    = argv[2];
         std::string const extension    = (argc >= 4) ? argv[3] : "jpg";
 
-        // Minimal hidden Vulkan window (required by current Device/Surface design).
         engine::Window window{16, 16, "IBL Baker"};
         engine::Device device{window};
 
@@ -30,7 +29,6 @@ int main(int argc, char** argv) {
 
         engine::IBLSystem ibl{device};
 
-        // Generate (slow) then write assets. This is intended to be run offline.
         std::cout << "[IBLBaker] Generating IBL...\n";
         ibl.generateFromSkybox(*skybox);
 

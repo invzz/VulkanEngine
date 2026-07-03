@@ -36,7 +36,6 @@ namespace engine {
                 data.selectedClipWeight, data.selectedClipSpeed, data.selectedCrossfadeDuration);
         }
 
-        // Weight slider
         if (selected) {
             ImGui::SameLine();
             std::string weightLabel = "Weight##w_" + std::to_string(entityId) + "_" + std::to_string(clipIndex);
@@ -44,14 +43,12 @@ namespace engine {
                 data.selectedClipWeight = std::clamp(data.selectedClipWeight, 0.0f, 1.0f);
             }
 
-            // Speed slider
             ImGui::SameLine();
             std::string speedLabel = "Speed##s_" + std::to_string(entityId) + "_" + std::to_string(clipIndex);
             if (ui::UI::DragFloat(speedLabel.c_str(), &data.selectedClipSpeed, 0.01f, 0.01f, 5.0f)) {
                 data.selectedClipSpeed = std::max(0.01f, data.selectedClipSpeed);
             }
 
-            // Crossfade slider (visual only for now)
             ImGui::SameLine();
             std::string xfLabel = "XF##xf_" + std::to_string(entityId) + "_" + std::to_string(clipIndex);
             if (ui::UI::DragFloat(xfLabel.c_str(), &data.selectedCrossfadeDuration, 0.01f, 0.0f, 10.0f)) {
@@ -66,17 +63,14 @@ namespace engine {
         if (!visible_)
             return;
 
-        // Push theme style
         ui::UI::PushThemeStyle();
 
-        // Use Section for the collapsible header
         bool open = ui::UI::Section((std::string(ICON_FA_STOPWATCH) + " Animation").c_str());
         if (!open) {
             ui::UI::PopThemeStyle();
             return;
         }
 
-        // Collect per-entity animation data
         entityAnimData_.clear();
         {
             auto view = scene_.getRegistry().view<AnimationComponent, ModelComponent>();
@@ -96,7 +90,6 @@ namespace engine {
                         ead.clipDuration.push_back(clip.duration);
                         ead.clipCurrentTime.push_back(clip.currentTime);
 
-                        // Create track data
                         EntityTrackData track;
                         track.name              = name;
                         track.duration          = clip.duration;
@@ -106,7 +99,6 @@ namespace engine {
                         track.crossfadeDuration = 0.0f;
                         track.selected          = false;
 
-                        // Extract keyframe times from clip
                         auto view2 = scene_.getRegistry().view<AnimationComponent>();
                         for (auto ent : view2) {
                             auto& a = scene_.getRegistry().get<AnimationComponent>(ent);
@@ -122,14 +114,13 @@ namespace engine {
 
                         ead.tracks.push_back(track);
 
-                        // Persist user selection from previous frame
                         if (ead.selectedClipIndex < 0 || static_cast<size_t>(ead.selectedClipIndex) >= ead.clipNames.size()) {
                             ead.selectedClipIndex = 0;
                         }
                         if (static_cast<size_t>(ead.selectedClipIndex) < ead.clipNames.size()) {
                             ead.selectedClipWeight = clips[ead.selectedClipIndex].weight;
                             ead.selectedClipSpeed  = clips[ead.selectedClipIndex].speed;
-                            // Crossfade duration is UI-only for now
+
                             ead.selectedCrossfadeDuration = 0.0f;
                         }
                     }
@@ -141,10 +132,8 @@ namespace engine {
             }
         }
 
-        // Update timeline duration from active clips
         updateTimelineState();
 
-        // ── Timeline ────────────────────────────────────────────────────
         ui::UI::Separator();
         ui::UI::TextDisabled((std::string(ICON_FA_TIMELINE) + " Timeline").c_str());
 
@@ -153,12 +142,10 @@ namespace engine {
             maxDuration = 10.0f;
         timeline_.totalDuration = maxDuration;
 
-        // Visible window scales inversely with zoom: wider when zoomed out
         float windowDuration = std::max(5.0f, 20.0f / timeline_.zoom);
         float startTime      = timeline_.currentTime - windowDuration / 2.0f;
         float endTime        = timeline_.currentTime + windowDuration / 2.0f;
 
-        // Timeline bar
         ImVec2 timelineMin = ImGui::GetCursorScreenPos();
         float  timelineW   = ImGui::GetContentRegionAvail().x;
         ImVec2 timelineMax(timelineMin.x + timelineW, timelineMin.y + 60.0f);
@@ -168,11 +155,9 @@ namespace engine {
             ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
         }
 
-        // Background
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         drawList->AddRectFilled(timelineMin, timelineMax, IM_COL32(40, 40, 50, 255));
 
-        // Grid lines
         float timeStep = 1.0f / timeline_.zoom;
         if (timeStep > 5.0f)
             timeStep = 5.0f;
@@ -192,7 +177,6 @@ namespace engine {
             drawList->AddLine(ImVec2(x, timelineMin.y), ImVec2(x, timelineMax.y), color, 1.0f);
         }
 
-        // ── Animated Clip Tracks ────────────────────────────────────────
         float trackHeight  = 12.0f;
         float trackSpacing = 18.0f;
         float trackStartY  = timelineMin.y + 4.0f;
@@ -229,13 +213,11 @@ namespace engine {
             }
         }
 
-        // Playhead
         float playheadNorm = (timeline_.currentTime - startTime) / windowDuration;
         float playheadX    = timelineMin.x + playheadNorm * (timelineMax.x - timelineMin.x);
         drawList->AddLine(ImVec2(playheadX, timelineMin.y), ImVec2(playheadX, timelineMax.y), IM_COL32(100, 200, 255, 255), 2.0f);
         drawList->AddTriangleFilled(ImVec2(playheadX, timelineMax.y), ImVec2(playheadX - 5.0f, timelineMax.y - 8.0f), ImVec2(playheadX + 5.0f, timelineMax.y - 8.0f), IM_COL32(100, 200, 255, 255));
 
-        // Time labels
         for (float t = std::floor(std::max(0.0f, startTime) / timeStep) * timeStep; t < endTime; t += timeStep) {
             float norm = (t - startTime) / windowDuration;
             float x    = timelineMin.x + norm * (timelineMax.x - timelineMin.x);
@@ -246,7 +228,6 @@ namespace engine {
             }
         }
 
-        // Scrubbing
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) {
             float mouseNorm = (ImGui::GetIO().MousePos.x - timelineMin.x) / (timelineMax.x - timelineMin.x);
             mouseNorm       = std::max(0.0f, std::min(1.0f, mouseNorm));
@@ -274,7 +255,6 @@ namespace engine {
             timeline_.isScrubbing = false;
         }
 
-        // Time display
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f);
         std::string timeStr;
         if (!entityAnimData_.empty() && !entityAnimData_[0].clipCurrentTime.empty()) {
@@ -282,7 +262,6 @@ namespace engine {
         }
         ui::UI::Property("Time", timeStr.substr(0, 6).c_str());
 
-        // Zoom controls
         ImGui::SameLine();
         if (ui::UI::SmallButton((std::string(ICON_FA_MAGNIFYING_GLASS_PLUS) + "##anim_zoom_in").c_str())) {
             timeline_.zoom = std::min(timeline_.zoom * 1.5f, 10.0f);
@@ -292,7 +271,6 @@ namespace engine {
             timeline_.zoom = std::max(timeline_.zoom / 1.5f, 0.1f);
         }
 
-        // ── Clip List ───────────────────────────────────────────────────
         ui::UI::Separator();
         ui::UI::TextDisabled((std::string(ICON_FA_LIST) + " Active Clips").c_str());
 
@@ -343,7 +321,6 @@ namespace engine {
             }
         }
 
-        // ── Playback Controls ───────────────────────────────────────────
         ui::UI::Separator();
         ui::UI::TextDisabled((std::string(ICON_FA_CLOCK) + " Playback").c_str());
 
@@ -379,7 +356,6 @@ namespace engine {
             }
         }
 
-        // ── Animation Graph Editor ─────────────────────────────────────
         renderGraphEditor();
 
         ui::UI::PopThemeStyle();
@@ -403,12 +379,10 @@ namespace engine {
         }
     }
 
-    // ── Animation Graph Editor ───────────────────────────────────────────
     void AnimationPanel::renderGraphEditor() {
         if (!showGraphEditor_ || entityAnimData_.empty())
             return;
 
-        // Get the first entity's graph and controller
         std::shared_ptr<AnimationGraph>      graph;
         std::shared_ptr<AnimationController> controller;
 
@@ -428,7 +402,6 @@ namespace engine {
         if (!graph)
             return;
 
-        // Toggle button in the panel
         ImGui::SameLine();
         if (ui::UI::SmallButton((std::string(ICON_FA_LINK) + " Graph Editor##anim_graph").c_str())) {
             showGraphEditor_ = !showGraphEditor_;
@@ -438,8 +411,7 @@ namespace engine {
         }
 
         if (showGraphEditor_ && graph) {
-            // Calculate delta time from timeline
-            float delta = 1.0f / 60.0f;  // Assume 60fps for graph stepping
+            float delta = 1.0f / 60.0f;
             graphEditor_.render(graph, controller, delta);
         }
     }

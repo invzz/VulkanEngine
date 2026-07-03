@@ -8,9 +8,9 @@ namespace engine {
         command->execute();
         HistoryEntry entry{std::move(command), name};
         undoStack_.push_back(std::move(entry));
-        // Clear redo stack on new command
+
         redoStack_.clear();
-        // Limit history depth
+
         if (undoStack_.size() > MAX_HISTORY) {
             undoStack_.pop_front();
         }

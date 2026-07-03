@@ -13,7 +13,7 @@ namespace engine {
     struct PassTiming {
         std::string passName;
         double      cpuMs{0.0};
-        // Placeholder until Vulkan timestamp query pool wiring is completed.
+
         double gpuMs{-1.0};
     };
 
@@ -87,4 +87,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_GPUPROFILER_HPP
+#endif

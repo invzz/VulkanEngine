@@ -19,8 +19,6 @@ namespace engine {
             return false;
         }
 
-        // Note: sizes are implicit from settings for generated images.
-        // Irradiance/prefilter are cubemaps with 6 layers.
         bool           ok = true;
         fs::path const dirPath(directory);
         ok = ok && ibl_detail::vtex::writeImage(device_,
@@ -59,7 +57,6 @@ namespace engine {
         ibl_detail::vtex::Header preH{};
         ibl_detail::vtex::Header brdfH{};
 
-        // Replace existing resources (deferred destroy) and adopt the loaded ones.
         irradiance_->deferDestroyImageResources();
         prefiltered_->deferDestroyImageResources();
         brdfLUT_->deferDestroyImageResources();

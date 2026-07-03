@@ -6,10 +6,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// FrameBuffer Tests
-// =============================================================================
-
 TEST(FrameBuffer, GivenOffscreenImage_WhenMipmapsGenerated_ThenHigherMipsArePopulated) {
     Window   win(64, 64, "FrameBufferTest");
     Device   device(win);
@@ -31,7 +27,6 @@ TEST(FrameBuffer, GivenOffscreenImage_WhenMipmapsGenerated_ThenHigherMipsArePopu
     clearValue.float32[2] = 0.125f;
     clearValue.float32[3] = 1.0f;
 
-    // Transition mip0 -> TRANSFER_DST, clear, then transition back
     VkImageMemoryBarrier toDst{};
     toDst.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     toDst.oldLayout           = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -64,7 +59,6 @@ TEST(FrameBuffer, GivenOffscreenImage_WhenMipmapsGenerated_ThenHigherMipsArePopu
     device.endSingleTimeCommands(cmd);
     device.WaitIdle();
 
-    // Read back mip #1
     VkExtent2D winExtent = win.getExtent();
     uint32_t   maxDim    = std::max(winExtent.width, winExtent.height);
     uint32_t   mipLevels = 1;

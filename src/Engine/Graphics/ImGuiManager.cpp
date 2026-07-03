@@ -23,31 +23,26 @@ namespace engine {
     }
 
     ImGuiManager::~ImGuiManager() {
-        // Cleanup ImGui
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
 
-        // Cleanup Vulkan resources
         if (imguiDescriptorPool_ != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(device_.device(), imguiDescriptorPool_, nullptr);
         }
     }
 
     void ImGuiManager::initImGui() {
-        // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         (void) io;
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable keyboard controls
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;      // Enable docking
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-        // Load main font (default embedded font, 16px)
         const float fontSize = 16.0f;
         io.Fonts->AddFontDefault();
 
-        // Merge Font Awesome Solid icons into the main font
         ImFontConfig iconConfig;
         iconConfig.MergeMode  = true;
         iconConfig.PixelSnapH = true;
@@ -58,18 +53,12 @@ namespace engine {
         io.Fonts->AddFontFromFileTTF(
             FONT_PATH "fa-solid-900.ttf", fontSize, &iconConfig, iconRanges);
 
-        // Setup Dear ImGui style
         ImGui::StyleColorsDark();
-        // ImGui::StyleColorsLight();
 
-        // Initialize GLFW backend
-        // Let ImGui install GLFW callbacks for consistent input handling across
-        // platforms
         ImGui_ImplGlfw_InitForVulkan(window_.getGLFWwindow(), true);
     }
 
     void ImGuiManager::setupVulkanBackend(uint32_t imageCount) {
-        // Create descriptor pool for ImGui
         VkDescriptorPoolSize pool_sizes[] = {
             {VK_DESCRIPTOR_TYPE_SAMPLER, 100},
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100},
@@ -87,7 +76,7 @@ namespace engine {
         VkDescriptorPoolCreateInfo pool_info = {};
         pool_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        // Use a conservative number of maxSets (match ImGui examples: 1000)
+
         pool_info.maxSets       = 1000;
         pool_info.poolSizeCount = (uint32_t) IM_ARRAYSIZE(pool_sizes);
         pool_info.pPoolSizes    = pool_sizes;
@@ -98,7 +87,6 @@ namespace engine {
             throw std::runtime_error("Failed to create ImGui descriptor pool!");
         }
 
-        // Initialize ImGui Vulkan backend
         ImGui_ImplVulkan_InitInfo init_info = {};
         init_info.Instance                  = device_.getInstance();
         init_info.PhysicalDevice            = device_.getPhysicalDevice();
@@ -114,18 +102,13 @@ namespace engine {
         init_info.MSAASamples               = VK_SAMPLE_COUNT_1_BIT;
         init_info.Allocator                 = nullptr;
 
-        // Debug: set a check function to log Vulkan errors during ImGui init
         init_info.CheckVkResultFn = [](VkResult err) {
             if (err != VK_SUCCESS) {
-                // Note: Logger is not thread-safe from lambdas without a pointer;
-                // log via the caller instead.
             }
         };
 
-        // Sanity debug output (addresses/handles)
         engine::Logger::info(engine::LogChannel::Render, "ImGui init: Instance=", init_info.Instance, " PhysicalDevice=", init_info.PhysicalDevice, " Device=", init_info.Device, " DescriptorPool=", init_info.DescriptorPool, " RenderPass=", init_info.RenderPass, " QueueFamily=", init_info.QueueFamily, " GraphicsQueue=", device_.graphicsQueue(), " ImageCount=", init_info.ImageCount);
 
-        // Validate handles
         if (init_info.Device == VK_NULL_HANDLE || init_info.Instance == VK_NULL_HANDLE || init_info.PhysicalDevice == VK_NULL_HANDLE) {
             engine::Logger::error(engine::LogChannel::Render, "Invalid Vulkan handles detected before ImGui init. Aborting ImGui init.");
             return;
@@ -136,15 +119,11 @@ namespace engine {
             return;
         }
 
-        // Ensure device and queue are idle before doing backend setup to avoid races
-        // on Windows
         VkResult const r1 = vkDeviceWaitIdle(init_info.Device);
         engine::Logger::info(engine::LogChannel::Render, "vkDeviceWaitIdle returned: ", r1);
         VkResult const r2 = vkQueueWaitIdle(init_info.Queue);
         engine::Logger::info(engine::LogChannel::Render, "vkQueueWaitIdle returned: ", r2);
 
-        // Run minimal Vulkan sanity checks (create/destroy sampler, descriptor set
-        // layout, pipeline layout)
         VkSampler           testSampler = VK_NULL_HANDLE;
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -199,11 +178,6 @@ namespace engine {
             vkDestroyPipelineLayout(device_.device(), testPipelineLayout, nullptr);
         }
 
-        // Ensure ImGui's Vulkan function table is loaded when VK_NO_PROTOTYPES is
-        // set. Some functions are instance-level and some are device-level; when
-        // using a custom loader (volk) we should try both vkGetInstanceProcAddr
-        // and vkGetDeviceProcAddr. We pass a small struct as user_data so the
-        // loader can try instance first, then device.
         init_info.ApiVersion = VK_API_VERSION_1_3;
         struct ImGuiLoaderUser {
             VkInstance instance;
@@ -225,7 +199,6 @@ namespace engine {
             (void*) &loaderUser);
         engine::Logger::info(engine::LogChannel::Render, "ImGui_ImplVulkan_LoadFunctions returned: ", loaded);
 
-        // Proceed with ImGui initialization
         try {
             ImGui_ImplVulkan_Init(&init_info);
             engine::Logger::info(engine::LogChannel::Render, "ImGui Vulkan backend initialized successfully.");
@@ -247,7 +220,6 @@ namespace engine {
     }
 
     void ImGuiManager::updateAfterResize() {
-        // ImGui handles this automatically through GLFW callbacks
     }
 
 }  // namespace engine

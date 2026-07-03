@@ -24,8 +24,6 @@ namespace engine {
             return;
         }
 
-        // Physics panel renders inside the dockspace like every other panel.
-        // The window title "Physics" matches the registry key used in app.cpp.
         ui::UI::PushThemeStyle();
         if (ImGui::Begin("Physics", &visible_)) {
             bool& simRunning  = state_.physicsRunning();

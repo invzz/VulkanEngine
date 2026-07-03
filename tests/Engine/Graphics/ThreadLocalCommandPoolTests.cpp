@@ -11,10 +11,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// ThreadLocalCommandPool Tests
-// =============================================================================
-
 TEST(ThreadLocalCommandPool, GivenInitializedPool_WhenGetForCurrentThread_ThenReturnsValidPool) {
     Window window(1, 1, "ThreadLocalCommandPoolTest");
     Device device(window);

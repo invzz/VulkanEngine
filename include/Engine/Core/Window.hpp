@@ -12,11 +12,9 @@ namespace engine {
 
     class Window {
        public:
-        // `fullscreen` = exclusive fullscreen (mode switch) when true.
         Window(int width, int height, std::string title, bool fullscreen = false);
         ~Window();
 
-        // avoid dangling pointers
         Window(const Window&)            = delete;
         Window& operator=(const Window&) = delete;
 
@@ -46,17 +44,14 @@ namespace engine {
             return glfwGetWindowAttrib(window, GLFW_FOCUSED) == GLFW_TRUE;
         }
 
-        // Atomically consume the resized flag: returns previous value and clears it.
         [[nodiscard]] bool consumeWindowResized() {
             return framebufferResized.exchange(false);
         }
 
-        // Last resize event timestamp in nanoseconds since steady_clock epoch.
         [[nodiscard]] uint64_t getLastResizeTimeNs() const {
             return lastResizeTimeNs.load();
         }
 
-        // Check whether the last resize is stable for at least `debounceMs` milliseconds.
         [[nodiscard]] bool isResizeStable(uint64_t debounceMs) const {
             uint64_t const last = lastResizeTimeNs.load();
             if (last == 0)
@@ -66,7 +61,6 @@ namespace engine {
             return elapsedNs >= (debounceMs * 1000000ULL);
         }
 
-        // Cursor control
         void               setCursorMode(bool navigation);
         void               setCursorVisible(bool visible);
         void               toggleCursor();
@@ -77,7 +71,6 @@ namespace engine {
             return cursorNavigationMode_;
         }
 
-        // Fullscreen control (exclusive fullscreen)
         void setFullscreen(bool enabled);
         void toggleFullscreen() {
             setFullscreen(!isFullscreen());
@@ -93,21 +86,16 @@ namespace engine {
 
         GLFWwindow* window;
 
-        // Flag to indicate if the framebuffer has been resized (atomic for callback/thread-safety)
         std::atomic<bool> framebufferResized{false};
 
-        // Last resize timestamp (nanoseconds since steady_clock epoch)
         std::atomic<uint64_t> lastResizeTimeNs{0};
 
-        // Cursor visibility state
         bool cursorVisible         = true;
         bool cursorNavigationMode_ = false;
 
-        // Atomic width/height to avoid data races with GLFW callback thread
         std::atomic<uint32_t> width;
         std::atomic<uint32_t> height;
 
-        // Fullscreen state + previous windowed geometry (used to restore on exit)
         bool     fullscreen_ = false;
         int      prevX       = 0;
         int      prevY       = 0;
@@ -119,4 +107,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_CORE_WINDOW_HPP
+#endif

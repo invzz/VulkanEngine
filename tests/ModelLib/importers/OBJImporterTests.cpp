@@ -7,15 +7,12 @@
 
 namespace engine::tests {
 
-    // Test fixture for OBJ importer tests
     class OBJImporterTest : public ::testing::Test {
        protected:
         void SetUp() override {
-            // Create a simple OBJ test file for testing
             tempDir_ = std::filesystem::temp_directory_path() / "obj_importer_tests";
             std::filesystem::create_directories(tempDir_);
 
-            // Create a simple triangle OBJ file
             triangleObjPath_ = tempDir_ / "triangle.obj";
             {
                 std::ofstream file(triangleObjPath_);
@@ -30,44 +27,53 @@ namespace engine::tests {
                 file << "f 1/1/1 2/2/1 3/3/1\n";
             }
 
-            // Create a simple cube OBJ file
             cubeObjPath_ = tempDir_ / "cube.obj";
             {
                 std::ofstream file(cubeObjPath_);
                 file << "# Simple cube\n";
-                // Front face vertices
+
                 file << "v -0.5 -0.5  0.5\n";
                 file << "v  0.5 -0.5  0.5\n";
                 file << "v  0.5  0.5  0.5\n";
                 file << "v -0.5  0.5  0.5\n";
-                // Back face vertices
+
                 file << "v -0.5 -0.5 -0.5\n";
                 file << "v  0.5 -0.5 -0.5\n";
                 file << "v  0.5  0.5 -0.5\n";
                 file << "v -0.5  0.5 -0.5\n";
-                // Normals
-                file << "vn  0.0  0.0  1.0\n";  // front
-                file << "vn  0.0  0.0 -1.0\n";  // back
-                file << "vn  0.0  1.0  0.0\n";  // top
-                file << "vn  0.0 -1.0  0.0\n";  // bottom
-                file << "vn  1.0  0.0  0.0\n";  // right
-                file << "vn -1.0  0.0  0.0\n";  // left
-                // Faces (triangulated)
-                file << "f 1//1 2//1 3//1\n";
-                file << "f 1//1 3//1 4//1\n";
-                file << "f 5//2 7//2 6//2\n";
-                file << "f 5//2 8//2 7//2\n";
-                file << "f 4//3 3//3 7//3\n";
-                file << "f 4//3 7//3 8//3\n";
-                file << "f 1//4 6//4 2//4\n";
-                file << "f 1//4 5//4 6//4\n";
-                file << "f 2//5 6//5 7//5\n";
-                file << "f 2//5 7//5 3//5\n";
-                file << "f 1//6 4//6 8//6\n";
-                file << "f 1//6 8//6 5//6\n";
+
+                file << "vn  0.0  0.0  1.0\n";
+                file << "vn  0.0  0.0 -1.0\n";
+                file << "vn  0.0  1.0  0.0\n";
+                file << "vn  0.0 -1.0  0.0\n";
+                file << "vn  1.0  0.0  0.0\n";
+                file << "vn -1.0  0.0  0.0\n";
+
+                file << "f 1
+                    file
+                     << "f 1
+                    file
+                     << "f 5
+                    file
+                     << "f 5
+                    file
+                     << "f 4
+                    file
+                     << "f 4
+                    file
+                     << "f 1
+                    file
+                     << "f 1
+                    file
+                     << "f 2
+                    file
+                     << "f 2
+                    file
+                     << "f 1
+                    file
+                     << "f 1
             }
 
-            // Create OBJ with MTL material
             materialObjPath_ = tempDir_ / "with_material.obj";
             materialMtlPath_ = tempDir_ / "with_material.mtl";
             {
@@ -76,12 +82,12 @@ namespace engine::tests {
                 mtlFile << "newmtl TestMaterial\n";
                 mtlFile << "Ns 225.0\n";
                 mtlFile << "Ka 0.1 0.1 0.1\n";
-                mtlFile << "Kd 0.8 0.2 0.2\n";  // Red diffuse
-                mtlFile << "Ks 1.0 1.0 1.0\n";  // White specular
+                mtlFile << "Kd 0.8 0.2 0.2\n";
+                mtlFile << "Ks 1.0 1.0 1.0\n";
                 mtlFile << "d 1.0\n";
                 mtlFile << "illum 2\n";
                 mtlFile << "\n";
-                mtlFile << "newmtl Chrome\n";  // Metal material
+                mtlFile << "newmtl Chrome\n";
                 mtlFile << "Ns 900.0\n";
                 mtlFile << "Ka 0.0 0.0 0.0\n";
                 mtlFile << "Kd 0.0 0.0 0.0\n";
@@ -98,12 +104,11 @@ namespace engine::tests {
                 objFile << "v 0.5 1.0 0.0\n";
                 objFile << "vn 0.0 0.0 1.0\n";
                 objFile << "usemtl TestMaterial\n";
-                objFile << "f 1//1 2//1 3//1\n";
+                objFile << "f 1
             }
         }
 
         void TearDown() override {
-            // Cleanup temp files
             std::filesystem::remove_all(tempDir_);
         }
 
@@ -115,10 +120,6 @@ namespace engine::tests {
         OBJImporter           importer_;
     };
 
-    // ==============================================================================
-    // Basic Interface Tests
-    // ==============================================================================
-
     TEST_F(OBJImporterTest, GetName_ReturnsCorrectName) {
         EXPECT_EQ(importer_.getName(), "OBJ Importer");
     }
@@ -128,10 +129,6 @@ namespace engine::tests {
         ASSERT_EQ(extensions.size(), 1);
         EXPECT_EQ(extensions[0], "obj");
     }
-
-    // ==============================================================================
-    // Error Handling Tests
-    // ==============================================================================
 
     TEST_F(OBJImporterTest, Load_NonexistentFile_ReturnsFalse) {
         Model::Builder builder;
@@ -143,20 +140,14 @@ namespace engine::tests {
         auto invalidPath = tempDir_ / "invalid.obj";
         {
             std::ofstream file(invalidPath);
-            // Write invalid OBJ content (malformed face definition)
+
             file << "v 0 0 0\n";
             file << "f invalid\n";
         }
 
         Model::Builder builder;
         bool           result = importer_.load(builder, invalidPath.string(), false, false, false);
-        // tinyobjloader may or may not fail on this - behavior varies
-        // The point is the importer handles it gracefully
     }
-
-    // ==============================================================================
-    // Simple Model Loading Tests
-    // ==============================================================================
 
     TEST_F(OBJImporterTest, Load_Triangle_Succeeds) {
         Model::Builder builder;
@@ -168,7 +159,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, triangleObjPath_.string(), false, false, false);
 
-        // Should have 3 vertices for a triangle
         EXPECT_EQ(builder.vertices.size(), 3);
     }
 
@@ -176,7 +166,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, triangleObjPath_.string(), false, false, false);
 
-        // Should have 3 indices for a single triangle
         EXPECT_EQ(builder.indices.size(), 3);
     }
 
@@ -190,7 +179,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, cubeObjPath_.string(), false, false, false);
 
-        // Should have vertices
         EXPECT_FALSE(builder.vertices.empty());
     }
 
@@ -198,14 +186,9 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, cubeObjPath_.string(), false, false, false);
 
-        // Each face is 2 triangles, 6 faces = 12 triangles = 36 indices
         EXPECT_EQ(builder.indices.size() % 3, 0);
         EXPECT_EQ(builder.indices.size(), 36);
     }
-
-    // ==============================================================================
-    // Vertex Attribute Tests
-    // ==============================================================================
 
     TEST_F(OBJImporterTest, Load_Triangle_VerticesHavePositions) {
         Model::Builder builder;
@@ -213,7 +196,6 @@ namespace engine::tests {
 
         ASSERT_EQ(builder.vertices.size(), 3);
 
-        // Check expected positions
         bool hasOrigin      = false;
         bool hasUnitX       = false;
         bool hasTriangleTip = false;
@@ -236,7 +218,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, triangleObjPath_.string(), false, false, false);
 
-        // All vertices should have the same normal (0, 0, 1)
         for (const auto& v : builder.vertices) {
             EXPECT_NEAR(v.normal.x, 0.0f, 0.001f);
             EXPECT_NEAR(v.normal.y, 0.0f, 0.001f);
@@ -248,7 +229,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, triangleObjPath_.string(), false, false, false);
 
-        // Check that UVs are set
         bool hasNonZeroUV = false;
         for (const auto& v : builder.vertices) {
             if (v.uv != glm::vec2(0.0f)) {
@@ -259,10 +239,6 @@ namespace engine::tests {
         EXPECT_TRUE(hasNonZeroUV);
     }
 
-    // ==============================================================================
-    // Flip Axis Tests
-    // ==============================================================================
-
     TEST_F(OBJImporterTest, Load_WithFlipX_NegatesXPositions) {
         Model::Builder builderNormal;
         Model::Builder builderFlipped;
@@ -272,7 +248,6 @@ namespace engine::tests {
 
         ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
 
-        // Check that X is negated (for non-zero X values)
         for (size_t i = 0; i < builderNormal.vertices.size(); ++i) {
             float normalX  = builderNormal.vertices[i].position.x;
             float flippedX = builderFlipped.vertices[i].position.x;
@@ -292,7 +267,6 @@ namespace engine::tests {
 
         ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
 
-        // Check that Y is negated
         for (size_t i = 0; i < builderNormal.vertices.size(); ++i) {
             float normalY  = builderNormal.vertices[i].position.y;
             float flippedY = builderFlipped.vertices[i].position.y;
@@ -312,8 +286,6 @@ namespace engine::tests {
 
         ASSERT_EQ(builderNormal.vertices.size(), builderFlipped.vertices.size());
 
-        // For this triangle, Z is 0, so flipping shouldn't change positions
-        // But normals should be affected
         for (size_t i = 0; i < builderNormal.vertices.size(); ++i) {
             float normalZ  = builderNormal.vertices[i].normal.z;
             float flippedZ = builderFlipped.vertices[i].normal.z;
@@ -324,16 +296,11 @@ namespace engine::tests {
         }
     }
 
-    // ==============================================================================
-    // Material Tests
-    // ==============================================================================
-
     TEST_F(OBJImporterTest, Load_WithMaterial_ParsesMaterial) {
         Model::Builder builder;
         bool           result = importer_.load(builder, materialObjPath_.string(), false, false, false);
         EXPECT_TRUE(result);
 
-        // Should have loaded the material
         EXPECT_FALSE(builder.materials.empty());
     }
 
@@ -341,7 +308,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, materialObjPath_.string(), false, false, false);
 
-        // Find the TestMaterial
         bool foundTestMaterial = false;
         for (const auto& mat : builder.materials) {
             if (mat.name == "TestMaterial") {
@@ -356,19 +322,13 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, materialObjPath_.string(), false, false, false);
 
-        // Check that PBR conversion happened
         ASSERT_FALSE(builder.materials.empty());
 
         const auto& mat = builder.materials[0];
-        // Roughness should be derived from Ns (shininess)
-        // Ns=225 should give a specific roughness value
+
         EXPECT_GE(mat.pbrMaterial.roughness, 0.0f);
         EXPECT_LE(mat.pbrMaterial.roughness, 1.0f);
     }
-
-    // ==============================================================================
-    // Index Validity Tests
-    // ==============================================================================
 
     TEST_F(OBJImporterTest, Load_Triangle_AllIndicesValid) {
         Model::Builder builder;
@@ -388,10 +348,6 @@ namespace engine::tests {
         }
     }
 
-    // ==============================================================================
-    // Edge Cases
-    // ==============================================================================
-
     TEST_F(OBJImporterTest, Load_EmptyFile_HandleGracefully) {
         auto emptyPath = tempDir_ / "empty.obj";
         {
@@ -402,7 +358,6 @@ namespace engine::tests {
         Model::Builder builder;
         bool           result = importer_.load(builder, emptyPath.string(), false, false, false);
 
-        // Empty file should either return false or succeed with no data
         if (result) {
             EXPECT_TRUE(builder.vertices.empty());
         }
@@ -420,19 +375,13 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, commentsPath.string(), false, false, false);
 
-        // Should be empty since there's no geometry
         EXPECT_TRUE(builder.vertices.empty());
     }
-
-    // ==============================================================================
-    // Complex Geometry Tests
-    // ==============================================================================
 
     TEST_F(OBJImporterTest, Load_Cube_HasCorrectFaceCount) {
         Model::Builder builder;
         importer_.load(builder, cubeObjPath_.string(), false, false, false);
 
-        // 6 faces * 2 triangles = 12 triangles
         size_t triangleCount = builder.indices.size() / 3;
         EXPECT_EQ(triangleCount, 12);
     }
@@ -441,7 +390,6 @@ namespace engine::tests {
         Model::Builder builder;
         importer_.load(builder, cubeObjPath_.string(), false, false, false);
 
-        // All vertices should be within [-0.5, 0.5] for this unit cube
         for (const auto& v : builder.vertices) {
             EXPECT_GE(v.position.x, -0.51f);
             EXPECT_LE(v.position.x, 0.51f);

@@ -100,8 +100,6 @@ namespace engine::ibl {
     }
 
     void IrradianceIBL::createFallback() {
-        // Tiny black textures: fast to create and good defaults when no environment is loaded.
-        // Note: include TRANSFER_DST so we can clear them.
         ibl_detail::createImage(device_,
             1,
             1,
@@ -141,7 +139,6 @@ namespace engine::ibl {
             }
         }
 
-        // Clear to black and transition to shader read.
         VkClearColorValue const clearColor{{0.0f, 0.0f, 0.0f, 1.0f}};
 
         ibl_detail::transitionImageLayout(device_, image_, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 6);
@@ -200,12 +197,10 @@ namespace engine::ibl {
             throw std::runtime_error("failed to create irradiance sampler!");
         }
 
-        // Transition to color attachment optimal
         ibl_detail::transitionImageLayout(device_, image_, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 1, 6);
     }
 
     void IrradianceIBL::ensurePipelineResources() {
-        // Idempotent: allow regeneration path to rebuild.
         ibl_detail::deferDestroyPipeline(device_, pipeline_);
         ibl_detail::deferDestroyPipelineLayout(device_, pipelineLayout_);
         ibl_detail::deferDestroyRenderPass(device_, renderPass_);
@@ -213,7 +208,6 @@ namespace engine::ibl {
         ibl_detail::deferDestroyDescriptorSetLayout(device_, descSetLayout_);
         descSet_ = VK_NULL_HANDLE;
 
-        // Render Pass
         VkAttachmentDescription attachment{};
         attachment.format         = VK_FORMAT_R32G32B32A32_SFLOAT;
         attachment.samples        = VK_SAMPLE_COUNT_1_BIT;
@@ -244,7 +238,6 @@ namespace engine::ibl {
             throw std::runtime_error("failed to create irradiance render pass!");
         }
 
-        // Descriptor Set Layout
         VkDescriptorSetLayoutBinding binding{};
         binding.binding            = 0;
         binding.descriptorType     = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -261,11 +254,10 @@ namespace engine::ibl {
             throw std::runtime_error("failed to create irradiance descriptor set layout!");
         }
 
-        // Pipeline Layout
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset     = 0;
-        pushConstantRange.size       = sizeof(glm::mat4) + sizeof(int) + sizeof(float);  // ViewProj + FaceIndex + SampleDelta
+        pushConstantRange.size       = sizeof(glm::mat4) + sizeof(int) + sizeof(float);
 
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -278,7 +270,6 @@ namespace engine::ibl {
             throw std::runtime_error("failed to create irradiance pipeline layout!");
         }
 
-        // Pipeline
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
         pipelineConfig.renderPass                        = renderPass_;
@@ -350,7 +341,6 @@ namespace engine::ibl {
         vkDestroyShaderModule(device_.device(), vertModule, nullptr);
         vkDestroyShaderModule(device_.device(), fragModule, nullptr);
 
-        // Descriptor Pool
         VkDescriptorPoolSize poolSize{};
         poolSize.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSize.descriptorCount = 1;
@@ -365,7 +355,6 @@ namespace engine::ibl {
             throw std::runtime_error("failed to create irradiance descriptor pool!");
         }
 
-        // Allocate Descriptor Set
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool     = descPool_;
@@ -378,7 +367,6 @@ namespace engine::ibl {
     }
 
     void IrradianceIBL::generateFromSkybox(Skybox& skybox, const Settings& settings) {
-        // Update descriptor set
         VkDescriptorImageInfo const imageInfo = skybox.getDescriptorInfo();
         VkWriteDescriptorSet        descriptorWrite{};
         descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -489,7 +477,6 @@ namespace engine::ibl {
             vkDestroyImageView(device_.device(), imageView, nullptr);
         }
 
-        // Transition to shader read
         ibl_detail::transitionImageLayout(device_, image_, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, 6);
     }
 

@@ -8,7 +8,6 @@
 namespace engine {
 
     void ThreadLocalCommandPool::init(VkDevice device, uint32_t queueFamilyIndex) {
-        // already initialized
         if (device_ != VK_NULL_HANDLE) {
             return;
         }
@@ -27,7 +26,6 @@ namespace engine {
             }
         }
 
-        // Create a new pool for this thread
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -40,7 +38,7 @@ namespace engine {
 
         {
             std::lock_guard<std::mutex> lk(mutex_);
-            // store and return
+
             pools_[tid] = pool;
         }
 

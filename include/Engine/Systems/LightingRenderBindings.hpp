@@ -13,8 +13,6 @@ namespace engine {
     class ShadowSystem;
     class IBLSystem;
 
-    // Owns the per-frame descriptor sets for lighting-related resources used by ModelRenderSystem
-    // (shadow maps + IBL textures).
     class LightingRenderBindings {
        public:
         explicit LightingRenderBindings(Device& device);
@@ -61,4 +59,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_LIGHTINGRENDERBINDINGS_HPP
+#endif

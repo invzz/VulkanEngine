@@ -11,15 +11,13 @@ namespace engine {
     class Device;
     class IRenderContextPort;
 
-    /// Deferred lighting pass.
-    class DeferredLightingPass : public IRenderPass {
+    class DeferredLightingPass : public RenderPassBase {
        public:
         DeferredLightingPass(DeferredLightingSystem& deferred, ShadowSystem& shadow,
             EngineState& engine, Renderer& renderer,
             Device& device, IRenderContextPort& renderCtx);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override;
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         void updateShadowDescriptors(int frameIndex);

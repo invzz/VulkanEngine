@@ -19,26 +19,19 @@
 
 namespace engine {
 
-    // ==========================================================================
-    // Public API
-    // ==========================================================================
-
     std::optional<entt::entity> PickingSystem::pickViewport(FrameInfo& frameInfo,
         float viewportX, float viewportY) {
-        // 1) Build world-space ray.
         Ray ray = viewportToWorldRay(frameInfo, viewportX, viewportY);
 
         auto&       registry = frameInfo.scene->getRegistry();
         const float vpW      = static_cast<float>(frameInfo.extent.width);
         const float vpH      = static_cast<float>(frameInfo.extent.height);
 
-        // --- Broadphase culling via SpatialSystem (optional) -------------------
         std::vector<entt::entity> candidates;
-        bool useBvh = false;
+        bool                      useBvh = false;
         if (spatial_) {
-            // Collect model bounds for BVH rebuild.
             std::unordered_map<entt::entity, const AABB*> modelBounds;
-            auto modelView = registry.view<ModelComponent>();
+            auto                                          modelView = registry.view<ModelComponent>();
             for (auto e : modelView) {
                 const auto& mc = registry.get<ModelComponent>(e);
                 if (mc.model) {
@@ -50,7 +43,6 @@ namespace engine {
             }
             spatial_->rebuild(registry, std::move(modelBounds));
 
-            // Use BVH raycast to get candidate entities.
             if (auto hit = spatial_->raycast({ray.origin, ray.direction})) {
                 candidates.push_back(hit->entity);
                 useBvh = true;
@@ -60,14 +52,11 @@ namespace engine {
         entt::entity bestEntity = entt::null;
         float        bestT      = std::numeric_limits<float>::max();
 
-        // ------------------------------------------------------------------
-        // 2) Models — ray-triangle intersection using collision geometry.
-        //    If BVH is active, only test BVH-candidate entities.
-        // ------------------------------------------------------------------
         {
             auto modelView = registry.view<ModelComponent, TransformComponent>();
             for (auto entity : modelView) {
-                if (useBvh && candidates[0] != entity) continue;
+                if (useBvh && candidates[0] != entity)
+                    continue;
 
                 const auto& transform = registry.get<TransformComponent>(entity);
                 const auto& modelComp = registry.get<ModelComponent>(entity);
@@ -75,12 +64,10 @@ namespace engine {
                 if (!model)
                     continue;
 
-                // Quick AABB rejection in world space.
                 const auto& localBounds = model->getLocalBounds();
                 if (!localBounds.isValid())
                     continue;
 
-                // Transform local bounds → world AABB.
                 const glm::mat4& worldMat   = transform.modelTransform();
                 glm::vec3        corners[8] = {
                     glm::vec3(worldMat * glm::vec4(localBounds.min.x, localBounds.min.y, localBounds.min.z, 1.0f)),
@@ -107,8 +94,6 @@ namespace engine {
                 if (aabbT >= bestT)
                     continue;
 
-                // Ray passes through the AABB — test actual triangles.
-                // Transform the ray into the model's local space.
                 glm::mat4 invWorld = glm::inverse(worldMat);
                 Ray       localRay;
                 localRay.origin    = glm::vec3(invWorld * glm::vec4(ray.origin, 1.0f));
@@ -136,8 +121,7 @@ namespace engine {
                 }
 
                 if (bestLocalT < std::numeric_limits<float>::max()) {
-                    // Convert local hit distance back to world scale (approx).
-                    float worldHitT = aabbT;  // use AABB distance as proxy
+                    float worldHitT = aabbT;
                     if (bestLocalT < bestT) {
                         bestT      = worldHitT;
                         bestEntity = entity;
@@ -146,14 +130,11 @@ namespace engine {
             }
         }
 
-        // ------------------------------------------------------------------
-        // 3) Cameras (without ModelComponent) — screen-space radius test.
-        // ------------------------------------------------------------------
         {
             auto view = registry.view<CameraComponent, TransformComponent>();
             for (auto entity : view) {
                 if (registry.all_of<ModelComponent>(entity))
-                    continue;  // already handled above as a model
+                    continue;
 
                 const auto& transform = registry.get<TransformComponent>(entity);
                 glm::vec2   sp        = worldToViewport(frameInfo, transform.translation);
@@ -166,9 +147,6 @@ namespace engine {
             }
         }
 
-        // ------------------------------------------------------------------
-        // 4) Lights (without ModelComponent) — same screen-space radius test.
-        // ------------------------------------------------------------------
         {
             auto pointView = registry.view<PointLightComponent, TransformComponent>();
             for (auto entity : pointView) {
@@ -218,31 +196,22 @@ namespace engine {
         return bestEntity;
     }
 
-    // ==========================================================================
-    // Ray helpers
-    // ==========================================================================
-
     PickingSystem::Ray PickingSystem::viewportToWorldRay(FrameInfo& frameInfo,
         float vpX, float vpY) const {
-        // Normalized device coordinates (Vulkan: Z in [0,1], Y in [0,1] → NDC).
         float ndcX = vpX * 2.0f - 1.0f;
-        float ndcY = -(vpY * 2.0f - 1.0f);  // viewport Y is top-to-bottom, NDC Y is bottom-to-top
+        float ndcY = -(vpY * 2.0f - 1.0f);
 
-        // Build inverse projection (Camera only stores the forward projection).
         glm::mat4 invProj = glm::inverse(frameInfo.camera.getProjection());
         glm::mat4 invView = frameInfo.camera.getInverseView();
 
-        // Near and far points in clip space (Vulkan depth: near=0, far=1).
         glm::vec4 clipNear(ndcX, ndcY, 0.0f, 1.0f);
         glm::vec4 clipFar(ndcX, ndcY, 1.0f, 1.0f);
 
-        // Unproject to view space.
         glm::vec4 eyeNear = invProj * clipNear;
         glm::vec4 eyeFar  = invProj * clipFar;
         eyeNear /= eyeNear.w;
         eyeFar /= eyeFar.w;
 
-        // View → world.
         glm::vec3 worldNear = glm::vec3(invView * eyeNear);
         glm::vec3 worldFar  = glm::vec3(invView * eyeFar);
 
@@ -263,14 +232,10 @@ namespace engine {
         float ndcY = clipPos.y / clipPos.w;
 
         float vpX = (ndcX + 1.0f) * 0.5f;
-        float vpY = 1.0f - (ndcY + 1.0f) * 0.5f;  // flip Y
+        float vpY = 1.0f - (ndcY + 1.0f) * 0.5f;
 
         return glm::vec2(vpX, vpY);
     }
-
-    // ==========================================================================
-    // Intersection tests
-    // ==========================================================================
 
     bool PickingSystem::intersectRayAABB(const Ray& ray,
         const glm::vec3& aabbMin, const glm::vec3& aabbMax,
@@ -295,7 +260,6 @@ namespace engine {
     bool PickingSystem::intersectRayTriangle(const Ray& ray,
         const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
         float& t, float& u, float& v) const {
-        // Moller-Trumbore algorithm.
         const glm::vec3 edge1 = v1 - v0;
         const glm::vec3 edge2 = v2 - v0;
         const glm::vec3 h     = glm::cross(ray.direction, edge2);

@@ -18,13 +18,12 @@ namespace engine {
     struct AnimationGraphNode {
         int         id{-1};
         std::string name;
-        int         clipIndex{-1};  // -1 means entry/exit node
-        std::string clipName;       // For display
+        int         clipIndex{-1};
+        std::string clipName;
         bool        isEntry{false};
         bool        isExit{false};
-        bool        isBlendNode{false};  // Interpolation node between clips
+        bool        isBlendNode{false};
 
-        // Runtime state
         float nodeTime{0.0f};
         bool  active{false};
         float weight{1.0f};
@@ -38,11 +37,11 @@ namespace engine {
  * @brief Condition that triggers a transition
  */
     enum class TransitionCondition {
-        NONE,           // Always fire
-        TIME_BASED,     // Fire after time elapsed in source node
-        EVENT_BASED,    // Fire on animation event
-        PARAM_BASED,    // Fire when parameter meets threshold
-        BLEND_COMPLETE  // Fire when blend finishes
+        NONE,
+        TIME_BASED,
+        EVENT_BASED,
+        PARAM_BASED,
+        BLEND_COMPLETE
     };
 
     /**
@@ -55,16 +54,14 @@ namespace engine {
         int                 targetNodeId{-1};
         TransitionCondition condition{TransitionCondition::NONE};
 
-        // Condition parameters
         float       timeThreshold{0.0f};
         std::string eventName;
         float       paramValue{0.0f};
         std::string paramName;
 
-        // Transition behavior
         float       blendDuration{0.0f};
-        std::string blendMode;         // "fade", "crossfade", "instant"
-        bool        isDefault{false};  // Auto-transition on exit
+        std::string blendMode;
+        bool        isDefault{false};
 
         AnimationTransition() = default;
         AnimationTransition(int id, const std::string& name, int src, int dst)
@@ -161,4 +158,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_ANIMATIONGRAPH_HPP
+#endif

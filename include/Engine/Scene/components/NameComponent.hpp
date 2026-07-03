@@ -11,4 +11,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_NAMECOMPONENT_HPP
+#endif

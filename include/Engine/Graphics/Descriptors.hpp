@@ -50,10 +50,9 @@ namespace engine {
             Builder& addPoolSize(VkDescriptorType descriptorType, uint32_t count);
             Builder& setPoolFlags(VkDescriptorPoolCreateFlags flags);
             Builder& setMaxSets(uint32_t count);
-            // Opt-in: allow the pool to create overflow pools when allocation
-            // requests cannot be satisfied due to fragmentation or size limits.
+
             Builder& setAllowOverflow(bool allow);
-            // Require the pool to be created successfully. Defaults to true.
+
             Builder&                                      setRequireSuccess(bool require);
             [[nodiscard]] std::unique_ptr<DescriptorPool> build() const;
 
@@ -71,14 +70,10 @@ namespace engine {
         DescriptorPool(const DescriptorPool&)            = delete;
         DescriptorPool& operator=(const DescriptorPool&) = delete;
 
-        // requestedPoolSizes: optional hint used when creating an overflow pool
-        // after a primary allocation failure. If nullptr, the pool's creation
-        // sizes are used for any fallback.
         bool allocateDescriptor(VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor, const std::vector<VkDescriptorPoolSize>* requestedPoolSizes = nullptr);
         void freeDescriptors(std::vector<VkDescriptorSet>& descriptors) const;
         void resetPool();
 
-        // Diagnostic helpers (read-only)
         [[nodiscard]] uint32_t getMaxSets() const {
             return maxSets;
         }
@@ -90,12 +85,10 @@ namespace engine {
         Device&          device;
         VkDescriptorPool descriptorPool;
 
-        // Stored at creation time so we can emit helpful diagnostics when alloc fails
         std::vector<VkDescriptorPoolSize> poolSizes;
         uint32_t                          maxSets;
         VkDescriptorPoolCreateFlags       poolFlags;
 
-        // Overflow/fallback pools owned by this DescriptorPool (prototype)
         mutable std::vector<VkDescriptorPool> overflowPools;
         mutable std::mutex                    overflowMutex;
         bool                                  allowOverflow = false;
@@ -109,10 +102,8 @@ namespace engine {
 
         DescriptorWriter& writeBuffer(uint32_t binding, VkDescriptorBufferInfo* bufferInfo);
         DescriptorWriter& writeImage(uint32_t binding, VkDescriptorImageInfo* imageInfo);
+        DescriptorWriter& writeImageArray(uint32_t binding, VkDescriptorImageInfo* imageInfos, uint32_t count);
 
-        // Extended build: optional outResult supplies the underlying VkResult when
-        // allocation fails (helps callers decide whether to grow pools, retry,
-        // or fail fast). Backwards-compatible default keeps existing call sites OK.
         bool build(VkDescriptorSet& set, VkResult* outResult = nullptr);
         void buildOrThrow(VkDescriptorSet& set);
         void overwrite(VkDescriptorSet& set);
@@ -125,4 +116,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DESCRIPTORS_HPP
+#endif

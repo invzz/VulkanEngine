@@ -40,7 +40,6 @@ namespace {
             size_t pos   = 0;
             bool   found = false;
             while ((pos = source.find(token, pos)) != std::string::npos) {
-                // Check if this is a port-based call (e.g., physicsPort_->joltPhysicsSystem())
                 bool isPortCall = false;
                 for (const auto& prefix : portPrefixes) {
                     if (pos >= prefix.size() && source.substr(pos - prefix.size(), prefix.size()) == prefix) {
@@ -91,8 +90,6 @@ TEST(EngineLifecycleContracts, AppRecreatesPostProcessingSystemAfterSwapchainRec
     EXPECT_NE(appSource.find("renderer.wasSwapChainRecreated()"), std::string::npos)
         << "App::render should react to swapchain recreation events";
 
-    // Post-processing recreation is now done via the IPostProcessingAccessPort adapter,
-    // not directly through EngineState.
     EXPECT_NE(appSource.find("postProcessingAccessAdapter->recreatePostProcessingSystemWithExistingLayout("), std::string::npos)
         << "App::render should recreate post-processing system via IPostProcessingAccessPort on swapchain recreation";
 }
@@ -165,7 +162,6 @@ TEST(EngineLifecycleContracts, EngineStateProvidesGroupedSystemServicesAccessor)
     EXPECT_NE(header.find("systemServices()"), std::string::npos)
         << "EngineState should still provide systemServices() (now private for internal use only)";
 
-    // Verify systemServices() is NOT public - it was moved to private in Phase 2
     const auto publicSection = header.substr(0, header.find("private:"));
     EXPECT_EQ(publicSection.find("systemServices()"), std::string::npos)
         << "systemServices() should be private, not public";

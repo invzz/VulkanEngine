@@ -40,7 +40,6 @@ namespace engine {
             }
         }
 
-        // Extract labels for combo
         const char* comboLabels[14];
         for (int i = 0; i < 14; ++i) {
             comboLabels[i] = debugOptions[i].label;
@@ -53,7 +52,6 @@ namespace engine {
             selectedIndex = tmpIdx;
         }
 
-        // Debug text for specific modes
         if (debugMode_ == 9) {
             ui::UI::TextDisabled("Shows linearized depth. Objects closer to camera are darker.");
         }

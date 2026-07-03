@@ -10,7 +10,7 @@ namespace engine {
 
     void Instance::create(const std::vector<const char*>& extensions, const std::vector<const char*>& layers) {
         if (instance_ != VK_NULL_HANDLE)
-            return;  // already created
+            return;
 
         VkApplicationInfo appInfo{};
         appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -36,7 +36,7 @@ namespace engine {
     void Instance::reset() noexcept {
         if (instance_ == VK_NULL_HANDLE)
             return;
-        // Use loader-level destroy if available
+
         vkDestroyInstance(instance_, nullptr);
         instance_ = VK_NULL_HANDLE;
     }

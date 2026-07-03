@@ -7,12 +7,7 @@
 
 namespace engine::test {
 
-    // Test fixture using shared Device
     class PrefilteredEnvIBLTest : public DeviceFixture {};
-
-    // ==============================================================================
-    // Construction Tests
-    // ==============================================================================
 
     TEST_F(PrefilteredEnvIBLTest, Construction_DoesNotThrow) {
         EXPECT_NO_THROW({ ibl::PrefilteredEnvIBL prefiltered(device()); });
@@ -25,10 +20,6 @@ namespace engine::test {
         EXPECT_EQ(prefiltered.imageView(), VK_NULL_HANDLE);
         EXPECT_EQ(prefiltered.sampler(), VK_NULL_HANDLE);
     }
-
-    // ==============================================================================
-    // Fallback Creation Tests
-    // ==============================================================================
 
     TEST_F(PrefilteredEnvIBLTest, CreateFallback_DoesNotThrow) {
         ibl::PrefilteredEnvIBL prefiltered(device());
@@ -56,10 +47,6 @@ namespace engine::test {
         EXPECT_NE(prefiltered.sampler(), VK_NULL_HANDLE);
     }
 
-    // ==============================================================================
-    // Descriptor Info Tests
-    // ==============================================================================
-
     TEST_F(PrefilteredEnvIBLTest, GetDescriptorInfo_AfterFallback_ReturnsValidInfo) {
         ibl::PrefilteredEnvIBL prefiltered(device());
         prefiltered.createFallback();
@@ -80,10 +67,6 @@ namespace engine::test {
         EXPECT_EQ(info.imageView, prefiltered.imageView());
         EXPECT_EQ(info.sampler, prefiltered.sampler());
     }
-
-    // ==============================================================================
-    // Reset Tests
-    // ==============================================================================
 
     TEST_F(PrefilteredEnvIBLTest, ResetToUninitialized_ClearsResources) {
         ibl::PrefilteredEnvIBL prefiltered(device());
@@ -107,10 +90,6 @@ namespace engine::test {
         EXPECT_NE(prefiltered.image(), VK_NULL_HANDLE);
     }
 
-    // ==============================================================================
-    // Deferred Destroy Tests
-    // ==============================================================================
-
     TEST_F(PrefilteredEnvIBLTest, DeferDestroyImageResources_DoesNotThrow) {
         ibl::PrefilteredEnvIBL prefiltered(device());
         prefiltered.createFallback();
@@ -128,10 +107,6 @@ namespace engine::test {
         EXPECT_EQ(prefiltered.imageView(), VK_NULL_HANDLE);
         EXPECT_EQ(prefiltered.sampler(), VK_NULL_HANDLE);
     }
-
-    // ==============================================================================
-    // Immediate Destroy Tests
-    // ==============================================================================
 
     TEST_F(PrefilteredEnvIBLTest, DestroyImmediate_DoesNotThrow) {
         ibl::PrefilteredEnvIBL prefiltered(device());
@@ -157,15 +132,11 @@ namespace engine::test {
         EXPECT_EQ(prefiltered.sampler(), VK_NULL_HANDLE);
     }
 
-    // ==============================================================================
-    // CreateForSettings Tests
-    // ==============================================================================
-
     TEST_F(PrefilteredEnvIBLTest, CreateForSettings_SmallSize_DoesNotThrow) {
         ibl::PrefilteredEnvIBL prefiltered(device());
 
         ibl::Settings settings;
-        settings.prefilterSize      = 32;  // Small for test
+        settings.prefilterSize      = 32;
         settings.prefilterMipLevels = 4;
 
         EXPECT_NO_THROW(prefiltered.createForSettings(settings));
@@ -184,10 +155,6 @@ namespace engine::test {
         EXPECT_NE(prefiltered.imageView(), VK_NULL_HANDLE);
         EXPECT_NE(prefiltered.sampler(), VK_NULL_HANDLE);
     }
-
-    // ==============================================================================
-    // Destructor Tests
-    // ==============================================================================
 
     TEST_F(PrefilteredEnvIBLTest, Destructor_CleansUpResources) {
         {

@@ -64,13 +64,10 @@ namespace engine {
         void updateAnimations(FrameInfo& frameInfo);
         void updateMorphTargets(FrameInfo& frameInfo);
 
-        // Helper functions moved from AnimationController
         void updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation);
         void computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform);
 
-        // Interpolation helpers
-        glm::vec3 interpolateVec3(float time, const std::vector<std::pair<float, glm::vec3>>& keyframes);  // Wait, the signature in AnimationController used AnimationSampler
-        // I should probably use AnimationSampler in the signature to match the logic easier.
+        glm::vec3 interpolateVec3(float time, const std::vector<std::pair<float, glm::vec3>>& keyframes);
 
         static glm::vec3          interpolateVec3(const Model::AnimationSampler& sampler, float time);
         static glm::quat          interpolateQuat(const Model::AnimationSampler& sampler, float time);
@@ -79,4 +76,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_ANIMATIONSYSTEM_HPP
+#endif

@@ -13,17 +13,11 @@
 
 using namespace engine;
 
-// Use SceneFixture which provides Device + ResourceManager
 class SceneSerializerTest : public engine::test::SceneFixture {};
-
-// =============================================================================
-// Light Bake Fields Roundtrip Tests
-// =============================================================================
 
 TEST_F(SceneSerializerTest, GivenDirectionalLightWithBakeFields_WhenSerializedAndDeserialized_ThenFieldsArePreserved) {
     const std::string filepath = "assets/scenes/test/test_scene_bake_roundtrip.json";
 
-    // Create a scene with one directional light and bake fields set
     Scene scene;
     auto  entity = scene.createEntity();
     auto& dl     = scene.getRegistry().emplace<DirectionalLightComponent>(entity);
@@ -35,7 +29,6 @@ TEST_F(SceneSerializerTest, GivenDirectionalLightWithBakeFields_WhenSerializedAn
     SceneSerializer serializer(scene, resourceManager());
     serializer.serialize(filepath);
 
-    // Deserialize into a fresh scene
     Scene           scene2;
     SceneSerializer serializer2(scene2, resourceManager());
     ASSERT_TRUE(serializer2.deserialize(filepath));
@@ -52,10 +45,6 @@ TEST_F(SceneSerializerTest, GivenDirectionalLightWithBakeFields_WhenSerializedAn
     }
 }
 
-// =============================================================================
-// Demo Scene Loading Tests
-// =============================================================================
-
 TEST_F(SceneSerializerTest, GivenDemoBakeSceneFile_WhenDeserialized_ThenLightComponentsHaveCorrectBakeFlags) {
     std::string const path = "assets/scenes/test/demo_scene_bake.json";
 
@@ -67,7 +56,6 @@ TEST_F(SceneSerializerTest, GivenDemoBakeSceneFile_WhenDeserialized_ThenLightCom
     SceneSerializer serializer(scene, resourceManager());
     ASSERT_TRUE(serializer.deserialize(path));
 
-    // Verify directional light components exist and have bake flags
     auto dirView = scene.getRegistry().view<DirectionalLightComponent>();
     ASSERT_GT(std::distance(dirView.begin(), dirView.end()), 0);
     for (auto e : dirView) {
@@ -76,7 +64,6 @@ TEST_F(SceneSerializerTest, GivenDemoBakeSceneFile_WhenDeserialized_ThenLightCom
         EXPECT_EQ(dl.lightType, LightMobility::Static);
     }
 
-    // Verify point light components exist and have bake flags
     auto pointView = scene.getRegistry().view<PointLightComponent>();
     ASSERT_GT(std::distance(pointView.begin(), pointView.end()), 0);
     for (auto e : pointView) {
@@ -85,10 +72,6 @@ TEST_F(SceneSerializerTest, GivenDemoBakeSceneFile_WhenDeserialized_ThenLightCom
         EXPECT_EQ(pl.lightType, LightMobility::Dynamic);
     }
 }
-
-// =============================================================================
-// PointLight Roundtrip Tests
-// =============================================================================
 
 TEST_F(SceneSerializerTest, GivenPointLightWithAllFields_WhenSerializedAndDeserialized_ThenFieldsArePreserved) {
     const std::string filepath = "assets/scenes/test/test_point_light_roundtrip.json";
@@ -124,10 +107,6 @@ TEST_F(SceneSerializerTest, GivenPointLightWithAllFields_WhenSerializedAndDeseri
     }
 }
 
-// =============================================================================
-// SpotLight Roundtrip Tests
-// =============================================================================
-
 TEST_F(SceneSerializerTest, GivenSpotLightWithAllFields_WhenSerializedAndDeserialized_ThenFieldsArePreserved) {
     const std::string filepath = "assets/scenes/test/test_spot_light_roundtrip.json";
 
@@ -162,10 +141,6 @@ TEST_F(SceneSerializerTest, GivenSpotLightWithAllFields_WhenSerializedAndDeseria
     }
 }
 
-// =============================================================================
-// Empty Scene Tests
-// =============================================================================
-
 TEST_F(SceneSerializerTest, GivenEmptyScene_WhenSerialized_ThenDeserializesWithDefaultCamera) {
     const std::string filepath = "assets/scenes/test/test_empty_scene.json";
 
@@ -175,17 +150,12 @@ TEST_F(SceneSerializerTest, GivenEmptyScene_WhenSerialized_ThenDeserializesWithD
 
     Scene           scene2;
     SceneSerializer serializer2(scene2, resourceManager());
-    // Empty scene file should still parse but might not have "objects"
+
     serializer2.deserialize(filepath);
 
-    // Should have a default camera created
     auto camView = scene2.getRegistry().view<CameraComponent>();
     EXPECT_GE(std::distance(camView.begin(), camView.end()), 1);
 }
-
-// =============================================================================
-// Transform Roundtrip Tests
-// =============================================================================
 
 TEST_F(SceneSerializerTest, GivenEntityWithTransform_WhenSerializedAndDeserialized_ThenTransformPreserved) {
     const std::string filepath = "assets/scenes/test/test_transform_roundtrip.json";
@@ -197,7 +167,6 @@ TEST_F(SceneSerializerTest, GivenEntityWithTransform_WhenSerializedAndDeserializ
     transform.rotation    = glm::vec3(0.5f, 1.0f, 1.5f);
     transform.scale       = glm::vec3(2.0f, 3.0f, 4.0f);
 
-    // Need at least a directional light for the scene to have "objects"
     scene.getRegistry().emplace<DirectionalLightComponent>(entity);
 
     SceneSerializer serializer(scene, resourceManager());
@@ -224,38 +193,27 @@ TEST_F(SceneSerializerTest, GivenEntityWithTransform_WhenSerializedAndDeserializ
     }
 }
 
-// =============================================================================
-// Invalid File Tests
-// =============================================================================
-
 TEST_F(SceneSerializerTest, GivenNonexistentFile_WhenDeserialized_ThenReturnsFalse) {
     Scene           scene;
     SceneSerializer serializer(scene, resourceManager());
     EXPECT_FALSE(serializer.deserialize("assets/scenes/test/nonexistent_file_12345.json"));
 }
 
-// =============================================================================
-// Multiple Lights Tests
-// =============================================================================
-
 TEST_F(SceneSerializerTest, GivenSceneWithMultipleLightTypes_WhenSerializedAndDeserialized_ThenAllLightsPreserved) {
     const std::string filepath = "assets/scenes/test/test_multi_lights.json";
 
     Scene scene;
 
-    // Add point light
     auto  pointEntity = scene.createEntity();
     auto& pl          = scene.getRegistry().emplace<PointLightComponent>(pointEntity);
     pl.intensity      = 1.0f;
     scene.getRegistry().emplace<TransformComponent>(pointEntity);
 
-    // Add directional light
     auto  dirEntity = scene.createEntity();
     auto& dl        = scene.getRegistry().emplace<DirectionalLightComponent>(dirEntity);
     dl.intensity    = 2.0f;
     scene.getRegistry().emplace<TransformComponent>(dirEntity);
 
-    // Add spot light
     auto  spotEntity = scene.createEntity();
     auto& sl         = scene.getRegistry().emplace<SpotLightComponent>(spotEntity);
     sl.intensity     = 3.0f;

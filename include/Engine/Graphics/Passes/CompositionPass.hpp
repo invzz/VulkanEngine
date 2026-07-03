@@ -9,17 +9,13 @@ namespace engine {
     class Renderer;
     class Window;
 
-    class CompositionPass : public IRenderPass {
+    class CompositionPass : public RenderPassBase {
        public:
         using UIRenderFn = std::function<void(FrameInfo&, VkCommandBuffer, bool)>;
 
         CompositionPass(Renderer& renderer, UIRenderFn renderUI, Window& window);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override {
-            static std::string name = "Composition";
-            return name;
-        }
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         Renderer&  renderer_;

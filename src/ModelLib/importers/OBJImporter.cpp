@@ -21,7 +21,6 @@
 #include "glm/common.hpp"
 #include "glm/geometric.hpp"
 
-// Hash function for Model::Vertex
 namespace std {
     template <>
     struct hash<engine::Model::Vertex> {
@@ -35,17 +34,9 @@ namespace std {
 
 namespace engine {
 
-    // Helper function for MTL to PBR conversion
     static PBRMaterial mtlToPBR(const glm::vec3& Kd, const glm::vec3& Ks, float Ns, std::string& matName) {
-        // Convert MTL (Phong) material to PBR material
-        // Note: This conversion is heuristic-based. Future improvements:
-        // - Transparency: Use MTL 'd' parameter for alpha/transmission (HeadlightGlass, Glass)
-        // - Clearcoat: Add second specular layer for car paint (roughness ~0.05)
-        // - Anisotropy: For brushed metals or fabric materials
-
         PBRMaterial pbr;
 
-        // Roughness from Ns
         Ns              = glm::clamp(Ns, 1.0f, 1000.0f);
         float roughness = sqrtf(2.0f / (Ns + 2.0f));
         roughness       = powf(roughness, 0.5f);
@@ -54,7 +45,6 @@ namespace engine {
         float const specularIntensity = glm::clamp((Ks.r + Ks.g + Ks.b) / 3.0f, 0.0f, 1.0f);
         float const kdLuminance       = glm::dot(Kd, glm::vec3(0.299f, 0.587f, 0.114f));
 
-        // --- Force metals by name
         std::string nameLower = matName;
         std::ranges::transform(nameLower, nameLower.begin(), ::tolower);
         bool const forceMetal = (nameLower.find("chrome") != std::string::npos || nameLower.find("mirror") != std::string::npos || nameLower.find("aluminum") != std::string::npos ||
@@ -62,13 +52,10 @@ namespace engine {
 
         if (forceMetal || (glm::length(Kd) < 0.05f && specularIntensity > 0.6f)) {
             pbr.metallic = 1.0f;
-            roughness    = glm::min(roughness, 0.02f);  // mirror-like
+            roughness    = glm::min(roughness, 0.02f);
 
-            // Use specular color for metallic tint (gold, copper, chrome with tint)
-            // This preserves colored reflections for metals
             pbr.albedo = glm::vec4(glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f)), 1.0f);
         } else {
-            // Non-obvious metals
             float const maxKs      = glm::max(glm::max(Ks.r, Ks.g), Ks.b);
             float const minKs      = glm::min(glm::min(Ks.r, Ks.g), Ks.b);
             float const tintAmount = glm::clamp((maxKs - minKs) / glm::max(maxKs, 1e-6f), 0.0f, 1.0f);
@@ -77,28 +64,24 @@ namespace engine {
             metallic *= glm::smoothstep(0.05f, 0.0f, kdLuminance);
             pbr.metallic = glm::clamp(metallic, 0.0f, 1.0f);
 
-            // Blend albedo based on metallic value for partial metals
             pbr.albedo = glm::vec4(glm::mix(Kd, glm::clamp(Ks, glm::vec3(0.04f), glm::vec3(1.0f)), pbr.metallic), 1.0f);
         }
 
         pbr.roughness = roughness;
         pbr.ao        = 1.0f;
 
-        // --- Detect clearcoat materials (car paint, lacquered surfaces)
         bool const isCarPaint = (nameLower.find("bmw") != std::string::npos || nameLower.find("carshell") != std::string::npos || nameLower.find("paint") != std::string::npos);
 
-        if (isCarPaint && pbr.metallic < 0.5f)  // Dielectric paint with clearcoat
-        {
-            pbr.clearcoat          = 1.0f;   // Full clearcoat layer
-            pbr.clearcoatRoughness = 0.05f;  // Smooth glossy finish
+        if (isCarPaint && pbr.metallic < 0.5f) {
+            pbr.clearcoat          = 1.0f;
+            pbr.clearcoatRoughness = 0.05f;
         }
 
-        // --- Detect anisotropic materials (brushed metals)
         bool const isBrushedMetal = (nameLower.find("brushed") != std::string::npos || nameLower.find("aluminum") != std::string::npos || nameLower.find("steel") != std::string::npos);
 
         if (isBrushedMetal) {
-            pbr.anisotropic         = 0.8f;  // Strong anisotropic effect
-            pbr.anisotropicRotation = 0.0f;  // Aligned with tangent
+            pbr.anisotropic         = 0.8f;
+            pbr.anisotropicRotation = 0.0f;
         }
 
         return pbr;
@@ -111,7 +94,6 @@ namespace engine {
         std::string                      warn;
         std::string                      err;
 
-        // Get the directory path for MTL file
         std::string const mtlBaseDir = filepath.substr(0, filepath.find_last_of("/\\") + 1);
 
         if (!tinyobj::LoadObj(&attrib, &shapes, &tinyMaterials, &warn, &err, filepath.c_str(), mtlBaseDir.c_str())) {
@@ -125,13 +107,11 @@ namespace engine {
         }
 #endif
 
-        // Convert TinyObj materials to our PBR materials
         builder.materials.clear();
         for (const auto& mat : tinyMaterials) {
             Model::MaterialInfo matInfo;
             matInfo.name = mat.name;
 
-            // Convert TinyObj material to PBR using helper function
             auto        Kd = glm::vec3(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2]);
             auto        Ks = glm::vec3(mat.specular[0], mat.specular[1], mat.specular[2]);
             float const Ns = mat.shininess;
@@ -139,7 +119,6 @@ namespace engine {
             matInfo.pbrMaterial = mtlToPBR(Kd, Ks, Ns, matInfo.name);
             matInfo.materialId  = static_cast<int>(builder.materials.size());
 
-            // Extract texture paths from MTL file
             matInfo.diffuseTexPath   = mat.diffuse_texname;
             matInfo.normalTexPath    = mat.bump_texname.empty() ? mat.normal_texname : mat.bump_texname;
             matInfo.roughnessTexPath = mat.roughness_texname.empty() ? mat.specular_texname : mat.roughness_texname;
@@ -151,7 +130,6 @@ namespace engine {
                       << matInfo.pbrMaterial.albedo.b << ", metallic=" << matInfo.pbrMaterial.metallic << ", roughness=" << matInfo.pbrMaterial.roughness << ")" << '\n';
         }
 
-        // Group indices by material to create sub-meshes
         std::unordered_map<int, std::vector<uint32_t>> indicesByMaterial;
         std::unordered_map<Model::Vertex, uint32_t>    uniqueVertices{};
 
@@ -164,7 +142,6 @@ namespace engine {
 
         for (const auto& shape : shapes) {
             for (size_t f = 0; f < shape.mesh.indices.size() / 3; f++) {
-                // Get material ID for this face
                 int const materialId = shape.mesh.material_ids[f];
 
                 for (size_t v = 0; v < 3; v++) {
@@ -213,13 +190,11 @@ namespace engine {
                     uint32_t const vertexIndex = uniqueVertices[vertex];
                     builder.indices.push_back(vertexIndex);
 
-                    // Group indices by material
                     indicesByMaterial[materialId].push_back(vertexIndex);
                 }
             }
         }
 
-        // Create sub-meshes from grouped indices
         builder.subMeshes.clear();
         uint32_t currentOffset = 0;
 
@@ -235,7 +210,6 @@ namespace engine {
             }
         }
 
-        // Rebuild indices array grouped by material
         std::vector<uint32_t> groupedIndices;
         groupedIndices.reserve(builder.indices.size());
 

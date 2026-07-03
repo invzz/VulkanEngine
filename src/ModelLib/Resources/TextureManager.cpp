@@ -16,10 +16,8 @@ namespace engine {
         createDescriptorPool();
         createDescriptorSet();
 
-        // Create a placeholder texture (white)
         placeholderTexture = Texture::createWhiteTexture(device);
 
-        // Add it as index 0 so 0 is always valid
         addTexture(placeholderTexture);
     }
 

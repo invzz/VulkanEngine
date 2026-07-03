@@ -14,12 +14,10 @@ namespace engine {
     InputSystem::InputSystem(Keyboard& keyboard, Mouse& mouse, Window& window) : keyboard_{keyboard}, mouse_{mouse}, window_{window} {}
 
     void InputSystem::update(FrameInfo& frameInfo) {
-        // In picking mode the cursor is normal: don't consume camera movement.
         if (frameInfo.viewportMode == ViewportMode::Picking) {
             return;
         }
 
-        // Control the selected object (camera or a game object)
         entt::entity const controllableEntity = frameInfo.selectedEntity != entt::null ? frameInfo.selectedEntity : frameInfo.cameraEntity;
 
         if (frameInfo.scene->getRegistry().valid(controllableEntity)) {

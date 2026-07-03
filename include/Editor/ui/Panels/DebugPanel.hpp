@@ -14,4 +14,4 @@ namespace engine {
     };
 }  // namespace engine
 
-#endif  // EDITOR_DEBUGPANEL_HPP
+#endif

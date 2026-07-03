@@ -20,10 +20,8 @@ namespace engine {
         if (!visible_)
             return;
 
-        // Push theme style
         ui::UI::PushThemeStyle();
 
-        // Use UI::Section for the collapsible header
         bool open = ui::UI::Section("Transform");
         if (!open) {
             ui::UI::PopThemeStyle();
@@ -44,9 +42,7 @@ namespace engine {
             ui::UI::TextColored(entityStr.c_str(), ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
             ui::UI::Separator();
 
-            // Create tabs for Translation, Rotation, and Scale
             if (ImGui::BeginTabBar("TransformTabs")) {
-                // Translation Tab
                 if (ImGui::BeginTabItem("Translation")) {
                     ImGui::Spacing();
                     bool translationChanged = false;
@@ -68,7 +64,6 @@ namespace engine {
                     ImGui::EndTabItem();
                 }
 
-                // Rotation Tab
                 if (ImGui::BeginTabItem("Rotation")) {
                     ImGui::Spacing();
                     ui::UI::TextDisabled("Degrees:");
@@ -105,17 +100,14 @@ namespace engine {
                     ImGui::EndTabItem();
                 }
 
-                // Scale Tab
                 if (ImGui::BeginTabItem("Scale")) {
                     ImGui::Spacing();
 
-                    // Lock axes checkbox
                     ui::UI::Checkbox("Lock Axes##scale_lock", &lockAxes_);
                     ui::UI::InfoTooltip("When locked, all axes scale uniformly");
 
                     ImGui::Spacing();
 
-                    // For animated objects, modify baseScale; for static objects, modify scale
                     bool const isAnimated  = registry.all_of<AnimationComponent>(entity);
                     glm::vec3& targetScale = isAnimated ? transform.baseScale : transform.scale;
 
@@ -124,19 +116,16 @@ namespace engine {
                     }
 
                     if (lockAxes_) {
-                        // Uniform scaling - use X axis as the master
                         float uniformScale = targetScale.x;
                         if (ui::UI::DragFloat("Uniform##scale_uniform", &uniformScale, 0.01f, 0.01f, 100.0f)) {
                             targetScale = glm::vec3(uniformScale);
                         }
                     } else {
-                        // Independent axis scaling
                         ui::UI::DragFloat("X##scale_x", &targetScale.x, 0.01f, 0.01f, 100.0f);
                         ui::UI::DragFloat("Y##scale_y", &targetScale.y, 0.01f, 0.01f, 100.0f);
                         ui::UI::DragFloat("Z##scale_z", &targetScale.z, 0.01f, 0.01f, 100.0f);
                     }
 
-                    // Quick scale buttons
                     ui::UI::Separator();
                     ui::UI::TextDisabled("Quick Scale:");
                     if (ui::UI::Button("Reset (1.0)##scale_reset")) {

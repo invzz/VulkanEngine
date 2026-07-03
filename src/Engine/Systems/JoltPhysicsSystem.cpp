@@ -9,10 +9,6 @@
 
 namespace engine {
 
-    // ============================================================================
-    // Helpers
-    // ============================================================================
-
     JPH::Vec3 JoltPhysicsSystem::toJolt(const glm::vec3& v) {
         return {v.x, v.y, v.z};
     }
@@ -29,15 +25,10 @@ namespace engine {
         return {q.GetW(), q.GetX(), q.GetY(), q.GetZ()};
     }
 
-    // ============================================================================
-    // Constructor / Destructor
-    // ============================================================================
-
     JoltPhysicsSystem::JoltPhysicsSystem()
         : broadPhaseLayerInterface_(nullptr),
           objectLayerPairFilter_(nullptr),
           objectVsBroadPhaseLayerFilter_(nullptr) {
-        // Jolt requires global allocator registration before any JPH allocation.
         JPH::RegisterDefaultAllocator();
 
         factory_                  = std::make_unique<JPH::Factory>();
@@ -71,7 +62,6 @@ namespace engine {
         physicsSettings.mMinVelocityForRestitution = 0.0f;
         physicsSystem_->SetPhysicsSettings(physicsSettings);
 
-        // Y-down convention: positive Y is downward.
         physicsSystem_->SetGravity(JPH::Vec3(0.0f, 9.81f, 0.0f));
 
         createGroundBody();
@@ -107,8 +97,6 @@ namespace engine {
 
         auto& bodyInterface = physicsSystem_->GetBodyInterface();
 
-        // Large static box aligned with the grid plane at Y = 0.
-        // In Y-down convention, floor thickness extends toward +Y (downward).
         auto                      groundShape = std::make_unique<JPH::BoxShape>(JPH::Vec3(1000.0f, 10.0f, 1000.0f));
         JPH::BodyCreationSettings groundSettings(
             groundShape.release(),
@@ -147,23 +135,14 @@ namespace engine {
         }
     }
 
-    // ============================================================================
-    // update
-    // ============================================================================
-
     void JoltPhysicsSystem::update(float frameTime, int maxSubSteps, float subStepTime) {
         if (!physicsSystem_) {
             return;
         }
 
-        // Step the physics world
         (void) subStepTime;
         physicsSystem_->Update(frameTime, maxSubSteps, tempAllocator_.get(), jobSystem_.get());
     }
-
-    // ============================================================================
-    // syncToEntities
-    // ============================================================================
 
     void JoltPhysicsSystem::syncToEntities(Scene* scene) {
         if (!physicsSystem_ || scene == nullptr) {
@@ -176,10 +155,6 @@ namespace engine {
             syncEntity(registry, entity);
         }
     }
-
-    // ============================================================================
-    // syncEntity
-    // ============================================================================
 
     void JoltPhysicsSystem::syncEntity(entt::registry& registry, entt::entity entity) {
         if (!physicsSystem_ || !registry.all_of<RigidBodyComponent, TransformComponent>(entity)) {
@@ -353,8 +328,6 @@ namespace engine {
         mutableBodyInterface.SetIsSensor(bodyID, collider != nullptr ? collider->isTrigger : false);
 
         if (effectiveMotionType == JPH::EMotionType::Dynamic) {
-            // Dynamic bodies are usually Jolt-authoritative, but explicit ECS edits from the UI
-            // (while simulation is paused) should be applied exactly once on resume.
             if (!needsNewBody && rigidBody.pendingBodyStateOverride) {
                 glm::vec3 bodyPosition = transform.translation;
                 if (collider != nullptr) {
@@ -370,14 +343,11 @@ namespace engine {
                 rigidBody.pendingBodyStateOverride = false;
             }
 
-            // Apply one-shot ECS acceleration as force.
             if (glm::dot(rigidBody.acceleration, rigidBody.acceleration) > 0.0f) {
                 mutableBodyInterface.AddForce(bodyID, toJolt(rigidBody.acceleration * rigidBody.mass), JPH::EActivation::Activate);
                 rigidBody.acceleration = glm::vec3(0.0f);
             }
         } else if (effectiveMotionType != JPH::EMotionType::Static || needsNewBody || rigidBody.pendingBodyStateOverride) {
-            // Kinematic bodies are ECS-driven every frame. Static bodies are only
-            // re-driven when newly created or explicitly overridden by UI edits.
             glm::vec3 bodyPosition = transform.translation;
             if (collider != nullptr) {
                 bodyPosition += glm::quat(transform.rotation) * collider->centerOffset;
@@ -406,10 +376,6 @@ namespace engine {
         rigidBody.angularVelocity = toGlm(angularVelocity);
     }
 
-    // ============================================================================
-    // removeEntity
-    // ============================================================================
-
     void JoltPhysicsSystem::removeEntity(entt::entity e) {
         if (!physicsSystem_) {
             return;
@@ -428,10 +394,6 @@ namespace engine {
         bodyInterface.DestroyBody(bodyIt->second.bodyID);
         bodyMap_.erase(bodyIt);
     }
-
-    // ============================================================================
-    // clear
-    // ============================================================================
 
     void JoltPhysicsSystem::clear() {
         if (physicsSystem_) {
@@ -453,10 +415,6 @@ namespace engine {
         bodyMap_.clear();
     }
 
-    // ============================================================================
-    // raycast
-    // ============================================================================
-
     glm::vec3 JoltPhysicsSystem::raycast(const glm::vec3& origin, const glm::vec3& direction,
         float maxDistance) const {
         if (!physicsSystem_) {
@@ -475,10 +433,6 @@ namespace engine {
         const JPH::RVec3 hitPoint = rayCast.GetPointOnRay(result.mFraction);
         return glm::vec3(hitPoint.GetX(), hitPoint.GetY(), hitPoint.GetZ());
     }
-
-    // ============================================================================
-    // createCollisionShape
-    // ============================================================================
 
     std::unique_ptr<JPH::BodyCreationSettings> JoltPhysicsSystem::createCollisionShape(
         const TransformComponent&       transform,

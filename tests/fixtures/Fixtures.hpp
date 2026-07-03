@@ -22,4 +22,4 @@
 #include "ImporterFixture.hpp"
 #include "SceneFixture.hpp"
 
-#endif  // VULKANENGINE_TESTS_FIXTURES_FIXTURES_HPP
+#endif

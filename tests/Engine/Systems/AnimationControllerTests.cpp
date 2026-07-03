@@ -6,8 +6,6 @@
 
 namespace engine {
 
-    // ── AnimationClip unit tests ───────────────────────────────────────
-
     TEST(AnimationClipTest, DefaultConstruction) {
         AnimationClip clip;
         EXPECT_EQ(clip.clipIndex, -1);
@@ -41,19 +39,15 @@ namespace engine {
         clip.duration = 5.0f;
         clip.loop     = false;
 
-        // Before playing
         EXPECT_FALSE(clip.isFinished());
 
-        // Playing but not finished
         clip.active      = true;
         clip.currentTime = 3.0f;
         EXPECT_FALSE(clip.isFinished());
 
-        // Finished (past duration)
         clip.currentTime = 6.0f;
         EXPECT_TRUE(clip.isFinished());
 
-        // Looping — never finishes
         clip.loop        = true;
         clip.currentTime = 10.0f;
         EXPECT_FALSE(clip.isFinished());
@@ -64,23 +58,20 @@ namespace engine {
         EXPECT_FALSE(clip.hasEvents());
 
         clip.events.push_back({1.0f, "event1", nullptr});
-        // hasEvents() checks if events exist and haven't all been drained
-        // It does NOT check time readiness — that's drainFiredEvents' job
-        EXPECT_TRUE(clip.hasEvents());  // has events, nextEventIndex=0 < 1
 
-        // Drain one
+        EXPECT_TRUE(clip.hasEvents());
+
         clip.currentTime = 2.0f;
         std::vector<std::pair<std::string, void*>> fired;
         clip.drainFiredEvents(fired);
-        // Still has events (next is at time 5.0, but hasEvents doesn't check time)
-        EXPECT_FALSE(clip.hasEvents());  // nextEventIndex=1 == events.size()
 
-        // Add more events
+        EXPECT_FALSE(clip.hasEvents());
+
         clip.events.push_back({3.0f, "event3", nullptr});
         EXPECT_TRUE(clip.hasEvents());
 
         clip.nextEventIndex = 2;
-        EXPECT_FALSE(clip.hasEvents());  // drained
+        EXPECT_FALSE(clip.hasEvents());
     }
 
     TEST(AnimationClipTest, DrainFiredEvents) {
@@ -102,8 +93,6 @@ namespace engine {
         EXPECT_EQ(clip.nextEventIndex, 2u);
     }
 
-    // ── AnimationController unit tests ─────────────────────────────────
-
     TEST(AnimationControllerTest, DefaultState) {
         AnimationController controller;
         EXPECT_FALSE(controller.hasActiveClips());
@@ -113,21 +102,17 @@ namespace engine {
     TEST(AnimationControllerTest, HasActiveClipsDetectsActive) {
         AnimationController controller;
 
-        // No clips = inactive
         EXPECT_FALSE(controller.hasActiveClips());
 
-        // Add a non-active clip
         AnimationClip clip;
         clip.clipIndex = 0;
         controller.getClips().push_back(std::move(clip));
         EXPECT_FALSE(controller.hasActiveClips());
 
-        // Activate it
         controller.getClips()[0].active = true;
         controller.getClips()[0].weight = 1.0f;
         EXPECT_TRUE(controller.hasActiveClips());
 
-        // Set weight to 0 = inactive
         controller.getClips()[0].weight = 0.0f;
         EXPECT_FALSE(controller.hasActiveClips());
     }
@@ -136,15 +121,12 @@ namespace engine {
         AnimationController controller;
         EXPECT_EQ(controller.getClip(0), nullptr);
 
-        // Add a clip
         AnimationClip c;
         c.clipIndex = 5;
         controller.getClips().push_back(std::move(c));
 
-        // Get by wrong index
         EXPECT_EQ(controller.getClip(0), nullptr);
 
-        // Get by correct index
         auto* found = controller.getClip(5);
         ASSERT_NE(found, nullptr);
         EXPECT_EQ(found->clipIndex, 5);
@@ -161,11 +143,9 @@ namespace engine {
         controller.setClipWeight(0, 0.5f);
         EXPECT_FLOAT_EQ(controller.getClips()[0].weight, 0.5f);
 
-        // Clamp to 0
         controller.setClipWeight(0, -1.0f);
         EXPECT_FLOAT_EQ(controller.getClips()[0].weight, 0.0f);
 
-        // Clamp to 1
         controller.setClipWeight(0, 2.0f);
         EXPECT_FLOAT_EQ(controller.getClips()[0].weight, 1.0f);
     }
@@ -181,7 +161,6 @@ namespace engine {
         controller.setClipSpeed(0, 2.0f);
         EXPECT_FLOAT_EQ(controller.getClips()[0].speed, 2.0f);
 
-        // Clamp minimum
         controller.setClipSpeed(0, -5.0f);
         EXPECT_FLOAT_EQ(controller.getClips()[0].speed, 0.01f);
     }
@@ -273,7 +252,6 @@ namespace engine {
         EXPECT_EQ(controller.getClips().size(), 1u);
         EXPECT_EQ(controller.getClips()[0].clipIndex, 1);
 
-        // Removing non-existent clip is safe
         controller.removeClip(99);
         EXPECT_EQ(controller.getClips().size(), 1u);
     }

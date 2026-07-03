@@ -51,7 +51,6 @@ namespace engine {
         ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking;
 
         if (ImGui::Begin("Settings", &visible_, windowFlags)) {
-            // Subtle dimmer for modal-like utility focus, excluding settings window itself.
             ImDrawList*  fg     = ImGui::GetForegroundDrawList(viewport);
             ImVec2 const vMin   = viewport->Pos;
             ImVec2 const vMax   = ImVec2(viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y);
@@ -59,13 +58,12 @@ namespace engine {
             ImVec2 const wMax   = ImVec2(wMin.x + ImGui::GetWindowSize().x, wMin.y + ImGui::GetWindowSize().y);
             ImU32 const  dimCol = IM_COL32(4, 8, 18, 110);
 
-            // Top
             fg->AddRectFilled(vMin, ImVec2(vMax.x, wMin.y), dimCol);
-            // Bottom
+
             fg->AddRectFilled(ImVec2(vMin.x, wMax.y), vMax, dimCol);
-            // Left
+
             fg->AddRectFilled(ImVec2(vMin.x, wMin.y), ImVec2(wMin.x, wMax.y), dimCol);
-            // Right
+
             fg->AddRectFilled(ImVec2(wMax.x, wMin.y), ImVec2(vMax.x, wMax.y), dimCol);
 
             ui::UI::BeginSurface("settings_scene", "Scene", "Global visibility and diagnostics");

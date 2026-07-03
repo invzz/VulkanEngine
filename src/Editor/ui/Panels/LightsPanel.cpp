@@ -26,7 +26,6 @@ namespace engine {
             return;
         }
 
-        // Spawn button
         if (ui::UI::Button("Spawn 200 Point Lights##lights_spawn")) {
             auto& registry = scene_.getRegistry();
 
@@ -55,7 +54,6 @@ namespace engine {
             auto  entity   = frameInfo.selectedEntity;
             auto& registry = scene_.getRegistry();
 
-            // Point Light Component
             if (registry.all_of<PointLightComponent>(entity)) {
                 auto& pointLight = registry.get<PointLightComponent>(entity);
                 ui::UI::TextColored("Point Light", ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
@@ -74,7 +72,6 @@ namespace engine {
                 ImGui::Spacing();
             }
 
-            // Directional Light Component
             if (registry.all_of<DirectionalLightComponent>(entity)) {
                 auto& dirLight = registry.get<DirectionalLightComponent>(entity);
                 ui::UI::TextColored("Directional Light", ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
@@ -93,7 +90,6 @@ namespace engine {
                 ui::UI::TextDisabled("Direction Control:");
 
                 if (ui::UI::Checkbox("Use Target Point##directional", &dirLight.useTargetPoint)) {
-                    // When enabling, initialize target to a visible default if it's at origin
                     if (dirLight.useTargetPoint) {
                         if (glm::length(dirLight.targetPoint) < 0.01f) {
                             dirLight.targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
@@ -105,7 +101,6 @@ namespace engine {
                     ui::UI::DragFloat3("Target Point##directional", &dirLight.targetPoint.x, 0.1f);
                 }
 
-                // Show current direction
                 glm::vec3 const dir    = registry.get<TransformComponent>(entity).getForwardDir();
                 std::string     dirStr = "Current Dir: (" + std::to_string(dir.x).substr(0, 5) + ", " +
                                          std::to_string(dir.y).substr(0, 5) + ", " +
@@ -115,7 +110,6 @@ namespace engine {
                 ImGui::Spacing();
             }
 
-            // Spot Light Component
             if (registry.all_of<SpotLightComponent>(entity)) {
                 auto& spotLight = registry.get<SpotLightComponent>(entity);
                 ui::UI::TextColored("Spot Light", ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
@@ -134,7 +128,6 @@ namespace engine {
                 ui::UI::TextDisabled("Direction Control:");
 
                 if (ui::UI::Checkbox("Use Target Point##spot", &spotLight.useTargetPoint)) {
-                    // When enabling, initialize target to a visible default if it's at origin
                     if (spotLight.useTargetPoint) {
                         if (glm::length(spotLight.targetPoint) < 0.01f) {
                             spotLight.targetPoint = glm::vec3(0.0f, 0.0f, -5.0f);
@@ -146,7 +139,6 @@ namespace engine {
                     ui::UI::DragFloat3("Target Point##spot", &spotLight.targetPoint.x, 0.1f);
                 }
 
-                // Show current direction
                 glm::vec3 const dir    = registry.get<TransformComponent>(entity).getForwardDir();
                 std::string     dirStr = "Current Dir: (" + std::to_string(dir.x).substr(0, 5) + ", " +
                                          std::to_string(dir.y).substr(0, 5) + ", " +
@@ -158,7 +150,6 @@ namespace engine {
                 ui::UI::DragFloat("Inner Cutoff (deg)##spot_inner", &spotLight.innerCutoffAngle, 0.5f, 0.0f, 90.0f);
                 ui::UI::DragFloat("Outer Cutoff (deg)##spot_outer", &spotLight.outerCutoffAngle, 0.5f, 0.0f, 90.0f);
 
-                // Ensure outer is always >= inner
                 spotLight.outerCutoffAngle = std::max(spotLight.outerCutoffAngle, spotLight.innerCutoffAngle);
 
                 ImGui::Spacing();
@@ -168,7 +159,6 @@ namespace engine {
                 ui::UI::DragFloat("Quadratic##spot_quad", &spotLight.quadraticAttenuation, 0.001f, 0.0f, 1.0f);
             }
 
-            // Show message if no light component
             bool const hasPointLight = registry.all_of<PointLightComponent>(entity);
             bool const hasDirLight   = registry.all_of<DirectionalLightComponent>(entity);
             bool const hasSpotLight  = registry.all_of<SpotLightComponent>(entity);

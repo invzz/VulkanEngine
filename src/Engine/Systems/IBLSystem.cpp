@@ -11,8 +11,6 @@ namespace engine {
         prefiltered_ = std::make_unique<ibl::PrefilteredEnvIBL>(device_);
         brdfLUT_     = std::make_unique<ibl::BRDFLUT>(device_);
 
-        // Ensure descriptor bindings are always valid even before any environment skybox is loaded.
-        // This creates tiny black fallback textures (irradiance/prefilter cubemaps + BRDF LUT).
         createFallbackResources();
     }
 
@@ -44,26 +42,18 @@ namespace engine {
 
     void IBLSystem::update() {
         if (regenerationRequested_ && (nextSkybox_ != nullptr)) {
-            // Update settings
             settings_ = nextSettings_;
 
-            // Regenerate
             generateFromSkybox(*nextSkybox_);
 
-            // Reset flag
             regenerationRequested_ = false;
             nextSkybox_            = nullptr;
         }
     }
 
     void IBLSystem::generateFromSkybox(Skybox& skybox) {
-        // Industry-standard runtime behavior:
-        // - BRDF LUT is global/static (generate once per device/settings)
-        // - Irradiance/prefilter depend on the environment
-
         brdfLUT_->ensureForSettings(settings_);
 
-        // Drop only the environment-dependent image resources.
         irradiance_->deferDestroyImageResources();
         prefiltered_->deferDestroyImageResources();
 

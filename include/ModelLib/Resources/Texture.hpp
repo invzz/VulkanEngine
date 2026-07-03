@@ -20,23 +20,17 @@ namespace engine {
         Texture(Texture&&)                 = delete;
         Texture& operator=(Texture&&)      = delete;
 
-        // Create simple single-color textures (1x1 pixel)
         static std::shared_ptr<Texture> createWhiteTexture(Device& device);
-        static std::shared_ptr<Texture> createNormalTexture(Device& device);  // Flat normal (0.5, 0.5, 1.0)
+        static std::shared_ptr<Texture> createNormalTexture(Device& device);
 
-        // Load high-dynamic-range EXR textures as linear float RGBA
         static std::shared_ptr<Texture> createFromEXR(Device& device, const std::string& filepath);
 
-        // Create a VTEX from an EXR on the CPU (writes VTEX container to disk). If loadIntoGpu is true
-        // the resulting VTEX will be loaded into a Texture and returned; otherwise returns nullptr.
         static std::shared_ptr<Texture>
         createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu = false, VkFormat targetFormat = VK_FORMAT_R32G32B32A32_SFLOAT);
 
-        // Load engine VTEX container produced by baking pipeline (fast GPU-ready container)
         static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath);
 
        public:
-        // Adopted handle constructor (used by VTEX loader)
         [[nodiscard]] VkImageView getImageView() const {
             return imageView_;
         }
@@ -71,8 +65,6 @@ namespace engine {
             return globalIndex_;
         }
 
-        // CPU-only load path: read VTEX header and create a Texture-like object without allocating GPU resources.
-        // Used by unit tests to validate metadata without requiring a Vulkan device.
         static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath, bool cpuOnly);
 
         /**
@@ -82,14 +74,12 @@ namespace engine {
         [[nodiscard]] size_t getMemorySize() const;
 
        private:
-        // Private constructor for adopting Vulkan handles created externally (used by VTEX loader)
         Texture(Device& device, VkImage image, VkDeviceMemory memory, VkImageView view, VkSampler sampler, int width, int height, uint32_t mipLevels, VkFormat format);
 
-        // Private constructor for creating textures from memory
         Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);
-        // Private constructor for creating float RGBA textures (EXR loader)
+
         Texture(Device& device, const float* pixels, int width, int height, VkFormat format);
-        // Private constructor for cpu-only metadata-only Texture (no GPU resources)
+
         Texture(Device& device, int width, int height, uint32_t mipLevels, VkFormat format, bool cpuOnly);
 
         void createImage(int width, int height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
@@ -112,12 +102,10 @@ namespace engine {
         uint32_t globalIndex_ = 0;
         VkFormat format_      = VK_FORMAT_UNDEFINED;
 
-        // True when this Texture instance was created in CPU-only mode and does not own Vulkan resources
         bool cpuOnly_             = false;
         bool samplerOwnedByCache_ = false;
 
        public:
-        // Expose the texture's Vulkan format
         [[nodiscard]] VkFormat getFormat() const {
             return format_;
         }
@@ -125,4 +113,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTURE_HPP
+#endif

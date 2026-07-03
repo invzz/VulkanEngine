@@ -6,15 +6,11 @@ namespace engine {
 
     class AnimationSystem;
 
-    class ComputePass : public IRenderPass {
+    class ComputePass : public RenderPassBase {
        public:
         explicit ComputePass(AnimationSystem* animationSystem);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override {
-            static std::string name = "Compute";
-            return name;
-        }
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         AnimationSystem* animationSystem_ = nullptr;

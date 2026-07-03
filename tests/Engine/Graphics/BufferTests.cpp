@@ -6,10 +6,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// Buffer Creation Tests
-// =============================================================================
-
 TEST(Buffer, GivenValidDevice_WhenBufferCreated_ThenHandleIsValid) {
     Window window(1, 1, "BufferTest");
     Device device(window);
@@ -26,20 +22,15 @@ TEST(Buffer, GivenBufferWithAlignment_WhenCreated_ThenAlignmentCalculatedCorrect
     Window window(1, 1, "BufferTest");
     Device device(window);
 
-    constexpr VkDeviceSize instanceSize       = 65;  // Not aligned
+    constexpr VkDeviceSize instanceSize       = 65;
     constexpr uint32_t     instanceCount      = 4;
-    constexpr VkDeviceSize minOffsetAlignment = 64;  // Common UBO alignment
+    constexpr VkDeviceSize minOffsetAlignment = 64;
 
     Buffer buffer(device, instanceSize, instanceCount, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, minOffsetAlignment);
 
-    // Alignment should round up 65 to 128 (next multiple of 64)
     EXPECT_EQ(buffer.getAlignmentSize(), 128);
     EXPECT_EQ(buffer.getBufferSize(), 128 * instanceCount);
 }
-
-// =============================================================================
-// Buffer Mapping Tests
-// =============================================================================
 
 TEST(Buffer, GivenHostVisibleBuffer_WhenMapped_ThenReturnsSuccess) {
     Window window(1, 1, "BufferTest");
@@ -74,16 +65,11 @@ TEST(Buffer, GivenUnmappedBuffer_WhenUnmapCalledAgain_ThenNoError) {
 
     Buffer buffer(device, 256, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    // Should not crash calling unmap without map
     buffer.unmap();
-    buffer.unmap();  // Double unmap should be safe
+    buffer.unmap();
 
     SUCCEED();
 }
-
-// =============================================================================
-// Buffer Write Tests
-// =============================================================================
 
 TEST(Buffer, GivenMappedBuffer_WhenDataWritten_ThenDataIsStored) {
     Window window(1, 1, "BufferTest");
@@ -95,11 +81,9 @@ TEST(Buffer, GivenMappedBuffer_WhenDataWritten_ThenDataIsStored) {
 
     buffer.map();
 
-    // Write test data
     std::vector<uint8_t> testData(bufferSize, 0xAB);
     buffer.writeToBuffer(testData.data(), bufferSize);
 
-    // Verify data was written
     auto* mapped = static_cast<uint8_t*>(buffer.getMappedMemory());
     for (size_t i = 0; i < bufferSize; ++i) {
         EXPECT_EQ(mapped[i], 0xAB) << "Mismatch at byte " << i;
@@ -118,17 +102,14 @@ TEST(Buffer, GivenMappedBuffer_WhenWrittenWithOffset_ThenCorrectBytesAffected) {
 
     buffer.map();
 
-    // Zero out buffer first
     std::vector<uint8_t> zeros(bufferSize, 0);
     buffer.writeToBuffer(zeros.data(), bufferSize);
 
-    // Write data at offset
     constexpr VkDeviceSize offset   = 64;
     constexpr VkDeviceSize dataSize = 32;
     std::vector<uint8_t>   testData(dataSize, 0xFF);
     buffer.writeToBuffer(testData.data(), dataSize, offset);
 
-    // Verify only the right bytes were affected
     auto* mapped = static_cast<uint8_t*>(buffer.getMappedMemory());
 
     for (size_t i = 0; i < offset; ++i) {
@@ -146,10 +127,6 @@ TEST(Buffer, GivenMappedBuffer_WhenWrittenWithOffset_ThenCorrectBytesAffected) {
     buffer.unmap();
 }
 
-// =============================================================================
-// Buffer Index Operations Tests
-// =============================================================================
-
 TEST(Buffer, GivenMultiInstanceBuffer_WhenWriteToIndex_ThenCorrectInstanceWritten) {
     Window window(1, 1, "BufferTest");
     Device device(window);
@@ -161,13 +138,11 @@ TEST(Buffer, GivenMultiInstanceBuffer_WhenWriteToIndex_ThenCorrectInstanceWritte
 
     buffer.map();
 
-    // Write different values to each index
     for (uint32_t i = 0; i < instanceCount; ++i) {
         std::vector<uint8_t> data(instanceSize, static_cast<uint8_t>(i + 1));
         buffer.writeToIndex(data.data(), i);
     }
 
-    // Verify each instance has correct data
     auto* mapped = static_cast<uint8_t*>(buffer.getMappedMemory());
     for (uint32_t i = 0; i < instanceCount; ++i) {
         uint8_t expected  = static_cast<uint8_t>(i + 1);
@@ -177,10 +152,6 @@ TEST(Buffer, GivenMultiInstanceBuffer_WhenWriteToIndex_ThenCorrectInstanceWritte
 
     buffer.unmap();
 }
-
-// =============================================================================
-// Buffer Descriptor Info Tests
-// =============================================================================
 
 TEST(Buffer, GivenBuffer_WhenDescriptorInfoRequested_ThenCorrectValuesReturned) {
     Window window(1, 1, "BufferTest");
@@ -214,15 +185,10 @@ TEST(Buffer, GivenMultiInstanceBuffer_WhenDescriptorInfoForIndex_ThenOffsetsCorr
     }
 }
 
-// =============================================================================
-// Buffer Flush Tests
-// =============================================================================
-
 TEST(Buffer, GivenMappedNonCoherentBuffer_WhenFlushed_ThenReturnsSuccess) {
     Window window(1, 1, "BufferTest");
     Device device(window);
 
-    // Note: We use host coherent for simplicity, but flush should still work
     Buffer buffer(device, 256, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     buffer.map();
@@ -249,26 +215,16 @@ TEST(Buffer, GivenMultiInstanceBuffer_WhenFlushIndex_ThenReturnsSuccess) {
     buffer.unmap();
 }
 
-// =============================================================================
-// Buffer Device Address Tests
-// =============================================================================
-
 TEST(Buffer, GivenBufferWithDeviceAddress_WhenAddressRequested_ThenNonZero) {
     Window window(1, 1, "BufferTest");
     Device device(window);
 
-    // Create buffer with device address usage flag
     Buffer buffer(device, 256, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     VkDeviceAddress address = buffer.getDeviceAddress();
 
-    // Device address should be non-zero for valid buffer
     EXPECT_NE(address, 0);
 }
-
-// =============================================================================
-// Buffer Invalidate Tests
-// =============================================================================
 
 TEST(Buffer, GivenMappedBuffer_WhenInvalidated_ThenReturnsSuccess) {
     Window window(1, 1, "BufferTest");

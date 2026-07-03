@@ -123,7 +123,6 @@ namespace engine {
                 createGraphicsPipeline(vertFilePath_, fragFilePath_, configInfo_);
             }
 
-            // Update shader monitoring with new timestamps
             if (shaderMonitor_ != nullptr) {
                 shaderMonitor_->refreshTimestamps();
             }
@@ -261,10 +260,10 @@ namespace engine {
 
     void Pipeline::defaultMeshPipelineConfigInfo(PipelineConfigInfo& configInfo) {
         defaultPipelineConfigInfo(configInfo);
-        // Mesh shaders don't use vertex input or input assembly
+
         configInfo.bindingDescriptions.clear();
         configInfo.attributeDescriptions.clear();
-        configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;  // Ignored but good practice
+        configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     }
 
     void Pipeline::bind(VkCommandBuffer commandBuffer) {
@@ -320,9 +319,8 @@ namespace engine {
             .sType             = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
             .stageCount        = 3,
             .pStages           = shaderStages,
-            .pVertexInputState = &vertexInputInfo,  // Ignored by mesh shaders but required by
-                                                    // validation layers sometimes? No, should be null
-                                                    // or empty.
+            .pVertexInputState = &vertexInputInfo,
+
             .pInputAssemblyState = &configInfo.inputAssemblyInfo,
             .pViewportState      = &configInfo.viewportInfo,
             .pRasterizationState = &configInfo.rasterizationInfo,
@@ -416,7 +414,7 @@ namespace engine {
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 
         createInfo.codeSize = code.size();
-        // Safely convert std::vector<char> to std::vector<uint32_t>
+
         std::vector<uint32_t> codeAligned((code.size() + 3) / 4);
         std::memcpy(codeAligned.data(), code.data(), code.size());
         createInfo.pCode = codeAligned.data();

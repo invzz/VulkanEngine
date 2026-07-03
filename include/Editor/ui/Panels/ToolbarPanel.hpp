@@ -67,7 +67,7 @@ namespace engine {
 
         std::vector<ToggleEntry> toggles_;
         UIPanel*                 settingsPanel_ = nullptr;
-        int                      stylePreset_   = 0;  // 0=dark, 1=light, 2=midnight
+        int                      stylePreset_   = 0;
         float                    frameTimeMs_   = 0.0f;
         std::function<void()>    onResetLayout_;
 
@@ -77,4 +77,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_TOOLBARPANEL_HPP
+#endif

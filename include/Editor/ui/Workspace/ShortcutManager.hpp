@@ -63,4 +63,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_SHORTCUT_MANAGER_HPP
+#endif

@@ -22,7 +22,6 @@ namespace engine {
         uint64_t bufferWrites{0};
     };
 
-    // Owns the per-frame material dynamic UBO + descriptor sets used by ModelRenderSystem.
     class MaterialRenderBindings {
        public:
         explicit MaterialRenderBindings(Device& device);
@@ -39,21 +38,16 @@ namespace engine {
             return descriptorSetLayout_;
         }
 
-        // Quick validation: returns true if the per-frame material descriptor set for `frameIndex` is valid.
         [[nodiscard]] bool frameDescriptorSetValid(int frameIndex) const;
 
-        // Test helpers: enable capture of descriptor handles observed during bind, and query captured values.
         void                                       enableBindCapture(bool enable);
         [[nodiscard]] std::vector<VkDescriptorSet> getCapturedBinds() const;
 
-        // Query the raw per-frame descriptor set handle (test-only).
         [[nodiscard]] VkDescriptorSet getFrameDescriptorSet(int frameIndex) const;
 
         [[nodiscard]] MaterialDescriptorCacheStats getCacheStats() const;
         void                                       resetCacheStats();
 
-        // Writes a material record into the current frame's material buffer and binds the descriptor set
-        // (including the dynamic offset) at the expected set index.
         void bindMaterial(FrameInfo& frameInfo, VkPipelineLayout pipelineLayout, const PBRMaterial* material, float isSelected);
 
         [[nodiscard]] static bool needsFullVariant(FrameInfo const& frameInfo, const PBRMaterial* material);
@@ -79,14 +73,10 @@ namespace engine {
 
         VkDeviceSize atomSize_{0};
 
-        // --- Test / diagnostic helpers ---
-        // Protects access to the capture buffer used by unit tests.
         mutable std::mutex           captureMutex_;
         bool                         captureEnabled_ = false;
         std::vector<VkDescriptorSet> capturedBinds_;
 
-        // Protects allocation/write of dynamic offsets into the per-frame mapped
-        // buffer when bindMaterial is invoked concurrently (defensive).
         mutable std::mutex allocMutex_;
 
         MaterialDescriptorCacheStats cacheStats_{};
@@ -97,4 +87,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALRENDERBINDINGS_HPP
+#endif

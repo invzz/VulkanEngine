@@ -17,13 +17,10 @@ namespace engine {
         MeshManager(Device& device);
         ~MeshManager() = default;
 
-        // Register a model and return its mesh ID
         uint32_t registerModel(const Model* model);
 
-        // Get the descriptor info for the global mesh buffer
         [[nodiscard]] VkDescriptorBufferInfo getDescriptorInfo() const;
 
-        // Get the descriptor set layout binding for the mesh buffer
         static VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding();
 
        private:
@@ -37,4 +34,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
+#endif

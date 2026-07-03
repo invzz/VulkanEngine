@@ -26,7 +26,6 @@
 
 #include "Engine/Graphics/SwapChain.hpp"
 
-// std
 #include <algorithm>
 #include <array>
 #include <cstdlib>
@@ -50,9 +49,6 @@ namespace engine {
     SwapChain::SwapChain(Device& deviceRef, VkExtent2D extent, std::shared_ptr<SwapChain> previous) : device{deviceRef}, windowExtent{extent}, oldSwapChain{std::move(previous)} {
         presentIdState.enabled = deviceRef.supportsPresentId();
         Init();
-
-        // Keep `oldSwapChain` alive until the new swap chain safely takes over.
-        // Do NOT null it here; higher-level code will wait on old fences and release it.
     }
 
     SwapChain::~SwapChain() {
@@ -78,7 +74,6 @@ namespace engine {
 
         vkDestroyRenderPass(device.device(), renderPass, nullptr);
 
-        // Cleanup synchronization objects
         for (size_t i = 0; i < inFlightFences.size(); ++i) {
             vkDestroySemaphore(device.device(), imageAvailableSemaphores[i], nullptr);
             vkDestroySemaphore(device.device(), renderFinishedSemaphores[i], nullptr);
@@ -89,11 +84,8 @@ namespace engine {
     VkResult SwapChain::acquireNextImage(uint32_t* imageIndex) {
         device.setCurrentFrameIndex(static_cast<uint32_t>(currentFrame));
 
-        // Wait for this frame's fence before reusing its resources
         vkWaitForFences(device.device(), 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 
-        // Safe point: the in-flight fence for this frame index has been waited.
-        // Destroy any resources deferred for this frame index.
         device.flushDeferred(static_cast<uint32_t>(currentFrame));
 
         return vkAcquireNextImageKHR(device.device(), swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, imageIndex);
@@ -205,11 +197,10 @@ namespace engine {
             createInfo.pQueueFamilyIndices   = queueFamilyIndices;
         } else {
             createInfo.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
-            createInfo.queueFamilyIndexCount = 0;        // Optional
-            createInfo.pQueueFamilyIndices   = nullptr;  // Optional
+            createInfo.queueFamilyIndexCount = 0;
+            createInfo.pQueueFamilyIndices   = nullptr;
         }
 
-        // Ensure we use a supported transform; fall back to identity if needed.
         const VkSurfaceTransformFlagsKHR supportedTransforms = swapChainSupport.capabilities.supportedTransforms;
         VkSurfaceTransformFlagBitsKHR    preTransform        = swapChainSupport.capabilities.currentTransform;
         if ((supportedTransforms & preTransform) == 0u) {
@@ -217,7 +208,6 @@ namespace engine {
         }
         createInfo.preTransform = preTransform;
 
-        // Pick a composite alpha the surface supports, prefer opaque.
         VkCompositeAlphaFlagsKHR const supportedAlpha = swapChainSupport.capabilities.supportedCompositeAlpha;
         VkCompositeAlphaFlagBitsKHR    compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         if ((supportedAlpha & compositeAlpha) == 0u) {
@@ -251,11 +241,6 @@ namespace engine {
             throw SwapChainCreationException("failed to create swap chain!");
         }
 
-        // we only specified a minimum number of images in the swap chain, so
-        // the implementation is allowed to create a swap chain with more.
-        // That's why we'll first query the final number of images with
-        // vkGetSwapchainImagesKHR, then resize the container and finally call
-        // it again to retrieve the handles.
         uint32_t actualImageCount = 0;
         if (VkResult const getImagesResult = vkGetSwapchainImagesKHR(device.device(), swapChain, &actualImageCount, nullptr); getImagesResult != VK_SUCCESS) {
             Logger::error(LogChannel::Render, "First vkGetSwapchainImagesKHR failed with VkResult ", static_cast<int32_t>(getImagesResult));
@@ -310,7 +295,7 @@ namespace engine {
         VkAttachmentDescription colorAttachment = {};
         colorAttachment.format                  = getSwapChainImageFormat();
         colorAttachment.samples                 = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;  // Clear to black each frame for UI overlay
+        colorAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         colorAttachment.stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;

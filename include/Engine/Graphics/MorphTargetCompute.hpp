@@ -23,10 +23,10 @@ namespace engine {
     class MorphTargetCompute {
        public:
         struct PushConstants {
-            uint32_t vertexOffset;      // Offset into vertex buffer
-            uint32_t vertexCount;       // Number of vertices to process
-            uint32_t morphTargetCount;  // Number of morph targets
-            uint32_t deltaOffset;       // Offset into morph delta buffer
+            uint32_t vertexOffset;
+            uint32_t vertexCount;
+            uint32_t morphTargetCount;
+            uint32_t deltaOffset;
         };
 
         MorphTargetCompute(Device& device);
@@ -71,4 +71,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_MORPHTARGETCOMPUTE_HPP
+#endif

@@ -9,14 +9,12 @@ namespace engine {
     class Renderer;
     class IRenderContextPort;
 
-    /// G-buffer rendering pass.
-    class GbufferPass : public IRenderPass {
+    class GbufferPass : public RenderPassBase {
        public:
         GbufferPass(ModelRenderSystem& models, EngineState& engine,
             Renderer& renderer, IRenderContextPort& renderCtx);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override;
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         void refreshGbufferDescriptors(int frameIndex);

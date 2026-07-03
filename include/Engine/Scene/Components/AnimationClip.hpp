@@ -18,36 +18,30 @@ namespace engine {
  * Does NOT own the Model — it references a clip by index.
  */
     struct AnimationClip {
-        // ── Clip identity ───────────────────────────────────────────────
-        int         clipIndex{-1};   // Index into Model::animations
-        std::string name;            // Human-readable name
-        float       duration{0.0f};  // In seconds
+        int         clipIndex{-1};
+        std::string name;
+        float       duration{0.0f};
 
-        // ── Playback state ──────────────────────────────────────────────
         float currentTime{0.0f};
         float speed{1.0f};
-        float weight{1.0f};  // 0-1 for fade in/out
+        float weight{1.0f};
         bool  loop{true};
         bool  active{false};
 
-        // ── Blending ────────────────────────────────────────────────────
         enum Mode : uint8_t {
-            OVERRIDE,  // Clip fully replaces bone transforms (default)
-            ADDITIVE,  // result = base + (clip - bindPose) * weight
+            OVERRIDE,
+            ADDITIVE,
         };
         Mode mode{OVERRIDE};
-        int  priority{0};  // Higher wins on bone conflicts
+        int  priority{0};
 
-        // ── Animation events ────────────────────────────────────────────
         struct Event {
             float       time{0.0f};
             std::string name;
             void*       userData{nullptr};
         };
         std::vector<Event> events;
-        size_t             nextEventIndex{0};  // Index of next event to fire
-
-        // ── Methods ─────────────────────────────────────────────────────
+        size_t             nextEventIndex{0};
 
         /** Reset clip to initial state */
         void reset() {
@@ -98,4 +92,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_COMPONENTS_ANIMATIONCLIP_HPP
+#endif

@@ -10,7 +10,6 @@ namespace engine {
 
 namespace engine::ibl_detail {
 
-    // Image helpers
     void createImage(Device&  device,
         uint32_t              width,
         uint32_t              height,
@@ -36,7 +35,6 @@ namespace engine::ibl_detail {
 
     void transitionImageLayout(Device& device, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels, uint32_t layerCount = 1);
 
-    // Deferred destruction helpers (used to avoid vkDeviceWaitIdle stalls)
     void deferDestroySampler(Device& device, VkSampler& sampler);
     void deferDestroyImageView(Device& device, VkImageView& view);
     void deferDestroyImage(Device& device, VkImage& image);

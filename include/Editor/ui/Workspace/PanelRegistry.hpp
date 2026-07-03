@@ -108,4 +108,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_PANEL_REGISTRY_HPP
+#endif

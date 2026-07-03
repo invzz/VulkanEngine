@@ -105,9 +105,9 @@ namespace engine {
         std::deque<HistoryEntry> undoStack_;
         std::deque<HistoryEntry> redoStack_;
 
-        static constexpr size_t MAX_HISTORY = 64;  // Maximum undo/redo history depth
+        static constexpr size_t MAX_HISTORY = 64;
     };
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_COMMAND_SYSTEM_HPP
+#endif

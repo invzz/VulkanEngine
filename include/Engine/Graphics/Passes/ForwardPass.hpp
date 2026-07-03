@@ -13,8 +13,7 @@ namespace engine {
     class Renderer;
     struct EditorState;
 
-    /// Forward/transparency/debug pass — runs after deferred lighting.
-    class ForwardPass : public IRenderPass {
+    class ForwardPass : public RenderPassBase {
        public:
         ForwardPass(ModelRenderSystem& models, GridRenderSystem& grid,
             LightSystem& light, CameraSystem& camera,
@@ -22,8 +21,7 @@ namespace engine {
             SelectionOutlineSystem&    outline,
             Renderer& renderer, const EditorState& editor);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override;
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         ModelRenderSystem&         models_;

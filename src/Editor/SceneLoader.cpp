@@ -9,6 +9,7 @@
 
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Device.hpp"
+#include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
@@ -16,17 +17,16 @@
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
-#include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "ModelLib/Resources/Model.hpp"
 
+#include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/fwd.hpp"
 
 namespace engine {
 
     namespace {
-         std::string toLower(std::string value) {
+        std::string toLower(std::string value) {
             std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
                 return static_cast<char>(std::tolower(c));
             });
@@ -44,7 +44,7 @@ namespace engine {
             }
 
             glm::mat4 transform = glm::mat4(1.0f);
-            transform = glm::translate(transform, node.translation);
+            transform           = glm::translate(transform, node.translation);
             transform *= glm::mat4_cast(node.rotation);
             transform = glm::scale(transform, node.scale);
             return transform;
@@ -85,7 +85,6 @@ namespace engine {
         scene.getRegistry().emplace<ModelComponent>(entity, std::move(modelPtr));
         scene.getRegistry().emplace<NameComponent>(entity, "LoadedModel");
 
-        // Create light entities from KHR_lights_punctual data
         if (scene.getRegistry().all_of<ModelComponent>(entity)) {
             auto const& modelComp = scene.getRegistry().get<ModelComponent>(entity);
             if (modelComp.model && modelComp.model->hasLights()) {
@@ -93,56 +92,53 @@ namespace engine {
                 for (size_t lightIdx = 0; lightIdx < lights.size(); ++lightIdx) {
                     auto const& light = lights[lightIdx];
 
-                    // Use the first node that references this light for transform
                     if (light.nodeIndices.empty()) {
                         continue;
                     }
 
-                    auto lightEntity = scene.createEntity();
-                    auto& transform  = scene.getRegistry().emplace<TransformComponent>(lightEntity);
+                    auto  lightEntity = scene.createEntity();
+                    auto& transform   = scene.getRegistry().emplace<TransformComponent>(lightEntity);
 
-                    // Copy transform from the referencing node
-                    // (nodes are stored in same order as glTF file)
                     auto const& nodes = modelComp.model->getNodes();
                     if (light.nodeIndices[0] < static_cast<int>(nodes.size())) {
-                        auto const& node = nodes[light.nodeIndices[0]];
-                        glm::mat4 lightTransform = makeLightNodeTransform(node);
-                        glm::mat4 engineTransform = convertGLTFLightTransform(lightTransform);
-                        transform.translation = glm::vec3(engineTransform[3]);
-                        transform.rotation = glm::eulerAngles(glm::quat_cast(engineTransform));
+                        auto const& node            = nodes[light.nodeIndices[0]];
+                        glm::mat4   lightTransform  = makeLightNodeTransform(node);
+                        glm::mat4   engineTransform = convertGLTFLightTransform(lightTransform);
+                        transform.translation       = glm::vec3(engineTransform[3]);
+                        transform.rotation          = glm::eulerAngles(glm::quat_cast(engineTransform));
                     }
-                    // Add light component based on type
+
                     switch (light.type) {
                         case Model::LightType::Point: {
-                            auto& pl = scene.getRegistry().emplace<PointLightComponent>(lightEntity);
-                            pl.color      = light.color;
-                            pl.intensity  = light.intensity;
-                            pl.radius     = 15.0f;  // Default point light radius
-                            pl.lightType  = engine::LightMobility::Dynamic;
+                            auto& pl     = scene.getRegistry().emplace<PointLightComponent>(lightEntity);
+                            pl.color     = light.color;
+                            pl.intensity = light.intensity;
+                            pl.radius    = 15.0f;
+                            pl.lightType = engine::LightMobility::Dynamic;
                             break;
                         }
                         case Model::LightType::Directional: {
-                            auto& dl = scene.getRegistry().emplace<DirectionalLightComponent>(lightEntity);
-                            dl.color      = light.color;
-                            dl.intensity  = light.intensity;
-                            dl.lightType  = engine::LightMobility::Static;
+                            auto& dl     = scene.getRegistry().emplace<DirectionalLightComponent>(lightEntity);
+                            dl.color     = light.color;
+                            dl.intensity = light.intensity;
+                            dl.lightType = engine::LightMobility::Static;
                             break;
                         }
                         case Model::LightType::Spot: {
-                            auto& sl = scene.getRegistry().emplace<SpotLightComponent>(lightEntity);
-                            sl.color           = light.color;
-                            sl.intensity       = light.intensity;
+                            auto& sl            = scene.getRegistry().emplace<SpotLightComponent>(lightEntity);
+                            sl.color            = light.color;
+                            sl.intensity        = light.intensity;
                             sl.innerCutoffAngle = light.innerCutoffAngle;
                             sl.outerCutoffAngle = light.outerCutoffAngle;
-                            sl.lightType       = engine::LightMobility::Dynamic;
+                            sl.lightType        = engine::LightMobility::Dynamic;
                             break;
                         }
                     }
 
                     engine::Logger::info(engine::LogChannel::General, "[SceneLoader] Created light entity: ", light.name, " (",
-                              (light.type == Model::LightType::Point ? "point" :
-                                  light.type == Model::LightType::Directional ? "directional" : "spot"),
-                              ") intensity=", light.intensity);
+                        (light.type == Model::LightType::Point ? "point" : light.type == Model::LightType::Directional ? "directional"
+                                                                                                                       : "spot"),
+                        ") intensity=", light.intensity);
                 }
             }
         }

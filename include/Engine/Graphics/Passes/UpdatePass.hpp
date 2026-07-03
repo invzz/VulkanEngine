@@ -9,14 +9,13 @@ namespace engine {
     class JoltPhysicsSystem;
     class Renderer;
 
-    class UpdatePass : public IRenderPass {
+    class UpdatePass : public RenderPassBase {
        public:
         UpdatePass(ObjectSelectionSystem* objSel, InputSystem* input,
             JoltPhysicsSystem* jolt, bool& physicsRunning,
             Renderer& renderer);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override;
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         ObjectSelectionSystem* objSel_ = nullptr;

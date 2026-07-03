@@ -13,8 +13,6 @@
 namespace engine {
 
     void DescriptorManager::createDescriptorResources(Device& device, Renderer& renderer) {
-        // G-buffer pool and layout
-        // G-buffer pool and layout
         gbufferPool_ = DescriptorPool::Builder(device)
                            .setMaxSets(SwapChain::maxFramesInFlight() * 4)
                            .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 8)
@@ -27,7 +25,6 @@ namespace engine {
                                 .addBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                 .build();
 
-        // Deferred IBL pool and layout
         deferredIblPool_ = DescriptorPool::Builder(device)
                                .setMaxSets(SwapChain::maxFramesInFlight() * 4)
                                .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 8)
@@ -39,7 +36,6 @@ namespace engine {
                                     .addBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                     .build();
 
-        // Deferred Shadow pool and layout
         deferredShadowPool_ = DescriptorPool::Builder(device)
                                   .setMaxSets(SwapChain::maxFramesInFlight() * 4)
                                   .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 16)
@@ -50,7 +46,6 @@ namespace engine {
                                        .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, ShadowSystem::MAX_CUBE_SHADOW_MAPS)
                                        .build();
 
-        // Post-processing pool and layout
         postProcessPool_ = DescriptorPool::Builder(device)
                                .setMaxSets(SwapChain::maxFramesInFlight() * 4)
                                .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, SwapChain::maxFramesInFlight() * 8)
@@ -63,7 +58,6 @@ namespace engine {
     }
 
     void DescriptorManager::allocatePerFrameDescriptors(Renderer& renderer) {
-        // G-buffer per-frame descriptor sets
         gbufferDescriptorSets_.resize(SwapChain::maxFramesInFlight());
         for (int i = 0; i < static_cast<int>(gbufferDescriptorSets_.size()); ++i) {
             auto nInfo = renderer.getGbufferNormalImageInfo(i);
@@ -78,15 +72,11 @@ namespace engine {
                 .buildOrThrow(gbufferDescriptorSets_[i]);
         }
 
-        // Deferred IBL per-frame descriptor sets
         deferredIblDescriptorSets_.resize(SwapChain::maxFramesInFlight());
         for (int i = 0; i < static_cast<int>(deferredIblDescriptorSets_.size()); ++i) {
-            // IBL descriptor sets are allocated in initPostProcessing via EngineState
-            // because they need IBLSystem access. Initialize with null handles.
             deferredIblDescriptorSets_[i] = VK_NULL_HANDLE;
         }
 
-        // Deferred Shadow per-frame descriptor sets
         deferredShadowDescriptorSets_.resize(SwapChain::maxFramesInFlight());
         for (int i = 0; i < static_cast<int>(deferredShadowDescriptorSets_.size()); ++i) {
             if (!deferredShadowPool_->allocateDescriptor(deferredShadowSetLayout_->getDescriptorSetLayout(), deferredShadowDescriptorSets_[i])) {
@@ -94,7 +84,6 @@ namespace engine {
             }
         }
 
-        // Post-processing per-frame descriptor sets
         postProcessDescriptorSets_.resize(SwapChain::maxFramesInFlight());
         for (int i = 0; i < static_cast<int>(postProcessDescriptorSets_.size()); ++i) {
             auto imageInfo = renderer.getOffscreenImageInfo(i);
@@ -105,7 +94,6 @@ namespace engine {
                 .buildOrThrow(postProcessDescriptorSets_[i]);
         }
 
-        // Global validation: ensure no null handles slipped through
         for (const auto& ds : gbufferDescriptorSets_)
             assert(ds != VK_NULL_HANDLE);
         for (const auto& ds : postProcessDescriptorSets_)
@@ -219,13 +207,11 @@ namespace engine {
     }
 
     void DescriptorManager::recreatePostProcessDescriptorSets(Device& device, Renderer& renderer, VkDescriptorSetLayout existingLayout) {
-        // Update the existing layout
         postProcessSetLayout_ = DescriptorSetLayout::Builder(device)
                                     .addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                     .addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
                                     .build();
 
-        // Recreate descriptor sets
         postProcessDescriptorSets_.resize(SwapChain::maxFramesInFlight());
         for (int i = 0; i < static_cast<int>(postProcessDescriptorSets_.size()); ++i) {
             auto imageInfo = renderer.getOffscreenImageInfo(i);

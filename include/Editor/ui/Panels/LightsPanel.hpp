@@ -19,4 +19,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_LIGHTSPANEL_HPP
+#endif

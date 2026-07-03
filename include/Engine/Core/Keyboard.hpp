@@ -12,7 +12,6 @@ namespace engine {
         explicit Keyboard(Window& window) : windowRef{window} {}
 
         struct KeyMappings {
-            // Wasd keys for movement
             int moveForward  = GLFW_KEY_W;
             int moveBackward = GLFW_KEY_S;
             int moveLeft     = GLFW_KEY_A;
@@ -20,18 +19,15 @@ namespace engine {
             int moveUp       = GLFW_KEY_SPACE;
             int moveDown     = GLFW_KEY_LEFT_SHIFT;
 
-            // arrow for looking around
             int lookUp    = GLFW_KEY_UP;
             int lookDown  = GLFW_KEY_DOWN;
             int lookLeft  = GLFW_KEY_LEFT;
             int lookRight = GLFW_KEY_RIGHT;
 
-            // object selection
             int selectNext     = GLFW_KEY_Y;
             int selectPrevious = GLFW_KEY_U;
             int selectCamera   = GLFW_KEY_C;
 
-            // UI controls
             int toggleCursor = GLFW_KEY_ESCAPE;
         };
 
@@ -44,10 +40,10 @@ namespace engine {
 
        private:
         Window& windowRef;
-        float   moveSpeed = 3.0f;  // units per second
-        float   lookSpeed = 1.5f;  // radians per second
+        float   moveSpeed = 3.0f;
+        float   lookSpeed = 1.5f;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
+#endif

@@ -48,8 +48,8 @@ namespace engine {
 
     struct PointLightPushConstants {
         /* data */
-        glm::vec4 position{};  // w component unused
-        glm::vec4 color{};     // w component is intensity
+        glm::vec4 position{};
+        glm::vec4 color{};
         float     radius{};
     };
 
@@ -105,7 +105,6 @@ namespace engine {
     void LightSystem::render(FrameInfo& frameInfo) {
         pipeline->bind(frameInfo.commandBuffer);
 
-        // Defensive: validate descriptor set before binding
         assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null");
 
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
@@ -122,11 +121,10 @@ namespace engine {
             push.radius   = transform.scale.x * kPointLightDebugRadiusScale;
 
             vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PointLightPushConstants), &push);
-            // inefficient to draw a quad for each light, but okay for demo purposes
+
             vkCmdDraw(frameInfo.commandBuffer, 6, 1, 0, 0);
         }
 
-        // Render directional lights as arrows
         directionalPipeline->bind(frameInfo.commandBuffer);
         assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null for directional lights");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, directionalPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
@@ -135,10 +133,8 @@ namespace engine {
         for (auto entity : dirView) {
             auto [dirLight, transform] = dirView.get<DirectionalLightComponent, TransformComponent>(entity);
 
-            // Create a model matrix that orients the arrow in the light direction
             auto modelMatrix = glm::mat4(1.0f);
 
-            // Apply rotation to orient arrow at the origin.
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -153,10 +149,9 @@ namespace engine {
 
             vkCmdPushConstants(frameInfo.commandBuffer, directionalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
-            vkCmdDraw(frameInfo.commandBuffer, 18, 1, 0, 0);  // 18 vertices for arrow
+            vkCmdDraw(frameInfo.commandBuffer, 18, 1, 0, 0);
         }
 
-        // Render spot lights as cones
         spotPipeline->bind(frameInfo.commandBuffer);
         assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null for spot lights");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, spotPipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
@@ -165,11 +160,9 @@ namespace engine {
         for (auto entity : spotView) {
             auto [spotLight, transform] = spotView.get<SpotLightComponent, TransformComponent>(entity);
 
-            // Create a model matrix that positions and orients the cone
             auto modelMatrix = glm::mat4(1.0f);
             modelMatrix      = glm::translate(modelMatrix, transform.translation);
 
-            // Apply rotation to orient cone
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
             modelMatrix = glm::rotate(modelMatrix, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
@@ -186,7 +179,6 @@ namespace engine {
 
             vkCmdPushConstants(frameInfo.commandBuffer, spotPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
 
-            // Draw cone: 32 segments * 3 vertices per triangle = 96 vertices
             vkCmdDraw(frameInfo.commandBuffer, 96, 1, 0, 0);
         }
     }
@@ -194,7 +186,6 @@ namespace engine {
     void LightSystem::updateTargetLockedLight(entt::entity entity, Scene* scene) {
         auto& registry = scene->getRegistry();
 
-        // Update directional light target tracking
         if (registry.all_of<DirectionalLightComponent>(entity)) {
             auto& dirLight = registry.get<DirectionalLightComponent>(entity);
             if (dirLight.useTargetPoint) {
@@ -202,7 +193,6 @@ namespace engine {
             }
         }
 
-        // Update spot light target tracking
         if (registry.all_of<SpotLightComponent>(entity)) {
             auto& spotLight = registry.get<SpotLightComponent>(entity);
             if (spotLight.useTargetPoint) {
@@ -224,24 +214,19 @@ namespace engine {
 
         auto& registry = frameInfo.scene->getRegistry();
 
-        // Keep target-locked lights oriented correctly before any other logic.
         updateTargetLockedLights(registry);
 
-        // Process point lights
         auto pointView = registry.view<TransformComponent, PointLightComponent>();
         for ([[maybe_unused]] auto entity : pointView) {
             ubo.pointLightCount++;
         }
 
-        // Process directional lights — engine supports at most one directional light for shading.
         auto dirView = registry.view<TransformComponent, DirectionalLightComponent>();
         for (auto entity : dirView) {
-            // Count only the first directional light found
             ubo.directionalLightCount = 1;
             break;
         }
 
-        // Process spot lights
         auto spotView = registry.view<TransformComponent, SpotLightComponent>();
         for (auto entity : spotView) {
             auto [transform, spotLight] = spotView.get<TransformComponent, SpotLightComponent>(entity);
@@ -253,7 +238,7 @@ namespace engine {
         VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset     = 0,
-            .size       = sizeof(glm::mat4) + sizeof(glm::vec4),  // modelMatrix + color
+            .size       = sizeof(glm::mat4) + sizeof(glm::vec4),
         };
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
@@ -290,7 +275,7 @@ namespace engine {
         VkPushConstantRange pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             .offset     = 0,
-            .size       = sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(float),  // modelMatrix + color + coneAngle
+            .size       = sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(float),
         };
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
@@ -322,7 +307,6 @@ namespace engine {
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
         pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
 
-        // Enable alpha blending for semi-transparent cone
         pipelineConfig.colorBlendAttachment.blendEnable         = VK_TRUE;
         pipelineConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         pipelineConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;

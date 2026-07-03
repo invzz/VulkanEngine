@@ -1,12 +1,21 @@
 #include "Engine/Graphics/Device.hpp"
 
+#include <algorithm>
+#include <bit>
 #include <chrono>
+#include <cstring>
+#include <memory>
+#include <mutex>
+#include <set>
 #include <sstream>
+#include <string>
 #include <thread>
+#include <unordered_set>
+#include <vector>
 
 #include "Engine/Core/Exceptions.hpp"
-#include "Engine/Core/Window.hpp"
 #include "Engine/Core/Logger.hpp"
+#include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/DebugMessenger.hpp"
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/ExtensionHelpers.hpp"
@@ -16,33 +25,17 @@
 #include "vulkan/vk_platform.h"
 #include "vulkan/vulkan_core.h"
 
-// std headers
-#include <algorithm>
-#include <bit>
-#include <cstring>
-#include <memory>
-#include <mutex>
-#include <set>
-#include <string>
-#include <unordered_set>
-#include <vector>
-
-// Use Vulkan SDK loader (vulkan-1) - include normal Vulkan headers
-
 namespace {
-    // File-local Vulkan debug helpers.
+
     VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT                                                 messageType,
         const VkDebugUtilsMessengerCallbackDataEXT*                                     pCallbackData,
         void* /*pUserData*/) {
         if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) != 0u) {
-            // General message
             engine::Logger::debug(engine::LogChannel::Render, "[GENERAL] ", pCallbackData->pMessage);
         } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) != 0u) {
-            // Validation message
             engine::Logger::debug(engine::LogChannel::Render, "[VALIDATION] ", pCallbackData->pMessage);
         } else if ((messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) != 0u) {
-            // Performance message
             engine::Logger::debug(engine::LogChannel::Render, "[PERFORMANCE] ", pCallbackData->pMessage);
         }
         if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
@@ -216,7 +209,6 @@ namespace engine {
         samplerCache_.clear();
     }
 
-    // class member functions
     /**
  * @class Device
  * @brief Manages Vulkan device, queues, and related resources.
@@ -230,8 +222,7 @@ namespace engine {
         pickPhysicalDevice();
         createLogicalDevice();
         createCommandPool();
-        // initialize memory helper (depends on device_ and commandPool being
-        // created)
+
         memory_ = std::make_unique<DeviceMemory>(*this);
     }
 
@@ -239,14 +230,11 @@ namespace engine {
  * @brief Destructor. Cleans up Vulkan resources and device.
  */
     Device::~Device() {
-        // Make destructor safe in partial-construction and avoid throwing.
         try {
             if (device_ != VK_NULL_HANDLE) {
                 vkDeviceWaitIdle(device_);
             }
 
-            // Run any deferred destroys queued by subsystems. Protect against
-            // user-provided callbacks throwing.
             try {
                 if (device_ != VK_NULL_HANDLE) {
                     flushAllDeferred();
@@ -265,7 +253,6 @@ namespace engine {
                 engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] destroySamplerCache threw unknown exception");
             }
 
-            // ensure helper is destroyed before device/command pool teardown
             try {
                 memory_.reset();
             } catch (const std::exception& e) {
@@ -274,8 +261,6 @@ namespace engine {
                 engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DeviceMemory destructor threw unknown exception");
             }
 
-            // Destroy any thread-local command pools before destroying the device
-            // to ensure pool destruction happens while the device is still valid.
             try {
                 if (threadLocalCommandPools_) {
                     threadLocalCommandPools_->destroyAll();
@@ -304,13 +289,12 @@ namespace engine {
 
             if (instance != VK_NULL_HANDLE) {
                 if (enableValidationLayers && debugMessenger) {
-                    // Destroy via RAII guard.
                     try {
                         debugMessenger.reset();
                     } catch (const std::exception& e) {
-                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DebugMessenger destructor threw: ", e.what());
+                        engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DebugMessenger destructor threw: ", e.what());
                     } catch (...) {
-                engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DebugMessenger destructor threw unknown exception");
+                        engine::Logger::error(engine::LogChannel::Render, "[Device::~Device] DebugMessenger destructor threw unknown exception");
                     }
                 }
 
@@ -357,11 +341,6 @@ namespace engine {
         createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
 
-        // When validation layers are enabled we set the layer list on the
-        // instance create info. We do NOT attach the DebugUtils create info to
-        // `pNext` here because we create the debug messenger explicitly in
-        // `setupDebugMessenger()` — this gives us an explicit handle that we can
-        // destroy during shutdown.
         if (enableValidationLayers) {
             createInfo.enabledLayerCount   = static_cast<uint32_t>(validationLayers.size());
             createInfo.ppEnabledLayerNames = validationLayers.data();
@@ -374,8 +353,6 @@ namespace engine {
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
             throw engine::RuntimeException("failed to create instance!");
         }
-
-        // Using Vulkan SDK loader (vulkan-1) - no explicit loader init required
 
         if (!hasGlfwRequiredInstanceExtensions()) {
             throw engine::RuntimeException("missing required GLFW instance extensions");
@@ -459,15 +436,14 @@ namespace engine {
             }
         }
 
-        // Enable Vulkan 1.2 features for Bindless Rendering
         VkPhysicalDeviceVulkan12Features vulkan12Features = {
             .sType                                        = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
             .pNext                                        = nullptr,
-            .storageBuffer8BitAccess                      = VK_TRUE,  // Required for shaders using uint8_t storage buffers
-            .shaderInt8                                   = VK_TRUE,  // Required for shaders using int8/uint8 types
+            .storageBuffer8BitAccess                      = VK_TRUE,
+            .shaderInt8                                   = VK_TRUE,
             .descriptorIndexing                           = VK_TRUE,
             .shaderSampledImageArrayNonUniformIndexing    = VK_TRUE,
-            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,  // Required for TextureManager UPDATE_AFTER_BIND
+            .descriptorBindingSampledImageUpdateAfterBind = VK_TRUE,
             .descriptorBindingPartiallyBound              = VK_TRUE,
             .descriptorBindingVariableDescriptorCount     = VK_TRUE,
             .runtimeDescriptorArray                       = VK_TRUE,
@@ -509,19 +485,15 @@ namespace engine {
             }
         }
 
-        // Reset unsupported/unwanted mesh shader features that might have been
-        // enabled by the query
         meshShaderFeatures.multiviewMeshShader                    = VK_FALSE;
         meshShaderFeatures.primitiveFragmentShadingRateMeshShader = VK_FALSE;
 
         VkPhysicalDevicePresentIdFeaturesKHR presentIdFeaturesEnable = {
             .sType     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
-            .pNext     = &meshShaderFeatures,  // Chain to meshShaderFeatures
+            .pNext     = &meshShaderFeatures,
             .presentId = VK_TRUE,
         };
 
-        // Set up pNext chain: presentId (if supported) -> meshShaderFeatures ->
-        // vulkan12Features
         void const* pNextChain = &meshShaderFeatures;
         if (presentIdSupported_) {
             pNextChain = &presentIdFeaturesEnable;
@@ -538,8 +510,6 @@ namespace engine {
         createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensions.size());
         createInfo.ppEnabledExtensionNames = enabledExtensions.data();
 
-        // Device-level validation layers have been deprecated since Vulkan 1.0.
-        // Validation is done at the instance level only.
         createInfo.enabledLayerCount   = 0;
         createInfo.ppEnabledLayerNames = nullptr;
 
@@ -549,9 +519,6 @@ namespace engine {
 
         vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
         vkGetDeviceQueue(device_, indices.presentFamily, 0, &presentQueue_);
-
-        // Using Vulkan SDK loader (vulkan-1) - device-level function pointers are
-        // resolved via vkGetDeviceProcAddr
 
         vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT) vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");
         if (vkCmdDrawMeshTasksEXT == nullptr) {
@@ -575,7 +542,6 @@ namespace engine {
             throw engine::RuntimeException("failed to create command pool!");
         }
 
-        // Create reusable fence for single-time commands
         VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         if (vkCreateFence(device_, &fenceInfo, nullptr, &singleTimeFence_) != VK_SUCCESS) {
             throw engine::RuntimeException("failed to create single-time commands fence!");
@@ -584,7 +550,7 @@ namespace engine {
 
     void Device::enableThreadLocalCommandPools() {
         if (threadLocalCommandPools_)
-            return;  // already enabled
+            return;
         threadLocalCommandPools_ = std::make_unique<ThreadLocalCommandPool>();
         threadLocalCommandPools_->init(device_, findPhysicalQueueFamilies().graphicsFamily);
     }
@@ -603,9 +569,8 @@ namespace engine {
             engine::Logger::error(engine::LogChannel::Render, "[Device] submitGraphics failed: VkResult=", lastRes, " commandBuffers=", cbCount, " attempt=", attempt, " thread=", std::this_thread::get_id());
 
             if (lastRes == VK_ERROR_DEVICE_LOST) {
-                // Dump physical device info to help debugging device lost errors
                 engine::Logger::error(engine::LogChannel::Render, "[Device] VK_ERROR_DEVICE_LOST: physical device=", properties.deviceName, " vendor=", properties.vendorID, " driver=", properties.driverVersion);
-                break;  // no point retrying
+                break;
             }
 
             if (attempt < maxRetries) {
@@ -697,7 +662,6 @@ namespace engine {
             return;
         }
 
-        // Use the RAII pilot DebugMessenger to manage creation and destruction.
         debugMessenger = std::make_unique<DebugMessenger>();
         debugMessenger->create(instance);
     }
@@ -801,7 +765,6 @@ namespace engine {
             }
         }
 
-        // If we get here, no suitable format was found. Log details for debugging.
         std::string tilingStr = (tiling == VK_IMAGE_TILING_LINEAR) ? "LINEAR" : "OPTIMAL";
         engine::Logger::error(engine::LogChannel::Render, "[Vulkan] findSupportedFormat failed: tiling=", tilingStr, " features=0x", std::hex, features, std::dec, " tested=", candidates.size(), " formats");
 
@@ -821,14 +784,10 @@ namespace engine {
 
     VkCommandBuffer Device::beginSingleTimeCommands() {
         VkCommandPool pool = VK_NULL_HANDLE;
-        // If an opt-in thread-local manager is enabled, use it. Otherwise create a
-        // temporary pool per call (current behavior).
+
         if (threadLocalCommandPools_) {
             pool = threadLocalCommandPools_->getForCurrentThread();
         } else {
-            // Create a temporary command pool for this single-time command buffer so worker
-            // threads can allocate/record independently without contending on a shared
-            // command pool (avoids threading validation errors).
             VkCommandPoolCreateInfo poolInfo{};
             poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
             poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -850,8 +809,6 @@ namespace engine {
         VkCommandBuffer commandBuffer;
         vkAllocateCommandBuffers(device_, &allocInfo, &commandBuffer);
 
-        // Remember which pool owns this command buffer so endSingleTimeCommands can
-        // free (and possibly destroy) the pool when done.
         {
             std::scoped_lock const lock(singleCmdMutex);
             cmdBufferToPoolMap_[commandBuffer] = pool;
@@ -874,7 +831,6 @@ namespace engine {
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers    = &commandBuffer;
 
-        // Use the reusable fence (protected by singleCmdMutex for thread safety)
         std::scoped_lock const fenceLock(singleCmdMutex);
         vkResetFences(device_, 1, &singleTimeFence_);
 
@@ -883,17 +839,14 @@ namespace engine {
             throw engine::RuntimeException("failed to submit single-time command buffer: " + std::to_string(submitRes));
         }
 
-        constexpr uint64_t timeoutNs = 10ull * 1000ull * 1000ull * 1000ull;  // 10 seconds
+        constexpr uint64_t timeoutNs = 10ull * 1000ull * 1000ull * 1000ull;
         VkResult const     waitRes   = vkWaitForFences(device_, 1, &singleTimeFence_, VK_TRUE, timeoutNs);
         if (waitRes != VK_SUCCESS) {
             throw engine::RuntimeException("vkWaitForFences failed: " + std::to_string(waitRes));
         }
 
-        // std::cerr << "[Device] endSingleTimeCommands - submit OK for cmdBuffer=" << commandBuffer << "\n";
-
         VkCommandPool pool = VK_NULL_HANDLE;
         {
-            // Already holding fenceLock on singleCmdMutex - access map directly
             auto it = cmdBufferToPoolMap_.find(commandBuffer);
             if (it != cmdBufferToPoolMap_.end()) {
                 pool = it->second;
@@ -902,8 +855,6 @@ namespace engine {
         }
 
         if (pool != VK_NULL_HANDLE) {
-            // If the pool is managed by the ThreadLocalCommandPool, only free the
-            // command buffer — do not destroy the pool.
             if (threadLocalCommandPools_ && threadLocalCommandPools_->ownsPool(pool)) {
                 vkFreeCommandBuffers(device_, pool, 1, &commandBuffer);
             } else {
@@ -911,14 +862,10 @@ namespace engine {
                 vkDestroyCommandPool(device_, pool, nullptr);
             }
         } else {
-            // Fallback to freeing from the shared command pool if we couldn't find
-            // an associated temporary pool (shouldn't happen normally).
             vkFreeCommandBuffers(device_, commandPool, 1, &commandBuffer);
         }
     }
 
-    // Allocate a secondary command buffer. Prefer thread-local pools when enabled
-    // to avoid contention; remember the owning pool so the CB can be freed later.
     VkResult Device::allocateSecondaryCommandBuffer(VkCommandBuffer* outCommandBuffer) {
         if (!outCommandBuffer)
             return VK_ERROR_INITIALIZATION_FAILED;
@@ -942,7 +889,6 @@ namespace engine {
         return res;
     }
 
-    // Free a secondary command buffer previously allocated with allocateSecondaryCommandBuffer.
     void Device::freeSecondaryCommandBuffer(VkCommandBuffer commandBuffer) {
         VkCommandPool pool = VK_NULL_HANDLE;
         {

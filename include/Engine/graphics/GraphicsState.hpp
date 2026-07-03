@@ -47,8 +47,6 @@ namespace engine {
         GraphicsState(const GraphicsState&)            = delete;
         GraphicsState& operator=(const GraphicsState&) = delete;
 
-        // --- Initialization ---
-
         /**
      * @brief Initialize all rendering systems and descriptor resources.
      * @param device Vulkan device
@@ -65,8 +63,6 @@ namespace engine {
             IRenderContextPort* renderContextPort,
             bool                multithreadedRecordingEnabled,
             uint32_t            multithreadedRecordingThreads);
-
-        // --- Accessors — Systems ---
 
         [[nodiscard]] ModelRenderSystem* modelRenderSystem() const {
             return modelRenderSystem_.get();
@@ -108,13 +104,9 @@ namespace engine {
             return morphTargetManager_.get();
         }
 
-        // --- Accessors — Descriptor Manager ---
-
         [[nodiscard]] DescriptorManager& descriptorManager() const {
             return *descriptorManager_;
         }
-
-        // --- Accessors — Scene ---
 
         [[nodiscard]] Scene& scene() const {
             return scene_;
@@ -143,8 +135,6 @@ namespace engine {
         [[nodiscard]] PostProcessPushConstants& postProcessPush() const {
             return postProcessPush_;
         }
-
-        // --- Accessors — Runtime Settings ---
 
         [[nodiscard]] bool showSkybox() const {
             return showSkybox_;
@@ -189,16 +179,12 @@ namespace engine {
             return solidGroundEnabled_;
         }
 
-        // --- Accessors — Non-owned Dependencies ---
-
         [[nodiscard]] ResourceManager* resourceManager() const {
             return resourceManager_;
         }
         [[nodiscard]] IRenderContextPort* renderContextPort() const {
             return renderContextPort_;
         }
-
-        // --- System Registration ---
 
         /**
      * @brief Register core systems with the system registry.
@@ -236,7 +222,6 @@ namespace engine {
         bool registerPostProcessing(SystemRegistry& registry);
 
        private:
-        // Rendering systems
         std::unique_ptr<ModelRenderSystem>         modelRenderSystem_;
         std::unique_ptr<ShadowSystem>              shadowSystem_;
         std::unique_ptr<LightSystem>               lightSystem_;
@@ -251,10 +236,8 @@ namespace engine {
         std::unique_ptr<ColliderDebugRenderSystem> colliderDebugRenderSystem_;
         std::unique_ptr<MorphTargetManager>        morphTargetManager_;
 
-        // Descriptor management
         std::unique_ptr<DescriptorManager> descriptorManager_;
 
-        // Scene & rendering state
         Scene                    scene_;
         entt::entity             selectedEntity_ = entt::null;
         entt::entity             cameraEntity_   = entt::null;
@@ -263,7 +246,6 @@ namespace engine {
         ShadowSettings           shadowSettings_;
         PostProcessPushConstants postProcessPush_{};
 
-        // Runtime settings
         bool showSkybox_               = false;
         bool showGrid_                 = false;
         bool showDebugObjects_         = false;
@@ -272,11 +254,9 @@ namespace engine {
         bool physicsSimulationRunning_ = false;
         bool solidGroundEnabled_       = true;
 
-        // Non-owned dependencies
         IRenderContextPort* renderContextPort_ = nullptr;
         ResourceManager*    resourceManager_   = nullptr;
 
-        // Initialization helpers
         bool initDescriptorResources(Device& device, Renderer& renderer);
         bool allocatePerFrameDescriptors(Renderer& renderer);
         bool initPostProcessing(Device& device, Renderer& renderer);
@@ -284,4 +264,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // ENGINE_GRAPHICSSTATE_HPP
+#endif

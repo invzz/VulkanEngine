@@ -5,26 +5,20 @@
 #include <sstream>
 
 #include "Engine/Core/Logger.hpp"
+
 #include "Editor/ui/Workspace/ThemeLoader.hpp"
 
 namespace engine {
 
-    // Static current style
     ImGuiStyle ThemeSystem::currentStyle_;
-
-    // ============================================================================
-    // Private helpers
-    // ============================================================================
 
     ImVec4 ThemeSystem::parseHexColor(const std::string& hex) const {
         ImVec4 result = {0.0f, 0.0f, 0.0f, 1.0f};
         if (hex.size() == 7) {
-            // #RRGGBB
             result.x = std::stoi(hex.substr(1, 2), nullptr, 16) / 255.0f;
             result.y = std::stoi(hex.substr(3, 2), nullptr, 16) / 255.0f;
             result.z = std::stoi(hex.substr(5, 2), nullptr, 16) / 255.0f;
         } else if (hex.size() == 9) {
-            // #RRGGBBAA
             result.x = std::stoi(hex.substr(1, 2), nullptr, 16) / 255.0f;
             result.y = std::stoi(hex.substr(3, 2), nullptr, 16) / 255.0f;
             result.z = std::stoi(hex.substr(5, 2), nullptr, 16) / 255.0f;
@@ -167,12 +161,8 @@ namespace engine {
         col(ImGuiCol_ModalWindowDimBg, get("modal_window_dim_bg"));
     }
 
-    // ============================================================================
-    // Public API
-    // ============================================================================
-
     ThemeSystem::ThemeSystem() {
-        applyTheme("Midnight");  // Default theme
+        applyTheme("Midnight");
     }
 
     void ThemeSystem::applyTheme(const std::string& theme_name) {
@@ -189,14 +179,11 @@ namespace engine {
         currentThemeName_   = theme.name;
         currentAccentColor_ = parseHexColor(theme.accent_color);
 
-        // 1. Load base colors from theme JSON
         auto json = ThemeLoader::loadByName("assets/editor/themes", theme.name);
         applyBaseColors(json.value("base_colors", nlohmann::json::object()));
 
-        // 2. Apply derived accent colors
         autoApplyAccentColor(currentAccentColor_);
 
-        // 3. Apply style
         auto& s                        = theme.style;
         currentStyle_.WindowRounding   = s.window_rounding;
         currentStyle_.FrameRounding    = s.frame_rounding;
@@ -208,7 +195,6 @@ namespace engine {
         currentStyle_.WindowPadding    = ImVec2(s.window_padding, s.window_padding);
         currentStyle_.GrabMinSize      = s.grab_min_size;
 
-        // Push to ImGui
         ImGui::GetStyle() = currentStyle_;
         engine::Logger::info(engine::LogChannel::General, "ThemeSystem: Applied theme '", theme.name, "'");
     }

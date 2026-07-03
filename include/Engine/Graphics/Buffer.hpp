@@ -24,7 +24,6 @@ namespace engine {
         VkDescriptorBufferInfo descriptorInfoForIndex(int index);
         VkResult               invalidateIndex(int index);
 
-        // getters
         [[nodiscard]] VkBuffer getBuffer() const {
             return buffer;
         }
@@ -66,4 +65,4 @@ namespace engine {
     };
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_BUFFER_HPP
+#endif

@@ -130,4 +130,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_SELECTION_SYSTEM_HPP
+#endif

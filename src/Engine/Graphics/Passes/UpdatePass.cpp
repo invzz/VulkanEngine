@@ -11,10 +11,10 @@
 
 namespace engine {
 
-    UpdatePass::UpdatePass(ObjectSelectionSystem* os, InputSystem* inp,
+    UpdatePass::UpdatePass(ObjectSelectionSystem* objSel, InputSystem* input,
         JoltPhysicsSystem* jolt, bool& physRunning,
         Renderer& renderer)
-        : objSel_(os), input_(inp), jolt_(jolt), physRunning_(physRunning), renderer_(renderer) {}
+        : RenderPassBase("Update"), objSel_(objSel), input_(input), jolt_(jolt), physRunning_(physRunning), renderer_(renderer) {}
 
     void UpdatePass::execute(FrameInfo& frameInfo) {
         if (objSel_)
@@ -34,11 +34,6 @@ namespace engine {
                 PhysicsSystem::update(frameInfo);
             }
         }
-    }
-
-    const std::string& UpdatePass::getName() const {
-        static std::string n = "Update";
-        return n;
     }
 
 }  // namespace engine

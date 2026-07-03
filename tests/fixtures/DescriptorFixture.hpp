@@ -24,12 +24,10 @@ namespace engine::test {
  */
     class DescriptorFixture : public DeviceFixture {
        protected:
-        // Helper to create a simple UBO layout (common pattern)
         std::unique_ptr<DescriptorSetLayout> createUBOLayout(VkShaderStageFlags stageFlags = VK_SHADER_STAGE_ALL) {
             return DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, stageFlags).build();
         }
 
-        // Helper to create a combined image sampler layout
         std::unique_ptr<DescriptorSetLayout> createSamplerLayout(uint32_t bindingCount = 1, VkShaderStageFlags stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT) {
             auto builder = DescriptorSetLayout::Builder(device());
             for (uint32_t i = 0; i < bindingCount; ++i) {
@@ -38,12 +36,10 @@ namespace engine::test {
             return builder.build();
         }
 
-        // Helper to create a pool with common settings
         std::unique_ptr<DescriptorPool> createPool(uint32_t maxSets, VkDescriptorType type, VkDescriptorPoolCreateFlags flags = 0) {
             return DescriptorPool::Builder(device()).setMaxSets(maxSets).addPoolSize(type, maxSets).setPoolFlags(flags).build();
         }
 
-        // Helper to create a freeable pool (can free individual descriptors)
         std::unique_ptr<DescriptorPool> createFreeablePool(uint32_t maxSets, VkDescriptorType type) {
             return createPool(maxSets, type, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
         }
@@ -77,7 +73,6 @@ namespace engine::test {
             return layout_->getDescriptorSetLayout();
         }
 
-        // Allocate a descriptor set from the pool
         VkDescriptorSet allocateSet() {
             VkDescriptorSet set = VK_NULL_HANDLE;
             pool_->allocateDescriptor(layoutHandle(), set);
@@ -93,4 +88,4 @@ namespace engine::test {
 
 }  // namespace engine::test
 
-#endif  // VULKANENGINE_TESTS_FIXTURES_DESCRIPTORFIXTURE_HPP
+#endif

@@ -32,12 +32,12 @@ namespace engine {
         }
 
         Window& window;
-        float   lookSpeed         = 1.5f;            // scalar multiplier for look sensitivity
-        float   pixelSensitivity  = 45.0f / 180.0f;  // converts pixel delta to radians
+        float   lookSpeed         = 1.5f;
+        float   pixelSensitivity  = 45.0f / 180.0f;
         double  lastX             = 0.0;
         double  lastY             = 0.0;
         bool    mouseInitialized_ = false;
     };
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
+#endif

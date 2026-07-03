@@ -5,7 +5,7 @@
 namespace engine {
 
     ComputePass::ComputePass(AnimationSystem* animationSystem)
-        : animationSystem_(animationSystem) {}
+        : RenderPassBase("Compute"), animationSystem_(animationSystem) {}
 
     void ComputePass::execute(FrameInfo& frameInfo) {
         if (animationSystem_ != nullptr) {

@@ -30,23 +30,19 @@ namespace engine {
             return;
         }
 
-        // Update morph targets for all models that have them
         auto view = frameInfo.scene->getRegistry().view<ModelComponent>();
         for (auto entity : view) {
             auto& modelComp = view.get<ModelComponent>(entity);
             if (modelComp.model && modelComp.model->hasMorphTargets()) {
-                // Initialize morph targets for newly added models at runtime
                 if (!manager_->isModelInitialized(modelComp.model.get())) {
                     try {
                         manager_->initializeModel(modelComp.model);
                     } catch (const std::exception& e) {
-                        engine::Logger::error(engine::LogChannel::Render, "[MorphTargetSystem] ERROR initializing object ", (uint32_t)entity, ": ", e.what());
-                        continue;  // Skip this object
+                        engine::Logger::error(engine::LogChannel::Render, "[MorphTargetSystem] ERROR initializing object ", (uint32_t) entity, ": ", e.what());
+                        continue;
                     }
                 }
 
-                // Dispatch compute shader: baseVertices + morphDeltas * weights →
-                // blendedVertices
                 manager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
             }
         }

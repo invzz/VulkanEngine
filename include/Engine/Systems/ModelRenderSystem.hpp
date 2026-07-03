@@ -18,8 +18,6 @@ namespace engine {
     class IBLSystem;
     struct PBRMaterial;
 
-    // Push constants for mesh pipeline draws. Must be kept binary-compatible with GLSL
-    // definition in assets/shaders/includes/mesh_push_constants.glsl
     struct MeshPushConstantData {
         glm::mat4 modelMatrix{1.0f};
         glm::mat4 normalMatrix{1.0f};
@@ -60,11 +58,8 @@ namespace engine {
         ModelRenderSystem(const ModelRenderSystem&)            = delete;
         ModelRenderSystem& operator=(const ModelRenderSystem&) = delete;
 
-        // Reset per-frame transient state (material dynamic offsets, etc.).
         void beginFrame(int frameIndex);
 
-        // Opt-in: enable multithreaded secondary-command-buffer recording (pilot).
-        // threadCount==0 -> choose (HW threads - 1) by default.
         void enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
 
         void setVariantPolicy(VariantPolicy policy) {
@@ -90,20 +85,16 @@ namespace engine {
             return multithreadedRecordingEnabled_;
         }
 
-        // Multi-pass rendering entry points.
         void renderGbuffer(FrameInfo& frameInfo);
         void renderTransmission(FrameInfo& frameInfo);
         void renderAlphaBlend(FrameInfo& frameInfo);
 
-        // Must be called once after the G-buffer render pass exists.
         void createGbufferPipeline(VkRenderPass renderPass);
 
-        // Update the scene-color copy descriptor for screen-space refraction.
         void updateSceneColorDescriptor(int frameIndex, VkDescriptorImageInfo const& sceneColorInfo);
 
         void renderDepthPrepass(FrameInfo& frameInfo);
 
-        // Must be called once after the offscreen depth-prepass render pass exists.
         void createDepthPrepassPipeline(VkRenderPass renderPass);
 
         void setShadowSystem(ShadowSystem* shadowSystem);
@@ -117,7 +108,6 @@ namespace engine {
         void createPipeline(VkRenderPass renderPass);
         void createSceneColorDescriptorResources();
 
-        // Shared helpers for the forward compositing passes.
         void                    bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
         void                    hotReloadPipelinesIfNeeded();
         [[nodiscard]] Pipeline* chooseTransparentPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
@@ -136,16 +126,13 @@ namespace engine {
 
         std::unique_ptr<LightingRenderBindings> lightingBindings_;
 
-        // Stored render-pass used to record secondary command buffers' inheritance.
         VkRenderPass renderPass_ = VK_NULL_HANDLE;
-        // Separate G-buffer render pass for G-buffer secondary command buffers.
+
         VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
 
-        // Multithreading configuration (opt-in). When enabled, draw-recording is
-        // partitioned and recorded to secondary command buffers on worker threads.
         bool               multithreadedRecordingEnabled_ = false;
         uint32_t           multithreadedRecordingThreads_ = 0;
-        mutable std::mutex multithreadBindMutex_;  // short critical section around bindMaterial calls
+        mutable std::mutex multithreadBindMutex_;
 
         VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
         std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;
@@ -158,4 +145,4 @@ namespace engine {
     };
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP
+#endif

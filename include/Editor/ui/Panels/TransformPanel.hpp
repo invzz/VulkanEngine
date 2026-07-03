@@ -20,4 +20,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_TRANSFORMPANEL_HPP
+#endif

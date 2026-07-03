@@ -18,10 +18,6 @@ namespace {
 
     constexpr float EPSILON = 1e-6f;
 
-    // ===========================================================================
-    // LightMobility Enum Tests
-    // ===========================================================================
-
     TEST(LightMobility, GivenStaticEnum_WhenCastToInt_ThenValueIsZero) {
         EXPECT_EQ(static_cast<int>(engine::LightMobility::Static), 0);
     }
@@ -30,10 +26,6 @@ namespace {
         EXPECT_EQ(static_cast<int>(engine::LightMobility::Dynamic), 1);
     }
 
-    // ===========================================================================
-    // to_string Tests
-    // ===========================================================================
-
     TEST(LightCommon, GivenStaticMobility_WhenToString_ThenReturnsStatic) {
         EXPECT_STREQ(engine::to_string(engine::LightMobility::Static), "static");
     }
@@ -41,10 +33,6 @@ namespace {
     TEST(LightCommon, GivenDynamicMobility_WhenToString_ThenReturnsDynamic) {
         EXPECT_STREQ(engine::to_string(engine::LightMobility::Dynamic), "dynamic");
     }
-
-    // ===========================================================================
-    // mobility_from_string Tests
-    // ===========================================================================
 
     TEST(LightCommon, GivenStaticString_WhenParsed_ThenReturnsStaticEnum) {
         EXPECT_EQ(engine::mobility_from_string("static"), engine::LightMobility::Static);
@@ -60,7 +48,7 @@ namespace {
 
     TEST(LightCommon, GivenUnknownString_WhenParsed_ThenDefaultsToStatic) {
         EXPECT_EQ(engine::mobility_from_string("unknown"), engine::LightMobility::Static);
-        EXPECT_EQ(engine::mobility_from_string("DYNAMIC"), engine::LightMobility::Static);  // Case sensitive
+        EXPECT_EQ(engine::mobility_from_string("DYNAMIC"), engine::LightMobility::Static);
         EXPECT_EQ(engine::mobility_from_string("stationary"), engine::LightMobility::Static);
     }
 
@@ -77,10 +65,6 @@ namespace {
         auto back     = engine::mobility_from_string(str);
         EXPECT_EQ(original, back);
     }
-
-    // ===========================================================================
-    // PointLightComponent Default Tests
-    // ===========================================================================
 
     TEST(PointLightComponent, GivenDefaultConstruction_WhenInspected_ThenIntensityIsOne) {
         engine::PointLightComponent light;
@@ -125,10 +109,6 @@ namespace {
         EXPECT_TRUE(light.bake);
         EXPECT_EQ(light.lightType, engine::LightMobility::Dynamic);
     }
-
-    // ===========================================================================
-    // DirectionalLightComponent Default Tests
-    // ===========================================================================
 
     TEST(DirectionalLightComponent, GivenDefaultConstruction_WhenInspected_ThenIntensityIsOne) {
         engine::DirectionalLightComponent light;
@@ -180,10 +160,6 @@ namespace {
         EXPECT_TRUE(light.bake);
         EXPECT_EQ(light.lightType, engine::LightMobility::Dynamic);
     }
-
-    // ===========================================================================
-    // SpotLightComponent Default Tests
-    // ===========================================================================
 
     TEST(SpotLightComponent, GivenDefaultConstruction_WhenInspected_ThenIntensityIsOne) {
         engine::SpotLightComponent light;
@@ -262,19 +238,13 @@ namespace {
     }
 
     TEST(SpotLightComponent, GivenSpotLight_WhenInnerGreaterThanOuter_ThenConfigurationIsAllowed) {
-        // The component doesn't enforce this constraint; it's up to the renderer
         engine::SpotLightComponent light;
         light.innerCutoffAngle = 30.0f;
         light.outerCutoffAngle = 15.0f;
 
-        // Values are stored even if invalid (validation is renderer's responsibility)
         EXPECT_NEAR(light.innerCutoffAngle, 30.0f, EPSILON);
         EXPECT_NEAR(light.outerCutoffAngle, 15.0f, EPSILON);
     }
-
-    // ===========================================================================
-    // Copy and Assignment Tests
-    // ===========================================================================
 
     TEST(PointLightComponent, GivenOriginal_WhenCopyConstructed_ThenValuesMatch) {
         engine::PointLightComponent original;

@@ -103,8 +103,8 @@ namespace engine {
 
         VkImage        depthImage_        = VK_NULL_HANDLE;
         VkDeviceMemory depthImageMemory_  = VK_NULL_HANDLE;
-        VkImageView    cubeImageView_     = VK_NULL_HANDLE;    // View for the entire cube
-        VkImageView    faceImageViews_[6] = {VK_NULL_HANDLE};  // Views for each face
+        VkImageView    cubeImageView_     = VK_NULL_HANDLE;
+        VkImageView    faceImageViews_[6] = {VK_NULL_HANDLE};
         VkSampler      sampler_           = VK_NULL_HANDLE;
         VkRenderPass   renderPass_        = VK_NULL_HANDLE;
         VkFramebuffer  framebuffers_[6]   = {VK_NULL_HANDLE};
@@ -117,4 +117,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_CUBESHADOWMAP_HPP
+#endif

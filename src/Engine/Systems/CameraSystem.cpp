@@ -99,7 +99,7 @@ namespace engine {
 
             CameraDebugPush push{};
             push.modelMatrix = modelMatrix;
-            push.color       = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow
+            push.color       = glm::vec4(1.0f, 1.0f, 0.0f, 1.0f);
             push.fovY        = glm::radians(cameraComp.fovY);
             push.aspectRatio = aspectRatio;
             push.nearZ       = cameraComp.nearZ;
@@ -114,36 +114,28 @@ namespace engine {
     void CameraSystem::update(FrameInfo& frameInfo, float aspectRatio) {
         auto& registry = frameInfo.scene->getRegistry();
         if (registry.valid(frameInfo.cameraEntity)) {
-            // Check if the entity has the required components
             if (registry.all_of<CameraComponent, TransformComponent>(frameInfo.cameraEntity)) {
                 auto&       cameraComp = registry.get<CameraComponent>(frameInfo.cameraEntity);
                 const auto& transform  = registry.get<TransformComponent>(frameInfo.cameraEntity);
 
                 updateCamera(cameraComp, transform, aspectRatio);
 
-                // Sync the frameInfo camera with the component camera
-                // This ensures the renderer uses the updated camera matrices
                 frameInfo.camera = cameraComp.camera;
             }
         }
     }
 
     void CameraSystem::updateCamera(CameraComponent& cameraComp, const TransformComponent& transform, float aspectRatio) {
-        // Update projection
         if (!cameraComp.isOrthographic) {
             cameraComp.camera.setPerspectiveProjection(glm::radians(cameraComp.fovY), aspectRatio, cameraComp.nearZ, cameraComp.farZ);
         } else {
-            // For orthographic, we need to define the bounds.
-            // Assuming orthoSize is the height, width is derived from aspect ratio.
             float const orthoHeight = cameraComp.orthoSize;
             float const orthoWidth  = aspectRatio * orthoHeight;
             cameraComp.camera.setOrtographicProjection(-orthoWidth, orthoWidth, -orthoHeight, orthoHeight, cameraComp.nearZ, cameraComp.farZ);
         }
 
-        // Update view
         cameraComp.camera.setViewYXZ(transform.translation, transform.rotation);
 
-        // Update frustum
         cameraComp.camera.updateFrustum();
     }
 }  // namespace engine

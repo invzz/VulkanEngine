@@ -217,7 +217,6 @@ namespace engine {
         UIState       uiState_;
         ThemeSystem   themeSystem_;
 
-        // Toolbar
         bool                                toolbarVisible_ = true;
         std::unique_ptr<class ToolbarPanel> toolbarPanel_;
         struct ToolbarToggleEntry {
@@ -226,20 +225,14 @@ namespace engine {
         };
         std::vector<ToolbarToggleEntry> toolbarToggles_;
 
-        // Frame time for toolbar display
         float frameTimeMs_ = 0.0f;
 
-        // Dockspace
         ImGuiID mainDockspaceID_ = 0;
 
-        // Layout rules
         LayoutPreset currentLayout_ = LayoutPreset::Default;
 
-        // Whether the dock tree has been built at least once. The renderer
-        // queries this so it can apply the layout on the first valid frame.
         bool layoutApplied_ = false;
 
-        // Forward declarations for panel getters
         class ViewportPanel;
         class SceneHierarchyPanel;
         class InspectorPanel;
@@ -249,4 +242,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_WORKSPACE_MANAGER_HPP
+#endif

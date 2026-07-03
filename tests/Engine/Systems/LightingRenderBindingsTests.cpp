@@ -6,10 +6,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// LightingRenderBindings Construction Tests
-// =============================================================================
-
 class LightingRenderBindingsTest : public engine::test::DeviceFixture {};
 
 TEST_F(LightingRenderBindingsTest, GivenValidDevice_WhenConstructed_ThenNoThrow) {

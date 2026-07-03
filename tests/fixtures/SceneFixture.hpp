@@ -33,10 +33,8 @@ namespace engine::test {
         void SetUp() override {
             DeviceFixtureWithSetup::SetUp();
 
-            // Ensure test directories exist
             std::filesystem::create_directories("assets/scenes/test");
 
-            // Create ResourceManager for this test
             resourceManager_ = std::make_unique<ResourceManager>(device());
         }
 
@@ -45,22 +43,18 @@ namespace engine::test {
             DeviceFixtureWithSetup::TearDown();
         }
 
-        // Accessors
         ResourceManager& resourceManager() {
             return *resourceManager_;
         }
 
-        // Helper to create a fresh scene
         std::unique_ptr<Scene> createScene() {
             return std::make_unique<Scene>();
         }
 
-        // Helper to get test scene directory path
         static std::filesystem::path testSceneDir() {
             return "assets/scenes/test";
         }
 
-        // Helper to create a unique test file path
         std::filesystem::path createTestScenePath(const std::string& testName) {
             return testSceneDir() / (testName + ".json");
         }
@@ -96,4 +90,4 @@ namespace engine::test {
 
 }  // namespace engine::test
 
-#endif  // VULKANENGINE_TESTS_FIXTURES_SCENEFIXTURE_HPP
+#endif

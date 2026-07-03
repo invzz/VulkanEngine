@@ -13,10 +13,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// MeshPushConstantData Tests
-// =============================================================================
-
 TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAreZeroInitialized) {
     MeshPushConstantData pcd{};
 
@@ -28,15 +24,12 @@ TEST(MeshPushConstantData, GivenDefaultConstructed_WhenInspected_ThenAllFieldsAr
     EXPECT_EQ(pcd.meshletOffset, 0u);
     EXPECT_EQ(pcd.meshletCount, 0u);
 
-    // Model and normal matrices should be identity
     glm::mat4 identity = glm::mat4(1.0f);
     EXPECT_EQ(pcd.modelMatrix, identity);
     EXPECT_EQ(pcd.normalMatrix, identity);
 }
 
 TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_ThenOffsetsMatchShaderExpectations) {
-    // This test ensures the memory layout matches what the shader expects.
-    // If this fails, the shader/CPU side is misaligned.
     static_assert(sizeof(MeshPushConstantData) == 176, "Push constant size mismatch");
     static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0, "modelMatrix offset mismatch");
     static_assert(offsetof(MeshPushConstantData, normalMatrix) == 64, "normalMatrix offset mismatch");
@@ -50,32 +43,19 @@ TEST(MeshPushConstantData, GivenPushConstantStruct_WhenComparedToBinaryLayout_Th
     SUCCEED();
 }
 
-// =============================================================================
-// ModelRenderSystem Multi-threading API Tests
-// =============================================================================
-
 TEST(ModelRenderSystem, GivenDefaultState_WhenEnablingMultiThreadedRecording_ThenApiAcceptsConfiguration) {
-    // Basic API/behavior smoke: enabling/disabling should be idempotent and
-    // accept a thread count. This test does NOT exercise GPU recording.
     Window win(16, 16, "MT Recording API");
     Device device(win);
 
-    // Create a ModelRenderSystem with a null render pass (sufficient for API-only test)
     ModelRenderSystem mrs(device, VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE);
 
-    // Default: disabled
     mrs.enableMultiThreadedRecording(true, 4);
     mrs.enableMultiThreadedRecording(false, 0);
 
-    // Re-enable with auto thread-count
     mrs.enableMultiThreadedRecording(true, 0);
 
     SUCCEED();
 }
-
-// =============================================================================
-// MaterialRenderBindings Multi-threaded Tests
-// =============================================================================
 
 class MaterialRenderBindingsTest : public engine::test::DeviceFixtureWithSetup {
    protected:
@@ -100,7 +80,6 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
 
     VkDescriptorSet expectedHandle = mrb.getFrameDescriptorSet(0);
 
-    // Build a pipeline layout with material set at index 4
     VkDescriptorSetLayout dummyLayouts[4] = {};
     for (int i = 0; i < 4; ++i) {
         VkDescriptorSetLayoutCreateInfo li{};
@@ -120,7 +99,6 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     ASSERT_EQ(vkCreatePipelineLayout(device().device(), &pli, nullptr, &pipelineLayout), VK_SUCCESS);
 
-    // Allocate and begin a secondary command buffer
     VkCommandBuffer serialCB = VK_NULL_HANDLE;
     ASSERT_EQ(device().allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
 
@@ -152,7 +130,6 @@ TEST_F(MaterialRenderBindingsTest, GivenSerialRecording_WhenBindMaterialCalled_T
     EXPECT_EQ(captured[0], expectedHandle);
     EXPECT_NE(captured[0], VK_NULL_HANDLE);
 
-    // Cleanup
     mrb.enableBindCapture(false);
     device().freeSecondaryCommandBuffer(serialCB);
     vkDestroyPipelineLayout(device().device(), pipelineLayout, nullptr);
@@ -168,7 +145,6 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
 
     VkDescriptorSet serialHandle = mrb.getFrameDescriptorSet(0);
 
-    // Build pipeline layout
     VkDescriptorSetLayout dummyLayouts[4] = {};
     for (int i = 0; i < 4; ++i) {
         VkDescriptorSetLayoutCreateInfo li{};
@@ -205,7 +181,6 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
         return vkBeginCommandBuffer(cb, &bi);
     };
 
-    // Serial bind first
     VkCommandBuffer serialCB = VK_NULL_HANDLE;
     ASSERT_EQ(device().allocateSecondaryCommandBuffer(&serialCB), VK_SUCCESS);
     ASSERT_EQ(beginSecondary(serialCB), VK_SUCCESS);
@@ -218,7 +193,6 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
     mrb.bindMaterial(frameInfo, pipelineLayout, nullptr, 0.0f);
     ASSERT_EQ(vkEndCommandBuffer(serialCB), VK_SUCCESS);
 
-    // Worker threads
     const int                    workerCount = 2;
     std::vector<VkCommandBuffer> workerCbs;
     std::mutex                   workerCbsMutex;
@@ -259,7 +233,6 @@ TEST_F(MaterialRenderBindingsTest, GivenMultipleWorkerThreads_WhenBindMaterialCa
         EXPECT_NE(mtCaptured[i], VK_NULL_HANDLE) << "Worker bind at index " << i << " is VK_NULL_HANDLE";
     }
 
-    // Cleanup
     mrb.enableBindCapture(false);
     for (auto cb : workerCbs) {
         device().freeSecondaryCommandBuffer(cb);

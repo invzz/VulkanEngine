@@ -54,20 +54,11 @@ namespace engine::ui {
         }
     }  // namespace
 
-    // ======================================================================
-    // Implementation
-    // ======================================================================
-
-    // ======================================================================
-    // Section / Grouping
-    // ======================================================================
-
     void SetActiveWorkspace(WorkspaceManager* wm) {
         s_activeWorkspace = wm;
     }
 
     bool UI::Section(const char* label, bool* open_ptr) {
-        // Draw accent bar
         ImVec2 pos = ImGui::GetCursorScreenPos();
         ImGui::InvisibleButton("##section_space", ImVec2(3.0f, 0.0f));
         ImVec4 borderColor = GetTheme().getBorderColor();
@@ -77,14 +68,13 @@ namespace engine::ui {
             ImGui::GetColorU32(borderColor),
             1.0f);
 
-        // Render header
         bool open = ImGui::CollapsingHeader(label, open_ptr, 0);
         return open;
     }
 
     bool UI::Section(const char* label, ImVec4 accent_color, bool* open_ptr) {
         (void) accent_color;
-        return Section(label, open_ptr);  // Uses accent color from theme
+        return Section(label, open_ptr);
     }
 
     void UI::Separator() {
@@ -100,10 +90,6 @@ namespace engine::ui {
         ImGui::Separator();
         ImGui::PopStyleColor();
     }
-
-    // ======================================================================
-    // Buttons
-    // ======================================================================
 
     bool UI::Button(const char* label) {
         ImVec4 btn    = GetTheme().getColor(ImGuiCol_Button);
@@ -302,10 +288,6 @@ namespace engine::ui {
         return changed;
     }
 
-    // ======================================================================
-    // Properties
-    // ======================================================================
-
     void UI::Property(const char* label, const char* value) {
         ImVec4 disabled = GetTheme().getDisabledColor();
         ImVec4 text     = GetTheme().getTextColor();
@@ -339,10 +321,6 @@ namespace engine::ui {
         bool changed = ImGui::Checkbox("", value);
         return changed;
     }
-
-    // ======================================================================
-    // Tree / Hierarchy
-    // ======================================================================
 
     bool UI::TreeNode(const char* label, ImGuiTreeNodeFlags flags) {
         ImVec4 header    = GetTheme().getColor(ImGuiCol_Header);
@@ -379,10 +357,6 @@ namespace engine::ui {
         ImGui::PopStyleColor(4);
         return clicked;
     }
-
-    // ======================================================================
-    // Input Controls
-    // ======================================================================
 
     bool UI::InputText(const char* label, char* buffer, int buf_size) {
         ImVec4 frameBg    = GetTheme().getColor(ImGuiCol_FrameBg);
@@ -566,10 +540,6 @@ namespace engine::ui {
         return changed;
     }
 
-    // ======================================================================
-    // Display Helpers
-    // ======================================================================
-
     void UI::TextDisabled(const char* text) {
         ImVec4 disabled = GetTheme().getDisabledColor();
         ImGui::TextColored(disabled, "%s", text);
@@ -621,10 +591,6 @@ namespace engine::ui {
             ImGui::EndTooltip();
         }
     }
-
-    // ======================================================================
-    // Layout Helpers
-    // ======================================================================
 
     void UI::PushThemeStyle() {
         if (s_activeWorkspace == nullptr) {
@@ -680,10 +646,6 @@ namespace engine::ui {
         return GetTheme().getTextColor();
     }
 
-    // ======================================================================
-    // Popup / Menu Helpers
-    // ======================================================================
-
     bool UI::PopupButton(const char* label, const char* popup_id) {
         if (SmallButton(label)) {
             ImGui::OpenPopup(popup_id);
@@ -712,9 +674,7 @@ namespace engine::ui {
         return SmallButton(label);
     }
 
-    // Helper to apply section header styling
     void UI::ApplySectionStyle(bool open) {
-        // This is called internally by Section() if needed
         (void) open;
     }
 

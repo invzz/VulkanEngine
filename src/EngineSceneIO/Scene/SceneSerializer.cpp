@@ -403,7 +403,6 @@ namespace engine {
                 objJson["name"] = "GameObject";
             }
 
-            // Transform
             if (scene.getRegistry().all_of<TransformComponent>(entity)) {
                 auto& t              = scene.getRegistry().get<TransformComponent>(entity);
                 objJson["transform"] = {{"translation", t.translation}, {"rotation", t.rotation}, {"scale", t.scale}};
@@ -420,7 +419,6 @@ namespace engine {
                     {"isPrimary", camera.isPrimary}};
             }
 
-            // PBR Material & Model
             if (scene.getRegistry().all_of<ModelComponent>(entity)) {
                 auto& modelComp = scene.getRegistry().get<ModelComponent>(entity);
                 if (modelComp.model) {
@@ -438,7 +436,6 @@ namespace engine {
                 }
             }
 
-            // Lights
             if (scene.getRegistry().all_of<PointLightComponent>(entity)) {
                 auto& pl              = scene.getRegistry().get<PointLightComponent>(entity);
                 objJson["pointLight"] = {{"intensity", pl.intensity}, {"color", pl.color}, {"radius", pl.radius}, {"bake", pl.bake}, {"lightType", to_string(pl.lightType)}};
@@ -455,7 +452,6 @@ namespace engine {
                     {{"intensity", sl.intensity}, {"color", sl.color}, {"innerAngle", sl.innerCutoffAngle}, {"outerAngle", sl.outerCutoffAngle}, {"bake", sl.bake}, {"lightType", to_string(sl.lightType)}};
             }
 
-            // LOD Component
             if (scene.getRegistry().all_of<LODComponent>(entity)) {
                 auto&          lod     = scene.getRegistry().get<LODComponent>(entity);
                 nlohmann::json lodJson = nlohmann::json::array();
@@ -467,7 +463,6 @@ namespace engine {
                 objJson["lodComponent"] = lodJson;
             }
 
-            // Optional physics components
             if (scene.getRegistry().all_of<RigidBodyComponent>(entity)) {
                 const auto& rb       = scene.getRegistry().get<RigidBodyComponent>(entity);
                 objJson["rigidBody"] = {
@@ -530,7 +525,7 @@ namespace engine {
             return false;
         }
 
-        scene.getRegistry().clear();  // Clear existing objects
+        scene.getRegistry().clear();
 
         bool foundAny = false;
 
@@ -538,14 +533,13 @@ namespace engine {
             foundAny = true;
             for (const auto& objJson : sceneJson["objects"]) {
                 std::string const name = objJson.value("name", "GameObject");
-                // If an explicit id is provided in the authoring file, use it as the NameComponent so it can be targeted by the baker manifest
+
                 std::string const id = objJson.value("id", name);
 
                 auto entity = scene.createEntity();
                 scene.getRegistry().emplace<TransformComponent>(entity);
                 scene.getRegistry().emplace<NameComponent>(entity, id);
 
-                // Transform
                 if (objJson.contains("transform")) {
                     auto& t               = objJson["transform"];
                     auto& transform       = scene.getRegistry().get<TransformComponent>(entity);
@@ -565,7 +559,6 @@ namespace engine {
                     camera.isPrimary       = cameraJson.value("isPrimary", camera.isPrimary);
                 }
 
-                // Model & Material
                 if (objJson.contains("modelPath")) {
                     std::string const modelPath = objJson["modelPath"];
                     auto              model     = resourceManager.loadModel(modelPath, true, true, true);
@@ -581,7 +574,6 @@ namespace engine {
                     }
                 }
 
-                // Lights
                 if (objJson.contains("pointLight")) {
                     auto& pl             = objJson["pointLight"];
                     auto& pointLight     = scene.getRegistry().emplace<PointLightComponent>(entity);
@@ -612,7 +604,6 @@ namespace engine {
                     spotLight.lightType        = mobility_from_string(sl.value("lightType", std::string("static")));
                 }
 
-                // LOD Component
                 if (objJson.contains("lodComponent")) {
                     auto& lodComponent = scene.getRegistry().emplace<LODComponent>(entity);
                     for (const auto& levelJson : objJson["lodComponent"]) {
@@ -625,7 +616,6 @@ namespace engine {
                     }
                 }
 
-                // Optional physics components
                 if (objJson.contains("rigidBody")) {
                     const auto& rbJson = objJson["rigidBody"];
                     auto&       rb     = scene.getRegistry().emplace<RigidBodyComponent>(entity);
@@ -674,7 +664,6 @@ namespace engine {
             }
         }
 
-        // Support legacy/new authoring: top-level `lights` array
         if (sceneJson.contains("lights")) {
             foundAny              = true;
             auto const& lightsArr = sceneJson["lights"];
@@ -804,8 +793,6 @@ namespace engine {
             }
         }
 
-        // Ensure there is at least one camera entity in the scene registry so callers
-        // can safely assume a camera exists immediately after deserialization.
         {
             auto camViewCT              = scene.getRegistry().view<engine::CameraComponent, engine::TransformComponent>();
             bool hasCameraWithTransform = (camViewCT.begin() != camViewCT.end());
@@ -813,11 +800,9 @@ namespace engine {
                 auto camView = scene.getRegistry().view<engine::CameraComponent>();
                 auto it      = camView.begin();
                 if (it != camView.end()) {
-                    // Add a TransformComponent to the first camera entity that lacks one
                     scene.getRegistry().emplace<engine::TransformComponent>(*it);
                     std::cout << "SceneSerializer: added TransformComponent to existing Camera entity\n";
                 } else {
-                    // No camera present: create a default camera entity
                     auto e = scene.createEntity();
                     scene.getRegistry().emplace<engine::TransformComponent>(e);
                     scene.getRegistry().emplace<engine::CameraComponent>(e);

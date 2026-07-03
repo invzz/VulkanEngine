@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
     obj["transform"] = {{"translation", {0.0, 0.0, 0.0}}, {"rotation", {0.0, 0.0, 0.0, 1.0}}, {"scale", {1.0, 1.0, 1.0}}};
     obj["lighting"]  = {{"mobility", "Static"}};
     scene["objects"].push_back(obj);
-    // Lights: include bake + lightType fields for exported authoring scenes
+
     scene["lights"] = nlohmann::json::array();
     nlohmann::json sun;
     sun["id"]        = "sun_01";
@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     lamp["bake"]      = false;
     lamp["lightType"] = "dynamic";
     scene["lights"].push_back(lamp);
-    // Write scene.json
+
     std::ofstream out("assets/scenes/demo_scene.json");
     if (!out) {
         std::cerr << "Failed to open output file\n";

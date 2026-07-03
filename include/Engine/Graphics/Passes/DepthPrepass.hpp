@@ -7,12 +7,11 @@ namespace engine {
     class ModelRenderSystem;
     class Renderer;
 
-    class DepthPrepass : public IRenderPass {
+    class DepthPrepass : public RenderPassBase {
        public:
         DepthPrepass(ModelRenderSystem& models, Renderer& renderer);
 
-        void                             execute(FrameInfo& frameInfo) override;
-        [[nodiscard]] const std::string& getName() const override;
+        void execute(FrameInfo& frameInfo) override;
 
        private:
         ModelRenderSystem& models_;

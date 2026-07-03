@@ -13,7 +13,6 @@ namespace engine {
         PhysicsSystem(Device& device);
         ~PhysicsSystem() = default;
 
-        // delete copy operations
         PhysicsSystem(const PhysicsSystem&)            = delete;
         PhysicsSystem& operator=(const PhysicsSystem&) = delete;
 
@@ -22,11 +21,9 @@ namespace engine {
        private:
         Device& device;
 
-        // Physics constants
         static constexpr float kGravity  = 9.81f;
-        static constexpr float kTimeStep = 1.0f / 60.0f;  // 60 FPS time step
+        static constexpr float kTimeStep = 1.0f / 60.0f;
 
-        // Physics simulation helpers
         static void integrateRigidBody(RigidBodyComponent& rigidBody, TransformComponent& transform);
         static void applyForces(RigidBodyComponent& rigidBody);
         static void updateTransformFromRigidBody(const RigidBodyComponent& rigidBody, TransformComponent& transform);
@@ -34,4 +31,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_PHYSICSSYSTEM_HPP
+#endif

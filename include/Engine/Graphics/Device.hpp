@@ -112,28 +112,17 @@ namespace engine {
         VkCommandBuffer beginSingleTimeCommands();
         void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-        // Allocate / free helpers for secondary command buffers.
-        // If thread-local command pools are enabled, allocation is done from the
-        // calling thread's pool to avoid cross-thread contention. The underlying
-        // pool used is tracked so the command buffer can be freed correctly later.
         VkResult allocateSecondaryCommandBuffer(VkCommandBuffer* outCommandBuffer);
         void     freeSecondaryCommandBuffer(VkCommandBuffer commandBuffer);
 
-        // Opt-in thread-local command pools for single-time commands. When enabled
-        // a per-thread VkCommandPool is used to avoid creating/destroying pools
-        // per-call which can reduce contention and allocation churn on multithreaded workloads.
         void enableThreadLocalCommandPools();
         bool threadLocalCommandPoolsEnabled() const {
             return threadLocalCommandPools_ != nullptr;
         }
 
-        // Serialize queue submissions from multiple threads to avoid simultaneous
-        // use of a VkQueue object which triggers validation errors.
         VkResult submitGraphics(const VkSubmitInfo* submitInfo, VkFence fence);
         VkResult present(const VkPresentInfoKHR* presentInfo);
 
-        // Deferred destruction: enqueue Vulkan destroys to run after the in-flight fence for a frame.
-        // SwapChain drives the current frame index and flushes the queue once its fence is waited.
         void     setCurrentFrameIndex(uint32_t frameIndex);
         uint32_t getCurrentFrameIndex() const {
             return currentFrameIndex_;
@@ -167,12 +156,9 @@ namespace engine {
 
         VkInstance                 instance = VK_NULL_HANDLE;
         VkPhysicalDeviceProperties properties;
-        // Debug messenger is created explicitly via `setupDebugMessenger()` so the
-        // Device retains an owning handle and can destroy it deterministically in
-        // shutdown. Do NOT attach a DebugUtils create info to the instance `pNext` —
-        // that pattern hides ownership and makes safe teardown ordering harder.
+
         std::unique_ptr<class DebugMessenger> debugMessenger;
-        // Optional thread-local command pool manager for single-time command paths.
+
         std::unique_ptr<class ThreadLocalCommandPool>                              threadLocalCommandPools_;
         VkPhysicalDevice                                                           physicalDevice         = VK_NULL_HANDLE;
         bool                                                                       enableValidationLayers = kBuildValidationLayersEnabled;
@@ -184,18 +170,16 @@ namespace engine {
         VkQueue                                                                    presentQueue_    = VK_NULL_HANDLE;
         const std::vector<const char*>                                             validationLayers = {"VK_LAYER_KHRONOS_validation"};
         const std::vector<const char*>                                             deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-        static std::atomic<int>                                                    validationLayersOverride_;  // -1=build default, 0=off, 1=on
+        static std::atomic<int>                                                    validationLayersOverride_;
         bool                                                                       presentIdSupported_ = false;
         std::unique_ptr<DeviceMemory>                                              memory_;
         uint32_t                                                                   currentFrameIndex_ = 0;
         std::array<std::vector<std::function<void(VkDevice)>>, kMaxFramesInFlight> deferredDestroy_;
         mutable std::mutex                                                         deferredDestroyMutex_;
 
-        // Mapping from temporary command buffers to the command pool that owns them. Used
-        // for single-time commands when executed concurrently on worker threads.
         mutable std::mutex                                         singleCmdMutex;
         mutable std::unordered_map<VkCommandBuffer, VkCommandPool> cmdBufferToPoolMap_;
-        VkFence                                                    singleTimeFence_ = VK_NULL_HANDLE;  // Reusable fence for single-time commands
+        VkFence                                                    singleTimeFence_ = VK_NULL_HANDLE;
 
         struct SamplerCacheKey {
             uint32_t magFilter;
@@ -235,7 +219,6 @@ namespace engine {
         uint64_t                                                            samplerCacheHits_   = 0;
         uint64_t                                                            samplerCacheMisses_ = 0;
 
-        // Serialize queue submissions
         mutable std::mutex queueSubmitMutex_;
 
         friend class DeviceMemory;
@@ -243,4 +226,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEVICE_HPP
+#endif

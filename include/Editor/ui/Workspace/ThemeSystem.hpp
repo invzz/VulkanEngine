@@ -106,25 +106,20 @@ namespace engine {
         ImVec4 getColor(ImGuiCol idx) const;
 
        private:
-        // Derive all accent colors from a single accent_color
         void autoApplyAccentColor(const ImVec4& accent_color);
 
-        // Parse a hex color string (#RRGGBB or #RRGGBBAA) to ImVec4
         ImVec4 parseHexColor(const std::string& hex) const;
 
-        // Parse JSON theme into Theme struct
         Theme parseTheme(const nlohmann::json& j) const;
 
-        // Apply base colors from JSON to ImGuiStyle
         void applyBaseColors(const nlohmann::json& colors);
 
         std::string currentThemeName_ = "dark";
         ImVec4      currentAccentColor_;
 
-        // Current computed style (mirrors ImGui::GetStyle())
         static ImGuiStyle currentStyle_;
     };
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_THEME_SYSTEM_HPP
+#endif

@@ -48,7 +48,6 @@ namespace {
                 continue;
             }
 
-            // Skip files in the allowlist
             if (!allowedFiles.empty() && allowedFiles.count(path.filename().string())) {
                 continue;
             }
@@ -99,7 +98,6 @@ namespace {
                 continue;
             }
 
-            // Skip files in the allowlist
             if (!allowedFiles.empty() && allowedFiles.count(path.filename().string())) {
                 continue;
             }
@@ -179,9 +177,6 @@ TEST(ArchitectureDependencyRules, EngineSourcesMustNotIncludeEditorHeaders) {
         fs::path{"src"} / "Engine",
         {"Editor/"});
 
-    // Transitional allowlist: keep this list small and burn it down over time.
-    // NOTE: Previously listed EngineState.cpp, CompositionPass.cpp, OffscreenPass.cpp,
-    // and ShadowPass.cpp — all now clean as of Phase 2 render pass decoupling.
     const std::set<std::string> allowedFiles = {};
 
     const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
@@ -282,7 +277,7 @@ TEST(ArchitectureDependencyRules, InfrastructureAdaptersSourcesMustOnlyDependOnP
             "Engine/Application/UseCases/",
             "Engine/Application/SceneRuntimeState.hpp",
         },
-        {"CompositionAdapter.cpp"});  // CompositionAdapter legitimately bridges to UIManager
+        {"CompositionAdapter.cpp"});
     EXPECT_TRUE(violations.empty())
         << "Infrastructure adapter sources must not depend on Application use cases or runtime state:"
         << joinViolations(violations);
@@ -394,7 +389,6 @@ TEST(ArchitectureDependencyRules, EditorUiShouldUseNarrowServicesInsteadOfLegacy
             "systemServices(",
         });
 
-    // Transitional allowlist: keep empty unless a migration exception is justified.
     const std::set<std::string> allowedFiles = {};
 
     const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
@@ -429,7 +423,7 @@ TEST(ArchitectureDependencyRules, RenderPassesShouldUseStateServicesInsteadOfLeg
         });
 
     const std::set<std::string> allowedFiles = {
-        "src/Engine/Graphics/Passes/ComputePass.cpp",  // Calls getAnimationSystem() through IAnimationAccessPort interface, not EngineState directly
+        "src/Engine/Graphics/Passes/ComputePass.cpp",
     };
 
     const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
@@ -478,9 +472,6 @@ TEST(ArchitectureDependencyRules, ScenePanelShouldUseSceneRuntimeServiceForScene
 }
 
 TEST(ArchitectureDependencyRules, RenderPassesShouldNotDependOnEngineState) {
-    // Verify that render passes no longer depend on EngineState directly.
-    // This test checks that the pass interfaces use ports instead.
-
     const std::vector<std::string> passFiles = {
         "include/Engine/Graphics/Passes/UpdatePass.hpp",
         "include/Engine/Graphics/Passes/ComputePass.hpp",
@@ -496,7 +487,6 @@ TEST(ArchitectureDependencyRules, RenderPassesShouldNotDependOnEngineState) {
         const std::string passContent = readWholeFile(root / passFile);
         ASSERT_FALSE(passContent.empty()) << "Failed to read " << passFile;
 
-        // Should not contain direct EngineState* dependencies
         EXPECT_EQ(passContent.find("EngineState*"), std::string::npos)
             << passFile << " should not contain EngineState* dependency";
     }
@@ -506,11 +496,9 @@ TEST(ArchitectureDependencyRules, EnvironmentLightingAdapterShouldNotDependOnEng
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
 
-    // Check that EnvironmentLightingAdapter header includes the port, not EngineState directly
     const std::string adapterContent = readWholeFile(repoRoot / "include/Editor/Infrastructure/EnvironmentLightingAdapter.hpp");
     ASSERT_FALSE(adapterContent.empty()) << "Failed to read EnvironmentLightingAdapter.hpp";
 
-    // The adapter should include the port header
     EXPECT_NE(adapterContent.find("IEnvironmentLightingPort"), std::string::npos)
         << "EnvironmentLightingAdapter should include IEnvironmentLightingPort";
 }

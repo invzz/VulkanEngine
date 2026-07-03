@@ -5,10 +5,6 @@
 
 namespace engine::editor::viewport_gizmo {
 
-    // ImViewGuizmo uses a right-handed +Y up, -Z forward basis.
-    // The editor camera path uses a basis that is equivalent to rotating this
-    // space 180 degrees around +X, so we apply the same transform on vectors
-    // and on rotation matrices.
     inline glm::vec3 toGizmoSpace(const glm::vec3& v) {
         return glm::vec3(v.x, -v.y, -v.z);
     }

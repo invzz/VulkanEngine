@@ -355,7 +355,6 @@ namespace engine::ui {
             }
             UI::Separator();
 
-            // Manual path input for .gltf / .glb files
             static char customPath[512] = "";
             UI::InputText("Path (.gltf/.glb)", customPath, sizeof(customPath));
             ImGui::SameLine();
@@ -365,7 +364,7 @@ namespace engine::ui {
                     if (std::filesystem::exists(p)) {
                         std::string ext = p.extension().string();
                         if (ext == ".gltf" || ext == ".glb") {
-                            std::string name = p.stem().string();
+                            std::string           name = p.stem().string();
                             ModelInsertionOptions opts;
                             opts.enableTextures     = true;
                             opts.loadMaterials      = true;

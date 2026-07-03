@@ -19,7 +19,6 @@ namespace Engine {
 
     class ShaderMonitor;
 
-    // Forward declare the observer interface for use in config
     class IShaderAnalysisObserver;
 
     /**

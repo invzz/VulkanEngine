@@ -5,16 +5,8 @@
 
 namespace engine {
 
-    // ── AnimationClip ─────────────────────────────────────────────────
-
-    // (AnimationClip::step is defined inline in the header as it has no
-    // cross-file dependencies beyond Model.hpp)
-
-    // ── AnimationController ───────────────────────────────────────────
-
     void AnimationController::addClip(int clipIndex, const Model& model,
         int priority, bool play) {
-        // Check if a clip with this index already exists
         for (auto& clip : clips_) {
             if (clip.clipIndex == clipIndex) {
                 clip.reset();
@@ -29,14 +21,12 @@ namespace engine {
             }
         }
 
-        // Find the animation to get its name and duration
         AnimationClip newClip;
         newClip.clipIndex = clipIndex;
         if (clipIndex >= 0 && clipIndex < static_cast<int>(model.getAnimations().size())) {
             const auto& anim = model.getAnimations()[static_cast<size_t>(clipIndex)];
             newClip.name     = anim.name;
             newClip.duration = anim.duration;
-            // Events are not part of glTF data; add them separately via UI/API later
         }
         newClip.priority = priority;
         newClip.mode     = defaultMode_;
@@ -97,7 +87,7 @@ namespace engine {
             if (clip.clipIndex == clipIndex) {
                 float duration   = clip.duration > 0.0f ? clip.duration : 1.0f;
                 clip.currentTime = std::max(0.0f, std::min(time, duration));
-                // Reset event index so events replay from the new position
+
                 clip.nextEventIndex = 0;
                 for (size_t i = 0; i < clip.events.size(); ++i) {
                     if (clip.events[i].time > clip.currentTime) {
@@ -171,16 +161,13 @@ namespace engine {
                                 sampler.translations[nextIdx], factor);
                     }
 
-                    // Apply weight
                     translated *= clip.weight;
 
                     if (isFirst || clip.mode == AnimationClip::OVERRIDE) {
-                        // Override mode: replace (but apply weight)
                         if (outTranslations.size() > static_cast<size_t>(channel.targetNode)) {
                             outTranslations[static_cast<size_t>(channel.targetNode)] = translated;
                         }
                     } else {
-                        // ADDITIVE: accumulate on top of existing
                         if (outTranslations.size() > static_cast<size_t>(channel.targetNode)) {
                             outTranslations[static_cast<size_t>(channel.targetNode)] += translated;
                         }
@@ -216,8 +203,6 @@ namespace engine {
                                 sampler.rotations[nextIdx], factor));
                     }
 
-                    // Scale rotation quaternion by weight: q_weighted = (1-w)*q_identity + w*q
-                    // For quaternions, we slerp from identity toward the target
                     glm::quat identity{1.0f, 0.0f, 0.0f, 0.0f};
                     rotated = glm::normalize(glm::slerp(identity, rotated, clip.weight));
 
@@ -226,7 +211,6 @@ namespace engine {
                             outRotations[static_cast<size_t>(channel.targetNode)] = rotated;
                         }
                     } else {
-                        // ADDITIVE: multiply (compose) on top of existing
                         if (outRotations.size() > static_cast<size_t>(channel.targetNode)) {
                             outRotations[static_cast<size_t>(channel.targetNode)] = rotated *
                                                                                     outRotations[static_cast<size_t>(channel.targetNode)];
@@ -263,7 +247,6 @@ namespace engine {
                                 sampler.scales[nextIdx], factor);
                     }
 
-                    // Scale by weight
                     scaled = glm::mix(glm::vec3(1.0f), scaled, clip.weight);
 
                     if (isFirst || clip.mode == AnimationClip::OVERRIDE) {
@@ -279,7 +262,7 @@ namespace engine {
                 }
 
                 case Model::AnimationChannel::WEIGHTS:
-                    // Morph weights handled separately by MorphTargetSystem
+
                     break;
             }
         }
@@ -294,7 +277,6 @@ namespace engine {
             if (!clip.active || clip.weight <= 0.0f)
                 continue;
 
-            // Check if this clip affects the target bone
             if (clip.clipIndex < 0) {
                 continue;
             }
@@ -325,7 +307,6 @@ namespace engine {
         if (!currentNode)
             return;
 
-        // Look up transition explicitly
         auto                       allTrans   = graph_->getTransitions(currentNode->id);
         const AnimationTransition* foundTrans = nullptr;
         for (const auto* t : allTrans) {
@@ -335,13 +316,11 @@ namespace engine {
             }
         }
 
-        // Store current node for crossfading
         transitioningToNode_ = targetNodeId;
         transitionTimer_     = foundTrans ? foundTrans->blendDuration : 0.25f;
         if (transitionTimer_ <= 0.0f)
             transitionTimer_ = 0.25f;
 
-        // Update graph current node
         graph_->setCurrentNode(targetNodeId);
     }
 
@@ -354,7 +333,6 @@ namespace engine {
 
         for (const auto* t : allTrans) {
             if (t->condition == TransitionCondition::EVENT_BASED && t->eventName == eventName) {
-                // Trigger this transition
                 transitioningToNode_ = t->targetNodeId;
                 transitionTimer_     = t->blendDuration > 0.0f ? t->blendDuration : 0.25f;
                 graph_->setCurrentNode(t->targetNodeId);
@@ -383,29 +361,23 @@ namespace engine {
         std::vector<glm::vec3>&                                                  outScales) {
         firedEvents_.clear();
 
-        // Step the graph (advance time, evaluate transitions)
         if (graph_ && !transitioningToNode_) {
             auto trigger = graph_->step(deltaTime);
             if (trigger.triggered) {
-                // Transition triggered by graph stepping
                 transitioningToNode_ = trigger.targetNodeId;
                 transitionTimer_     = trigger.blendDuration > 0.0f ? trigger.blendDuration : 0.25f;
             }
         }
 
-        // Handle crossfading during transition
         if (transitioningToNode_ != -1) {
             transitionTimer_ -= deltaTime;
             if (transitionTimer_ <= 0.0f) {
-                // Transition complete — switch to target node's clip
                 currentGraphNodeId_  = transitioningToNode_;
                 transitioningToNode_ = -1;
                 transitionTimer_     = 0.0f;
 
-                // Load the clip from the target node
                 const auto* targetNode = getCurrentGraphNode();
                 if (targetNode && targetNode->clipIndex >= 0) {
-                    // Stop all current clips and play the new one
                     for (auto& clip : clips_) {
                         clip.active = false;
                         clip.weight = 0.0f;
@@ -415,24 +387,20 @@ namespace engine {
             }
         }
 
-        // Step each active clip's time
         for (auto& clip : clips_) {
             if (!clip.active || clip.weight <= 0.0f)
                 continue;
             clip.step(deltaTime, model, outTranslations, outRotations, outScales);
 
-            // Fire events
             while (clip.nextEventIndex < clip.events.size() &&
                    clip.events[clip.nextEventIndex].time <= clip.currentTime) {
                 const auto& evt = clip.events[clip.nextEventIndex];
                 firedEvents_.emplace_back(evt.name, evt.userData);
 
-                // Call callback if set
                 if (eventCallback_) {
                     eventCallback_(evt.name, evt.userData);
                 }
 
-                // Handle event-based transitions
                 handleEvent(evt.name);
 
                 ++clip.nextEventIndex;
@@ -451,7 +419,6 @@ namespace engine {
 
         globalTransforms.resize(baseTransforms.size(), glm::mat4(1.0f));
 
-        // Apply each active clip's local transforms to the base
         for (const auto& clip : clips_) {
             if (!clip.active || clip.weight <= 0.0f)
                 continue;

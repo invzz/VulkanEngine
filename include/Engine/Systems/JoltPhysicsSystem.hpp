@@ -125,21 +125,17 @@ namespace engine {
         static constexpr uint32_t         cNumObjectLayers      = 2;
         static constexpr uint32_t         cNumBroadPhaseLayers  = 2;
 
-        // Jolt core objects
         std::unique_ptr<JPH::Factory>             factory_;
         std::unique_ptr<JPH::TempAllocatorImpl>   tempAllocator_;
         std::unique_ptr<JPH::JobSystemThreadPool> jobSystem_;
         std::unique_ptr<JPH::PhysicsSystem>       physicsSystem_;
 
-        // Collision layer routing used by PhysicsSystem::Init.
         std::unique_ptr<JPH::BroadPhaseLayerInterfaceTable>      broadPhaseLayerInterface_;
         std::unique_ptr<JPH::ObjectLayerPairFilterTable>         objectLayerPairFilter_;
         std::unique_ptr<JPH::ObjectVsBroadPhaseLayerFilterTable> objectVsBroadPhaseLayerFilter_;
 
-        // Registered types flag
         bool typesRegistered_{false};
 
-        // Map entity ID → Jolt body ID for sync
         struct BodySyncInfo {
             JPH::BodyID                  bodyID;
             ColliderComponent::ShapeType shapeType{ColliderComponent::ShapeType::Sphere};
@@ -151,4 +147,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_JOLTPHYSICSSYSTEM_HPP
+#endif

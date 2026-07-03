@@ -22,14 +22,8 @@ namespace engine {
  * @brief Settings for shadow map rendering
  */
     struct ShadowSettings {
-        // Enable conservative CPU culling (off by default).
-        // When true, the system will skip rendering shadow maps for spot
-        // projections or point cubemaps that have no potential shadow casters.
-        // This avoids
-        // unnecessary render-pass and pipeline work on CPU/GPU.
         bool enableShadowCulling = false;
 
-        // Additional tunables to avoid magic numbers and make testing easier
         float pointLightDefaultRange = 25.0f;
         float spotLightDefaultRange  = 50.0f;
     };
@@ -100,11 +94,8 @@ namespace engine {
         static glm::mat4 calculateSpotLightMatrix(const glm::vec3& position, const glm::vec3& direction, float outerCutoffDegrees, float range);
         static glm::mat4 calculatePointLightMatrix(const glm::vec3& position, int face, float range);
 
-        // Conservative CPU test: does the model's world bounding sphere intersect
-        // the given light projection (lightSpaceMatrix = proj * view)?
         bool modelIntersectsLightFrustum(const std::shared_ptr<engine::Model>& model, const glm::mat4& modelMatrix, const glm::mat4& lightSpaceMatrix) const;
 
-        // Unified CPU culling helper used by spot/point flows.
         bool shouldRenderModel(const std::shared_ptr<engine::Model>& model,
             const glm::mat4&                                         modelMatrix,
             const glm::mat4&                                         lightSpaceMatrix,
@@ -116,7 +107,6 @@ namespace engine {
    */
         void renderToShadowMapMesh(FrameInfo& frameInfo, ShadowMap& shadowMap, const glm::mat4& lightSpaceMatrix);
 
-        // Modular per-light-type renderers (extracted from renderShadowMaps)
         void renderSpotShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
         void renderPointShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
 
@@ -127,12 +117,10 @@ namespace engine {
         Device&  device_;
         uint32_t shadowMapSize_;
 
-        // 2D shadow maps for spot lights (mesh shader pipeline)
         std::vector<std::unique_ptr<ShadowMap>> shadowMaps_;
         std::unique_ptr<Pipeline>               meshPipeline_;
         VkPipelineLayout                        meshPipelineLayout_ = VK_NULL_HANDLE;
 
-        // Cube shadow maps for point lights (mesh shader pipeline)
         std::vector<std::unique_ptr<CubeShadowMap>> cubeShadowMaps_;
         std::unique_ptr<Pipeline>                   cubeMeshPipeline_;
         VkPipelineLayout                            cubeMeshPipelineLayout_ = VK_NULL_HANDLE;
@@ -147,4 +135,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SHADOWSYSTEM_HPP
+#endif

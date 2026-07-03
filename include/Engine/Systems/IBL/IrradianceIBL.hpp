@@ -29,7 +29,6 @@ namespace engine {
 
             [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const;
 
-            // For VTEX I/O
             [[nodiscard]] VkImage image() const {
                 return image_;
             }
@@ -40,13 +39,10 @@ namespace engine {
                 return sampler_;
             }
 
-            // Replaces underlying image/sampler with already-created objects (used by VTEX load).
             void adoptLoaded(VkImage image, VkDeviceMemory memory, VkImageView imageView, VkSampler sampler);
 
-            // Deferred destroy of only image + sampler (used during regeneration).
             void deferDestroyImageResources();
 
-            // Hard cleanup of all resources (used at shutdown).
             void destroyImmediate();
 
            private:
@@ -69,4 +65,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_IBL_IRRADIANCEIBL_HPP
+#endif

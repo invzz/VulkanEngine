@@ -13,14 +13,12 @@
 
 namespace engine {
 
-    // Manages descriptor sets and uniform buffers for rendering
     class RenderContext {
        public:
         explicit RenderContext(Device& device, MeshManager& meshManager);
 
         void updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold);
-        // Upload dynamic light arrays (SSBO) for this frame and return counts.
-        // Note: counts must be copied into GlobalUbo by the caller.
+
         struct LightCounts {
             int point       = 0;
             int directional = 0;
@@ -42,7 +40,6 @@ namespace engine {
         std::vector<std::unique_ptr<Buffer>> uboBuffers_;
         std::vector<std::unique_ptr<Buffer>> uboColdBuffers_;
 
-        // Dynamic light SSBOs (per frame)
         std::vector<std::unique_ptr<Buffer>> pointLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> directionalLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> spotLightBuffers_;
@@ -62,4 +59,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // CUBE_RENDERCONTEXT_HPP
+#endif

@@ -56,7 +56,6 @@ namespace engine {
         ui::UI::InputFloat("Irradiance Delta##ibl_irr_delta", &settings_.irradianceSampleDelta, 0.001f, 0.01f, "%.4f");
 
         if (ui::UI::Button("Regenerate IBL##ibl_regenerate")) {
-            // IBL regeneration requires skybox access — call via EngineState::syncEnvironmentLighting
         }
 
         if (iblSystem_ == nullptr)

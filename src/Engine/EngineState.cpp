@@ -29,7 +29,6 @@ namespace engine {
 
     EngineState::~EngineState() = default;
 
-    // ---- Init ----
     void EngineState::initialize(Device& device, Renderer& renderer, ResourceManager& rm,
         IRenderContextPort* rc, Window* window, bool mt, uint32_t th) {
         if (!rc)
@@ -140,7 +139,6 @@ namespace engine {
         }
     }
 
-    // ---- Scene ----
     entt::entity EngineState::createEntity() {
         return scene_.createEntity();
     }
@@ -191,7 +189,6 @@ namespace engine {
         return e;
     }
 
-    // ---- Persistence ----
     void EngineState::saveScene(const std::string& p) {
         if (serializer_)
             serializer_->serialize(p);
@@ -227,11 +224,10 @@ namespace engine {
         addCamera("Camera");
     }
 
-    // ---- Skybox/IBL ----
     void EngineState::syncEnvironmentLighting(bool show) {
         if (show && !skybox_) {
             skybox_ = Skybox::loadFromFolder(*device_, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
-            ibl_->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama");
+            auto discard = ibl_->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama");
         }
         if (!show && skybox_) {
             skybox_.reset();
@@ -257,7 +253,6 @@ namespace engine {
             DescriptorWriter(deferredIblSetLayout(), deferredIblPool()).writeImage(0, &ir).writeImage(1, &pr).writeImage(2, &br).overwrite(s);
     }
 
-    // ---- Transform ----
     glm::vec3 EngineState::getTranslation(entt::entity e) const {
         auto& r = scene_.getRegistry();
         return r.all_of<TransformComponent>(e) ? r.get<TransformComponent>(e).translation : glm::vec3{};
@@ -280,7 +275,6 @@ namespace engine {
         scene_.getRegistry().get<TransformComponent>(e).scale = v;
     }
 
-    // ---- Settings ----
     void EngineState::resetShadowSettings() {
         shadowSettings_ = ShadowSettings{};
     }
@@ -290,7 +284,6 @@ namespace engine {
         shadowSettings_.spotLightDefaultRange  = sl;
     }
 
-    // ---- Physics ----
     void EngineState::clearSceneBodies() {
         if (jolt_)
             jolt_->clear();
@@ -300,7 +293,6 @@ namespace engine {
             jolt_->setGroundEnabled(e);
     }
 
-    // ---- Descriptors ----
     VkDescriptorSet EngineState::gbufferDescriptorSet(int i) const {
         return descriptors_->gbufferDescriptorSet(i);
     }

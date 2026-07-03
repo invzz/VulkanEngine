@@ -14,4 +14,4 @@ namespace engine::ibl {
 
 }  // namespace engine::ibl
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_IBL_IBLSETTINGS_HPP
+#endif

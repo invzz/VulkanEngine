@@ -26,28 +26,26 @@ namespace engine {
     MorphTargetCompute::~MorphTargetCompute() {
         vkDestroyPipeline(device_.device(), computePipeline_, nullptr);
         vkDestroyPipelineLayout(device_.device(), pipelineLayout_, nullptr);
-        // descriptorSetLayout_ and descriptorPool_ will be destroyed automatically
     }
 
     void MorphTargetCompute::createDescriptorSetLayout() {
         descriptorSetLayout_ = DescriptorSetLayout::Builder(device_)
                                    .addBinding(0,
                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                       VK_SHADER_STAGE_COMPUTE_BIT)  // Base vertices
+                                       VK_SHADER_STAGE_COMPUTE_BIT)
                                    .addBinding(1,
                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                       VK_SHADER_STAGE_COMPUTE_BIT)  // Morph deltas
+                                       VK_SHADER_STAGE_COMPUTE_BIT)
                                    .addBinding(2,
                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                       VK_SHADER_STAGE_COMPUTE_BIT)  // Weights
+                                       VK_SHADER_STAGE_COMPUTE_BIT)
                                    .addBinding(3,
                                        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                       VK_SHADER_STAGE_COMPUTE_BIT)  // Output
+                                       VK_SHADER_STAGE_COMPUTE_BIT)
                                    .build();
     }
 
     void MorphTargetCompute::createComputePipeline() {
-        // Read compiled compute shader
         std::string const shaderPath = std::string(SHADER_PATH) + "/morph_blend.comp.spv";
         engine::Logger::info(engine::LogChannel::Render, "[MorphTargetCompute] Loading shader from: ", shaderPath);
         std::ifstream file(shaderPath, std::ios::ate | std::ios::binary);
@@ -64,7 +62,6 @@ namespace engine {
         file.read(shaderCode.data(), fileSize);
         file.close();
 
-        // Create shader module
         VkShaderModule computeShaderModule = createShaderModule(shaderCode);
 
         VkPipelineShaderStageCreateInfo const shaderStageInfo{
@@ -74,14 +71,12 @@ namespace engine {
             .pName  = "main",
         };
 
-        // Push constants for configuration
         VkPushConstantRange const pushConstantRange{
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
             .offset     = 0,
             .size       = sizeof(PushConstants),
         };
 
-        // Pipeline layout
         VkDescriptorSetLayout            layout = descriptorSetLayout_->getDescriptorSetLayout();
         VkPipelineLayoutCreateInfo const pipelineLayoutInfo{
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -95,7 +90,6 @@ namespace engine {
             throw std::runtime_error("Failed to create compute pipeline layout!");
         }
 
-        // Create compute pipeline
         VkComputePipelineCreateInfo const pipelineInfo{
             .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
             .stage  = shaderStageInfo,
@@ -119,7 +113,6 @@ namespace engine {
         createInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
 
-        // Safely convert std::vector<char> to std::vector<uint32_t>
         std::vector<uint32_t> codeAligned((code.size() + 3) / 4);
         std::memcpy(codeAligned.data(), code.data(), code.size());
         createInfo.pCode = codeAligned.data();
@@ -141,7 +134,6 @@ namespace engine {
         const PushConstants&                                  pushConstants) {
         bool needsUpdate = false;
 
-        // Allocate descriptor set if not provided
         if (descriptorSet == VK_NULL_HANDLE) {
             if (!descriptorPool_->allocateDescriptor(descriptorSetLayout_->getDescriptorSetLayout(), descriptorSet)) {
                 throw std::runtime_error("Failed to allocate compute descriptor set!");
@@ -150,7 +142,6 @@ namespace engine {
             needsUpdate = true;
         }
 
-        // Update descriptor set with buffer bindings (only when first allocated)
         if (needsUpdate) {
             VkDescriptorBufferInfo baseVertexInfo{.buffer = baseVertexBuffer, .offset = 0, .range = VK_WHOLE_SIZE};
             VkDescriptorBufferInfo morphDeltaInfo{.buffer = morphDeltaBuffer, .offset = 0, .range = VK_WHOLE_SIZE};
@@ -165,15 +156,11 @@ namespace engine {
                 .overwrite(descriptorSet);
         }
 
-        // Bind pipeline and descriptor set
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline_);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout_, 0, 1, &descriptorSet, 0, nullptr);
 
-        // Push constants
         vkCmdPushConstants(commandBuffer, pipelineLayout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &pushConstants);
 
-        // Dispatch compute shader
-        // Work group size is 256, so divide vertex count by 256 and round up
         uint32_t const workGroupCount = (pushConstants.vertexCount + 255) / 256;
         vkCmdDispatch(commandBuffer, workGroupCount, 1, 1);
 

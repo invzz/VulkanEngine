@@ -17,7 +17,6 @@ namespace engine {
         bool triggered = false;
         for (auto& [name, entry] : shortcuts_) {
             if (glfwGetKey(glfwWindow, entry.key) == GLFW_PRESS) {
-                // Check modifiers individually
                 bool ctrl  = glfwGetKey(glfwWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ||
                              glfwGetKey(glfwWindow, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS;
                 bool shift = glfwGetKey(glfwWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
@@ -40,7 +39,7 @@ namespace engine {
                 if ((currentMods & entry.modifiers) == entry.modifiers) {
                     entry.callback();
                     triggered = true;
-                    break;  // Only trigger one shortcut per frame
+                    break;
                 }
             }
         }

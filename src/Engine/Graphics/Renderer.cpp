@@ -23,8 +23,6 @@ namespace engine {
     }
 
     Renderer::~Renderer() {
-        // Ensure GPU has finished any work that may reference command buffers
-        // before freeing them to avoid validation errors or crashes.
         vkDeviceWaitIdle(device.device());
 
         freeCommandBuffers();
@@ -60,7 +58,6 @@ namespace engine {
 
         Logger::info(LogChannel::Render, "Recreating swapchain for extent ", extent.width, "x", extent.height, "...");
 
-        // Create a new swap chain instance while preserving the previous one via `oldSwapChain`
         if (swapChain == nullptr) {
             swapChain = std::make_unique<SwapChain>(device, extent);
         } else {
@@ -71,7 +68,7 @@ namespace engine {
                 throw SwapChainCreationException("Swap chain image or depth format has changed!");
             }
 
-            const uint64_t fenceWaitTimeoutNs = 1ull * 1000ull * 1000ull * 1000ull;  // 1 second
+            const uint64_t fenceWaitTimeoutNs = 1ull * 1000ull * 1000ull * 1000ull;
             Logger::info(LogChannel::Sync, "Waiting up to 1s for previous swapchain fences to complete...");
             if (!swapChainRecreationCoordinator.waitForOldSwapChainCleanup(previous, fenceWaitTimeoutNs)) {
                 throw SwapChainCreationException("timeout waiting for previous swapchain cleanup");
@@ -80,14 +77,11 @@ namespace engine {
         }
 
         Logger::info(LogChannel::Render, "Swapchain recreated successfully.");
-        // Only create offscreen resources on first launch. Subsequent
-        // recreation is deferred to recreateOffscreenFramebuffer() so it
-        // happens in the same frame as ImGui texture re-registration.
+
         if (!offscreenFrameBuffer) {
             offscreenExtent_ = swapChain->getSwapChainExtent();
             createOffscreenResources();
 
-            // Initialize offscreen image layouts after creation.
             VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
             for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
@@ -117,7 +111,6 @@ namespace engine {
                     1,
                     &barrier);
 
-                // Initialize scene-color copy image layout.
                 VkImageMemoryBarrier sceneBarrier{};
                 sceneBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
                 sceneBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -139,9 +132,6 @@ namespace engine {
             device.endSingleTimeCommands(commandBuffer);
         }
 
-        // TODO: recreate other resources dependent on swap chain (e.g.,
-        // pipelines) the pipeline may not need to be recreated here if using
-        // dynamic viewport/scissor
         swapChainRecreated = true;
     }
 
@@ -149,9 +139,6 @@ namespace engine {
         assert(!isFrameStarted && "Can't call beginFrame while already in progress");
         swapChainRecreated = false;
 
-        // Track whether we render to the swapchain for this frame; if not, we'll
-        // emit an explicit transition to PRESENT_SRC before presenting so the
-        // image isn't left in VK_IMAGE_LAYOUT_UNDEFINED.
         usedSwapchainThisFrame = false;
         skipClear_             = false;
 
@@ -195,9 +182,6 @@ namespace engine {
 
         auto commandBuffer = getCurrentCommandBuffer();
 
-        // If we did not render to the swapchain this frame, ensure the acquired
-        // swapchain image is in PRESENT_SRC before presenting. Some tests render
-        // only to offscreen targets and still go through the present path.
         if (!usedSwapchainThisFrame) {
             VkImage              srcImage = swapChain->getImage(static_cast<int>(currentImageIndex));
             VkImageMemoryBarrier presentBarrier{};
@@ -249,9 +233,6 @@ namespace engine {
                "Can't begin render pass on a command buffer from a different "
                "frame");
 
-        // Note: we rendered to the swapchain this frame so the swapchain image will
-        // be transitioned by the render pass itself; this avoids emitting an extra
-        // present transition in endFrame.
         usedSwapchainThisFrame = true;
 
         VkClearValue clearValues[] = {
@@ -393,9 +374,6 @@ namespace engine {
 
         offscreenFrameBuffer->beginGbufferRenderPass(commandBuffer, currentFrameIndex, allowSecondaryCommandBuffers);
 
-        // When using secondary command buffers exclusively (VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS),
-        // we cannot record any commands to the primary CB within the render pass - only vkCmdExecuteCommands.
-        // Viewport/scissor must be set in each secondary command buffer instead.
         if (!allowSecondaryCommandBuffers) {
             VkViewport viewport{};
             viewport.x        = 0.0f;
@@ -475,7 +453,6 @@ namespace engine {
         VkImage srcImage = offscreenFrameBuffer->getColorImage(currentFrameIndex);
         VkImage dstImage = offscreenFrameBuffer->getSceneColorImage(currentFrameIndex);
 
-        // 1) Transition src mip0: COLOR_ATTACHMENT -> TRANSFER_SRC
         VkImageMemoryBarrier srcBarrier{};
         srcBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         srcBarrier.oldLayout                       = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -491,7 +468,6 @@ namespace engine {
         srcBarrier.srcAccessMask                   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         srcBarrier.dstAccessMask                   = VK_ACCESS_TRANSFER_READ_BIT;
 
-        // 2) Transition dst: SHADER_READ -> TRANSFER_DST
         VkImageMemoryBarrier dstBarrier{};
         dstBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         dstBarrier.oldLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -534,7 +510,6 @@ namespace engine {
 
         vkCmdCopyImage(commandBuffer, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        // 3) Transition src back to COLOR_ATTACHMENT for subsequent passes + mipmap generation
         VkImageMemoryBarrier srcToColor{};
         srcToColor.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         srcToColor.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -552,11 +527,9 @@ namespace engine {
 
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1, &srcToColor);
 
-        // 4) Build sceneColor mip chain for rough transmission blur (finishes in SHADER_READ_ONLY)
         if (offscreenFrameBuffer->getMipLevels() > 1) {
             offscreenFrameBuffer->generateSceneColorMipmaps(commandBuffer, currentFrameIndex);
         } else {
-            // No mip chain: just transition mip0 back to SHADER_READ.
             VkImageMemoryBarrier dstToRead{};
             dstToRead.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             dstToRead.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -604,7 +577,6 @@ namespace engine {
             createOffscreenResources();
         }
 
-        // Initialize offscreen image layouts after recreation.
         VkCommandBuffer commandBuffer = device.beginSingleTimeCommands();
 
         for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {

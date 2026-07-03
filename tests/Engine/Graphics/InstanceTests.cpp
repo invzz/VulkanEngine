@@ -4,10 +4,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// Instance Tests
-// =============================================================================
-
 TEST(Instance, GivenDefaultInstance_WhenCreated_ThenIsInvalidHandle) {
     Instance inst;
     EXPECT_FALSE(inst);

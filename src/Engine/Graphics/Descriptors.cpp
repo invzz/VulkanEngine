@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
-#include <sstream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -56,7 +56,6 @@ namespace engine {
         std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings{};
         std::vector<VkDescriptorBindingFlags>     setLayoutBindingFlags{};
 
-        // Sort bindings by binding index to ensure consistent order
         std::vector<uint32_t> keys;
         keys.reserve(bindings.size());
         for (const auto& [binding, _] : bindings) {
@@ -84,7 +83,6 @@ namespace engine {
         descriptorSetLayoutInfo.pBindings    = setLayoutBindings.data();
         descriptorSetLayoutInfo.pNext        = &bindingFlagsInfo;
 
-        // Check if we need UPDATE_AFTER_BIND_POOL_BIT
         for (auto flag : setLayoutBindingFlags) {
             if ((flag & VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT) != 0u) {
                 descriptorSetLayoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
@@ -150,7 +148,6 @@ namespace engine {
     }
 
     DescriptorPool::~DescriptorPool() {
-        // Destroy any overflow/fallback pools we created so they don't leak at device teardown.
         {
             std::lock_guard<std::mutex> lk(overflowMutex);
             for (auto p : overflowPools) {
@@ -164,7 +161,6 @@ namespace engine {
     }
 
     bool DescriptorPool::allocateDescriptor(VkDescriptorSetLayout descriptorSetLayout, VkDescriptorSet& descriptor, const std::vector<VkDescriptorPoolSize>* requestedPoolSizes) {
-        // Try primary pool first
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool     = descriptorPool;
@@ -180,7 +176,6 @@ namespace engine {
             return true;
         }
 
-        // Primary allocation failed — emit diagnostics
         engine::Logger::error(engine::LogChannel::Resource, "vkAllocateDescriptorSets failed (result=", result, ") on primary pool");
         engine::Logger::error(engine::LogChannel::Resource, "  pool.maxSets=", maxSets, ", pool.flags=", poolFlags);
         for (const auto& ps : poolSizes) {
@@ -201,14 +196,10 @@ namespace engine {
             return false;
         }
 
-        // Overflow/fallback path (prototype): create a small transient pool sized
-        // for the requested bindings and allocate from it. Store the pool so its
-        // lifetime is tied to this DescriptorPool.
         std::vector<VkDescriptorPoolSize> fallbackSizes;
         if (requestedPoolSizes != nullptr && !requestedPoolSizes->empty()) {
             fallbackSizes = *requestedPoolSizes;
         } else {
-            // Fallback to a conservative copy of the original poolSizes (at least 1)
             fallbackSizes = poolSizes;
             for (auto& ps : fallbackSizes) {
                 ps.descriptorCount = std::max<uint32_t>(1u, ps.descriptorCount);
@@ -223,7 +214,7 @@ namespace engine {
         fallbackInfo.poolSizeCount    = static_cast<uint32_t>(fallbackSizes.size());
         fallbackInfo.pPoolSizes       = fallbackSizes.data();
         fallbackInfo.maxSets          = 1;
-        fallbackInfo.flags            = poolFlags;  // inherit flags
+        fallbackInfo.flags            = poolFlags;
         VkDescriptorPool fallbackPool = VK_NULL_HANDLE;
         if (vkCreateDescriptorPool(device.device(), &fallbackInfo, nullptr, &fallbackPool) != VK_SUCCESS) {
             ErrorState::report(ErrorCode::DescriptorPoolCreationError, ErrorBoundary::Fatal, "Descriptor overflow pool creation failed");
@@ -232,7 +223,6 @@ namespace engine {
             return false;
         }
 
-        // Try allocation from fallback pool
         VkDescriptorSetAllocateInfo fallbackAlloc{};
         fallbackAlloc.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         fallbackAlloc.descriptorPool     = fallbackPool;
@@ -252,7 +242,6 @@ namespace engine {
             return false;
         }
 
-        // Record fallback pool ownership so it isn't destroyed while its sets are live
         {
             std::lock_guard<std::mutex> lk(overflowMutex);
             overflowPools.push_back(fallbackPool);
@@ -270,8 +259,6 @@ namespace engine {
     }
 
     void DescriptorPool::resetPool() {
-        // Reset primary pool and destroy any transient overflow pools to avoid
-        // leaking descriptor pools when callers expect a clean reset.
         vkResetDescriptorPool(device.device(), descriptorPool, 0);
         std::lock_guard<std::mutex> lk(overflowMutex);
         for (auto p : overflowPools) {
@@ -311,12 +298,21 @@ namespace engine {
         return *this;
     }
 
+    DescriptorWriter& DescriptorWriter::writeImageArray(uint32_t binding, VkDescriptorImageInfo* imageInfos, uint32_t count) {
+        assert(setLayout.bindings.count(binding) == 1 && "Layout does not contain specified binding");
+        const auto& bindingDescription = setLayout.bindings[binding];
+        assert(bindingDescription.descriptorCount == count && "Array count does not match binding descriptorCount");
+        VkWriteDescriptorSet write{};
+        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.descriptorType  = bindingDescription.descriptorType;
+        write.dstBinding      = binding;
+        write.pImageInfo      = imageInfos;
+        write.descriptorCount = count;
+        writes.push_back(write);
+        return *this;
+    }
+
     bool DescriptorWriter::build(VkDescriptorSet& set, VkResult* outResult) {
-        // Defensive check BEFORE allocation: ensure that all bindings declared in
-        // the layout have corresponding writes. Doing this check prior to
-        // allocation avoids needing to free descriptor sets (which requires the
-        // pool to be created with FREE_DESCRIPTOR_SET_BIT and would otherwise
-        // trigger validation warnings).
         {
             std::unordered_set<uint32_t> writtenBindings;
             writtenBindings.reserve(writes.size());
@@ -326,8 +322,6 @@ namespace engine {
 
             for (const auto& [binding, _] : setLayout.bindings) {
                 if (!writtenBindings.contains(binding)) {
-                    // Missing a binding — don't allocate and signal failure. Provide a
-                    // clear diagnostic via outResult when caller requested it.
                     set = VK_NULL_HANDLE;
                     ErrorState::report(
                         ErrorCode::DescriptorPoolAllocationError,
@@ -343,11 +337,7 @@ namespace engine {
         }
 
         if (bool const success = pool.allocateDescriptor(setLayout.getDescriptorSetLayout(), set); !success) {
-            // allocateDescriptor already logged the VkResult; surface it to caller.
             if (outResult != nullptr) {
-                // Try to query the last VkResult by attempting a no-op allocation
-                // is not possible here — allocateDescriptor logged the concrete
-                // VkResult already. Set a generic non-success if caller asked.
                 *outResult = VK_ERROR_OUT_OF_POOL_MEMORY;
             }
             return false;
@@ -372,6 +362,6 @@ namespace engine {
             write.dstSet = set;
         }
         vkUpdateDescriptorSets(pool.device.device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
-        writes.clear();  // Prevent stale/duplicate writes on subsequent calls
+        writes.clear();
     }
 }  // namespace engine

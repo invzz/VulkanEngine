@@ -65,7 +65,6 @@ namespace engine {
 
         std::unique_ptr<Camera> camera;
 
-        // Viewport
         Viewport       viewport_;
         ViewportPanel* viewportPanel_ = nullptr;
 
@@ -84,4 +83,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_APP_HPP
+#endif

@@ -15,11 +15,10 @@ namespace engine {
 
     SelectionOutlineSystem::SelectionOutlineSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
         : device_(device) {
-        // Create pipeline layout with push constants (aabbMin, aabbMax, color)
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset     = 0;
-        pushConstantRange.size       = sizeof(glm::vec3) * 3;  // 3 vec3s
+        pushConstantRange.size       = sizeof(glm::vec3) * 3;
 
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
 
@@ -34,7 +33,6 @@ namespace engine {
             throw std::runtime_error("failed to create selection outline pipeline layout");
         }
 
-        // Create pipeline
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
         pipelineConfig.renderPass                        = renderPass;
@@ -76,10 +74,8 @@ namespace engine {
             return;
         }
 
-        // Transform local AABB to world space
         AABB worldBounds = transformAABB(model->getLocalBounds(), transform.modelTransform());
 
-        // Bind pipeline and descriptors
         pipeline_->bind(frameInfo.commandBuffer);
         assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "SelectionOutlineSystem: global descriptor set is null");
         vkCmdBindDescriptorSets(
@@ -92,11 +88,10 @@ namespace engine {
             0,
             nullptr);
 
-        // Push AABB min/max and selection color
         glm::vec3 pushData[3];
         pushData[0] = worldBounds.min;
         pushData[1] = worldBounds.max;
-        pushData[2] = glm::vec3(1.0f, 0.0f, 0.0f);  // Bright red outline
+        pushData[2] = glm::vec3(1.0f, 0.0f, 0.0f);
 
         vkCmdPushConstants(
             frameInfo.commandBuffer,
@@ -106,7 +101,6 @@ namespace engine {
             sizeof(pushData),
             &pushData);
 
-        // Draw 12 edges (24 vertices)
         vkCmdDraw(frameInfo.commandBuffer, 24, 1, 0, 0);
     }
 

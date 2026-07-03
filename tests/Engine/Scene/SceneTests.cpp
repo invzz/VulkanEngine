@@ -14,7 +14,6 @@
 
 namespace engine::test {
 
-    // Simple test component
     struct TestComponent {
         int         value = 0;
         std::string name;
@@ -28,10 +27,6 @@ namespace engine::test {
        protected:
         Scene scene;
     };
-
-    // ============================================================================
-    // Entity Creation Tests
-    // ============================================================================
 
     TEST_F(SceneTest, CreateEntity_ReturnsValidEntity) {
         entt::entity entity = scene.createEntity();
@@ -56,13 +51,8 @@ namespace engine::test {
             entities.insert(scene.createEntity());
         }
 
-        // All entities should be unique
         EXPECT_EQ(entities.size(), COUNT);
     }
-
-    // ============================================================================
-    // Entity Destruction Tests
-    // ============================================================================
 
     TEST_F(SceneTest, DestroyEntity_EntityNoLongerValid) {
         entt::entity entity = scene.createEntity();
@@ -77,7 +67,6 @@ namespace engine::test {
 
         scene.destroyEntity(entity);
 
-        // After destruction, the entity should not have the component
         EXPECT_FALSE(scene.getRegistry().valid(entity));
     }
 
@@ -93,13 +82,9 @@ namespace engine::test {
         EXPECT_TRUE(scene.getRegistry().valid(e3));
     }
 
-    // ============================================================================
-    // Registry Access Tests
-    // ============================================================================
-
     TEST_F(SceneTest, GetRegistry_ReturnsNonNull) {
         entt::registry& reg = scene.getRegistry();
-        // Just verify we can use it
+
         entt::entity entity = reg.create();
         EXPECT_TRUE(reg.valid(entity));
     }
@@ -110,13 +95,8 @@ namespace engine::test {
         const Scene&          constScene = scene;
         const entt::registry& constReg   = constScene.getRegistry();
 
-        // Const version should work for read operations
         EXPECT_GE(constReg.storage<entt::entity>()->size(), 1u);
     }
-
-    // ============================================================================
-    // Component Tests (via Registry)
-    // ============================================================================
 
     TEST_F(SceneTest, AddComponent_ToEntity) {
         entt::entity entity = scene.createEntity();
@@ -164,10 +144,6 @@ namespace engine::test {
         EXPECT_TRUE(scene.getRegistry().all_of<TagComponent>(entity));
     }
 
-    // ============================================================================
-    // View Tests (common ECS pattern)
-    // ============================================================================
-
     TEST_F(SceneTest, View_SingleComponent) {
         for (int i = 0; i < 5; ++i) {
             entt::entity e = scene.createEntity();
@@ -186,7 +162,6 @@ namespace engine::test {
     }
 
     TEST_F(SceneTest, View_MultipleComponents) {
-        // Create entities with different component combinations
         for (int i = 0; i < 10; ++i) {
             entt::entity e = scene.createEntity();
             scene.getRegistry().emplace<TransformComponent>(e);
@@ -196,7 +171,6 @@ namespace engine::test {
             }
         }
 
-        // View should only return entities with BOTH components
         auto view  = scene.getRegistry().view<TransformComponent, TestComponent>();
         int  count = 0;
         for (auto entity : view) {
@@ -208,7 +182,6 @@ namespace engine::test {
     }
 
     TEST_F(SceneTest, View_EmptyView) {
-        // Create some entities without TestComponent
         for (int i = 0; i < 5; ++i) {
             entt::entity e = scene.createEntity();
             scene.getRegistry().emplace<TransformComponent>(e);
@@ -222,18 +195,12 @@ namespace engine::test {
         EXPECT_EQ(count, 0);
     }
 
-    // ============================================================================
-    // Entity Recycling Tests
-    // ============================================================================
-
     TEST_F(SceneTest, EntityRecycling_DestroyedEntityCanBeReused) {
         entt::entity e1 = scene.createEntity();
         scene.destroyEntity(e1);
 
         entt::entity e2 = scene.createEntity();
 
-        // e2 may reuse e1's slot (implementation detail of EnTT)
-        // but should still be valid
         EXPECT_TRUE(scene.getRegistry().valid(e2));
     }
 
@@ -244,13 +211,8 @@ namespace engine::test {
 
         entt::entity e2 = scene.createEntity();
 
-        // New entity should NOT have the old component
         EXPECT_FALSE(scene.getRegistry().all_of<TestComponent>(e2));
     }
-
-    // ============================================================================
-    // Stress Tests
-    // ============================================================================
 
     TEST_F(SceneTest, StressTest_CreateDestroy) {
         constexpr int ITERATIONS = 100;
@@ -260,7 +222,6 @@ namespace engine::test {
             std::vector<entt::entity> entities;
             entities.reserve(BATCH_SIZE);
 
-            // Create batch
             for (int i = 0; i < BATCH_SIZE; ++i) {
                 entt::entity e = scene.createEntity();
                 scene.getRegistry().emplace<TransformComponent>(e);
@@ -268,20 +229,17 @@ namespace engine::test {
                 entities.push_back(e);
             }
 
-            // Destroy half
             for (int i = 0; i < BATCH_SIZE / 2; ++i) {
                 scene.destroyEntity(entities[i]);
             }
         }
 
-        // Just verify we didn't crash
         SUCCEED();
     }
 
     TEST_F(SceneTest, StressTest_ManyComponents) {
         entt::entity entity = scene.createEntity();
 
-        // Add many components of the same type via different entities
         for (int i = 0; i < 1000; ++i) {
             entt::entity e = scene.createEntity();
             scene.getRegistry().emplace<TestComponent>(e, i, "entity");
@@ -290,10 +248,6 @@ namespace engine::test {
         auto view = scene.getRegistry().view<TestComponent>();
         EXPECT_EQ(view.size(), 1000u);
     }
-
-    // ============================================================================
-    // Default Construction Tests
-    // ============================================================================
 
     TEST_F(SceneTest, DefaultConstruction_RegistryIsEmpty) {
         Scene newScene;
@@ -311,7 +265,6 @@ namespace engine::test {
         entt::entity e2 = scene2.createEntity();
         scene2.getRegistry().emplace<TestComponent>(e2, 2, "scene2");
 
-        // Each scene should have only its own entity
         EXPECT_EQ(scene1.getRegistry().view<TestComponent>().size(), 1u);
         EXPECT_EQ(scene2.getRegistry().view<TestComponent>().size(), 1u);
 

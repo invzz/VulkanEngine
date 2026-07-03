@@ -28,7 +28,6 @@ namespace engine {
         }
 
        private:
-        // Refactored helper methods to keep `load()` small and testable
         static void loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
 
         static void loadMeshes(Model::Builder&         builder,
@@ -71,4 +70,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_IMPORTERS_GLTFIMPORTER_HPP
+#endif

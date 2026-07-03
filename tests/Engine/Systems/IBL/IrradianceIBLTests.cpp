@@ -7,12 +7,7 @@
 
 namespace engine::test {
 
-    // Test fixture using shared Device
     class IrradianceIBLTest : public DeviceFixture {};
-
-    // ==============================================================================
-    // Construction Tests
-    // ==============================================================================
 
     TEST_F(IrradianceIBLTest, Construction_DoesNotThrow) {
         EXPECT_NO_THROW({ ibl::IrradianceIBL irradiance(device()); });
@@ -25,10 +20,6 @@ namespace engine::test {
         EXPECT_EQ(irradiance.imageView(), VK_NULL_HANDLE);
         EXPECT_EQ(irradiance.sampler(), VK_NULL_HANDLE);
     }
-
-    // ==============================================================================
-    // Fallback Creation Tests
-    // ==============================================================================
 
     TEST_F(IrradianceIBLTest, CreateFallback_DoesNotThrow) {
         ibl::IrradianceIBL irradiance(device());
@@ -56,10 +47,6 @@ namespace engine::test {
         EXPECT_NE(irradiance.sampler(), VK_NULL_HANDLE);
     }
 
-    // ==============================================================================
-    // Descriptor Info Tests
-    // ==============================================================================
-
     TEST_F(IrradianceIBLTest, GetDescriptorInfo_AfterFallback_ReturnsValidInfo) {
         ibl::IrradianceIBL irradiance(device());
         irradiance.createFallback();
@@ -80,10 +67,6 @@ namespace engine::test {
         EXPECT_EQ(info.imageView, irradiance.imageView());
         EXPECT_EQ(info.sampler, irradiance.sampler());
     }
-
-    // ==============================================================================
-    // Reset Tests
-    // ==============================================================================
 
     TEST_F(IrradianceIBLTest, ResetToUninitialized_ClearsResources) {
         ibl::IrradianceIBL irradiance(device());
@@ -107,10 +90,6 @@ namespace engine::test {
         EXPECT_NE(irradiance.image(), VK_NULL_HANDLE);
     }
 
-    // ==============================================================================
-    // Deferred Destroy Tests
-    // ==============================================================================
-
     TEST_F(IrradianceIBLTest, DeferDestroyImageResources_DoesNotThrow) {
         ibl::IrradianceIBL irradiance(device());
         irradiance.createFallback();
@@ -128,10 +107,6 @@ namespace engine::test {
         EXPECT_EQ(irradiance.imageView(), VK_NULL_HANDLE);
         EXPECT_EQ(irradiance.sampler(), VK_NULL_HANDLE);
     }
-
-    // ==============================================================================
-    // Immediate Destroy Tests
-    // ==============================================================================
 
     TEST_F(IrradianceIBLTest, DestroyImmediate_DoesNotThrow) {
         ibl::IrradianceIBL irradiance(device());
@@ -157,15 +132,11 @@ namespace engine::test {
         EXPECT_EQ(irradiance.sampler(), VK_NULL_HANDLE);
     }
 
-    // ==============================================================================
-    // CreateForSettings Tests
-    // ==============================================================================
-
     TEST_F(IrradianceIBLTest, CreateForSettings_SmallSize_DoesNotThrow) {
         ibl::IrradianceIBL irradiance(device());
 
         ibl::Settings settings;
-        settings.irradianceSize = 16;  // Small for test
+        settings.irradianceSize = 16;
 
         EXPECT_NO_THROW(irradiance.createForSettings(settings));
     }
@@ -182,10 +153,6 @@ namespace engine::test {
         EXPECT_NE(irradiance.imageView(), VK_NULL_HANDLE);
         EXPECT_NE(irradiance.sampler(), VK_NULL_HANDLE);
     }
-
-    // ==============================================================================
-    // Destructor Tests
-    // ==============================================================================
 
     TEST_F(IrradianceIBLTest, Destructor_CleansUpResources) {
         {

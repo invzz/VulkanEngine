@@ -1,20 +1,12 @@
 #ifndef VULKANENGINE_INCLUDE_INTERNAL_HPP
 #define VULKANENGINE_INCLUDE_INTERNAL_HPP
 
-// Internal.hpp — Internal aggregation header
-// NOT for public consumers. Contains implementation details,
-// intermediate types, and transitive dependencies that should
-// remain hidden from external code.
-
 #pragma once
 
-// Core internals (non-public)
 #include "Engine/Core/ErrorCodes.hpp"
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Core/utils.hpp"
-
-// Graphics internals
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/CubeShadowMap.hpp"
 #include "Engine/Graphics/DebugMessenger.hpp"
@@ -29,6 +21,14 @@
 #include "Engine/Graphics/ImGuiManager.hpp"
 #include "Engine/Graphics/Instance.hpp"
 #include "Engine/Graphics/MorphTargetCompute.hpp"
+#include "Engine/Graphics/Passes/CompositionPass.hpp"
+#include "Engine/Graphics/Passes/ComputePass.hpp"
+#include "Engine/Graphics/Passes/DeferredLightingPass.hpp"
+#include "Engine/Graphics/Passes/DepthPrepass.hpp"
+#include "Engine/Graphics/Passes/ForwardPass.hpp"
+#include "Engine/Graphics/Passes/GbufferPass.hpp"
+#include "Engine/Graphics/Passes/ShadowPass.hpp"
+#include "Engine/Graphics/Passes/UpdatePass.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/ShaderAnalysis.hpp"
 #include "Engine/Graphics/ShaderMonitor.hpp"
@@ -37,8 +37,6 @@
 #include "Engine/Graphics/SwapChainRecreationCoordinator.hpp"
 #include "Engine/Graphics/ThreadLocalCommandPool.hpp"
 #include "Engine/Graphics/Viewport.hpp"
-
-// Scene internals
 #include "Engine/Scene/Component.hpp"
 #include "Engine/Scene/Components/AnimationClip.hpp"
 #include "Engine/Scene/Components/AnimationController.hpp"
@@ -56,30 +54,16 @@
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-
-// System internals
-#include "Engine/Systems/LightingRenderBindings.hpp"
-#include "Engine/Systems/MaterialRenderBindings.hpp"
-
-// IBL internals
 #include "Engine/Systems/IBL/BRDFLUT.hpp"
 #include "Engine/Systems/IBL/IBLHelpers.hpp"
 #include "Engine/Systems/IBL/IBLSettings.hpp"
 #include "Engine/Systems/IBL/IrradianceIBL.hpp"
 #include "Engine/Systems/IBL/PrefilteredEnvIBL.hpp"
 #include "Engine/Systems/IBL/VTexIO.hpp"
+#include "Engine/Systems/LightingRenderBindings.hpp"
+#include "Engine/Systems/MaterialRenderBindings.hpp"
 
-// Pass internals
-#include "Engine/Graphics/Passes/CompositionPass.hpp"
-#include "Engine/Graphics/Passes/ComputePass.hpp"
-#include "Engine/Graphics/Passes/DeferredLightingPass.hpp"
-#include "Engine/Graphics/Passes/DepthPrepass.hpp"
-#include "Engine/Graphics/Passes/ForwardPass.hpp"
-#include "Engine/Graphics/Passes/GbufferPass.hpp"
-#include "Engine/Graphics/Passes/ShadowPass.hpp"
-#include "Engine/Graphics/Passes/UpdatePass.hpp"
-
-// ModelLib internals
+#include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/MaterialUniformData.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
 #include "ModelLib/Resources/Model.hpp"
@@ -92,7 +76,4 @@
 #include "ModelLib/importers/ModelImporter.hpp"
 #include "ModelLib/importers/OBJImporter.hpp"
 
-// EngineSceneIO
-#include "EngineSceneIO/Scene/SceneSerializer.hpp"
-
-#endif  // VULKANENGINE_INCLUDE_INTERNAL_HPP
+#endif

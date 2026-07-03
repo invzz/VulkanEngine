@@ -39,7 +39,6 @@ namespace engine {
     }
 
     void ShadowMap::createDepthResources() {
-        // Create depth image
         VkImageCreateInfo imageInfo{};
         imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -59,7 +58,6 @@ namespace engine {
             throw std::runtime_error("Failed to create shadow map depth image");
         }
 
-        // Allocate memory
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), depthImage_, &memRequirements);
 
@@ -74,7 +72,6 @@ namespace engine {
 
         vkBindImageMemory(device_.device(), depthImage_, depthImageMemory_, 0);
 
-        // Create image view
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image                           = depthImage_;
@@ -90,7 +87,6 @@ namespace engine {
             throw std::runtime_error("Failed to create shadow map depth image view");
         }
 
-        // Transition to READ_ONLY_OPTIMAL initially so it's valid for binding
         VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
 
         VkImageMemoryBarrier barrier{};
@@ -134,7 +130,6 @@ namespace engine {
         subpass.pColorAttachments       = nullptr;
         subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-        // Dependency to ensure depth writes complete before sampling
         std::array<VkSubpassDependency, 2> dependencies{};
 
         dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
@@ -192,10 +187,10 @@ namespace engine {
         samplerInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
         samplerInfo.anisotropyEnable        = VK_FALSE;
         samplerInfo.maxAnisotropy           = 1.0f;
-        samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;  // Outside shadow map = no shadow
+        samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.compareEnable           = VK_TRUE;
-        samplerInfo.compareOp               = VK_COMPARE_OP_LESS_OR_EQUAL;  // PCF comparison
+        samplerInfo.compareOp               = VK_COMPARE_OP_LESS_OR_EQUAL;
         samplerInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR;
         samplerInfo.mipLodBias              = 0.0f;
         samplerInfo.minLod                  = 0.0f;

@@ -13,10 +13,6 @@
 
 namespace engine::test {
 
-    // ============================================================================
-    // hashCombine Basic Tests
-    // ============================================================================
-
     TEST(HashCombineTest, SingleInt) {
         std::size_t seed = 0;
         hashCombine(seed, 42);
@@ -42,10 +38,6 @@ namespace engine::test {
         EXPECT_NE(seed, 0u);
     }
 
-    // ============================================================================
-    // Multiple Values Tests
-    // ============================================================================
-
     TEST(HashCombineTest, TwoInts) {
         std::size_t seed = 0;
         hashCombine(seed, 1, 2);
@@ -54,7 +46,6 @@ namespace engine::test {
         hashCombine(seed2, 1);
         hashCombine(seed2, 2);
 
-        // Both approaches should yield the same hash
         EXPECT_EQ(seed, seed2);
     }
 
@@ -65,7 +56,6 @@ namespace engine::test {
         std::size_t seed2 = 0;
         hashCombine(seed2, 3, 2, 1);
 
-        // Different order should produce different hash
         EXPECT_NE(seed1, seed2);
     }
 
@@ -80,10 +70,6 @@ namespace engine::test {
         hashCombine(seed, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         EXPECT_NE(seed, 0u);
     }
-
-    // ============================================================================
-    // GLM Vector Tests
-    // ============================================================================
 
     TEST(HashCombineTest, Vec2) {
         std::size_t seed = 0;
@@ -134,10 +120,6 @@ namespace engine::test {
         EXPECT_NE(seed, 0u);
     }
 
-    // ============================================================================
-    // Consistency Tests
-    // ============================================================================
-
     TEST(HashCombineTest, SameInput_SameOutput) {
         std::size_t seed1 = 0;
         hashCombine(seed1, 42, 3.14f, glm::vec3(1.0f, 2.0f, 3.0f));
@@ -173,10 +155,6 @@ namespace engine::test {
         EXPECT_NE(seed1, seed3);
     }
 
-    // ============================================================================
-    // Distribution Tests (basic quality check)
-    // ============================================================================
-
     TEST(HashCombineTest, Distribution_ManyInts) {
         std::unordered_set<std::size_t> hashes;
 
@@ -186,7 +164,6 @@ namespace engine::test {
             hashes.insert(seed);
         }
 
-        // All hashes should be unique (no collisions for sequential ints)
         EXPECT_EQ(hashes.size(), 1000u);
     }
 
@@ -201,7 +178,6 @@ namespace engine::test {
             }
         }
 
-        // Expect very few collisions (allow some due to hash function nature)
         EXPECT_GT(hashes.size(), 990u);
     }
 
@@ -217,15 +193,10 @@ namespace engine::test {
         EXPECT_EQ(hashes.size(), 100u);
     }
 
-    // ============================================================================
-    // Edge Cases
-    // ============================================================================
-
     TEST(HashCombineTest, ZeroValue) {
         std::size_t seed = 0;
         hashCombine(seed, 0);
 
-        // Hash of 0 should still produce a non-zero result
         EXPECT_NE(seed, 0u);
     }
 
@@ -250,7 +221,7 @@ namespace engine::test {
     TEST(HashCombineTest, EmptyString) {
         std::size_t seed = 0;
         hashCombine(seed, std::string(""));
-        // Empty string still has a hash
+
         EXPECT_NE(seed, 0u);
     }
 
@@ -260,10 +231,6 @@ namespace engine::test {
         EXPECT_NE(seed, 0u);
     }
 
-    // ============================================================================
-    // Non-zero Initial Seed Tests
-    // ============================================================================
-
     TEST(HashCombineTest, NonZeroInitialSeed) {
         std::size_t seed1 = 12345;
         hashCombine(seed1, 42);
@@ -271,7 +238,6 @@ namespace engine::test {
         std::size_t seed2 = 0;
         hashCombine(seed2, 42);
 
-        // Different initial seeds should produce different results
         EXPECT_NE(seed1, seed2);
     }
 
@@ -281,16 +247,10 @@ namespace engine::test {
         hashCombine(seed, 2);
         hashCombine(seed, 3);
 
-        // Each combine should change the seed
         EXPECT_NE(seed, 100u);
     }
 
-    // ============================================================================
-    // Use Case Tests
-    // ============================================================================
-
     TEST(HashCombineTest, UseCase_VertexHash) {
-        // Simulate hashing vertex data (common use case in graphics)
         struct Vertex {
             glm::vec3 position;
             glm::vec3 normal;
@@ -307,12 +267,11 @@ namespace engine::test {
         Vertex v2{{1.0f, 2.0f, 3.0f}, {0.0f, 1.0f, 0.0f}, {0.5f, 0.5f}};
         Vertex v3{{1.0f, 2.0f, 3.0f}, {1.0f, 0.0f, 0.0f}, {0.5f, 0.5f}};
 
-        EXPECT_EQ(v1.hash(), v2.hash());  // Same vertices
-        EXPECT_NE(v1.hash(), v3.hash());  // Different normal
+        EXPECT_EQ(v1.hash(), v2.hash());
+        EXPECT_NE(v1.hash(), v3.hash());
     }
 
     TEST(HashCombineTest, UseCase_KeyHash) {
-        // Simulate hashing a composite key
         struct CompositeKey {
             int         id;
             std::string name;

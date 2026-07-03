@@ -46,4 +46,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_UIPANEL_HPP
+#endif

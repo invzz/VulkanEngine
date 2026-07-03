@@ -31,7 +31,6 @@ namespace engine {
             return;
         }
 
-        // Always render the toolbar at the very top of the viewport
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImVec2         barPos{viewport->WorkPos.x, viewport->Pos.y};
         bool           compact   = viewport->WorkSize.x < 1440.0f;
@@ -41,7 +40,6 @@ namespace engine {
         ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, barHeight));
         ImGui::SetNextWindowViewport(viewport->ID);
 
-        // Toolbar window flags: fixed thin top strip
         ImGuiWindowFlags flags =
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
@@ -57,7 +55,6 @@ namespace engine {
         ImVec4 textDisabled = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
         ImVec4 accent       = ui::UI::GetAccentColor();
 
-        // Render toolbar as a polished top strip
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, compact ? ImVec2(8.0f, 5.0f) : ImVec2(10.0f, 6.0f));
@@ -113,7 +110,6 @@ namespace engine {
             showTooltip(tip.c_str());
         };
 
-        // Left brand
         ImGui::TextColored(ImVec4(accent.x, accent.y, accent.z, 1.0f), "%s", ICON_FA_CUBES_STACKED);
         showTooltip("VulkanEngine Editor");
         ImGui::SameLine(0.0f, 6.0f);
@@ -126,7 +122,6 @@ namespace engine {
 
         drawSectionDivider(compact ? 4.0f : 6.0f);
 
-        // Panel toggles as chips
         for (const auto& toggle : toggles_) {
             panelChip(toggle.label, toggle.panel);
             ImGui::SameLine(0.0f, compact ? 3.0f : 4.0f);
@@ -136,7 +131,6 @@ namespace engine {
 
         float spacing = compact ? 2.0f : 3.0f;
 
-        // Layout reset
         if (onResetLayout_) {
             ImGui::SameLine(0.0f, spacing);
             if (ui::UI::ToolbarIcon(ICON_FA_ROTATE_LEFT, false, "layout_reset")) {
@@ -145,7 +139,6 @@ namespace engine {
             showTooltip("Reset docking layout");
         }
 
-        // Floating Settings launcher (opened from toolbar, closed from window close button)
         if (settingsPanel_ != nullptr) {
             ImGui::SameLine(0.0f, spacing);
             bool active = settingsPanel_->isVisible();

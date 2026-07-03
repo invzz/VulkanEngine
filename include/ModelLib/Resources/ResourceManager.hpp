@@ -17,7 +17,6 @@
 
 namespace engine {
 
-    // Forward declarations
     class Texture;
     class Model;
     class TextureManager;
@@ -27,10 +26,10 @@ namespace engine {
  * @brief Async loading status for tracking resource load progress
  */
     enum class LoadStatus : std::uint8_t {
-        PENDING,   // Queued for loading
-        LOADING,   // Currently loading
-        COMPLETE,  // Successfully loaded
-        FAILED     // Load failed
+        PENDING,
+        LOADING,
+        COMPLETE,
+        FAILED
     };
 
     using AsyncLoadId = uint64_t;
@@ -53,7 +52,7 @@ namespace engine {
         std::future<std::shared_ptr<T>> future;
         LoadStatus                      status;
         std::string                     path;
-        float                           progress;  // 0.0 to 1.0
+        float                           progress;
     };
 
     /**
@@ -61,10 +60,10 @@ namespace engine {
  * Higher priority resources are kept in cache longer
  */
     enum class ResourcePriority : std::uint8_t {
-        LOW      = 0,  // Evict first (distant objects, unused LODs)
-        MEDIUM   = 1,  // Standard priority (most resources)
-        HIGH     = 2,  // Evict last (nearby objects, current level)
-        CRITICAL = 3   // Never evict (UI, player character, essential assets)
+        LOW      = 0,
+        MEDIUM   = 1,
+        HIGH     = 2,
+        CRITICAL = 3
     };
 
     /**
@@ -83,7 +82,6 @@ namespace engine {
         explicit ResourceManager(Device& device);
         ~ResourceManager();
 
-        // Delete copy and move operations (contains mutexes which are not movable)
         ResourceManager(const ResourceManager&)            = delete;
         ResourceManager& operator=(const ResourceManager&) = delete;
         ResourceManager(ResourceManager&&)                 = delete;
@@ -182,10 +180,6 @@ namespace engine {
    * @brief Check if a model is cached
    */
         bool isModelCached(const std::string& path) const;
-
-        // ========================================================================
-        // ASYNC LOADING API
-        // ========================================================================
 
         /**
    * @brief Load a texture asynchronously in background thread
@@ -289,14 +283,12 @@ namespace engine {
         std::unique_ptr<TextureManager> textureManager_;
         std::unique_ptr<MeshManager>    meshManager_;
 
-        // Resource caches (weak_ptr allows automatic cleanup)
         mutable std::mutex                                      textureMutex_;
         std::unordered_map<std::string, std::weak_ptr<Texture>> textureCache_;
 
         mutable std::mutex                                    modelMutex_;
         std::unordered_map<std::string, std::weak_ptr<Model>> modelCache_;
 
-        // LRU tracking for eviction policy
         struct ResourceInfo {
             std::string      key;
             size_t           memorySize;
@@ -306,19 +298,15 @@ namespace engine {
         std::vector<ResourceInfo> textureAccessOrder_;
         std::vector<ResourceInfo> modelAccessOrder_;
 
-        // Content hash cache for embedded textures (hash -> cache key)
         std::unordered_map<std::string, std::string> contentHashToKey_;
 
-        // Memory management
-        size_t         memoryBudget_        = 0;  // 0 = unlimited
+        size_t         memoryBudget_        = 0;
         mutable size_t cachedTextureMemory_ = 0;
         mutable size_t cachedModelMemory_   = 0;
 
-        // Helper to generate cache key from path and parameters
         static std::string makeTextureKey(const std::string& path, bool srgb);
         static std::string makeModelKey(const std::string& path, bool enableTextures, bool loadMaterials, bool enableMorphTargets);
 
-        // Memory management helpers
         void               updateTextureAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
         void               updateModelAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
         void               evictLRUTextures();
@@ -326,11 +314,6 @@ namespace engine {
         static uint64_t    getCurrentTime();
         static std::string computeContentHash(const unsigned char* data, size_t dataSize);
 
-        // ========================================================================
-        // ASYNC LOADING INFRASTRUCTURE
-        // ========================================================================
-
-        // Thread pool for async loading
         std::vector<std::thread>          workerThreads_;
         std::queue<std::function<void()>> taskQueue_;
         mutable std::mutex                taskQueueMutex_;
@@ -356,16 +339,14 @@ namespace engine {
         std::unordered_map<AsyncLoadId, AsyncModelTaskRecord> asyncModelTasks_;
         std::atomic<AsyncLoadId>                              nextAsyncLoadId_{1};
 
-        // Thread pool management
         void initThreadPool(size_t numThreads = 4);
         void shutdownThreadPool();
         void workerThreadLoop();
 
-        // Async loading helpers
         template <typename T>
         void enqueueTask(std::function<void()> task);
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_RESOURCEMANAGER_HPP
+#endif

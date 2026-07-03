@@ -12,7 +12,7 @@ namespace engine {
 
     void WorkspaceManager::initialize(ImGuiManager& imguiManager) {
         imguiManager_ = &imguiManager;
-        // Apply default theme
+
         themeSystem_.applyTheme("dark");
     }
 
@@ -24,12 +24,10 @@ namespace engine {
             return;
         }
 
-        // --- Toolbar ---
         if (toolbarVisible_ && toolbarPanel_ && toolbarPanel_->isVisible()) {
             toolbarPanel_->render(frameInfo);
         }
 
-        // --- Main dockspace ---
         ImGuiViewport const* viewport = ImGui::GetMainViewport();
         float                toolbarH = 0.0f;
         if (toolbarVisible_ && toolbarPanel_ && toolbarPanel_->isVisible()) {
@@ -57,9 +55,6 @@ namespace engine {
         mainDockspaceID_ = ImGui::GetID("MainDockSpace");
         ImGui::DockSpace(mainDockspaceID_, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
 
-        // First frame (or after a Reset): build the dock tree from the registered
-        // panels' DockConstraints. Without this step, every panel falls back to
-        // a floating top-level window and docking does not work.
         if (!layoutApplied_) {
             LayoutBuilder builder;
             for (const auto& name : panelRegistry_.getPanelNames()) {
@@ -71,7 +66,6 @@ namespace engine {
 
         ImGui::End();
 
-        // --- Render all visible panels ---
         auto& registry = getPanelRegistry();
         for (auto* panel : registry.getAllPanels()) {
             if (panel->isVisible()) {
@@ -79,13 +73,12 @@ namespace engine {
             }
         }
 
-        // --- Render ImGui ---
         engine::ImGuiManager::render(commandBuffer);
     }
 
     void WorkspaceManager::applyLayoutPreset(LayoutPreset preset) {
         currentLayout_ = preset;
-        layoutApplied_ = false;  // force a rebuild on next frame
+        layoutApplied_ = false;
     }
 
     void WorkspaceManager::resetLayout() {
@@ -100,7 +93,6 @@ namespace engine {
     void WorkspaceManager::setToolbarPanel(std::unique_ptr<class ToolbarPanel> toolbar) {
         toolbarPanel_ = std::move(toolbar);
         if (toolbarPanel_) {
-            // Wire the toolbar's "Reset Layout" button to our resetLayout().
             toolbarPanel_->setOnResetLayout([this]() { resetLayout(); });
         }
     }
@@ -117,11 +109,6 @@ namespace engine {
     }
 
     bool WorkspaceManager::validateLayout() {
-        // Sanity invariants we can check without walking the dock tree:
-        //  1. The layout has been applied at least once.
-        //  2. Every registered panel has a non-empty name (the name is the
-        //     ImGui window title, an empty one would silently fail to dock).
-        //  3. Every constraint is within bounds (delegated to enforceConstraints).
         if (!layoutApplied_) {
             return false;
         }
@@ -145,10 +132,6 @@ namespace engine {
     }
 
     bool WorkspaceManager::enforceConstraints(const std::string& name, const DockConstraints& constraints) {
-        // Currently a pure validator. The ImGui side enforces minSize on the
-        // window class; this method exists so callers can pre-check constraints
-        // before registration and so validateLayout() has a single place to
-        // extend with future rules.
         if (name.empty()) {
             return false;
         }

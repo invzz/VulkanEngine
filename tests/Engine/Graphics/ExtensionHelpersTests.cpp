@@ -4,10 +4,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// ExtensionHelpers Tests
-// =============================================================================
-
 TEST(ExtensionHelpers, GivenAllExtensionsAvailable_WhenEnsurePresent_ThenReturnsTrue) {
     std::vector<VkExtensionProperties> available = {
         VkExtensionProperties{"VK_EXT_one", 0},

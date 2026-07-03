@@ -29,15 +29,10 @@ namespace engine {
 
         ViewportSettings viewportSettings{};
 
-        // Gizmo state — values match ImGuizmo::OPERATION / ImGuizmo::MODE.
-        // Stored as raw int so EditorState has no dependency on ImGuizmo.
-        int  gizmoOperation{0};  // ImGuizmo::TRANSLATE  (0x7)
-        int  gizmoMode{1};       // ImGuizmo::WORLD      (1)
+        int  gizmoOperation{0};
+        int  gizmoMode{1};
         bool gizmoEnabled{true};
 
-        // View gizmo camera behavior:
-        // true  -> orbit around selected object pivot (camera position changes)
-        // false -> look/reorient in place (camera position is preserved)
         bool viewGizmoOrbitSelected{true};
     };
 

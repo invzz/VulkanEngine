@@ -8,10 +8,6 @@
 
 using namespace engine;
 
-// =============================================================================
-// AABB Default Construction Tests
-// =============================================================================
-
 TEST(AABB, GivenDefaultConstruction_WhenInspected_ThenMinIsMaxFloat) {
     AABB box;
     EXPECT_FLOAT_EQ(box.min.x, std::numeric_limits<float>::max());
@@ -30,10 +26,6 @@ TEST(AABB, GivenDefaultConstruction_WhenInspected_ThenIsNotValid) {
     AABB box;
     EXPECT_FALSE(box.isValid());
 }
-
-// =============================================================================
-// AABB Expand Tests
-// =============================================================================
 
 TEST(AABB, GivenEmptyBox_WhenExpandedWithSinglePoint_ThenBoxContainsPoint) {
     AABB box;
@@ -88,10 +80,6 @@ TEST(AABB, GivenBox_WhenExpandedWithPointOutsideBox_ThenBoxGrows) {
     EXPECT_FLOAT_EQ(box.max.z, 1.0f);
 }
 
-// =============================================================================
-// AABB Center and Extents Tests
-// =============================================================================
-
 TEST(AABB, GivenUnitBox_WhenCenterCalculated_ThenReturnsOrigin) {
     AABB box;
     box.expand(glm::vec3(-1.0f, -1.0f, -1.0f));
@@ -140,10 +128,6 @@ TEST(AABB, GivenAsymmetricBox_WhenExtentsCalculated_ThenReturnsCorrectExtents) {
     EXPECT_FLOAT_EQ(extents.z, 4.0f);
 }
 
-// =============================================================================
-// AABB isValid Tests
-// =============================================================================
-
 TEST(AABB, GivenValidBox_WhenIsValidCalled_ThenReturnsTrue) {
     AABB box;
     box.expand(glm::vec3(-1.0f, -1.0f, -1.0f));
@@ -158,10 +142,6 @@ TEST(AABB, GivenPointBox_WhenIsValidCalled_ThenReturnsTrue) {
 
     EXPECT_TRUE(box.isValid());
 }
-
-// =============================================================================
-// transformAABB Tests
-// =============================================================================
 
 TEST(transformAABB, GivenIdentityTransform_WhenTransformed_ThenBoxUnchanged) {
     AABB box;
@@ -231,20 +211,14 @@ TEST(transformAABB, Given90DegreeRotation_WhenTransformed_ThenBoxRotated) {
     box.expand(glm::vec3(-1.0f, 0.0f, 0.0f));
     box.expand(glm::vec3(1.0f, 0.5f, 0.5f));
 
-    // Rotate 90 degrees around Y axis: X -> Z, Z -> -X
     glm::mat4 rotate = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     AABB      result = transformAABB(box, rotate);
 
-    // After 90 degree Y rotation, the box should have swapped X and Z dimensions
     EXPECT_TRUE(result.isValid());
-    // New Z should be from old X (-1 to 1)
+
     EXPECT_NEAR(result.min.z, -1.0f, 1e-5f);
     EXPECT_NEAR(result.max.z, 1.0f, 1e-5f);
 }
-
-// =============================================================================
-// Model::Vertex Tests
-// =============================================================================
 
 TEST(ModelVertex, GivenTwoIdenticalVertices_WhenCompared_ThenAreEqual) {
     Model::Vertex v1{.position = glm::vec3(1.0f, 2.0f, 3.0f), .color = glm::vec3(1.0f), .normal = glm::vec3(0.0f, 1.0f, 0.0f), .uv = glm::vec2(0.5f, 0.5f)};
@@ -280,10 +254,6 @@ TEST(ModelVertex, GivenVerticesWithDifferentUVs_WhenCompared_ThenAreNotEqual) {
 
     EXPECT_FALSE(v1 == v2);
 }
-
-// =============================================================================
-// Model::Node Tests
-// =============================================================================
 
 TEST(ModelNode, GivenDefaultNode_WhenInspected_ThenHasIdentityTransform) {
     Model::Node node;
@@ -350,9 +320,8 @@ TEST(ModelNode, GivenNodeWithChildren_WhenInspected_ThenChildrenAccessible) {
 TEST(ModelNode, GivenNodeWithMatrix_WhenLocalTransformCalculated_ThenReturnsMatrixOnly) {
     Model::Node node;
     node.hasMatrix = true;
-    node.matrix   = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 20.0f, 30.0f));
+    node.matrix    = glm::translate(glm::mat4(1.0f), glm::vec3(10.0f, 20.0f, 30.0f));
 
-    // TRS is non-identity but hasMatrix=true should ignore it
     node.translation = glm::vec3(999.0f, 999.0f, 999.0f);
     node.scale       = glm::vec3(2.0f, 2.0f, 2.0f);
 
@@ -366,19 +335,17 @@ TEST(ModelNode, GivenNodeWithMatrix_WhenLocalTransformCalculated_ThenReturnsMatr
 
 TEST(ModelNode, GivenNodeWithTRSNoMatrix_WhenLocalTransformCalculated_ThenTRSApplied) {
     Model::Node node;
-    node.hasMatrix = false;
+    node.hasMatrix   = false;
     node.translation = glm::vec3(5.0f, 10.0f, 15.0f);
     node.scale       = glm::vec3(2.0f, 3.0f, 4.0f);
 
     glm::mat4 transform = node.getLocalTransform();
 
-    // With T * R * S order: S*(1,1,1) = (2,3,4), T+(2,3,4) = (7,13,19)
-    glm::vec4 point     = transform * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::vec4 point = transform * glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     EXPECT_NEAR(point.x, 7.0f, 1e-5f);
     EXPECT_NEAR(point.y, 13.0f, 1e-5f);
     EXPECT_NEAR(point.z, 19.0f, 1e-5f);
 
-    // Translation offset alone (transform the origin)
     glm::vec4 origin = transform * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
     EXPECT_NEAR(origin.x, 5.0f, 1e-5f);
     EXPECT_NEAR(origin.y, 10.0f, 1e-5f);
@@ -389,10 +356,8 @@ TEST(ModelNode, GivenNodeWithMatrixAndTRS_WhenHasMatrixTrue_ThenTRSIsIgnored) {
     Model::Node node;
     node.hasMatrix = true;
 
-    // Set a 2x scale matrix
     node.matrix = glm::scale(glm::mat4(1.0f), glm::vec3(2.0f, 2.0f, 2.0f));
 
-    // Set conflicting TRS — should be ignored
     node.translation = glm::vec3(100.0f, 100.0f, 100.0f);
     node.scale       = glm::vec3(0.01f, 0.01f, 0.01f);
 
@@ -424,10 +389,6 @@ TEST(ModelNode, GivenDefaultNode_WhenHasMatrix_ThenHasMatrixIsFalse) {
     EXPECT_FALSE(node.hasMatrix);
 }
 
-// =============================================================================
-// Model::MeshletBuildConfig Tests
-// =============================================================================
-
 TEST(MeshletBuildConfig, GivenDefaultConfig_WhenInspected_ThenHasReasonableDefaults) {
     Model::MeshletBuildConfig config;
 
@@ -450,10 +411,6 @@ TEST(MeshletBuildConfig, GivenCustomConfig_WhenSet_ThenValuesAreStored) {
     EXPECT_FLOAT_EQ(config.maxRadius, 2.0f);
 }
 
-// =============================================================================
-// Model::AnimationSampler Interpolation Tests
-// =============================================================================
-
 TEST(AnimationSampler, GivenDefaultSampler_WhenInspected_ThenInterpolationIsLinear) {
     Model::AnimationSampler sampler;
 
@@ -473,10 +430,6 @@ TEST(AnimationSampler, GivenSamplerWithCubicSpline_WhenSet_ThenValueIsStored) {
 
     EXPECT_EQ(sampler.interpolation, Model::AnimationSampler::CUBICSPLINE);
 }
-
-// =============================================================================
-// Model::AnimationChannel Tests
-// =============================================================================
 
 TEST(AnimationChannel, GivenTranslationChannel_WhenSet_ThenValuesAreStored) {
     Model::AnimationChannel channel;
@@ -510,10 +463,6 @@ TEST(AnimationChannel, GivenWeightsChannel_WhenSet_ThenValuesAreStored) {
     EXPECT_EQ(channel.path, Model::AnimationChannel::WEIGHTS);
 }
 
-// =============================================================================
-// Model::Animation Tests
-// =============================================================================
-
 TEST(Animation, GivenDefaultAnimation_WhenInspected_ThenDurationIsZero) {
     Model::Animation anim;
 
@@ -535,10 +484,6 @@ TEST(Animation, GivenAnimationWithData_WhenSet_ThenValuesAreStored) {
     EXPECT_EQ(anim.channels.size(), 2);
     EXPECT_EQ(anim.samplers.size(), 2);
 }
-
-// =============================================================================
-// Model::SubMesh Tests
-// =============================================================================
 
 TEST(SubMesh, GivenSubMesh_WhenConfigured_ThenValuesAreStored) {
     Model::SubMesh subMesh;

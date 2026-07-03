@@ -19,9 +19,6 @@ namespace engine {
     }
 
     void Mouse::lookAround(float deltaTime, TransformComponent& transform) {
-        // With GLFW_CURSOR_DISABLED, GLFW reports unbounded virtual cursor
-        // movement even if the physical cursor stays centered. We just read
-        // consecutive positions and compute deltas; no manual recentering.
         double xpos;
         double ypos;
         std::tie(xpos, ypos) = getCursorPosition();
@@ -42,7 +39,6 @@ namespace engine {
         transform.rotation.y += xoffset * lookSpeed * deltaTime;
         transform.rotation.x += yoffset * lookSpeed * deltaTime;
 
-        // Limit pitch to avoid gimbal lock
         transform.rotation.x = glm::clamp(transform.rotation.x, -1.5f, 1.5f);
         transform.rotation.y = glm::mod(transform.rotation.y, glm::two_pi<float>());
     }

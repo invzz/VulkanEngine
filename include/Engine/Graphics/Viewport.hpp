@@ -52,9 +52,9 @@ namespace engine {
        private:
         void registerAllFrames(Device& device, Renderer& renderer);
 
-        std::array<ImTextureID, 4> imTextureIDs_{};  // one per frame-in-flight
+        std::array<ImTextureID, 4> imTextureIDs_{};
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_ENGINE_GRAPHICS_VIEWPORT_HPP
+#endif

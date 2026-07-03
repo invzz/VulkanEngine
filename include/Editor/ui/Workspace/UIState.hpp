@@ -25,8 +25,6 @@ namespace engine {
         UIState();
         ~UIState() = default;
 
-        // --- Selection ---
-
         /** Get the currently selected entity. */
         [[nodiscard]] entt::entity getSelectedEntity() const {
             return selectedEntity_;
@@ -46,8 +44,6 @@ namespace engine {
         /** Register a callback to be called when selection changes. */
         void onSelectionChanged(std::function<void(entt::entity)> callback);
 
-        // --- Camera ---
-
         /** Get the active camera entity. */
         [[nodiscard]] entt::entity getActiveCameraEntity() const {
             return activeCameraEntity_;
@@ -55,8 +51,6 @@ namespace engine {
 
         /** Set the active camera entity. */
         void setActiveCameraEntity(entt::entity entity);
-
-        // --- Scene ---
 
         /** Get the current scene. */
         [[nodiscard]] Scene* getScene() const {
@@ -66,8 +60,6 @@ namespace engine {
         /** Set the current scene. */
         void setScene(Scene* scene);
 
-        // --- Theme ---
-
         /** Get the current theme preset (0=dark, 1=light, 2=midnight). */
         [[nodiscard]] int getThemePreset() const {
             return themePreset_;
@@ -76,8 +68,6 @@ namespace engine {
         /** Set the current theme preset. */
         void setThemePreset(int preset);
 
-        // --- Layout ---
-
         /** Get the current layout preset. */
         [[nodiscard]] LayoutPreset getLayoutPreset() const {
             return layoutPreset_;
@@ -85,8 +75,6 @@ namespace engine {
 
         /** Set the current layout preset. */
         void setLayoutPreset(LayoutPreset preset);
-
-        // --- Frame timing ---
 
         /** Get the current frame time in milliseconds. */
         [[nodiscard]] float getFrameTimeMs() const {
@@ -111,7 +99,7 @@ namespace engine {
         uint32_t     selectedObjectId_   = 0;
         entt::entity activeCameraEntity_ = entt::null;
         Scene*       scene_              = nullptr;
-        int          themePreset_        = 0;  // default to dark
+        int          themePreset_        = 0;
         LayoutPreset layoutPreset_       = LayoutPreset::Default;
         float        frameTimeMs_        = 0.0f;
         float        fps_                = 0.0f;
@@ -121,4 +109,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_UI_STATE_HPP
+#endif

@@ -23,4 +23,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_IMPORTERS_OBJIMPORTER_HPP
+#endif

@@ -59,13 +59,13 @@ namespace engine {
 
        private:
         struct ModelMorphData {
-            std::unique_ptr<Buffer> morphDeltaBuffer;                // Position and normal deltas
-            std::unique_ptr<Buffer> weightsBuffer;                   // Current morph weights
-            std::unique_ptr<Buffer> blendedBuffer;                   // Output blended vertices
-            VkDescriptorSet         descriptorSet = VK_NULL_HANDLE;  // Cached descriptor set
-            size_t                  morphTargetCount;                // Number of morph targets
-            size_t                  vertexCount;                     // Number of vertices
-            uint32_t                vertexOffset;                    // Offset in vertex buffer
+            std::unique_ptr<Buffer> morphDeltaBuffer;
+            std::unique_ptr<Buffer> weightsBuffer;
+            std::unique_ptr<Buffer> blendedBuffer;
+            VkDescriptorSet         descriptorSet = VK_NULL_HANDLE;
+            size_t                  morphTargetCount;
+            size_t                  vertexCount;
+            uint32_t                vertexOffset;
         };
 
         Device&                                          device_;
@@ -77,4 +77,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MORPHTARGETMANAGER_HPP
+#endif

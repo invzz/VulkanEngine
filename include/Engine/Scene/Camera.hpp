@@ -21,7 +21,6 @@ namespace engine {
         void setViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up = glm::vec3{0.f, -1.f, 0.f});
         void setViewYXZ(glm::vec3 position, glm::vec3 rotation);
 
-        // Rotation helpers shared by camera-related systems/panels.
         [[nodiscard]] static glm::quat rotationQuatFromYXZ(const glm::vec3& rotation);
         [[nodiscard]] static glm::vec3 rotationYXZFromQuat(const glm::quat& q);
 
@@ -38,9 +37,8 @@ namespace engine {
             return glm::vec3(inverseViewMatrix[3]);
         }
 
-        // Frustum culling support
         struct Frustum {
-            glm::vec4 planes[6];  // Left, Right, Bottom, Top, Near, Far
+            glm::vec4 planes[6];
         };
 
         void                         updateFrustum();
@@ -50,19 +48,15 @@ namespace engine {
         }
 
        private:
-        // projection transform : camera to clip
         glm::mat4 projectionMatrix{1.0f};
 
-        // camera transform : world to camera
         glm::mat4 viewMatrix{1.0f};
 
-        // inverse of camera transform : camera to world
         glm::mat4 inverseViewMatrix{1.0f};
 
-        // Frustum planes for culling
         Frustum frustum{};
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_CAMERA_HPP
+#endif

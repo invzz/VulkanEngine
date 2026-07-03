@@ -15,6 +15,7 @@
 #include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Scene/SpatialSystem.hpp"
 #include "Engine/SystemRegistry.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
@@ -33,7 +34,6 @@
 #include "Engine/Systems/SelectionOutlineSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
-#include "Engine/Scene/SpatialSystem.hpp"
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
@@ -55,12 +55,10 @@ namespace engine {
        public:
         ~EngineState();
 
-        // ---- Lifecycle ----
         void initialize(Device& device, Renderer& renderer, ResourceManager& rm,
             IRenderContextPort* renderContext, Window* window,
             bool mtRecording, uint32_t mtThreads);
 
-        // ---- DI container ----
         template <typename T>
         void registerSystem(std::unique_ptr<T>& sys) {
             systems_[typeid(T)] = sys.get();
@@ -76,7 +74,6 @@ namespace engine {
             return it != systems_.end() ? static_cast<T*>(it->second) : nullptr;
         }
 
-        // ---- Scene ----
         Scene& scene() {
             return scene_;
         }
@@ -90,7 +87,6 @@ namespace engine {
         entt::entity addSpotLight(const std::string& name = "");
         entt::entity addModel(const std::string& name = "", const std::string& path = "");
 
-        // ---- Selection & Camera ----
         entt::entity selectedEntity() const {
             return editor_.selectedEntity;
         }
@@ -104,7 +100,6 @@ namespace engine {
             cameraEntity_ = e;
         }
 
-        // ---- Persistence ----
         void setSerializer(class SceneSerializer* s) {
             serializer_ = s;
         }
@@ -112,12 +107,10 @@ namespace engine {
         bool loadScene(const std::string& path);
         void reconcileSceneLoad();
 
-        // ---- Skybox / IBL ----
         void syncEnvironmentLighting(bool show);
         bool loadIBL(const char* path);
         void resetIBLToFallback();
 
-        // ---- Transform ----
         glm::vec3 getTranslation(entt::entity e) const;
         void      setTranslation(entt::entity e, const glm::vec3& v);
         glm::vec3 getRotation(entt::entity e) const;
@@ -125,7 +118,6 @@ namespace engine {
         glm::vec3 getScale(entt::entity e) const;
         void      setScale(entt::entity e, const glm::vec3& v);
 
-        // ---- Settings ----
         bool& showSkybox() {
             return editor_.showSkybox;
         }
@@ -159,11 +151,9 @@ namespace engine {
         void resetShadowSettings();
         void changeShadowSettings(bool cull, float plr, float slr);
 
-        // ---- Physics ----
         void clearSceneBodies();
         void setGroundEnabled(bool enabled);
 
-        // ---- Descriptors ----
         VkDescriptorSet               gbufferDescriptorSet(int frameIndex) const;
         VkDescriptorSet&              gbufferDescriptorSetRef(int frameIndex);
         VkDescriptorSet               deferredShadowDescriptorSet(int frameIndex) const;
@@ -181,15 +171,12 @@ namespace engine {
         DescriptorSetLayout&          deferredShadowSetLayout();
         DescriptorPool&               deferredShadowPool();
 
-        // ---- Post-processing ----
         void recreatePostProcessingSystem(Device& device, VkRenderPass rp);
 
-        // ---- Spatial acceleration ----
         SpatialSystem& spatialSystem() {
             return *spatial_;
         }
 
-        // ---- Non-owned deps ----
         EditorState& editor() {
             return editor_;
         }
@@ -216,7 +203,6 @@ namespace engine {
         void ensureCameraExists();
         void writeIBLDescriptorsToSets();
 
-        // -- Storage --
         std::unordered_map<std::type_index, void*> systems_;
         ::engine::SystemRegistry                   initRegistry_;
         std::unique_ptr<DescriptorManager>         descriptors_;

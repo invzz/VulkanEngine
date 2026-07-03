@@ -71,7 +71,6 @@ namespace engine {
         order.clear();
         order.reserve(entries_.size());
 
-        // 0 = unvisited, 1 = visiting, 2 = done
         std::vector<uint8_t> marks(entries_.size(), 0);
         for (size_t i = 0; i < entries_.size(); ++i) {
             if (marks[i] == 0 && !dfsVisit(i, marks, order, error)) {

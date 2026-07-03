@@ -32,15 +32,11 @@
 
 namespace engine {
 
-    // ============================================================================
-    // CPU Frustum Culling
-    // ============================================================================
-
     /**
  * @brief Frustum representation using 6 normalized planes
  */
     struct Frustum {
-        glm::vec4 planes[6];  // Left, Right, Bottom, Top, Near, Far
+        glm::vec4 planes[6];
     };
 
     /**
@@ -54,14 +50,13 @@ namespace engine {
         glm::vec4 row2 = vpT[2];
         glm::vec4 row3 = vpT[3];
 
-        f.planes[0] = row3 + row0;  // Left
-        f.planes[1] = row3 - row0;  // Right
-        f.planes[2] = row3 + row1;  // Bottom
-        f.planes[3] = row3 - row1;  // Top
-        f.planes[4] = row2;         // Near
-        f.planes[5] = row3 - row2;  // Far
+        f.planes[0] = row3 + row0;
+        f.planes[1] = row3 - row0;
+        f.planes[2] = row3 + row1;
+        f.planes[3] = row3 - row1;
+        f.planes[4] = row2;
+        f.planes[5] = row3 - row2;
 
-        // Normalize planes
         for (auto& plane : f.planes) {
             float len = glm::length(glm::vec3(plane));
             plane /= len;
@@ -79,13 +74,11 @@ namespace engine {
             glm::vec3 normal(f.planes[i]);
             float     d = f.planes[i].w;
 
-            // Find the positive vertex (farthest in plane normal direction)
             glm::vec3 pVertex;
             pVertex.x = (normal.x >= 0.0f) ? box.max.x : box.min.x;
             pVertex.y = (normal.y >= 0.0f) ? box.max.y : box.min.y;
             pVertex.z = (normal.z >= 0.0f) ? box.max.z : box.min.z;
 
-            // If positive vertex is outside this plane, AABB is completely outside frustum
             if (glm::dot(normal, pVertex) + d < 0.0f) {
                 return false;
             }
@@ -103,7 +96,6 @@ namespace engine {
 
         const AABB& localBounds = model->getLocalBounds();
         if (!localBounds.isValid()) {
-            // No valid bounds - assume visible
             return true;
         }
 
@@ -251,12 +243,10 @@ namespace engine {
 
         createPipelineLayout(globalSetLayout, bindlessSetLayout);
 
-        // Defer pipeline creation if no render pass provided (for testing API only)
         if (renderPass != VK_NULL_HANDLE) {
             createPipeline(renderPass);
         }
 
-        // Default: use a single recording thread (serial). Caller may opt-in.
         multithreadedRecordingEnabled_ = false;
         multithreadedRecordingThreads_ = 0;
     }
@@ -333,14 +323,11 @@ namespace engine {
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultMeshPipelineConfigInfo(pipelineConfig);
 
-        // When a depth prepass is used, the main shading pass will often see equal depth values.
-        // Using LESS here would reject those fragments, making opaque objects disappear or look wrong.
         pipelineConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
         pipelineConfig.renderPass     = renderPass;
         pipelineConfig.pipelineLayout = pipelineLayout;
 
-        // Create Transparent Pipeline (alpha blend compositor)
         PipelineConfigInfo transparentConfig                       = pipelineConfig;
         transparentConfig.colorBlendAttachment.blendEnable         = VK_TRUE;
         transparentConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -350,10 +337,8 @@ namespace engine {
         transparentConfig.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         transparentConfig.colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
 
-        // Fix pointer to attachment
         transparentConfig.colorBlendInfo.pAttachments = &transparentConfig.colorBlendAttachment;
 
-        // Disable depth write for transparent objects
         transparentConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
         transparentPipeline = std::make_unique<Pipeline>(device,
@@ -383,7 +368,6 @@ namespace engine {
                 transparentConfig);
         }
 
-        // Create Transmission Pipeline (no blending, no depth write; shaded refraction)
         PipelineConfigInfo transmissionConfig                = pipelineConfig;
         transmissionConfig.colorBlendAttachment.blendEnable  = VK_FALSE;
         transmissionConfig.colorBlendInfo.pAttachments       = &transmissionConfig.colorBlendAttachment;
@@ -478,16 +462,13 @@ namespace engine {
     void ModelRenderSystem::createGbufferPipeline(VkRenderPass renderPass) {
         assert(pipelineLayout != VK_NULL_HANDLE && "Pipeline layout must be created before pipeline.");
 
-        // Store for use in secondary command buffer inheritance info
         gbufferRenderPass_ = renderPass;
 
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultMeshPipelineConfigInfo(pipelineConfig);
 
-        // Depth compare matches the main mesh pipeline behavior when a depth prepass is used.
         pipelineConfig.depthStencilInfo.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
-        // G-buffer has 4 MRTs (Normal, Albedo, Material, HDR emissive); disable blending for all.
         std::array<VkPipelineColorBlendAttachmentState, 4> attachments{};
         for (auto& a : attachments) {
             a             = pipelineConfig.colorBlendAttachment;
@@ -508,11 +489,9 @@ namespace engine {
 
     void ModelRenderSystem::renderGbuffer(FrameInfo& frameInfo) {
         if (!gbufferPipeline) {
-            // G-buffer not enabled; no-op.
             return;
         }
 
-        // Extract frustum for CPU culling
         glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
         Frustum const   frustum = extractFrustumFromMatrix(vp);
 
@@ -526,16 +505,11 @@ namespace engine {
             }
         };
 
-        // When multithreading is enabled, we use VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS,
-        // which means we cannot record any commands (including pipeline/descriptor binds) to the
-        // primary command buffer within the render pass. All binding is done in secondary CBs.
         if (!multithreadedRecordingEnabled_) {
-            // Bind pipeline + common descriptor sets once on the primary command buffer.
             bindPipelineIfNeeded(gbufferPipeline.get());
             bindBaseDescriptorSets(frameInfo, true);
         }
 
-        // Collect work items (entity + submesh) after culling so we can partition them.
         struct RenderWorkItem {
             entt::entity          entity;
             const Model::SubMesh* subMesh;
@@ -552,7 +526,6 @@ namespace engine {
                 continue;
             }
 
-            // CPU frustum culling: skip entire object if outside view
             glm::mat4 const modelMatrix = transform.modelTransform();
             if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum)) {
                 continue;
@@ -579,14 +552,11 @@ namespace engine {
                     continue;
                 }
 
-                // Add to work list for potential parallel recording
                 workItems.push_back({entity, &subMesh, pMaterial, modelMatrix});
             }
         }
 
-        // If multithreaded recording not enabled, fall back to serial inline path.
         if (!multithreadedRecordingEnabled_) {
-            // Serial replay of collected items - record directly to primary command buffer
             for (const auto& item : workItems) {
                 auto&                      modelComp = view.get<ModelComponent>(item.entity);
                 MeshPushConstantData const push      = makeMeshPush(modelComp, *item.subMesh, item.modelMatrix);
@@ -601,15 +571,10 @@ namespace engine {
             return;
         }
 
-        // --- Secondary command buffer path (multithreaded recording enabled) ---
-        // When multithreading is enabled, we MUST use secondary command buffers because the render pass
-        // was begun with VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS.
-        // If there's no work, we're done (no secondary CBs to execute is valid).
         if (workItems.empty()) {
             return;
         }
 
-        // If the workload is too small for parallelism, use a single secondary CB for serial recording.
         const uint32_t threadCount =
             (workItems.size() < 32 || multithreadedRecordingThreads_ <= 1) ? 1 : std::min<uint32_t>(multithreadedRecordingThreads_, std::max<uint32_t>(1u, std::thread::hardware_concurrency() - 1));
         const size_t chunkSize = (workItems.size() + threadCount - 1) / threadCount;
@@ -620,21 +585,17 @@ namespace engine {
         std::vector<std::thread> workers;
         std::atomic<size_t>      nextIndex{0};
 
-        // Worker lambda: allocate a secondary CB, record assigned items, then return the CB.
         auto workerFn = [&](uint32_t workerId) {
             VkCommandBuffer sec = VK_NULL_HANDLE;
             if (device.allocateSecondaryCommandBuffer(&sec) != VK_SUCCESS) {
-                // Allocation failed for this worker; bail out by leaving sec == VK_NULL_HANDLE
                 return;
             }
 
-            // Secondary CB must be recorded with inheritance info for the active render pass/subpass.
-            // Use gbufferRenderPass_ since we're recording commands for the G-buffer pass.
             VkCommandBufferInheritanceInfo inherit{};
             inherit.sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
             inherit.renderPass  = gbufferRenderPass_;
             inherit.subpass     = 0;
-            inherit.framebuffer = VK_NULL_HANDLE;  // allow compatibility with the active framebuffer
+            inherit.framebuffer = VK_NULL_HANDLE;
 
             VkCommandBufferBeginInfo beginInfo{};
             beginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -646,8 +607,6 @@ namespace engine {
                 return;
             }
 
-            // Set dynamic state locally in the secondary CB to be independent of primary.
-            // Viewport/scissor depend on frame extent.
             VkViewport vp{
                 .x        = 0.0f,
                 .y        = 0.0f,
@@ -660,15 +619,11 @@ namespace engine {
             vkCmdSetViewport(sec, 0, 1, &vp);
             vkCmdSetScissor(sec, 0, 1, &scissor);
 
-            // Secondary command buffers do NOT inherit pipeline state from the primary buffer.
-            // We must bind the pipeline in each secondary command buffer.
             gbufferPipeline->bind(sec);
 
-            // Local FrameInfo to pass into binding helpers (uses the secondary CB)
             FrameInfo localFrame     = frameInfo;
             localFrame.commandBuffer = sec;
 
-            // Bind base descriptor sets in the secondary command buffer as well
             bindBaseDescriptorSets(localFrame, true);
 
             size_t start = nextIndex.fetch_add(chunkSize);
@@ -677,15 +632,11 @@ namespace engine {
                 for (size_t i = start; i < end; ++i) {
                     const auto& item = workItems[i];
 
-                    // Short critical section around material binding to avoid races in
-                    // MaterialRenderBindings (allocation of dynamic offsets).
                     if (materialBindings_ != nullptr) {
-                        // Diagnostic: log before and after the material bind in worker-recorded CBs.
                         std::lock_guard<std::mutex> lk(multithreadBindMutex_);
                         materialBindings_->bindMaterial(localFrame, pipelineLayout, item.material, ((uint32_t) item.entity == frameInfo.selectedObjectId) ? 1.0f : 0.0f);
                     }
 
-                    // Compute push constants and draw (pushConstantsAndDraw is thread-safe for recording)
                     auto&                      modelComp = view.get<ModelComponent>(item.entity);
                     MeshPushConstantData const push      = makeMeshPush(modelComp, *item.subMesh, item.modelMatrix);
                     pushConstantsAndDraw(device, sec, pipelineLayout, push, item.subMesh->meshletCount);
@@ -699,40 +650,32 @@ namespace engine {
                 return;
             }
 
-            // Push recorded secondary buffer into the shared vector (synchronized by mutex)
             {
                 std::lock_guard<std::mutex> lk(multithreadBindMutex_);
                 secondaryBuffers.push_back(sec);
             }
         };
 
-        // --- Pre-worker fast-fail validation: ensure per-frame material descriptor set is valid for workers.
         if (materialBindings_ != nullptr) {
             if (!materialBindings_->frameDescriptorSetValid(frameInfo.frameIndex)) {
-                // Defensive: fail early and fall back to serial path in non-release builds so the test fails with a clear message.
                 engine::Logger::error(engine::LogChannel::Render, "[ModelRenderSystem] ERROR: material descriptor set for frame ", frameInfo.frameIndex, " is VK_NULL_HANDLE before multithreaded recording");
                 assert(false && "material descriptor set invalid before multithreaded recording");
             }
         }
 
-        // Launch workers
         for (uint32_t t = 0; t < threadCount; ++t) {
             workers.emplace_back(workerFn, t);
         }
 
-        // Join workers
         for (auto& w : workers) {
             if (w.joinable())
                 w.join();
         }
 
-        // Execute recorded secondary command buffers on the primary command buffer
         if (!secondaryBuffers.empty()) {
             vkCmdExecuteCommands(frameInfo.commandBuffer, static_cast<uint32_t>(secondaryBuffers.size()), secondaryBuffers.data());
         }
 
-        // Defer freeing secondary command buffers until the frame is complete.
-        // Freeing them immediately invalidates the primary command buffer's recording.
         Device* devicePtr = &device;
         for (auto cb : secondaryBuffers) {
             device.deferDestroy([devicePtr, cb](VkDevice) { devicePtr->freeSecondaryCommandBuffer(cb); });
@@ -782,7 +725,6 @@ namespace engine {
         PipelineConfigInfo prepassConfig{};
         Pipeline::defaultMeshPipelineConfigInfo(prepassConfig);
 
-        // Depth-only: no color attachments in the render pass.
         prepassConfig.colorBlendInfo.attachmentCount = 0;
         prepassConfig.colorBlendInfo.pAttachments    = nullptr;
 
@@ -827,7 +769,6 @@ namespace engine {
     }
 
     void ModelRenderSystem::renderTransmission(FrameInfo& frameInfo) {
-        // Extract frustum for CPU culling
         glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
         Frustum const   frustum = extractFrustumFromMatrix(vp);
 
@@ -867,7 +808,6 @@ namespace engine {
                 continue;
             }
 
-            // CPU frustum culling: skip entire object if outside view
             glm::mat4 const modelMatrix = transform.modelTransform();
             if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum)) {
                 continue;
@@ -900,7 +840,6 @@ namespace engine {
     }
 
     void ModelRenderSystem::renderAlphaBlend(FrameInfo& frameInfo) {
-        // Extract frustum for CPU culling
         glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
         Frustum const   frustum = extractFrustumFromMatrix(vp);
 
@@ -950,7 +889,6 @@ namespace engine {
                 continue;
             }
 
-            // CPU frustum culling: skip entire object if outside view
             glm::mat4 const modelMatrix = transform.modelTransform();
             if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum)) {
                 continue;
@@ -995,11 +933,9 @@ namespace engine {
 
     void ModelRenderSystem::renderDepthPrepass(FrameInfo& frameInfo) {
         if (!depthPrepassPipeline) {
-            // Depth prepass is optional until wired into RenderGraph.
             return;
         }
 
-        // Extract frustum for CPU culling
         glm::mat4 const vp      = frameInfo.camera.getProjection() * frameInfo.camera.getView();
         Frustum const   frustum = extractFrustumFromMatrix(vp);
 
@@ -1018,7 +954,6 @@ namespace engine {
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &frameInfo.globalDescriptorSet, 0, nullptr);
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &frameInfo.globalTextureSet, 0, nullptr);
 
-        // Bind lighting sets (pipeline layout expects it, even if not used by the depth-only fragment shader)
         if (lightingBindings_ != nullptr) {
             lightingBindings_->bindShadow(frameInfo, pipelineLayout);
             lightingBindings_->bindIBL(frameInfo, pipelineLayout);
@@ -1029,10 +964,8 @@ namespace engine {
         auto renderItem = [&](entt::entity entity, const Model::SubMesh& subMesh, const PBRMaterial* pMaterial, const glm::mat4& modelMatrix) {
             auto& modelComp = view.get<ModelComponent>(entity);
 
-            // Depth prepass skips HZB culling (bit 2) to ensure complete depth buffer for HZB generation
             MeshPushConstantData const push = makeMeshPush(modelComp, subMesh, modelMatrix);
 
-            // Populate a default material record so the dynamic UBO binding is always valid.
             if (materialBindings_ != nullptr) {
                 materialBindings_->bindMaterial(frameInfo, pipelineLayout, nullptr, 0.0f);
             }
@@ -1040,14 +973,12 @@ namespace engine {
             pushConstantsAndDraw(device, frameInfo.commandBuffer, pipelineLayout, push, subMesh.meshletCount);
         };
 
-        // Render opaque-only; skip masked/transparent materials for now.
         for (auto entity : view) {
             auto [modelComp, transform] = view.get<ModelComponent, TransformComponent>(entity);
             if (!modelComp.model) {
                 continue;
             }
 
-            // CPU frustum culling: skip entire object if outside view
             glm::mat4 const modelMatrix = transform.modelTransform();
             if (!isEntityVisible(modelComp.model.get(), modelMatrix, frustum)) {
                 continue;

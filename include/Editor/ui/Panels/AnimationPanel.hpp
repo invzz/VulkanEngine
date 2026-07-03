@@ -15,12 +15,12 @@ namespace engine {
  * @brief State for the timeline widget
  */
     struct TimelineState {
-        float totalDuration{0.0f};  // Total timeline duration
-        float currentTime{0.0f};    // Playhead position
-        float zoom{1.0f};           // Pixels per second
-        bool  isScrubbing{false};   // Mouse is dragging the playhead
-        float clipWidth{200.0f};    // Width of clip tracks
-        int   selectedClip{-1};     // Currently selected clip index (-1 = none)
+        float totalDuration{0.0f};
+        float currentTime{0.0f};
+        float zoom{1.0f};
+        bool  isScrubbing{false};
+        float clipWidth{200.0f};
+        int   selectedClip{-1};
     };
 
     /**
@@ -35,46 +35,41 @@ namespace engine {
        private:
         Scene& scene_;
 
-        // Timeline
         TimelineState timeline_;
         std::string   timelineSearchFilter_;
 
-        // Per-track animation state for timeline rendering
         struct EntityTrackData {
             std::string name;
             float       duration{0.0f};
-            float       startOffset{0.0f};  // When the clip starts relative to timeline start
+            float       startOffset{0.0f};
             float       weight{1.0f};
-            float       crossfadeDuration{0.0f};  // Crossfade duration in seconds
+            float       crossfadeDuration{0.0f};
             float       speed{1.0f};
             bool        selected{false};
-            // Keyframes for visualization
+
             std::vector<float> keyframeTimes;
-            // Per-bone visibility toggle state
+
             std::vector<bool> boneVisible;
         };
 
-        // Per-entity animation data for display
         struct EntityAnimData {
             uint32_t                     entityId;
             bool                         expanded{true};
-            std::vector<std::string>     clipNames;        // Names of active clips on this model
-            std::vector<float>           clipDuration;     // Duration of each clip
-            std::vector<float>           clipCurrentTime;  // Current playback time of each clip
+            std::vector<std::string>     clipNames;
+            std::vector<float>           clipDuration;
+            std::vector<float>           clipCurrentTime;
             int                          selectedClipIndex{-1};
             float                        selectedClipWeight{1.0f};
             float                        selectedClipSpeed{1.0f};
-            float                        selectedCrossfadeDuration{0.0f};  // Crossfade duration for selected clip
+            float                        selectedCrossfadeDuration{0.0f};
             std::vector<EntityTrackData> tracks;
         };
 
         std::vector<EntityAnimData> entityAnimData_;
 
-        // ── Animation Graph Editor ────────────────────────────────────────
         ui::AnimationGraphEditor graphEditor_;
         bool                     showGraphEditor_{false};
 
-        // Timeline helpers
         void updateTimelineState();
         void renderTimeline();
         void renderEntityAnimations();
@@ -84,4 +79,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_ANIMATIONPANEL_HPP
+#endif

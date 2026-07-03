@@ -29,15 +29,12 @@ namespace engine {
         MaterialSystem(const MaterialSystem&)            = delete;
         MaterialSystem& operator=(const MaterialSystem&) = delete;
 
-        // Get or create material descriptor set for a given material
         VkDescriptorSet getMaterialDescriptorSet(const PBRMaterial& material);
 
-        // Clear the descriptor cache (call when materials are modified)
         void clearDescriptorCache() {
             materialDescriptorCache_.clear();
         }
 
-        // Access to descriptor set layout
         [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const {
             return materialSetLayout_->getDescriptorSetLayout();
         }
@@ -49,18 +46,15 @@ namespace engine {
 
         Device& device_;
 
-        // Material descriptor system
         std::unique_ptr<DescriptorSetLayout> materialSetLayout_;
         std::unique_ptr<DescriptorPool>      materialDescriptorPool_;
 
-        // Cache for material descriptor sets (key = material pointer address as hash)
         std::unordered_map<size_t, VkDescriptorSet> materialDescriptorCache_;
 
-        // Default textures for missing material maps
         std::shared_ptr<Texture> defaultWhiteTexture_;
         std::shared_ptr<Texture> defaultNormalTexture_;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MATERIALSYSTEM_HPP
+#endif

@@ -1,12 +1,13 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SPATIALSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_SPATIALSYSTEM_HPP
 
-#include <entt/entt.hpp>
 #include <glm/glm.hpp>
+
+#include <entt/entt.hpp>
 #include <optional>
 #include <vector>
 
-#include "ModelLib/Resources/Model.hpp"  // AABB
+#include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
 
@@ -21,14 +22,14 @@ namespace engine {
      * Evolves to dynamic/static split when profiling demands it.
      */
     class SpatialSystem {
-    public:
+       public:
         /**
          * @brief Hit record returned by raycast queries.
          */
         struct RayHit {
             entt::entity entity;
-            float      distance;  // distance along ray origin
-            glm::vec3  position;  // world-space hit position
+            float        distance;
+            glm::vec3    position;
         };
 
         /**
@@ -36,7 +37,7 @@ namespace engine {
          */
         struct Ray {
             glm::vec3 origin;
-            glm::vec3 direction;  // must be normalized
+            glm::vec3 direction;
         };
 
         /**
@@ -48,8 +49,8 @@ namespace engine {
          * @param registry EnTT registry to scan.
          * @param modelMap Map from entity → model for local bounds.
          */
-        void rebuild(entt::registry& registry,
-                     const std::unordered_map<entt::entity, const AABB*>& modelBounds);
+        void rebuild(entt::registry&                             registry,
+            const std::unordered_map<entt::entity, const AABB*>& modelBounds);
 
         /**
          * @brief Raycast against the BVH broadphase.
@@ -73,7 +74,7 @@ namespace engine {
          */
         [[nodiscard]] std::vector<entt::entity> queryAABB(const AABB& bounds) const;
 
-    private:
+       private:
         /**
          * @brief BVH node.
          *
@@ -81,10 +82,10 @@ namespace engine {
          * Leaf nodes: entity != entt::null, left == UINT32_MAX.
          */
         struct Node {
-            AABB            bounds;
-            uint32_t        left  = UINT32_MAX;
-            uint32_t        right = UINT32_MAX;
-            entt::entity   entity = entt::null;
+            AABB         bounds;
+            uint32_t     left   = UINT32_MAX;
+            uint32_t     right  = UINT32_MAX;
+            entt::entity entity = entt::null;
         };
 
         /**
@@ -117,14 +118,13 @@ namespace engine {
          */
         void queryAABBT(const AABB& bounds, std::vector<entt::entity>& out) const;
 
-        // BVH storage
         std::vector<Node> nodes_;
-        // Leaf entries: [entity, worldBounds]
+
         std::vector<std::pair<entt::entity, AABB>> leaves_;
-        // Root node index
+
         uint32_t root_ = UINT32_MAX;
     };
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_SPATIALSYSTEM_HPP
+#endif

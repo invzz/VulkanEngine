@@ -44,7 +44,7 @@ namespace engine::ibl_detail::vtex {
                 return 16;
             case VK_FORMAT_BC6H_UFLOAT_BLOCK:
             case VK_FORMAT_BC6H_SFLOAT_BLOCK:
-                // Compressed formats are block-based (4x4 blocks), report block size (bytes per block)
+
                 return 16;
             default:
                 break;
@@ -58,7 +58,6 @@ namespace engine::ibl_detail::vtex {
 
         uint32_t const bpp = bytesPerPixelFor(format);
 
-        // Validate size roughly matches expectations
         size_t expected = 0;
         for (uint32_t mip = 0; mip < mipLevels; ++mip) {
             uint32_t const w = (std::max) (1u, width >> mip);
@@ -137,7 +136,6 @@ namespace engine::ibl_detail::vtex {
             }
         }
 
-        // Transition, copy, transition back.
         ibl_detail::transitionImageLayout(device, image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, mipLevels, layers);
         device.memory().copyImageToBuffer(image, staging.getBuffer(), regions);
         ibl_detail::transitionImageLayout(device, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels, layers);
@@ -153,7 +151,6 @@ namespace engine::ibl_detail::vtex {
         header.layers     = layers;
         header.bytesPerPx = bpp;
 
-        // Ensure the output directory exists before attempting to open the file.
         std::filesystem::path outPath(filePath);
         if (outPath.has_parent_path()) {
             std::error_code ec;
@@ -189,7 +186,7 @@ namespace engine::ibl_detail::vtex {
         if (compressedData == nullptr)
             return false;
 
-        uint32_t const bpp = bytesPerPixelFor(compressedFormat);  // interpreted as bytes per block for compressed
+        uint32_t const bpp = bytesPerPixelFor(compressedFormat);
 
         Header header;
         header.vkFormat   = static_cast<uint32_t>(compressedFormat);
@@ -213,7 +210,7 @@ namespace engine::ibl_detail::vtex {
             return false;
 
         out.write(reinterpret_cast<const char*>(&header), sizeof(header));
-        // Write compressed payload as-is; caller must ensure correct compressed layout (mips/blocks)
+
         out.write(reinterpret_cast<const char*>(compressedData), static_cast<std::streamsize>(compressedSize));
         out.close();
 
@@ -250,7 +247,6 @@ namespace engine::ibl_detail::vtex {
         if (header.bytesPerPx != bytesPerPixelFor(format))
             return false;
 
-        // Defer destroys of previous resources to avoid destroying while still in use
         if (sampler != VK_NULL_HANDLE) {
             VkSampler toDestroy = sampler;
             device.deferDestroy([toDestroy](VkDevice dev) { vkDestroySampler(dev, toDestroy, nullptr); });

@@ -12,8 +12,6 @@ namespace engine {
         explicit PhysicsPanel(EngineState& state);
 
         void render(FrameInfo& frameInfo) override;
-        // PhysicsPanel docks into the main dockspace like all other panels.
-        // The dock zone is configured via DockConstraints in app.cpp.
 
        private:
         EngineState& state_;

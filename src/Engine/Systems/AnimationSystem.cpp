@@ -6,6 +6,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
@@ -33,11 +34,8 @@ namespace engine {
     AnimationSystem::~AnimationSystem() = default;
 
     void AnimationSystem::update(FrameInfo& frameInfo) {
-        // Step 1: Update animation components (CPU-side: interpolate
-        // weights/transforms)
         updateAnimations(frameInfo);
 
-        // Step 2: Dispatch morph target compute shaders (GPU-side: blend vertices)
         updateMorphTargets(frameInfo);
     }
 
@@ -50,47 +48,38 @@ namespace engine {
             if (!anim.model)
                 continue;
 
-            // Step animation graph if present
             if (anim.graph) {
                 anim.graph->step(frameInfo.frameTime);
             }
 
-            // Lazy-create controller if needed
             if (!anim.controller) {
                 anim.controller = std::make_shared<AnimationController>();
             }
 
-            // If no active clips, check legacy single-clip mode
             if (!anim.controller->hasActiveClips()) {
                 if (anim.isPlaying && anim.currentAnimationIndex >= 0) {
-                    // Legacy: create controller and play the current animation
                     anim.controller->play(anim.currentAnimationIndex, *anim.model);
                 } else {
                     continue;
                 }
             }
 
-            // Prepare per-bone accumulators
             auto&                  nodes = anim.model->getNodes();
             std::vector<glm::vec3> localTrans(nodes.size(), glm::vec3(0.0f));
             std::vector<glm::quat> localRot(nodes.size(), glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
             std::vector<glm::vec3> localScale(nodes.size(), glm::vec3(1.0f));
 
-            // Update controller — steps time, fires events, accumulates bone transforms
             anim.controller->update(frameInfo.frameTime, *anim.model,
                 localTrans, localRot, localScale);
 
-            // Sync isPlaying state from controller
             anim.isPlaying = anim.controller->hasActiveClips();
 
-            // Apply local transforms to model nodes
             for (size_t i = 0; i < nodes.size(); ++i) {
                 nodes[i].translation = localTrans[i];
                 nodes[i].rotation    = localRot[i];
                 nodes[i].scale       = localScale[i];
             }
 
-            // Compute global transforms (reusing existing helper)
             anim.nodeTransforms.resize(nodes.size(), glm::mat4(1.0f));
             for (size_t i = 0; i < nodes.size(); ++i) {
                 bool isRoot = true;
@@ -105,7 +94,6 @@ namespace engine {
                 }
             }
 
-            // Apply root node transform to entity's TransformComponent
             int rootNodeIndex = -1;
             for (size_t i = 0; i < nodes.size(); ++i) {
                 bool isRoot = true;
@@ -139,24 +127,21 @@ namespace engine {
             auto& modelComp = view.get<ModelComponent>(entity);
 
             if (modelComp.model && modelComp.model->hasMorphTargets()) {
-                // Initialize GPU buffers for new models
                 if (!morphManager_->isModelInitialized(modelComp.model.get())) {
                     try {
                         morphManager_->initializeModel(modelComp.model);
                     } catch (const std::exception& e) {
-                        engine::Logger::error(engine::LogChannel::Render, "[AnimationSystem] ERROR initializing morph for object ", (uint32_t)entity, ": ", e.what());
+                        engine::Logger::error(engine::LogChannel::Render, "[AnimationSystem] ERROR initializing morph for object ", (uint32_t) entity, ": ", e.what());
                         continue;
                     }
                 }
 
-                // Dispatch compute shader
                 morphManager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
             }
         }
     }
 
     void AnimationSystem::updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation) {
-        // Apply animation to nodes
         auto& nodes = animComp.model->getNodes();
 
         for (const auto& channel : animation.channels) {
@@ -183,7 +168,6 @@ namespace engine {
             }
         }
 
-        // Recompute global transforms
         for (size_t i = 0; i < nodes.size(); i++) {
             bool isRoot = true;
             for (auto& node : nodes) {

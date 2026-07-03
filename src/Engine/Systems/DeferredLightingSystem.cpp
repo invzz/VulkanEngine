@@ -48,24 +48,20 @@ namespace engine {
         pipelineConfig.renderPass     = renderPass;
         pipelineConfig.pipelineLayout = pipelineLayout;
 
-        // Additive lighting over pre-filled HDR (emissive was written earlier).
         pipelineConfig.colorBlendAttachment.blendEnable         = VK_TRUE;
         pipelineConfig.colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
         pipelineConfig.colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
         pipelineConfig.colorBlendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
-        // Keep alpha deterministic (overwrite).
+
         pipelineConfig.colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
         pipelineConfig.colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
         pipelineConfig.colorBlendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
 
-        // Fullscreen triangle: no depth test/write.
         pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
 
-        // Rasterization: Cull mode none
         pipelineConfig.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
 
-        // Empty vertex input state (generating vertices in shader)
         pipelineConfig.bindingDescriptions.clear();
         pipelineConfig.attributeDescriptions.clear();
 
@@ -75,13 +71,11 @@ namespace engine {
     void DeferredLightingSystem::render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet) {
         pipeline->bind(frameInfo.commandBuffer);
 
-        // Defensive: validate all descriptor sets before binding
         assert(globalSet != VK_NULL_HANDLE && "DeferredLightingSystem: global descriptor set is null");
         assert(gbufferSet != VK_NULL_HANDLE && "DeferredLightingSystem: gbuffer descriptor set is null");
         assert(shadowSet != VK_NULL_HANDLE && "DeferredLightingSystem: shadow descriptor set is null");
         assert(iblSet != VK_NULL_HANDLE && "DeferredLightingSystem: IBL descriptor set is null");
 
-        // Bind descriptor sets in pipeline layout order: global (0), gbuffer (1), shadow (2), ibl (3)
         std::array<VkDescriptorSet, 4> sets{globalSet, gbufferSet, shadowSet, iblSet};
         vkCmdBindDescriptorSets(frameInfo.commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(sets.size()), sets.data(), 0, nullptr);
 

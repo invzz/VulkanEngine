@@ -19,7 +19,18 @@ namespace engine {
         [[nodiscard]] virtual const std::string& getName() const               = 0;
     };
 
-    // A generic pass that executes a lambda
+    class RenderPassBase : public IRenderPass {
+       public:
+        explicit RenderPassBase(std::string name) : name_(std::move(name)) {}
+
+        [[nodiscard]] const std::string& getName() const override {
+            return name_;
+        }
+
+       private:
+        std::string name_;
+    };
+
     class LambdaRenderPass : public IRenderPass {
        public:
         using Callback = std::function<void(FrameInfo&)>;
@@ -52,4 +63,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERGRAPH_HPP
+#endif

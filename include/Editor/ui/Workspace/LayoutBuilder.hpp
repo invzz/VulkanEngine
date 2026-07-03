@@ -17,8 +17,8 @@ namespace engine {
      * reads these entries and turns them into ImGui::DockBuilder* calls.
      */
     struct LayoutEntry {
-        std::string panelName;  // registry key, e.g. "Scene Objects"
-        DockZone    zone;       // preferred zone
+        std::string panelName;
+        DockZone    zone;
     };
 
     /**
@@ -42,27 +42,17 @@ namespace engine {
        public:
         LayoutBuilder() = default;
 
-        /// Add a panel → zone mapping. Order matters only for ambiguous zones
-        /// (e.g. two panels both targeting Center will be tabbed in insertion order).
         void addEntry(const std::string& panelName, DockZone zone);
 
-        /// Remove all entries. Call before re-adding if changing the preset.
         void clear();
 
-        /// Build the layout into `dockspaceId` (size = work-area size).
-        /// Calls ImGui::DockBuilderRemoveNode, AddNode, SplitNode, DockWindow, Finish.
-        /// `dockZone` panels become tabs inside the same node when they share a zone.
         void apply(ImGuiID dockspaceId, const ImVec2& dockspaceSize, LayoutPreset preset);
 
-        /// Number of registered entries.
         size_t entryCount() const {
             return entries_.size();
         }
 
        private:
-        // Internal: dock a single window name into a node id, respecting DockConstraints
-        // (min size is applied as ImGuiWindowClass for now; full enforcement happens
-        // in WorkspaceManager::enforceConstraints if needed).
         void dockWindowToNode(ImGuiID nodeId, const std::string& windowName);
 
         std::vector<LayoutEntry> entries_;
@@ -70,4 +60,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // EDITOR_WORKSPACE_LAYOUT_BUILDER_HPP
+#endif

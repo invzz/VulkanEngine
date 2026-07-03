@@ -35,7 +35,7 @@ namespace {
         }
 
         glm::mat4 transform = glm::mat4(1.0f);
-        transform = glm::translate(transform, node.translation);
+        transform           = glm::translate(transform, node.translation);
         transform *= glm::mat4_cast(node.rotation);
         transform = glm::scale(transform, node.scale);
         return transform;
@@ -60,16 +60,13 @@ namespace engine {
         if (ImGui::Begin("Scene Objects", &visible_)) {
             rm.updateAsyncCallbacks();
 
-            // Search filter
             static char searchFilter[128] = "";
             ImGui::SetNextItemWidth(-1);
             ui::UI::InputText("##search", searchFilter, sizeof(searchFilter));
             ui::UI::Separator();
 
-            // Pending loads
             ui::UI::DrawScenePendingLoadsSection(pendingLoads_, &rm);
 
-            // Entity count
             auto view = registry.view<entt::entity>();
             ui::UI::TextColored(("Entities: " + std::to_string(view.size())).c_str(),
                 ImVec4(0.6f, 0.6f, 0.7f, 1.0f));
@@ -115,7 +112,7 @@ namespace engine {
                         if (mc.model->hasMorphTargets() && !reg.all_of<AnimationComponent>(entity))
                             reg.emplace<AnimationComponent>(entity, mc.model);
 
-                        // Create light entities from KHR_lights_punctual data
+                        
                         if (mc.model->hasLights()) {
                             auto const& lights = mc.model->getLights();
                             for (auto const& light : lights) {
@@ -170,10 +167,7 @@ namespace engine {
                             }
                         }
 
-                        engine::Logger::info(engine::LogChannel::Scene, "[Model] Added to scene (async): ", fullPath);
-                    }, [fullPath](const std::string& error) {
-                        engine::Logger::error(engine::LogChannel::Scene, "[Model] Async load failed for ", fullPath, ": ", error);
-                    });
+                        engine::Logger::info(engine::LogChannel::Scene, "[Model] Added to scene (async): ", fullPath); }, [fullPath](const std::string& error) { engine::Logger::error(engine::LogChannel::Scene, "[Model] Async load failed for ", fullPath, ": ", error); });
 
                 pendingLoads_.push_back({id, fullPath, name, opts, colliderMode});
             };

@@ -82,7 +82,6 @@ namespace engine {
             return depthTargets[frameIndex].getImage();
         }
 
-        // Offscreen color image (render target)
         [[nodiscard]] VkImage getColorImage(int frameIndex) const {
             return colorTargets[frameIndex].getImage();
         }
@@ -93,7 +92,6 @@ namespace engine {
             return colorTargets[frameIndex].getSampler();
         }
 
-        // G-buffer attachments
         [[nodiscard]] VkImageView getGbufferNormalImageView(int frameIndex) const {
             return gbufferNormalTargets[frameIndex].getView();
         }
@@ -104,7 +102,6 @@ namespace engine {
             return gbufferMaterialTargets[frameIndex].getView();
         }
 
-        // Scene color copy (for transmission refraction sampling)
         [[nodiscard]] VkImageView getSceneColorImageView(int frameIndex) const {
             return sceneColorTargets[frameIndex].getView();
         }
@@ -131,20 +128,16 @@ namespace engine {
         VkRenderPass gbufferRenderPass{VK_NULL_HANDLE};
         VkRenderPass deferredLightingRenderPass{VK_NULL_HANDLE};
 
-        // Color attachment
         std::vector<RenderTarget> colorTargets;
 
-        // Scene color copy (sampled in transmission pass)
         std::vector<RenderTarget> sceneColorTargets;
 
-        // G-buffer attachments (opaque)
         std::vector<RenderTarget> gbufferNormalTargets;
 
         std::vector<RenderTarget> gbufferAlbedoTargets;
 
         std::vector<RenderTarget> gbufferMaterialTargets;
 
-        // Depth attachment
         std::vector<RenderTarget> depthTargets;
 
         std::vector<VkFramebuffer> framebuffers;
@@ -157,4 +150,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
+#endif

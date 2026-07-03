@@ -8,4 +8,4 @@
 #include "Engine/Graphics/RenderTarget.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 
-#endif  // VULKANENGINE_INCLUDE_RENDERING_HPP
+#endif

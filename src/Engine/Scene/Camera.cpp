@@ -1,6 +1,5 @@
 #include "Engine/Scene/Camera.hpp"
 
-// std
 #include <cassert>
 #include <cmath>
 
@@ -133,23 +132,20 @@ namespace engine {
     }
 
     void Camera::updateFrustum() {
-        // Extract frustum planes from view-projection matrix
         glm::mat4 vp = projectionMatrix * viewMatrix;
 
-        // Left plane
         frustum.planes[0] = glm::vec4(vp[0][3] + vp[0][0], vp[1][3] + vp[1][0], vp[2][3] + vp[2][0], vp[3][3] + vp[3][0]);
-        // Right plane
+
         frustum.planes[1] = glm::vec4(vp[0][3] - vp[0][0], vp[1][3] - vp[1][0], vp[2][3] - vp[2][0], vp[3][3] - vp[3][0]);
-        // Bottom plane
+
         frustum.planes[2] = glm::vec4(vp[0][3] + vp[0][1], vp[1][3] + vp[1][1], vp[2][3] + vp[2][1], vp[3][3] + vp[3][1]);
-        // Top plane
+
         frustum.planes[3] = glm::vec4(vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1]);
-        // Near plane
+
         frustum.planes[4] = glm::vec4(vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2]);
-        // Far plane
+
         frustum.planes[5] = glm::vec4(vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2]);
 
-        // Normalize planes
         for (auto& plane : frustum.planes) {
             float const length = glm::length(glm::vec3(plane));
             plane /= length;
@@ -157,13 +153,12 @@ namespace engine {
     }
 
     bool Camera::isInFrustum(const glm::vec3& center, float radius) const {
-        // Test sphere against all 6 frustum planes
         for (auto plane : frustum.planes) {
             float const distance = glm::dot(glm::vec3(plane), center) + plane.w;
             if (distance < -radius) {
-                return false;  // Sphere is completely outside this plane
+                return false;
             }
         }
-        return true;  // Sphere intersects or is inside frustum
+        return true;
     }
 }  // namespace engine

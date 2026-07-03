@@ -49,4 +49,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENESERIALIZER_HPP
+#endif

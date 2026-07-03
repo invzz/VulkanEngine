@@ -14,10 +14,6 @@ namespace engine::test {
 
     class DescriptorsTest : public DeviceFixture {};
 
-    // ============================================================================
-    // DescriptorSetLayout::Builder Tests
-    // ============================================================================
-
     TEST_F(DescriptorsTest, LayoutBuilder_SingleBinding) {
         auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
@@ -37,7 +33,6 @@ namespace engine::test {
     }
 
     TEST_F(DescriptorsTest, LayoutBuilder_NonSequentialBindings) {
-        // Test that non-sequential binding numbers work (e.g., 0, 2, 5)
         auto layout = DescriptorSetLayout::Builder(device())
                           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
                           .addBinding(5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -49,7 +44,6 @@ namespace engine::test {
     }
 
     TEST_F(DescriptorsTest, LayoutBuilder_WithArrayCount) {
-        // Test binding with multiple descriptors (array)
         auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4).build();
 
         ASSERT_NE(layout, nullptr);
@@ -71,10 +65,6 @@ namespace engine::test {
         ASSERT_NE(layout, nullptr);
         EXPECT_NE(layout->getDescriptorSetLayout(), VK_NULL_HANDLE);
     }
-
-    // ============================================================================
-    // DescriptorPool::Builder Tests
-    // ============================================================================
 
     TEST_F(DescriptorsTest, PoolBuilder_SinglePoolSize) {
         auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
@@ -115,13 +105,9 @@ namespace engine::test {
         auto pool = DescriptorPool::Builder(device()).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000).build();
 
         ASSERT_NE(pool, nullptr);
-        // Default maxSets is 1000
+
         EXPECT_EQ(pool->getMaxSets(), 1000u);
     }
-
-    // ============================================================================
-    // DescriptorPool Allocation Tests
-    // ============================================================================
 
     TEST_F(DescriptorsTest, Pool_AllocateSingleDescriptor) {
         auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
@@ -146,7 +132,6 @@ namespace engine::test {
             EXPECT_NE(set, VK_NULL_HANDLE);
         }
 
-        // Verify all sets are unique
         std::set<VkDescriptorSet> uniqueSets(descriptorSets.begin(), descriptorSets.end());
         EXPECT_EQ(uniqueSets.size(), descriptorSets.size());
     }
@@ -156,13 +141,11 @@ namespace engine::test {
 
         auto pool = DescriptorPool::Builder(device()).setMaxSets(3).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3).build();
 
-        // Allocate all sets
         for (int i = 0; i < 3; ++i) {
             VkDescriptorSet set = VK_NULL_HANDLE;
             EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set));
         }
 
-        // Reset and allocate again
         pool->resetPool();
 
         VkDescriptorSet newSet = VK_NULL_HANDLE;
@@ -180,24 +163,17 @@ namespace engine::test {
             EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set));
         }
 
-        // Free the descriptors
         pool->freeDescriptors(sets);
 
-        // Should be able to allocate again after freeing
         VkDescriptorSet newSet = VK_NULL_HANDLE;
         EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), newSet));
     }
-
-    // ============================================================================
-    // DescriptorWriter Tests
-    // ============================================================================
 
     TEST_F(DescriptorsTest, Writer_WriteBuffer) {
         auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
         auto pool = DescriptorPool::Builder(device()).setMaxSets(10).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10).build();
 
-        // Create a buffer
         Buffer buffer(device(), sizeof(float) * 16, 1, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         VkDescriptorBufferInfo bufferInfo{};
@@ -253,7 +229,6 @@ namespace engine::test {
 
         ASSERT_NE(descriptorSet, VK_NULL_HANDLE);
 
-        // Overwrite with a different buffer
         VkDescriptorBufferInfo bufferInfo2{};
         bufferInfo2.buffer = buffer2.getBuffer();
         bufferInfo2.offset = 0;
@@ -261,7 +236,6 @@ namespace engine::test {
 
         DescriptorWriter(*layout, *pool).writeBuffer(0, &bufferInfo2).overwrite(descriptorSet);
 
-        // Descriptor set should still be valid (can't easily verify contents without rendering)
         EXPECT_NE(descriptorSet, VK_NULL_HANDLE);
     }
 
@@ -294,14 +268,9 @@ namespace engine::test {
         EXPECT_NE(descriptorSet, VK_NULL_HANDLE);
     }
 
-    // ============================================================================
-    // Edge Case Tests
-    // ============================================================================
-
     TEST_F(DescriptorsTest, Pool_ExhaustionWithoutOverflow) {
         auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-        // Create a very small pool
         auto pool = DescriptorPool::Builder(device()).setMaxSets(2).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).setAllowOverflow(false).build();
 
         VkDescriptorSet set1 = VK_NULL_HANDLE, set2 = VK_NULL_HANDLE, set3 = VK_NULL_HANDLE;
@@ -309,14 +278,12 @@ namespace engine::test {
         EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set1));
         EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set2));
 
-        // Third allocation should fail (pool exhausted, no overflow)
         EXPECT_FALSE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set3));
     }
 
     TEST_F(DescriptorsTest, Pool_ExhaustionWithOverflow) {
         auto layout = DescriptorSetLayout::Builder(device()).addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT).build();
 
-        // Create a very small pool with overflow enabled
         auto pool = DescriptorPool::Builder(device()).setMaxSets(2).addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).setAllowOverflow(true).build();
 
         VkDescriptorSet set1 = VK_NULL_HANDLE, set2 = VK_NULL_HANDLE, set3 = VK_NULL_HANDLE;
@@ -324,13 +291,11 @@ namespace engine::test {
         EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set1));
         EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set2));
 
-        // Third allocation should succeed (overflow pool created)
         EXPECT_TRUE(pool->allocateDescriptor(layout->getDescriptorSetLayout(), set3));
         EXPECT_NE(set3, VK_NULL_HANDLE);
     }
 
     TEST_F(DescriptorsTest, Layout_EmptyLayout) {
-        // An empty layout (no bindings) should still be valid
         auto layout = DescriptorSetLayout::Builder(device()).build();
 
         ASSERT_NE(layout, nullptr);
@@ -338,7 +303,6 @@ namespace engine::test {
     }
 
     TEST_F(DescriptorsTest, Pool_AllDescriptorTypes) {
-        // Test pool with many different descriptor types
         auto pool = DescriptorPool::Builder(device())
                         .setMaxSets(100)
                         .addPoolSize(VK_DESCRIPTOR_TYPE_SAMPLER, 10)

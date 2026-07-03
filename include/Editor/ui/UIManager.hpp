@@ -98,4 +98,4 @@ namespace engine {
     };
 }  // namespace engine
 
-#endif  // EDITOR_UIMANAGER_HPP
+#endif

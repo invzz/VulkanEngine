@@ -16,7 +16,7 @@ namespace engine {
         ColliderDebugRenderSystem& collider,
         SelectionOutlineSystem&    outline,
         Renderer& renderer, const EditorState& editor)
-        : models_(models), grid_(grid), light_(light), camera_(camera), collider_(collider), outline_(outline), renderer_(renderer), editor_(editor) {}
+        : RenderPassBase("Forward"), models_(models), grid_(grid), light_(light), camera_(camera), collider_(collider), outline_(outline), renderer_(renderer), editor_(editor) {}
 
     void ForwardPass::execute(FrameInfo& frameInfo) {
         if (editor_.debugMode != 0)
@@ -40,11 +40,6 @@ namespace engine {
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
 
         renderer_.generateOffscreenMipmaps(frameInfo.commandBuffer);
-    }
-
-    const std::string& ForwardPass::getName() const {
-        static std::string n = "Forward";
-        return n;
     }
 
 }  // namespace engine

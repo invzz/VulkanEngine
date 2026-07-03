@@ -13,8 +13,6 @@
 namespace engine {
 
     MeshManager::MeshManager(Device& device) : device(device) {
-        // Initialize with a dummy entry at index 0 so ID 0 can be "invalid" or
-        // "default"
         meshInfos.push_back({0, 0});
         updateBuffer();
     }
@@ -43,7 +41,6 @@ namespace engine {
     void MeshManager::updateBuffer() {
         VkDeviceSize const bufferSize = sizeof(MeshBuffers) * meshInfos.size();
 
-        // Create a staging buffer
         Buffer stagingBuffer{device,
             sizeof(MeshBuffers),
             static_cast<uint32_t>(meshInfos.size()),
@@ -53,9 +50,6 @@ namespace engine {
         stagingBuffer.map();
         stagingBuffer.writeToBuffer(meshInfos.data());
 
-        // Create or resize the GPU buffer
-        // Note: In a real engine, you might want to allocate a larger buffer upfront
-        // to avoid frequent reallocations
         meshBuffer = std::make_unique<Buffer>(device,
             sizeof(MeshBuffers),
             static_cast<uint32_t>(meshInfos.size()),
@@ -71,7 +65,7 @@ namespace engine {
 
     VkDescriptorSetLayoutBinding MeshManager::getDescriptorSetLayoutBinding() {
         VkDescriptorSetLayoutBinding binding{};
-        binding.binding            = 1;  // Binding 1 in Set 0
+        binding.binding            = 1;
         binding.descriptorType     = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         binding.descriptorCount    = 1;
         binding.stageFlags         = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;

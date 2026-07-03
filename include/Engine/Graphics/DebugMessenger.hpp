@@ -15,14 +15,10 @@ namespace engine {
 
         ~DebugMessenger();
 
-        // Create the debug messenger for the given VkInstance. Throws
-        // engine::RuntimeException on failure.
         void create(VkInstance instance);
 
-        // Destroy the messenger if present.
         void reset() noexcept;
 
-        // Accessor
         VkDebugUtilsMessengerEXT get() const {
             return messenger_;
         }
@@ -37,4 +33,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_DEBUG_MESSENGER_HPP
+#endif

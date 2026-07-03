@@ -13,7 +13,7 @@
 #include "glm/matrix.hpp"
 
 #define TINYGLTF_IMPLEMENTATION
-// STB implementations provided by the dedicated 'stb_provider' target.
+
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -27,7 +27,6 @@
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Core/utils.hpp"
 
-// Hash function for Model::Vertex
 namespace std {
     template <>
     struct hash<engine::Model::Vertex> {
@@ -42,8 +41,7 @@ namespace std {
 namespace engine {
 
     namespace {
-        // Helper function to get texture path from glTF, handling both URI and embedded
-        // images
+
         std::string getTexturePath(const tinygltf::Model& model, int textureIndex, const std::string& baseDir, const std::string& cacheDir) {
             if (textureIndex < 0 || std::cmp_greater_equal(textureIndex, model.textures.size())) {
                 return "";
@@ -56,13 +54,9 @@ namespace engine {
 
             const tinygltf::Image& image = model.images[texture.source];
 
-            // If image has a URI, it's an external file
             if (!image.uri.empty()) {
-                // Check if it's a data URI (base64 embedded)
                 if (image.uri.starts_with("data:")) {
-                    // It's a data URI - tinygltf has already decoded it into image.image
-                    // We need to write it to a cache file
-                    std::string extension = ".png";  // Default to PNG
+                    std::string extension = ".png";
                     if (image.mimeType == "image/jpeg") {
                         extension = ".jpg";
                     } else if (image.mimeType == "image/png") {
@@ -71,10 +65,8 @@ namespace engine {
 
                     std::string cachePath = cacheDir + "/texture_" + std::to_string(texture.source) + extension;
 
-                    // Create cache directory if it doesn't exist
                     std::filesystem::create_directories(cacheDir);
 
-                    // Write the image data to file
                     std::ofstream outFile(cachePath, std::ios::binary);
                     if (outFile.is_open()) {
                         outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
@@ -86,14 +78,11 @@ namespace engine {
                     return "";
                 }
 
-                // Regular file URI - return path relative to base directory
                 return baseDir + image.uri;
             }
-            // Image is embedded in a bufferView
+
             if (image.bufferView >= 0) {
-                // Image data is embedded in the glTF file
-                // tinygltf has already loaded it into image.image
-                std::string extension = ".png";  // Default to PNG
+                std::string extension = ".png";
                 if (image.mimeType == "image/jpeg") {
                     extension = ".jpg";
                 } else if (image.mimeType == "image/png") {
@@ -102,10 +91,8 @@ namespace engine {
 
                 std::string cachePath = cacheDir + "/embedded_texture_" + std::to_string(texture.source) + extension;
 
-                // Create cache directory if it doesn't exist
                 std::filesystem::create_directories(cacheDir);
 
-                // Write the image data to file
                 std::ofstream outFile(cachePath, std::ios::binary);
                 if (outFile.is_open()) {
                     outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
@@ -117,10 +104,8 @@ namespace engine {
                 return "";
             }
 
-            // Fallback: image data is in image.image directly (common for .glb files
-            // where tinygltf decodes the buffer directly rather than via a bufferView).
             if (!image.image.empty()) {
-                std::string extension = ".png";  // Default to PNG
+                std::string extension = ".png";
                 if (image.mimeType == "image/jpeg") {
                     extension = ".jpg";
                 } else if (image.mimeType == "image/png") {
@@ -151,7 +136,6 @@ namespace engine {
         std::string        err;
         std::string        warn;
 
-        // Determine file type and load
         bool ret = false;
         if (filepath.find(".glb") != std::string::npos) {
             ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filepath);
@@ -175,7 +159,6 @@ namespace engine {
 
         std::cout << "[" << GREEN << "GLTFImporter" << RESET << "]: File loaded successfully" << '\n';
 
-        // Check if model has animations (we'll skip baking transforms if it does)
         bool const hasAnimations = !gltfModel.animations.empty();
         if (hasAnimations) {
             std::cout << YELLOW
@@ -184,53 +167,34 @@ namespace engine {
                       << RESET << '\n';
         }
 
-        // Get base directory for texture paths
         std::string const baseDir  = filepath.substr(0, filepath.find_last_of("/\\") + 1);
         std::string const cacheDir = baseDir + ".gltf_texture_cache";
-
-        // Flip multipliers
-        // float const xMultiplier = flipX ? -1.0f : 1.0f;
-        // float const yMultiplier = flipY ? -1.0f : 1.0f;
-        // float const zMultiplier = flipZ ? -1.0f : 1.0f;
 
         builder.vertices.clear();
         builder.indices.clear();
         builder.materials.clear();
         builder.subMeshes.clear();
 
-        // Track vertex offsets and counts for each mesh primitive (for morph targets)
-        // Key: "meshIndex_primitiveIndex", Value: vertex offset/count in
-        // builder.vertices
         std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
         std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
-        // Map from builder vertex index to original glTF position index (for morph
-        // targets)
+
         std::unordered_map<uint32_t, uint32_t> vertexToPositionIndex;
 
-        // Load materials (extracted)
         loadMaterials(builder, gltfModel, baseDir, cacheDir);
 
-        // Load meshes (handles node traversal, vertex/index creation, submesh
-        // grouping)
         loadMeshes(builder, gltfModel, flipX, flipY, flipZ, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex, hasAnimations);
 
-        // Load morph targets (requires primitive offsets/counts created in
-        // loadMeshes)
         loadMorphTargets(builder, gltfModel, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex);
 
-        // Store primitive offsets/counts into the builder for downstream usage
         builder.primitiveVertexOffsets = primitiveVertexOffsets;
         builder.primitiveVertexCounts  = primitiveVertexCounts;
 
-        // Load animations
         loadAnimations(builder, gltfModel);
 
-        // Load KHR_lights_punctual lights
         loadLights(builder, gltfModel);
 
         std::cout << GREEN << "[GLTFImporter] Loaded " << builder.materials.size() << " materials, " << builder.subMeshes.size() << " sub-meshes" << RESET << '\n';
 
-        // Load nodes (store original transforms before animation)
         builder.nodes.resize(gltfModel.nodes.size());
         for (size_t i = 0; i < gltfModel.nodes.size(); i++) {
             const auto& gltfNode = gltfModel.nodes[i];
@@ -240,8 +204,8 @@ namespace engine {
             node.mesh = gltfNode.mesh;
 
             if (gltfNode.matrix.size() == 16) {
-                node.matrix = glm::make_mat4(gltfNode.matrix.data());
-                node.hasMatrix  = true;
+                node.matrix    = glm::make_mat4(gltfNode.matrix.data());
+                node.hasMatrix = true;
             } else {
                 if (gltfNode.translation.size() == 3) {
                     node.translation = glm::vec3(gltfNode.translation[0], gltfNode.translation[1], gltfNode.translation[2]);
@@ -259,7 +223,6 @@ namespace engine {
                 node.children.push_back(childIdx);
             }
 
-            // Load morph target weights if present
             if (!gltfNode.weights.empty()) {
                 node.morphWeights.resize(gltfNode.weights.size());
                 for (size_t w = 0; w < gltfNode.weights.size(); w++) {
@@ -268,7 +231,6 @@ namespace engine {
             }
         }
 
-        // Load morph targets from meshes
         for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++) {
             const auto& gltfMesh = gltfModel.meshes[meshIdx];
 
@@ -276,19 +238,17 @@ namespace engine {
                 const auto& primitive = gltfMesh.primitives[primIdx];
 
                 if (primitive.targets.empty()) {
-                    continue;  // No morph targets
+                    continue;
                 }
 
                 Model::MorphTargetSet morphSet;
 
-                // Get the vertex offset and count for this primitive
                 std::string const key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
                 std::cout << "[GLTFImporter] Looking up morph target key: " << key << '\n';
                 if (primitiveVertexOffsets.contains(key)) {
                     morphSet.vertexOffset = primitiveVertexOffsets[key];
-                    morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts[key]);  // Use actual vertex count
+                    morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts[key]);
 
-                    // Store position index mapping for morph targets
                     morphSet.positionIndices.resize(morphSet.vertexCount);
                     for (uint32_t i = 0; i < morphSet.vertexCount; i++) {
                         uint32_t const vertexIdx    = morphSet.vertexOffset + i;
@@ -302,7 +262,6 @@ namespace engine {
                     std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
                 }
 
-                // Initialize weights from mesh or node
                 if (!gltfMesh.weights.empty()) {
                     morphSet.weights.resize(gltfMesh.weights.size());
                     for (size_t w = 0; w < gltfMesh.weights.size(); w++) {
@@ -312,11 +271,9 @@ namespace engine {
                     morphSet.weights.resize(primitive.targets.size(), 0.0f);
                 }
 
-                // Load each morph target
                 for (const auto& target : primitive.targets) {
                     Model::MorphTarget morphTarget;
 
-                    // Load position deltas
                     if (target.contains("POSITION")) {
                         const auto& posAccessor   = gltfModel.accessors[target.at("POSITION")];
                         const auto& posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
@@ -329,7 +286,6 @@ namespace engine {
                         }
                     }
 
-                    // Load normal deltas
                     if (target.contains("NORMAL")) {
                         const auto& normAccessor   = gltfModel.accessors[target.at("NORMAL")];
                         const auto& normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
@@ -352,16 +308,13 @@ namespace engine {
             }
         }
 
-        // Load animations
         for (const auto& gltfAnim : gltfModel.animations) {
             Model::Animation animation;
             animation.name = gltfAnim.name.empty() ? "animation_" + std::to_string(builder.animations.size()) : gltfAnim.name;
 
-            // Load samplers
             for (const auto& gltfSampler : gltfAnim.samplers) {
                 Model::AnimationSampler sampler;
 
-                // Get time values
                 const auto& timeAccessor   = gltfModel.accessors[gltfSampler.input];
                 const auto& timeBufferView = gltfModel.bufferViews[timeAccessor.bufferView];
                 const auto& timeBuffer     = gltfModel.buffers[timeBufferView.buffer];
@@ -373,19 +326,17 @@ namespace engine {
                     animation.duration = std::max(sampler.times[i], animation.duration);
                 }
 
-                // Get output values
                 const auto& outputAccessor   = gltfModel.accessors[gltfSampler.output];
                 const auto& outputBufferView = gltfModel.bufferViews[outputAccessor.bufferView];
                 const auto& outputBuffer     = gltfModel.buffers[outputBufferView.buffer];
                 const auto* outputs          = reinterpret_cast<const float*>(&outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
 
-                // Store values (type determined by channel target path)
                 if (outputAccessor.type == TINYGLTF_TYPE_VEC3) {
                     sampler.translations.resize(outputAccessor.count);
                     sampler.scales.resize(outputAccessor.count);
                     for (size_t i = 0; i < outputAccessor.count; i++) {
                         sampler.translations[i] = glm::vec3(outputs[(i * 3) + 0], outputs[(i * 3) + 1], outputs[(i * 3) + 2]);
-                        sampler.scales[i]       = sampler.translations[i];  // Same storage
+                        sampler.scales[i]       = sampler.translations[i];
                     }
                 } else if (outputAccessor.type == TINYGLTF_TYPE_VEC4) {
                     sampler.rotations.resize(outputAccessor.count);
@@ -393,8 +344,6 @@ namespace engine {
                         sampler.rotations[i] = glm::quat(outputs[(i * 4) + 3], outputs[(i * 4) + 0], outputs[(i * 4) + 1], outputs[(i * 4) + 2]);
                     }
                 } else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR) {
-                    // Morph target weights - multiple scalars per keyframe
-                    // Count weights per keyframe by dividing total count by time count
                     size_t const weightsPerFrame = outputAccessor.count / timeAccessor.count;
                     sampler.morphWeights.resize(timeAccessor.count);
 
@@ -406,7 +355,6 @@ namespace engine {
                     }
                 }
 
-                // Interpolation type
                 if (gltfSampler.interpolation == "LINEAR") {
                     sampler.interpolation = Model::AnimationSampler::LINEAR;
                 } else if (gltfSampler.interpolation == "STEP") {
@@ -418,7 +366,6 @@ namespace engine {
                 animation.samplers.push_back(sampler);
             }
 
-            // Load channels
             for (const auto& gltfChannel : gltfAnim.channels) {
                 Model::AnimationChannel channel;
                 channel.samplerIndex = gltfChannel.sampler;
@@ -434,7 +381,6 @@ namespace engine {
                     channel.path = Model::AnimationChannel::WEIGHTS;
                     std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << '\n';
                 } else {
-                    // Skip unsupported paths
                     continue;
                 }
 
@@ -453,8 +399,6 @@ namespace engine {
         return true;
     }
 
-    // --- Refactored helper method implementations ---
-
     void GLTFImporter::loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir) {
         for (size_t i = 0; i < model.materials.size(); i++) {
             const auto&         gltfMat = model.materials[i];
@@ -462,46 +406,27 @@ namespace engine {
             matInfo.name       = gltfMat.name;
             matInfo.materialId = static_cast<int>(i);
 
-            // glTF uses PBR metallic-roughness workflow
             const auto& pbr = gltfMat.pbrMetallicRoughness;
 
-            // Double Sided
             matInfo.pbrMaterial.doubleSided = gltfMat.doubleSided;
 
-            // Base color (albedo)
             matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
 
-            // Alpha Mode
             if (gltfMat.alphaMode == "MASK") {
                 matInfo.pbrMaterial.alphaMode   = AlphaMode::Mask;
                 matInfo.pbrMaterial.alphaCutoff = static_cast<float>(gltfMat.alphaCutoff);
             } else if (gltfMat.alphaMode == "BLEND") {
                 matInfo.pbrMaterial.alphaMode = AlphaMode::Blend;
 
-                // Repair decal overlays with broken baseColorFactor.a.
-                // Many exporters incorrectly set baseColorFactor.a < 1 for decals
-                // when the texture alpha channel should be the sole opacity source.
-                // This heuristic fixes those while leaving intentional tinted glass/plastics alone.
-                if (matInfo.name.find("decal") != std::string::npos) {
-                    float const rgbAvg = (pbr.baseColorFactor[0] + pbr.baseColorFactor[1] + pbr.baseColorFactor[2]) / 3.0f;
-                    if (pbr.baseColorFactor[3] < 1.0f && rgbAvg > 0.9f) {
-                        // White/near-white albedo with low alpha = almost certainly a decal opacity error
-                        matInfo.pbrMaterial.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], 1.0f);
-                    }
-                }
             } else {
                 matInfo.pbrMaterial.alphaMode = AlphaMode::Opaque;
             }
 
-            // Metallic and roughness
-            // glTF spec defaults: metallicFactor = 0.0 (non-metal), roughnessFactor = 1.0 (fully rough).
-            // Some loaders/structs may set different defaults internally, so prefer explicit fallbacks when value is not present.
             matInfo.pbrMaterial.metallic  = (pbr.metallicFactor >= 0.0) ? static_cast<float>(pbr.metallicFactor) : 0.0f;
             matInfo.pbrMaterial.roughness = (pbr.roughnessFactor >= 0.0) ? static_cast<float>(pbr.roughnessFactor) : 1.0f;
 
             matInfo.pbrMaterial.ao = 1.0f;
 
-            // Extract texture paths (handles both external URIs and embedded images)
             if (pbr.baseColorTexture.index >= 0) {
                 matInfo.diffuseTexPath = getTexturePath(model, pbr.baseColorTexture.index, baseDir, cacheDir);
             }
@@ -523,14 +448,12 @@ namespace engine {
                 matInfo.aoTexPath = getTexturePath(model, gltfMat.occlusionTexture.index, baseDir, cacheDir);
             }
 
-            // Emissive Factor
             matInfo.pbrMaterial.emissiveColor = glm::vec3(gltfMat.emissiveFactor[0], gltfMat.emissiveFactor[1], gltfMat.emissiveFactor[2]);
 
             if (gltfMat.emissiveTexture.index >= 0) {
                 matInfo.emissiveTexPath = getTexturePath(model, gltfMat.emissiveTexture.index, baseDir, cacheDir);
             }
 
-            // Specular Glossiness Workflow
             if (gltfMat.extensions.contains("KHR_materials_pbrSpecularGlossiness")) {
                 const auto& ext                                   = gltfMat.extensions.at("KHR_materials_pbrSpecularGlossiness");
                 matInfo.pbrMaterial.useSpecularGlossinessWorkflow = true;
@@ -562,8 +485,6 @@ namespace engine {
                 }
             }
 
-            // Parse Extensions (emissive strength, transmission, ior, iridescence,
-            // clearcoat, volume)
             if (gltfMat.extensions.contains("KHR_materials_emissive_strength")) {
                 const auto& ext = gltfMat.extensions.at("KHR_materials_emissive_strength");
                 if (ext.Has("emissiveStrength")) {
@@ -642,7 +563,6 @@ namespace engine {
                 }
             }
 
-            // Texture transform (KHR_texture_transform)
             const tinygltf::ExtensionMap* textureExtensions = nullptr;
             if (gltfMat.normalTexture.index >= 0 && (static_cast<unsigned int>(gltfMat.normalTexture.extensions.contains("KHR_texture_transform")) != 0u)) {
                 textureExtensions = &gltfMat.normalTexture.extensions;
@@ -725,17 +645,15 @@ namespace engine {
                 firstMaterial = primitive.material;
             }
 
-            // Record the starting vertex offset for this primitive (for morph targets)
             auto const        primitiveVertexOffset = static_cast<uint32_t>(builder.vertices.size());
             std::string const key                   = std::to_string(meshIndex) + "_" + std::to_string(primIdx);
             primitiveVertexOffsets[key]             = primitiveVertexOffset;
 
-            // Record association of node -> primitive index so callers can map per-node results back to glTF primitive indices
             builder.nodePrimitiveIndices[nodeIndex].push_back(static_cast<int>(primIdx));
-            // Check if this primitive has morph targets - if so, disable deduplication
+
             bool const hasMorphTargets = !primitive.targets.empty();
 
-            int const   materialId    = primitive.material;  // Get accessors for vertex attributes
+            int const   materialId    = primitive.material;
             const auto& posAccessor   = model.accessors[primitive.attributes.at("POSITION")];
             const auto& posBufferView = model.bufferViews[posAccessor.bufferView];
             const auto& posBuffer     = model.buffers[posBufferView.buffer];
@@ -758,9 +676,7 @@ namespace engine {
                 texCoords                = reinterpret_cast<const float*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
             }
 
-            // Check if primitive has indices
             if (primitive.indices < 0) {
-                // No indices - use direct vertex access (not commonly used, skip for now)
                 std::cerr << YELLOW
                           << "[GLTFImporter] Warning: Primitive without indices not "
                              "supported yet"
@@ -768,13 +684,11 @@ namespace engine {
                 continue;
             }
 
-            // Get indices
             const auto&    indAccessor   = model.accessors[primitive.indices];
             const auto&    indBufferView = model.bufferViews[indAccessor.bufferView];
             const auto&    indBuffer     = model.buffers[indBufferView.buffer];
             const uint8_t* indData       = &indBuffer.data[indBufferView.byteOffset + indAccessor.byteOffset];
 
-            // Process indices based on component type
             for (size_t i = 0; i < indAccessor.count; i++) {
                 uint32_t index = 0;
                 if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
@@ -788,13 +702,10 @@ namespace engine {
                 Model::Vertex vertex{};
                 vertex.materialId = materialId;
 
-                // Position - apply node transformation only if no animations
                 glm::vec3 worldPos;
                 if (hasAnimations) {
-                    // Keep vertices in local space for animations
                     worldPos = glm::vec3(positions[(index * 3) + 0], positions[(index * 3) + 1], positions[(index * 3) + 2]);
                 } else {
-                    // Bake transform into vertices
                     glm::vec4 const localPos    = glm::vec4(positions[(index * 3) + 0], positions[(index * 3) + 1], positions[(index * 3) + 2], 1.0f);
                     glm::vec4 const transformed = globalTransform * localPos;
                     worldPos                    = glm::vec3(transformed);
@@ -802,14 +713,11 @@ namespace engine {
 
                 vertex.position = {xMultiplier * worldPos.x, yMultiplier * worldPos.y, zMultiplier * worldPos.z};
 
-                // Normal - apply normal transformation only if no animations
                 if (normals != nullptr) {
                     glm::vec3 worldNormal;
                     if (hasAnimations) {
-                        // Keep normals in local space
                         worldNormal = glm::vec3(normals[(index * 3) + 0], normals[(index * 3) + 1], normals[(index * 3) + 2]);
                     } else {
-                        // Transform normals
                         glm::mat3 const normalMatrix = glm::transpose(glm::inverse(glm::mat3(globalTransform)));
                         glm::vec3 const localNormal  = glm::vec3(normals[(index * 3) + 0], normals[(index * 3) + 1], normals[(index * 3) + 2]);
                         worldNormal                  = glm::normalize(normalMatrix * localNormal);
@@ -820,29 +728,22 @@ namespace engine {
                     vertex.normal = {0.0f, 1.0f, 0.0f};
                 }
 
-                // Texture coordinates
                 if (texCoords != nullptr) {
                     vertex.uv = {texCoords[(index * 2) + 0], 1.0f - texCoords[(index * 2) + 1]};
                 } else {
                     vertex.uv = {0.0f, 0.0f};
                 }
 
-                // Color (default to white)
                 vertex.color = {1.0f, 1.0f, 1.0f};
 
-                // Add to vertex buffer (disable deduplication for morph targets)
                 if (hasMorphTargets) {
-                    // No deduplication - store mapping from vertex index to original glTF
-                    // position index
                     auto const vertexIdx = static_cast<uint32_t>(builder.vertices.size());
                     builder.indices.push_back(vertexIdx);
                     builder.vertices.push_back(vertex);
                     indicesByMaterial[materialId].push_back(vertexIdx);
 
-                    // Store mapping: builder vertex index -> original glTF position index
                     vertexToPositionIndex[vertexIdx] = index;
                 } else {
-                    // Normal deduplication for non-morph meshes
                     if (!uniqueVertices.contains(vertex)) {
                         uniqueVertices[vertex] = static_cast<uint32_t>(builder.vertices.size());
                         builder.vertices.push_back(vertex);
@@ -854,7 +755,6 @@ namespace engine {
                 }
             }
 
-            // Store the actual vertex count for this primitive (for morph targets)
             uint32_t const primitiveVertexCount = static_cast<uint32_t>(builder.vertices.size()) - primitiveVertexOffset;
             primitiveVertexCounts[key]          = primitiveVertexCount;
             std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx << " added " << primitiveVertexCount << " vertices" << '\n';
@@ -910,7 +810,6 @@ namespace engine {
             processNode(nodeIndex, glm::mat4(1.0f));
         }
 
-        // Create sub-meshes from grouped indices
         uint32_t currentOffset = 0;
         for (auto& [matId, matIndices] : indicesByMaterial) {
             if (!matIndices.empty()) {
@@ -924,7 +823,6 @@ namespace engine {
             }
         }
 
-        // Rebuild indices array grouped by material
         std::vector<uint32_t> groupedIndices;
         groupedIndices.reserve(builder.indices.size());
 
@@ -950,11 +848,10 @@ namespace engine {
                 const auto& primitive = gltfMesh.primitives[primIdx];
 
                 if (primitive.targets.empty())
-                    continue;  // No morph targets
+                    continue;
 
                 Model::MorphTargetSet morphSet;
 
-                // Get the vertex offset and count for this primitive
                 std::string const key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
                 if (primitiveVertexOffsets.contains(key)) {
                     morphSet.vertexOffset = primitiveVertexOffsets.at(key);
@@ -971,7 +868,6 @@ namespace engine {
                     std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
                 }
 
-                // Initialize weights from mesh or node
                 if (!gltfMesh.weights.empty()) {
                     morphSet.weights.resize(gltfMesh.weights.size());
                     for (size_t w = 0; w < gltfMesh.weights.size(); w++) {
@@ -981,11 +877,9 @@ namespace engine {
                     morphSet.weights.resize(primitive.targets.size(), 0.0f);
                 }
 
-                // Load each morph target
                 for (const auto& target : primitive.targets) {
                     Model::MorphTarget morphTarget;
 
-                    // Load position deltas
                     if (target.contains("POSITION")) {
                         const auto& posAccessor   = gltfModel.accessors[target.at("POSITION")];
                         const auto& posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
@@ -998,7 +892,6 @@ namespace engine {
                         }
                     }
 
-                    // Load normal deltas
                     if (target.contains("NORMAL")) {
                         const auto& normAccessor   = gltfModel.accessors[target.at("NORMAL")];
                         const auto& normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
@@ -1027,11 +920,9 @@ namespace engine {
             Model::Animation animation;
             animation.name = gltfAnim.name.empty() ? "animation_" + std::to_string(builder.animations.size()) : gltfAnim.name;
 
-            // Load samplers
             for (const auto& gltfSampler : gltfAnim.samplers) {
                 Model::AnimationSampler sampler;
 
-                // Get time values
                 const auto& timeAccessor   = gltfModel.accessors[gltfSampler.input];
                 const auto& timeBufferView = gltfModel.bufferViews[timeAccessor.bufferView];
                 const auto& timeBuffer     = gltfModel.buffers[timeBufferView.buffer];
@@ -1043,19 +934,17 @@ namespace engine {
                     animation.duration = std::max(sampler.times[i], animation.duration);
                 }
 
-                // Get output values
                 const auto& outputAccessor   = gltfModel.accessors[gltfSampler.output];
                 const auto& outputBufferView = gltfModel.bufferViews[outputAccessor.bufferView];
                 const auto& outputBuffer     = gltfModel.buffers[outputBufferView.buffer];
                 const auto* outputs          = reinterpret_cast<const float*>(&outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
 
-                // Store values (type determined by channel target path)
                 if (outputAccessor.type == TINYGLTF_TYPE_VEC3) {
                     sampler.translations.resize(outputAccessor.count);
                     sampler.scales.resize(outputAccessor.count);
                     for (size_t i = 0; i < outputAccessor.count; i++) {
                         sampler.translations[i] = glm::vec3(outputs[(i * 3) + 0], outputs[(i * 3) + 1], outputs[(i * 3) + 2]);
-                        sampler.scales[i]       = sampler.translations[i];  // Same storage
+                        sampler.scales[i]       = sampler.translations[i];
                     }
                 } else if (outputAccessor.type == TINYGLTF_TYPE_VEC4) {
                     sampler.rotations.resize(outputAccessor.count);
@@ -1063,8 +952,6 @@ namespace engine {
                         sampler.rotations[i] = glm::quat(outputs[(i * 4) + 3], outputs[(i * 4) + 0], outputs[(i * 4) + 1], outputs[(i * 4) + 2]);
                     }
                 } else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR) {
-                    // Morph target weights - multiple scalars per keyframe
-                    // Count weights per keyframe by dividing total count by time count
                     size_t const weightsPerFrame = outputAccessor.count / timeAccessor.count;
                     sampler.morphWeights.resize(timeAccessor.count);
 
@@ -1076,7 +963,6 @@ namespace engine {
                     }
                 }
 
-                // Interpolation type
                 if (gltfSampler.interpolation == "LINEAR") {
                     sampler.interpolation = Model::AnimationSampler::LINEAR;
                 } else if (gltfSampler.interpolation == "STEP") {
@@ -1088,7 +974,6 @@ namespace engine {
                 animation.samplers.push_back(sampler);
             }
 
-            // Load channels
             for (const auto& gltfChannel : gltfAnim.channels) {
                 Model::AnimationChannel channel;
                 channel.samplerIndex = gltfChannel.sampler;
@@ -1104,7 +989,6 @@ namespace engine {
                     channel.path = Model::AnimationChannel::WEIGHTS;
                     std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << '\n';
                 } else {
-                    // Skip unsupported paths
                     continue;
                 }
 
@@ -1122,7 +1006,6 @@ namespace engine {
     }
 
     void GLTFImporter::loadLights(Model::Builder& builder, const tinygltf::Model& gltfModel) {
-        // Check if the model uses KHR_lights_punctual
         bool const hasExtension = gltfModel.extensions.count("KHR_lights_punctual") > 0;
         if (!hasExtension || gltfModel.lights.empty()) {
             return;
@@ -1130,7 +1013,6 @@ namespace engine {
 
         std::cout << GREEN << "[GLTFImporter] Loading " << gltfModel.lights.size() << " KHR_lights_punctual lights" << RESET << '\n';
 
-        // Build a map: nodeIndex -> lightIndex for quick lookup
         std::unordered_map<int, int> nodeToLight;
         for (size_t nodeIdx = 0; nodeIdx < gltfModel.nodes.size(); ++nodeIdx) {
             auto it = gltfModel.nodes[nodeIdx].extensions.find("KHR_lights_punctual");
@@ -1138,7 +1020,7 @@ namespace engine {
                 auto const& lightExt = it->second;
                 if (lightExt.IsObject()) {
                     auto const& obj = lightExt.Get<std::map<std::string, tinygltf::Value>>();
-                    auto it2 = obj.find("light");
+                    auto        it2 = obj.find("light");
                     if (it2 != obj.end() && it2->second.IsInt()) {
                         nodeToLight[static_cast<int>(nodeIdx)] = static_cast<int>(it2->second.Get<int>());
                     }
@@ -1146,14 +1028,12 @@ namespace engine {
             }
         }
 
-        // Parse lights — apply default intensity for zero-intensity export bugs
         for (size_t i = 0; i < gltfModel.lights.size(); ++i) {
             auto const& gltfLight = gltfModel.lights[i];
 
             Model::LightInfo light;
             light.name = gltfLight.name.empty() ? "light_" + std::to_string(i) : gltfLight.name;
 
-            // Map tinygltf light type to our enum
             if (gltfLight.type == "directional") {
                 light.type = Model::LightType::Directional;
             } else if (gltfLight.type == "spot") {
@@ -1162,43 +1042,35 @@ namespace engine {
                 light.type = Model::LightType::Point;
             }
 
-            // Color: default to white if not present
             if (gltfLight.color.size() >= 3) {
                 light.color = glm::vec3(
                     static_cast<float>(gltfLight.color[0]),
                     static_cast<float>(gltfLight.color[1]),
-                    static_cast<float>(gltfLight.color[2])
-                );
+                    static_cast<float>(gltfLight.color[2]));
             } else {
                 light.color = glm::vec3(1.0f);
             }
 
-            // Intensity: apply reasonable defaults for zero-intensity export bugs
-            // Sponza-intel has all lights at intensity=0.0 — this is a known export issue
             if (gltfLight.intensity <= 0.0) {
-                // Apply type-based defaults for broken exports
                 if (gltfLight.type == "directional") {
-                    light.intensity = 10.0f;  // Directional lights need high intensity
+                    light.intensity = 10.0f;
                 } else if (gltfLight.type == "spot") {
-                    light.intensity = 10.0f;    // Spot lights
+                    light.intensity = 10.0f;
                 } else {
-                    light.intensity = 10.0f;    // Point lights (default)
+                    light.intensity = 10.0f;
                 }
                 std::cout << YELLOW << "[GLTFImporter]   Light '" << light.name << "': intensity=0 -> " << light.intensity << " (default)" << RESET << '\n';
             } else {
                 light.intensity = static_cast<float>(gltfLight.intensity);
             }
 
-            // Range: 0.0 = infinite
             light.range = static_cast<float>(gltfLight.range);
 
-            // Spot-specific angles (tinygltf SpotLight uses innerConeAngle/outerConeAngle)
             if (gltfLight.type == "spot") {
                 light.innerCutoffAngle = static_cast<float>(gltfLight.spot.innerConeAngle);
                 light.outerCutoffAngle = static_cast<float>(gltfLight.spot.outerConeAngle);
             }
 
-            // Collect node indices that reference this light
             for (auto const& [nodeIdx, lightIdx] : nodeToLight) {
                 if (lightIdx == static_cast<int>(i)) {
                     light.nodeIndices.push_back(nodeIdx);
@@ -1208,9 +1080,8 @@ namespace engine {
             builder.lights.push_back(light);
         }
 
-        // Log node-to-light mapping for debugging
         if (!nodeToLight.empty()) {
-             for (auto const& [nodeIdx, lightIdx] : nodeToLight) {
+            for (auto const& [nodeIdx, lightIdx] : nodeToLight) {
                 std::cout << GREEN << "[GLTFImporter] Node-to-light mapping:" << RESET << " Node -> " << nodeIdx << " -> Light '" << builder.lights[lightIdx].name << "'\n";
             }
         }

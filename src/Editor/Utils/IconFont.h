@@ -27,7 +27,7 @@ public:
             IM_ASSERT(0 && "Failed to load Font Awesome!");
     }
 
-    // ==================== Text helpers ====================
+    
 
     static void Text(const char* icon)
     {
@@ -39,7 +39,7 @@ public:
         ImGui::Text("%s %s", icon, text);
     }
 
-    // ==================== Button helpers ====================
+    
 
     static bool Button(const char* icon, const char* label = "")
     {
@@ -53,14 +53,14 @@ public:
         return ImGui::Button((std::string(icon) + " " + label + "###" + id).c_str());
     }
 
-    // ==================== MenuItem helper ====================
+    
 
     static bool MenuItem(const char* icon, const char* label, bool selected = false, bool enabled = true)
     {
         return ImGui::MenuItem((std::string(icon) + " " + label).c_str(), nullptr, selected, enabled);
     }
 
-    // ==================== Font push/pop ====================
+    
 
     static void PushFont()
     {

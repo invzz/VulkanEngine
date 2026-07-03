@@ -15,10 +15,6 @@ namespace {
 
     constexpr float EPSILON = 1e-6f;
 
-    // ===========================================================================
-    // Default Value Tests
-    // ===========================================================================
-
     TEST(CameraComponent, GivenDefaultConstruction_WhenInspected_ThenFovYIs80) {
         engine::CameraComponent component;
         EXPECT_NEAR(component.fovY, 80.0f, EPSILON);
@@ -49,14 +45,9 @@ namespace {
         EXPECT_TRUE(component.isPrimary);
     }
 
-    // ===========================================================================
-    // Camera Object Tests
-    // ===========================================================================
-
     TEST(CameraComponent, GivenDefaultConstruction_WhenCameraInspected_ThenMatricesAreIdentity) {
         engine::CameraComponent component;
 
-        // The embedded camera should have identity matrices by default
         EXPECT_EQ(component.camera.getProjectionMatrix(), glm::mat4(1.0f));
         EXPECT_EQ(component.camera.getViewMatrix(), glm::mat4(1.0f));
     }
@@ -66,7 +57,6 @@ namespace {
 
         component.camera.setPerspectiveProjection(glm::radians(45.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
 
-        // Projection should no longer be identity
         EXPECT_NE(component.camera.getProjectionMatrix(), glm::mat4(1.0f));
     }
 
@@ -75,13 +65,8 @@ namespace {
 
         component.camera.setViewDirection({0, 0, -5}, {0, 0, 1});
 
-        // View should no longer be identity
         EXPECT_NE(component.camera.getViewMatrix(), glm::mat4(1.0f));
     }
-
-    // ===========================================================================
-    // Property Modification Tests
-    // ===========================================================================
 
     TEST(CameraComponent, GivenComponent_WhenFovYSet_ThenValueIsStored) {
         engine::CameraComponent component;
@@ -125,10 +110,6 @@ namespace {
         EXPECT_FALSE(component.isPrimary);
     }
 
-    // ===========================================================================
-    // Use Case Tests
-    // ===========================================================================
-
     TEST(CameraComponent, GivenPerspectiveSettings_WhenApplied_ThenCameraIsConfigured) {
         engine::CameraComponent component;
         component.fovY           = 90.0f;
@@ -137,11 +118,9 @@ namespace {
         component.isOrthographic = false;
         component.isPrimary      = true;
 
-        // Apply settings to the camera
         float aspect = 16.0f / 9.0f;
         component.camera.setPerspectiveProjection(glm::radians(component.fovY), aspect, component.nearZ, component.farZ);
 
-        // Verify projection was set
         EXPECT_NE(component.camera.getProjectionMatrix(), glm::mat4(1.0f));
         EXPECT_FALSE(component.isOrthographic);
     }
@@ -154,14 +133,12 @@ namespace {
         component.isOrthographic = true;
         component.isPrimary      = true;
 
-        // Apply orthographic projection
         float halfHeight = component.orthoSize / 2.0f;
         float aspect     = 16.0f / 9.0f;
         float halfWidth  = halfHeight * aspect;
 
         component.camera.setOrtographicProjection(-halfWidth, halfWidth, -halfHeight, halfHeight, component.nearZ, component.farZ);
 
-        // Verify projection was set
         EXPECT_NE(component.camera.getProjectionMatrix(), glm::mat4(1.0f));
         EXPECT_TRUE(component.isOrthographic);
     }
@@ -172,16 +149,12 @@ namespace {
 
         engine::CameraComponent secondaryCamera;
         secondaryCamera.isPrimary = false;
-        secondaryCamera.fovY      = 45.0f;  // Different FOV for secondary
+        secondaryCamera.fovY      = 45.0f;
 
         EXPECT_TRUE(mainCamera.isPrimary);
         EXPECT_FALSE(secondaryCamera.isPrimary);
         EXPECT_NE(mainCamera.fovY, secondaryCamera.fovY);
     }
-
-    // ===========================================================================
-    // Edge Cases
-    // ===========================================================================
 
     TEST(CameraComponent, GivenVerySmallNearPlane_WhenSet_ThenValueIsStored) {
         engine::CameraComponent component;
@@ -199,14 +172,14 @@ namespace {
 
     TEST(CameraComponent, GivenNarrowFOV_WhenSet_ThenValueIsStored) {
         engine::CameraComponent component;
-        component.fovY = 10.0f;  // Very zoomed in
+        component.fovY = 10.0f;
 
         EXPECT_NEAR(component.fovY, 10.0f, EPSILON);
     }
 
     TEST(CameraComponent, GivenWideFOV_WhenSet_ThenValueIsStored) {
         engine::CameraComponent component;
-        component.fovY = 120.0f;  // Fisheye-like
+        component.fovY = 120.0f;
 
         EXPECT_NEAR(component.fovY, 120.0f, EPSILON);
     }
@@ -224,10 +197,6 @@ namespace {
 
         EXPECT_NEAR(component.orthoSize, 1000.0f, EPSILON);
     }
-
-    // ===========================================================================
-    // Copy and Assignment Tests
-    // ===========================================================================
 
     TEST(CameraComponent, GivenOriginal_WhenCopyConstructed_ThenValuesMatch) {
         engine::CameraComponent original;
@@ -258,23 +227,17 @@ namespace {
         EXPECT_NEAR(copy.fovY, 30.0f, EPSILON);
     }
 
-    // ===========================================================================
-    // Combined Camera Operations
-    // ===========================================================================
-
     TEST(CameraComponent, GivenCameraWithFrustum_WhenUpdated_ThenCullingWorks) {
         engine::CameraComponent component;
         component.fovY  = 60.0f;
         component.nearZ = 0.1f;
         component.farZ  = 100.0f;
 
-        // Set up camera for frustum culling
         component.camera.setPerspectiveProjection(glm::radians(component.fovY), 1.0f, component.nearZ, component.farZ);
 
         component.camera.setViewDirection({0, 0, -10}, {0, 0, 1});
         component.camera.updateFrustum();
 
-        // Object at origin should be in frustum
         EXPECT_TRUE(component.camera.isInFrustum({0, 0, 0}, 1.0f));
     }
 

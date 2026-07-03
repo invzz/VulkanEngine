@@ -19,4 +19,4 @@ namespace engine {
         std::unique_ptr<RenderGraph> renderGraph;
     };
 }  // namespace engine
-#endif  // RENDER_PIPELINE_HPP
+#endif

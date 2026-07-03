@@ -16,15 +16,13 @@ namespace engine {
        public:
         Renderer(Window& window, Device& device);
         ~Renderer();
-        // delete copy operations
+
         Renderer(const Renderer&)            = delete;
         Renderer& operator=(const Renderer&) = delete;
 
-        // Frame rendering helpers
         VkCommandBuffer beginFrame();
         void            endFrame();
 
-        // Render pass helpers
         void beginSwapChainRenderPass(VkCommandBuffer commandBuffer);
         void endSwapChainRenderPass(VkCommandBuffer commandBuffer);
         void beginOffscreenRenderPass(VkCommandBuffer commandBuffer);
@@ -38,7 +36,6 @@ namespace engine {
         void copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
         void transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
 
-        // Accessors
         [[nodiscard]] VkRenderPass getSwapChainRenderPass() const {
             return swapChain->getRenderPass();
         }
@@ -68,7 +65,6 @@ namespace engine {
         [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
 
-        // Expose offscreen color image handle for readback in tests
         [[nodiscard]] VkImage getOffscreenColorImage(int index) const {
             return offscreenFrameBuffer->getColorImage(index);
         }
@@ -158,25 +154,19 @@ namespace engine {
         std::vector<VkCommandBuffer>   commandBuffers;
 
         std::unique_ptr<FrameBuffer> offscreenFrameBuffer;
-        VkExtent2D                   offscreenExtent_{0, 0};  // tracks offscreen FB size independently
+        VkExtent2D                   offscreenExtent_{0, 0};
 
         uint32_t currentImageIndex{0};
-        // keep track of frame index for syncing [0, maxFramesInFlight]
+
         int  currentFrameIndex{0};
         bool isFrameStarted{false};
         bool swapChainRecreated{false};
 
-        // Tracks whether the swapchain image was rendered to this frame. If false,
-        // we'll insert a no-op transition to PRESENT_SRC prior to presenting to
-        // avoid leaving swapchain images in VK_IMAGE_LAYOUT_UNDEFINED.
         bool usedSwapchainThisFrame{false};
 
-        // When true, skip clearing the swap chain in beginSwapChainRenderPass.
-        // Used when the viewport has already been rendered to the swap chain.
         bool skipClear_{false};
 
        public:
-        // Helper for diagnostics
         [[nodiscard]] uint64_t getPendingResizeTimeNs() const {
             return swapChainRecreationCoordinator.getPendingResizeTimeNs();
         }
@@ -184,4 +174,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_RENDERER_HPP
+#endif

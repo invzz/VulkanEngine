@@ -16,7 +16,6 @@ namespace engine {
     enum class ErrorCode : uint16_t {
         Unspecified = 0,
 
-        // Graphics allocations
         BufferAllocationFallback      = 1001,
         BufferAllocationFailure       = 1002,
         DescriptorPoolOverflowUsed    = 1101,
@@ -42,4 +41,4 @@ namespace engine {
 
 }  // namespace engine
 
-#endif  // VULKANENGINE_INCLUDE_ENGINE_CORE_ERRORCODES_HPP
+#endif
