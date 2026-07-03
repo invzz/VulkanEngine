@@ -142,6 +142,9 @@ namespace engine {
         SkyboxSettings& skySettings() {
             return skySettings_;
         }
+        std::unique_ptr<Skybox>& skybox() {
+            return skybox_;
+        }
         ShadowSettings& shadowSettings() {
             return shadowSettings_;
         }

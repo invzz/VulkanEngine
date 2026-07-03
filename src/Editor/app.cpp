@@ -131,7 +131,7 @@ namespace engine {
         setupRenderGraph();
 
         viewport_.create(device, renderer);
-        if (viewportPanel_) {
+        if (viewportPanel_ != nullptr) {
             viewportPanel_->setViewport(&viewport_, renderer.getSwapChainExtent());
             viewportPanel_->setWindow(&window);
             viewportPanel_->setMouse(engineState.getMouse());
@@ -238,8 +238,11 @@ namespace engine {
             engineState.system<CameraSystem>(),
             engineState.system<ColliderDebugRenderSystem>(),
             engineState.system<SelectionOutlineSystem>(),
+            *engineState.systemPtr<SkyboxRenderSystem>(),
             renderer,
-            engineState.editor()));
+            engineState.editor(),
+            engineState.skybox(),
+            engineState.skySettings()));
 
         graph->addPass(std::make_unique<LambdaRenderPass>("TransitionToReadOnly",
             [this](FrameInfo& frameInfo) {
@@ -269,7 +272,7 @@ namespace engine {
         device.WaitIdle();
     }
 
-    void App::update(float frameTime) {
+    void App::update(float /*frameTime*/) {
         engineState.resourceManager().updateAsyncCallbacks();
 
         engineState.reconcileSceneLoad();
@@ -282,7 +285,7 @@ namespace engine {
 
     void App::render(float frameTime) {
         {
-            VkExtent2D panelExtent = viewportPanel_ ? viewportPanel_->getExtent() : VkExtent2D{0, 0};
+            VkExtent2D panelExtent = (viewportPanel_ != nullptr) ? viewportPanel_->getExtent() : VkExtent2D{0, 0};
             VkExtent2D fbExtent    = renderer.getOffscreenExtent();
             bool       wantResize  = viewportResize_.pending_ ||
                                      (panelExtent.width > 0 && panelExtent.height > 0 &&
@@ -294,7 +297,7 @@ namespace engine {
                 vkDeviceWaitIdle(device.device());
                 viewport_.resize(device, renderer, targetExtent);
                 viewportResize_.pending_ = false;
-                if (viewportPanel_) {
+                if (viewportPanel_ != nullptr) {
                     viewportPanel_->setViewport(&viewport_, targetExtent);
                 }
             }
@@ -320,7 +323,7 @@ namespace engine {
                 .selectedObjectId       = selectedObjectId,
                 .selectedEntity         = engineState.selectedEntity(),
                 .cameraEntity           = engineState.cameraEntity(),
-                .morphManager           = engineState.systemPtr<AnimationSystem>()
+                .morphManager           = engineState.systemPtr<AnimationSystem>() != nullptr
                                               ? engineState.system<AnimationSystem>().getMorphManager()
                                               : nullptr,
                 .extent                 = renderer.getOffscreenExtent(),
