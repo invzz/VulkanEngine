@@ -1,7 +1,5 @@
 #include "Engine/EngineState.hpp"
 
-#include <iostream>
-
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
@@ -30,17 +28,18 @@ namespace engine {
     EngineState::~EngineState() = default;
 
     void EngineState::initialize(Device& device, Renderer& renderer, ResourceManager& rm,
-        IRenderContextPort* rc, Window* window, bool mt, uint32_t th) {
-        if (!rc)
+        IRenderContextPort* renderContext, Window* window, bool mtRecording, uint32_t mtThreads) {
+        if (renderContext == nullptr) {
             throw RuntimeException("EngineState: null IRenderContextPort");
+}
         resourceManager_   = &rm;
-        renderContextPort_ = rc;
+        renderContextPort_ = renderContext;
         device_            = &device;
         createInputDevices(window);
 
         initRegistry_.clear();
         std::string e;
-        initRegistry_.registerSystem("core", {}, [&](auto&) { initCoreSystems(device, renderer, mt, th); return true; }, &e);
+        initRegistry_.registerSystem("core", {}, [&](auto&) { initCoreSystems(device, renderer, mtRecording, mtThreads); return true; }, &e);
         initRegistry_.registerSystem("desc", {"core"}, [&](auto&) { initDescriptorResources(device, renderer); return true; }, &e);
         initRegistry_.registerSystem("pf", {"desc"}, [&](auto&) { allocatePerFrameDescriptorSets(renderer); return true; }, &e);
         initRegistry_.registerSystem("pipe", {"core"}, [&](auto&) {
@@ -52,20 +51,22 @@ namespace engine {
         phys_ = std::make_unique<PhysicsSystem>(device); jolt_ = std::make_unique<JoltPhysicsSystem>();
         registerSystem(phys_); registerSystem(jolt_); return true; }, &e);
         std::string ie;
-        if (!initRegistry_.initializeAll(&ie))
+        if (!initRegistry_.initializeAll(&ie)) {
             throw RuntimeException(ie);
+}
     }
 
     void EngineState::createInputDevices(Window* w) {
-        if (w) {
+        if (w != nullptr) {
             kbd_   = std::make_unique<Keyboard>(*w);
             mouse_ = std::make_unique<Mouse>(*w);
         }
     }
 
     void EngineState::initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th) {
-        if (!renderContextPort_)
+        if (renderContextPort_ == nullptr) {
             throw RuntimeException("initCore: null");
+}
         auto rp      = r.getOffscreenRenderPassLoadColorDepth();
         auto sl      = renderContextPort_->getGlobalSetLayout();
         cameraSys_   = std::make_unique<CameraSystem>(d, rp, sl);
@@ -131,7 +132,7 @@ namespace engine {
     }
 
     void EngineState::initInputRelatedSystems(Window* w) {
-        if (kbd_ && mouse_ && w) {
+        if (kbd_ && mouse_ && (w != nullptr)) {
             objSel_ = std::make_unique<ObjectSelectionSystem>(*kbd_);
             input_  = std::make_unique<InputSystem>(*kbd_, *mouse_, *w);
             registerSystem(objSel_);
@@ -181,7 +182,7 @@ namespace engine {
         r.emplace<NameComponent>(e, n.empty() ? "SpotLight" : n);
         return e;
     }
-    entt::entity EngineState::addModel(const std::string& n, const std::string&) {
+    entt::entity EngineState::addModel(const std::string& n, const std::string& /*unused*/) {
         auto  e = createEntity();
         auto& r = scene_.getRegistry();
         r.emplace<TransformComponent>(e);
@@ -190,16 +191,19 @@ namespace engine {
     }
 
     void EngineState::saveScene(const std::string& p) {
-        if (serializer_)
+        if (serializer_ != nullptr) {
             serializer_->serialize(p);
+        }
     }
     bool EngineState::loadScene(const std::string& p) {
-        if (!serializer_)
+        if (serializer_ == nullptr) {
             return false;
+        }
         clearSceneBodies();
         setGroundEnabled(editor_.solidGround);
-        if (!serializer_->deserialize(p))
+        if (!serializer_->deserialize(p)) {
             return false;
+        }
         editor_.physicsRunning = false;
         editor_.selectedEntity = cameraEntity_ = entt::null;
         pendingCamAfterLoad_                   = true;
@@ -207,8 +211,9 @@ namespace engine {
         return true;
     }
     void EngineState::reconcileSceneLoad() {
-        if (!pendingCamAfterLoad_)
+        if (!pendingCamAfterLoad_) {
             return;
+        }
         pendingCamAfterLoad_ = false;
         cameraEntity_        = entt::null;
         for (auto e : scene_.getRegistry().view<CameraComponent>()) {
@@ -226,7 +231,7 @@ namespace engine {
 
     void EngineState::syncEnvironmentLighting(bool show) {
         if (show && !skybox_) {
-            skybox_ = Skybox::loadFromFolder(*device_, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
+            skybox_      = Skybox::loadFromFolder(*device_, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
             auto discard = ibl_->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama");
         }
         if (!show && skybox_) {
@@ -249,8 +254,9 @@ namespace engine {
         auto ir = ibl_->getIrradianceDescriptorInfo();
         auto pr = ibl_->getPrefilteredDescriptorInfo();
         auto br = ibl_->getBRDFLUTDescriptorInfo();
-        for (auto& s : deferredIblDescriptorSetsRef())
+        for (auto& s : deferredIblDescriptorSetsRef()) {
             DescriptorWriter(deferredIblSetLayout(), deferredIblPool()).writeImage(0, &ir).writeImage(1, &pr).writeImage(2, &br).overwrite(s);
+        }
     }
 
     glm::vec3 EngineState::getTranslation(entt::entity e) const {
@@ -285,34 +291,36 @@ namespace engine {
     }
 
     void EngineState::clearSceneBodies() {
-        if (jolt_)
+        if (jolt_) {
             jolt_->clear();
+        }
     }
     void EngineState::setGroundEnabled(bool e) {
-        if (jolt_)
+        if (jolt_) {
             jolt_->setGroundEnabled(e);
+        }
     }
 
-    VkDescriptorSet EngineState::gbufferDescriptorSet(int i) const {
-        return descriptors_->gbufferDescriptorSet(i);
+    VkDescriptorSet EngineState::gbufferDescriptorSet(int frameIndex) const {
+        return descriptors_->gbufferDescriptorSet(frameIndex);
     }
-    VkDescriptorSet& EngineState::gbufferDescriptorSetRef(int i) {
-        return descriptors_->gbufferDescriptorSetRef(i);
+    VkDescriptorSet& EngineState::gbufferDescriptorSetRef(int frameIndex) {
+        return descriptors_->gbufferDescriptorSetRef(frameIndex);
     }
-    VkDescriptorSet EngineState::deferredShadowDescriptorSet(int i) const {
-        return descriptors_->deferredShadowDescriptorSet(i);
+    VkDescriptorSet EngineState::deferredShadowDescriptorSet(int frameIndex) const {
+        return descriptors_->deferredShadowDescriptorSet(frameIndex);
     }
-    VkDescriptorSet& EngineState::deferredShadowDescriptorSetRef(int i) {
-        return descriptors_->deferredShadowDescriptorSetRef(i);
+    VkDescriptorSet& EngineState::deferredShadowDescriptorSetRef(int frameIndex) {
+        return descriptors_->deferredShadowDescriptorSetRef(frameIndex);
     }
-    VkDescriptorSet EngineState::deferredIblDescriptorSet(int i) const {
-        return descriptors_->deferredIblDescriptorSet(i);
+    VkDescriptorSet EngineState::deferredIblDescriptorSet(int frameIndex) const {
+        return descriptors_->deferredIblDescriptorSet(frameIndex);
     }
-    VkDescriptorSet EngineState::postProcessDescriptorSet(int i) const {
-        return descriptors_->postProcessDescriptorSet(i);
+    VkDescriptorSet EngineState::postProcessDescriptorSet(int frameIndex) const {
+        return descriptors_->postProcessDescriptorSet(frameIndex);
     }
-    VkDescriptorSet& EngineState::postProcessDescriptorSetRef(int i) {
-        return descriptors_->postProcessDescriptorSetRef(i);
+    VkDescriptorSet& EngineState::postProcessDescriptorSetRef(int frameIndex) {
+        return descriptors_->postProcessDescriptorSetRef(frameIndex);
     }
     std::vector<VkDescriptorSet>& EngineState::deferredIblDescriptorSetsRef() {
         return descriptors_->deferredIblDescriptorSets();
