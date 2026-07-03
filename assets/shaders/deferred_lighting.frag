@@ -298,7 +298,8 @@ vec3 handleDirectionalLights(in Surface s) {
         vec3 diff, spec;
         calculateDirectLight(s.N, s.V, s.albedo, s.metallic, s.roughness, s.F0, L, radiance, diff, spec);
 
-        color += diff + spec;
+        float shadow = calculateCascadeShadow(s.worldPos, s.N, L);
+        color += (diff + spec) * shadow;
     }
 
     return color;

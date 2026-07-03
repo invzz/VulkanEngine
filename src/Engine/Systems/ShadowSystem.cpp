@@ -321,10 +321,116 @@ namespace engine {
     }
 
     void ShadowSystem::renderShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings) {
-        shadowLightCount_ = 0;
+        shadowLightCount_ = cascadeCount_;
+
+        renderCascades(frameInfo);
 
         renderSpotShadows(frameInfo, settings);
         renderPointShadows(frameInfo, settings);
+    }
+
+    void ShadowSystem::renderCascades(FrameInfo& frameInfo) {
+        for (int c = 0; c < cascadeCount_ && c < MAX_CASCADES; c++) {
+            renderToShadowMapMesh(frameInfo, *shadowMaps_[c], cascadeData_[c].lightSpaceMatrix);
+        }
+    }
+
+    void ShadowSystem::computeCascades(const glm::mat4& view, const glm::mat4& proj,
+        const glm::vec3& lightDir, float cascadeSplitLambda) {
+
+        constexpr float nearZ = 0.1f;
+        constexpr float farZ  = 100.0f;
+
+        // --- 1. Compute split depths (practical split) ---
+        float cascadeSplits[MAX_CASCADES];
+        for (int i = 0; i < MAX_CASCADES; i++) {
+            float p            = static_cast<float>(i + 1) / static_cast<float>(MAX_CASCADES);
+            float logSplit     = nearZ * std::pow(farZ / nearZ, p);
+            float uniformSplit = nearZ + (farZ - nearZ) * p;
+            cascadeSplits[i]   = logSplit * cascadeSplitLambda + uniformSplit * (1.0f - cascadeSplitLambda);
+        }
+
+        cascadeCount_ = MAX_CASCADES;
+
+        // --- 2. Compute light view matrix ---
+        glm::vec3 const lightDirN     = glm::normalize(lightDir);
+        glm::vec3       lightUp       = glm::vec3(0.0f, 1.0f, 0.0f);
+        if (glm::abs(glm::dot(lightDirN, lightUp)) > 0.99f) {
+            lightUp = glm::vec3(0.0f, 0.0f, 1.0f);
+        }
+        glm::mat4 const lightView = glm::lookAt(glm::vec3(0.0f), lightDirN, lightUp);
+
+        // Inverse camera matrices for frustum corner reconstruction
+        glm::mat4 const invView = glm::inverse(view);
+        glm::mat4 const invProj = glm::inverse(proj);
+
+        // Precompute frustum corners in view space for the full frustum
+        // View-space frustum corners at z = -1 (near plane in NDC)
+        std::array<glm::vec4, 8> const frCornersView = {
+            glm::vec4(-1.0f, -1.0f, 0.0f, 1.0f),  // near-bottom-left
+            glm::vec4(1.0f, -1.0f, 0.0f, 1.0f),   // near-bottom-right
+            glm::vec4(-1.0f, 1.0f, 0.0f, 1.0f),   // near-top-left
+            glm::vec4(1.0f, 1.0f, 0.0f, 1.0f),    // near-top-right
+            glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f),  // far-bottom-left
+            glm::vec4(1.0f, -1.0f, 1.0f, 1.0f),   // far-bottom-right
+            glm::vec4(-1.0f, 1.0f, 1.0f, 1.0f),   // far-top-left
+            glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),    // far-top-right
+        };
+
+        for (int c = 0; c < MAX_CASCADES; c++) {
+            float prevSplit = (c == 0) ? nearZ : cascadeSplits[c - 1];
+            float splitDist = cascadeSplits[c];
+
+            cascadeData_[c].splitDepth = splitDist;
+
+            // --- 3. Compute frustum corners for this cascade slice in world space ---
+            // We need to convert NDC corners to world space at the near/far planes
+            // of this cascade. Use the inverse projection to get view-space
+            // direction, then scale to the split distances.
+            std::array<glm::vec3, 8> corners;
+            int idx = 0;
+            for (int nearFar = 0; nearFar < 2; nearFar++) {
+                float z = (nearFar == 0) ? prevSplit : splitDist;
+                for (int i = 0; i < 4; i++) {
+                    // Unproject NDC corner to view space
+                    glm::vec4 viewPos = invProj * frCornersView[i];
+                    viewPos /= viewPos.w;
+                    // Scale to the correct depth
+                    viewPos.z = z;
+                    viewPos.w = 1.0f;
+                    // Transform to world space
+                    glm::vec4 worldPos = invView * viewPos;
+                    corners[idx++]     = glm::vec3(worldPos) / worldPos.w;
+                }
+            }
+
+            // --- 4. Transform corners to light space and compute tight bounds ---
+            glm::vec3 minBounds(1e30f), maxBounds(-1e30f);
+            for (int i = 0; i < 8; i++) {
+                glm::vec4 ls = lightView * glm::vec4(corners[i], 1.0f);
+                minBounds    = glm::min(minBounds, glm::vec3(ls));
+                maxBounds    = glm::max(maxBounds, glm::vec3(ls));
+            }
+
+            // --- 5. Pad the bounds slightly and create orthographic projection ---
+            // Add padding to reduce shimmering when the camera rotates
+            float padX = (maxBounds.x - minBounds.x) * 0.1f;
+            float padY = (maxBounds.y - minBounds.y) * 0.1f;
+            minBounds -= glm::vec3(padX, padY, 0.0f);
+            maxBounds += glm::vec3(padX, padY, 0.0f);
+
+            // Extend the near/far planes to capture geometry that may cast shadows
+            // from outside the visible frustum slice.
+            minBounds.z = -100.0f;  // extend far behind the frustum
+            maxBounds.z = std::max(maxBounds.z + 50.0f, 100.0f);
+
+            glm::mat4 const lightProj = glm::ortho(
+                minBounds.x, maxBounds.x,
+                minBounds.y, maxBounds.y,
+                -maxBounds.z, -minBounds.z);  // glm::ortho uses inverted Z in Vulkan
+
+            cascadeData_[c].lightSpaceMatrix = lightProj * lightView;
+        }
     }
 
     void ShadowSystem::renderPointLightShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings) {

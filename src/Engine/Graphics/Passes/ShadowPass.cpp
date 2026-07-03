@@ -4,6 +4,8 @@
 #include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/SceneUtils.hpp"
+#include "Engine/Scene/components/DirectionalLightComponent.hpp"
+#include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/LightSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
@@ -25,14 +27,40 @@ namespace engine {
         ubo.directionalLightCount = lightCounts.directional;
         ubo.spotLightCount        = lightCounts.spot;
 
-        shadow_.renderShadowMaps(frameInfo, shadowSettings_);
-
         ubo.projection    = frameInfo.camera.getProjection();
         ubo.view          = frameInfo.camera.getView();
         ubo.invProjection = glm::inverse(ubo.projection);
         ubo.invView       = glm::inverse(ubo.view);
 
         ubo.cameraPosition = getCameraPosition(scene_, frameInfo.cameraEntity);
+
+        // --- Cascaded shadow maps for directional lights ---
+        // Find the first directional light's direction from the scene
+        glm::vec3 lightDir(0.0f, -1.0f, 0.0f);  // fallback: straight down
+        bool hasDirectionalLight = false;
+        {
+            auto dirView = frameInfo.scene->getRegistry().view<DirectionalLightComponent, TransformComponent>();
+            for (auto entity : dirView) {
+                auto& transform = dirView.get<TransformComponent>(entity);
+                lightDir         = transform.getForwardDir();
+                hasDirectionalLight = true;
+                break;  // only the first directional light gets cascades
+            }
+        }
+
+        if (hasDirectionalLight) {
+            shadow_.computeCascades(ubo.view, ubo.projection, lightDir);
+        }
+
+        shadow_.renderShadowMaps(frameInfo, shadowSettings_);
+
+        // Fill cascade data into UBO
+        ubo.cascadeCount = shadow_.getCascadeCount();
+        for (int i = 0; i < ubo.cascadeCount && i < ShadowSystem::MAX_CASCADES; i++) {
+            auto const& cd          = shadow_.getCascadeData(i);
+            ubo.cascadeLightMatrices[i] = cd.lightSpaceMatrix;
+            ubo.cascadeSplits[i]        = cd.splitDepth;
+        }
 
         ubo.shadowLightCount = shadow_.getShadowLightCount();
 

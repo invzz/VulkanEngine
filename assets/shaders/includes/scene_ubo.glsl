@@ -26,6 +26,12 @@ layout(set = 0, binding = 0, std140) uniform UBO {
     vec4 ambientLightColor;
     vec4 cameraPosition;
     mat4 lightSpaceMatrices[8];
+    mat4 cascadeLightMatrices[4];
+    vec4 cascadeSplits;
+    int  cascadeCount;
+    int  _padCascade0;
+    int  _padCascade1;
+    int  _padCascade2;
     vec4 pointLightShadowData[4];
     int  pointLightCount;
     int  directionalLightCount;

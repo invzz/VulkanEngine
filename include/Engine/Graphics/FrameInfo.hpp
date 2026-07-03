@@ -41,6 +41,14 @@ namespace engine {
         glm::vec4 cameraPosition;
         glm::mat4 lightSpaceMatrices[maxShadowLightCount];
 
+        // Cascade shadow mapping
+        glm::mat4 cascadeLightMatrices[4]{};
+        glm::vec4 cascadeSplits{0.0f};  // x=c0-far, y=c1-far, z=c2-far, w=c3-far
+        int       cascadeCount = 0;
+        int       _padCascade0 = 0;
+        int       _padCascade1 = 0;
+        int       _padCascade2 = 0;
+
         glm::vec4 pointLightShadowData[4];
 
         int pointLightCount       = 0;

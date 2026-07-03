@@ -23,6 +23,8 @@ const vec2 POISSON_DISK[9] = vec2[](vec2(0.0, 0.0),
     vec2(0.97484398, 0.75648379),
     vec2(0.44323325, -0.97511554));
 
+const float CASCADE_BLEND_DIST = 0.1;  // 10% blend zone at cascade boundaries
+
 // ============================================================================
 // SHADOW MAP SAMPLING (Spot / PCF / Bias)
 // ============================================================================
@@ -113,6 +115,86 @@ float calculatePointLightShadow(vec3 worldPos, int lightIndex) {
     float bias         = 0.02;
 
     return (depth / farPlane > closestDepth + bias) ? 0.0 : 1.0;
+}
+
+// ============================================================================
+// CASCADED SHADOW MAPS (Directional Lights)
+// ============================================================================
+
+/**
+ * @brief Sample a specific cascade shadow map with PCF.
+ */
+float sampleCascadeShadowMap(vec3 worldPos, vec3 normal, vec3 lightDir, int cascadeIndex) {
+    vec3  N     = normalize(normal);
+    vec3  L     = normalize(lightDir);
+    float NdotL = max(dot(N, L), 0.0);
+
+    // Normal offset
+    float sinAngle     = sqrt(1.0 - NdotL * NdotL);
+    float normalOffset = SHADOW_NORMAL_OFFSET_BASE * sinAngle;
+    vec3  offsetPos    = worldPos + N * normalOffset;
+
+    // Cascade light space
+    vec4 lsPos      = ubo.cascadeLightMatrices[cascadeIndex] * vec4(offsetPos, 1.0);
+    vec3 projCoords = lsPos.xyz / lsPos.w;
+    projCoords.xy   = projCoords.xy * 0.5 + 0.5;
+
+    if (projCoords.z < 0.0 || projCoords.z > 1.0 ||
+        any(lessThan(projCoords.xy, vec2(0.0))) || any(greaterThan(projCoords.xy, vec2(1.0))))
+        return 1.0;
+
+    // Bias
+    float constBias = SHADOW_DEPTH_BIAS_BASE;
+    float slopeBias = SHADOW_DEPTH_BIAS_SLOPE / max(NdotL, 0.15);
+    float totalBias = max(SHADOW_DEPTH_BIAS_MIN, constBias + slopeBias);
+
+    vec2  texelSize = 1.0 / vec2(textureSize(shadowMaps[cascadeIndex], 0));
+    float shadow    = 0.0;
+    for (int i = 0; i < SHADOW_MAX_POISSON_SAMPLES; i++) {
+        vec2 uv = projCoords.xy + POISSON_DISK[i] * texelSize * SHADOW_PCF_RADIUS;
+        shadow += texture(shadowMaps[cascadeIndex], vec3(uv, projCoords.z - totalBias));
+    }
+    return shadow / float(SHADOW_MAX_POISSON_SAMPLES);
+}
+
+/**
+ * @brief Compute the directional light shadow factor using CSM.
+ * Selects the appropriate cascade based on view-space depth and blends
+ * near cascade boundaries to hide seams.
+ */
+float calculateCascadeShadow(vec3 worldPos, vec3 normal, vec3 lightDir) {
+    if (ubo.cascadeCount <= 0)
+        return 1.0;
+
+    // View-space depth
+    vec4  viewPos   = ubo.view * vec4(worldPos, 1.0);
+    float viewDepth = -viewPos.z;  // Vulkan: positive forward
+
+    // Select cascade
+    int cascadeIndex = 0;
+    for (int i = 0; i < ubo.cascadeCount - 1; i++) {
+        if (viewDepth > ubo.cascadeSplits[i])
+            cascadeIndex = i + 1;
+    }
+
+    // Sample the selected cascade
+    float shadow = sampleCascadeShadowMap(worldPos, normal, lightDir, cascadeIndex);
+
+    // Blend with next cascade near the split boundary
+    if (cascadeIndex < ubo.cascadeCount - 1) {
+        float splitDist = ubo.cascadeSplits[cascadeIndex];
+        float blendZone = splitDist * CASCADE_BLEND_DIST;
+        float t         = (splitDist - viewDepth) / max(blendZone, 1e-6);
+        t               = clamp(t, 0.0, 1.0);
+
+        // Only blend if we're near the split boundary
+        if (t < 1.0) {
+            float nextShadow = sampleCascadeShadowMap(worldPos, normal, lightDir, cascadeIndex + 1);
+            shadow = mix(nextShadow, shadow, t);
+        }
+    }
+
+    return shadow;
 }
 
 #endif  // SHADOWS_GLSL

@@ -19,8 +19,19 @@
 namespace engine {
 
     /**
- * @brief Settings for shadow map rendering
- */
+     * @brief Per-cascade data for cascaded shadow mapping (CSM).
+     */
+    struct CascadeData {
+        glm::mat4 lightSpaceMatrix{1.0f};
+        float     splitDepth = 0.0f;  // far plane of this cascade in view-space Z
+        int       _pad0      = 0;
+        int       _pad1      = 0;
+        int       _pad2      = 0;
+    };
+
+    /**
+     * @brief Settings for shadow map rendering
+     */
     struct ShadowSettings {
         bool enableShadowCulling = false;
 
@@ -41,6 +52,7 @@ namespace engine {
         static constexpr int MAX_SPOT_SHADOW_MAPS = 4;
         static constexpr int MAX_SHADOW_MAPS      = MAX_SPOT_SHADOW_MAPS;
         static constexpr int MAX_CUBE_SHADOW_MAPS = 4;
+        static constexpr int MAX_CASCADES         = 4;
 
         ShadowSystem(Device& device, uint32_t shadowMapSize = 2048);
         ~ShadowSystem();
@@ -54,6 +66,23 @@ namespace engine {
    * @param settings Shadow settings
    */
         void renderShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings);
+
+        /**
+         * @brief Compute cascade frustum data for a single directional light.
+         * @param view Camera view matrix.
+         * @param proj Camera projection matrix.
+         * @param lightDir Normalized world-space direction of the directional light.
+         * @param cascadeSplitLambda Blend between logarithmic (1) and uniform (0) splits.
+         */
+        void computeCascades(const glm::mat4& view, const glm::mat4& proj,
+            const glm::vec3& lightDir, float cascadeSplitLambda = 0.95f);
+
+        [[nodiscard]] const CascadeData& getCascadeData(int cascadeIndex) const {
+            return cascadeData_[cascadeIndex];
+        }
+        [[nodiscard]] int getCascadeCount() const {
+            return cascadeCount_;
+        }
 
         ShadowMap& getShadowMap(int index = 0) {
             return *shadowMaps_[index];
@@ -110,6 +139,12 @@ namespace engine {
         void renderSpotShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
         void renderPointShadows(FrameInfo& frameInfo, const ShadowSettings& settings);
 
+        /**
+         * @brief Render all cascade shadow maps for directional lights.
+         * Cascades use shadowMaps_[0..MAX_CASCADES-1].
+         */
+        void renderCascades(FrameInfo& frameInfo);
+
         void renderPointLightShadowMaps(FrameInfo& frameInfo, const ShadowSettings& settings);
         void renderToCubeShadowMap(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, const glm::vec3& position, float range);
         void renderToCubeFaceMesh(FrameInfo& frameInfo, CubeShadowMap& cubeShadowMap, int face, const glm::mat4& lightSpaceMatrix, const glm::vec3& lightPos, float farPlane);
@@ -127,6 +162,9 @@ namespace engine {
 
         glm::mat4 lightSpaceMatrices_[MAX_SHADOW_MAPS];
         int       shadowLightCount_ = 0;
+
+        CascadeData cascadeData_[MAX_CASCADES];
+        int         cascadeCount_ = 0;
 
         glm::vec3 pointLightPositions_[MAX_CUBE_SHADOW_MAPS];
         float     pointLightRanges_[MAX_CUBE_SHADOW_MAPS];
