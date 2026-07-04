@@ -405,6 +405,16 @@ namespace engine {
             .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
             .pNext = &meshShaderFeatures,
         };
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR accelFeatures = {
+            .sType                 = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+            .pNext                 = &presentIdFeaturesQuery,
+            .accelerationStructure = VK_TRUE,
+        };
+        VkPhysicalDeviceRayQueryFeaturesKHR rayQueryFeatures = {
+            .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR,
+            .pNext    = &accelFeatures,
+            .rayQuery = VK_TRUE,
+        };
         presentIdSupported_ = false;
         if (presentIdExtensionAvailable && getFeatures2 != nullptr) {
             VkPhysicalDeviceFeatures2 features2 = {
@@ -424,10 +434,15 @@ namespace engine {
             .pNext     = &meshShaderFeatures,
             .presentId = VK_TRUE,
         };
-        void const* pNextChain = &meshShaderFeatures;
+        // Wire raytracing features into the chain.
+        // The chain order: rayQueryFeatures -> accelFeatures -> (presentIdEnable|meshShader) -> ...
+        void* rtNext = reinterpret_cast<void*>(&meshShaderFeatures);
         if (presentIdSupported_) {
-            pNextChain = &presentIdFeaturesEnable;
+            rtNext = reinterpret_cast<void*>(&presentIdFeaturesEnable);
         }
+        accelFeatures.pNext = rtNext;
+        rayQueryFeatures.pNext = &accelFeatures;
+        void const* pNextChain = &rayQueryFeatures;
         VkDeviceCreateInfo createInfo = {
             .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext                = pNextChain,

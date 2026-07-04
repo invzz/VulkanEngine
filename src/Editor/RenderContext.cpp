@@ -41,12 +41,14 @@ namespace engine {
                           .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
                           .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
                           .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
+                          .addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
                           .build();
     }
     void RenderContext::createGlobalSetLayout() {
         globalSetLayout_ = DescriptorSetLayout::Builder(device_)
                                .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
+                               .addBinding(2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT)
                                .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
@@ -121,6 +123,24 @@ namespace engine {
             if (globalDescriptorSets_[i] == VK_NULL_HANDLE) {
                 throw std::runtime_error("failed to allocate global descriptor set");
             }
+
+            // Write TLAS at binding 2 (DescriptorWriter has no writeAccelerationStructure helper)
+            VkAccelerationStructureKHR tlasHandle =
+                (accelBuilder_ != nullptr) ? accelBuilder_->getTlas() : VK_NULL_HANDLE;
+            VkWriteDescriptorSetAccelerationStructureKHR accelWriteInfo{};
+            accelWriteInfo.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+            accelWriteInfo.accelerationStructureCount = 1;
+            accelWriteInfo.pAccelerationStructures    = &tlasHandle;
+
+            VkWriteDescriptorSet writeAccel{};
+            writeAccel.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeAccel.pNext           = &accelWriteInfo;
+            writeAccel.dstSet          = globalDescriptorSets_[i];
+            writeAccel.dstBinding      = 2;
+            writeAccel.dstArrayElement = 0;
+            writeAccel.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+            writeAccel.descriptorCount = 1;
+            vkUpdateDescriptorSets(device_.device(), 1, &writeAccel, 0, nullptr);
         }
     }
     void RenderContext::updateLightDescriptorSets(int frameIndex) {
@@ -141,6 +161,29 @@ namespace engine {
         writeSet(globalDescriptorSets_[frameIndex], 3, pointInfo);
         writeSet(globalDescriptorSets_[frameIndex], 4, dirInfo);
         writeSet(globalDescriptorSets_[frameIndex], 5, spotInfo);
+    }
+    void RenderContext::updateTlasDescriptorSets(int frameIndex) {
+        if (!accelBuilder_)
+            return;
+
+        VkAccelerationStructureKHR tlasHandle = accelBuilder_->getTlas();
+        if (tlasHandle == VK_NULL_HANDLE)
+            return;
+
+        VkWriteDescriptorSetAccelerationStructureKHR accelWriteInfo{};
+        accelWriteInfo.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+        accelWriteInfo.accelerationStructureCount = 1;
+        accelWriteInfo.pAccelerationStructures    = &tlasHandle;
+
+        VkWriteDescriptorSet writeAccel{};
+        writeAccel.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writeAccel.pNext           = &accelWriteInfo;
+        writeAccel.dstSet          = globalDescriptorSets_[frameIndex];
+        writeAccel.dstBinding      = 2;
+        writeAccel.dstArrayElement = 0;
+        writeAccel.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        writeAccel.descriptorCount = 1;
+        vkUpdateDescriptorSets(device_.device(), 1, &writeAccel, 0, nullptr);
     }
     void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold) {
         uboBuffers_[frameIndex]->writeToBuffer(&ubo);
@@ -242,5 +285,20 @@ namespace engine {
         counts.directional = static_cast<int>(dirLights.size());
         counts.spot        = static_cast<int>(spotLights.size());
         return counts;
+    }
+    VkAccelerationStructureKHR RenderContext::rebuildTlas(
+        const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
+        VkCommandBuffer cmd) {
+        if (!accelBuilder_)
+            return VK_NULL_HANDLE;
+
+        VkAccelerationStructureKHR tlas = accelBuilder_->rebuildTlas(instances, cmd);
+
+        // Update all descriptor sets with the new TLAS handle
+        for (int i = 0; i < static_cast<int>(globalDescriptorSets_.size()); ++i) {
+            updateTlasDescriptorSets(i);
+        }
+
+        return tlas;
     }
 }  // namespace engine

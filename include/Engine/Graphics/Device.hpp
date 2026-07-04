@@ -139,7 +139,12 @@ namespace engine {
         VkQueue                                                                    graphicsQueue_   = VK_NULL_HANDLE;
         VkQueue                                                                    presentQueue_    = VK_NULL_HANDLE;
         const std::vector<const char*>                                             validationLayers = {"VK_LAYER_KHRONOS_validation"};
-        const std::vector<const char*>                                             deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+            VK_KHR_RAY_QUERY_EXTENSION_NAME,
+            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+        };
         static std::atomic<int>                                                    validationLayersOverride_;
         bool                                                                       presentIdSupported_ = false;
         std::unique_ptr<DeviceMemory>                                              memory_;

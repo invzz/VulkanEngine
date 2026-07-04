@@ -1,4 +1,5 @@
-#version 450
+#version 460
+#extension GL_EXT_ray_query : enable
 #extension GL_GOOGLE_include_directive : enable
 
 #include "includes/brdf.glsl"
@@ -46,6 +47,9 @@ layout(set = 3, binding = 2) uniform sampler2D brdfLUT;
 /* Shadows */
 layout(set = 2, binding = 0) uniform sampler2DShadow shadowMaps[4];
 layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
+
+/* Ray tracing TLAS (global set, binding 2) */
+layout(set = 0, binding = 2) uniform accelerationStructureEXT tlas;
 
 #include "includes/shadows.glsl"
 
@@ -303,7 +307,16 @@ vec3 handleDirectionalLights(in Surface s) {
         vec3 diff, spec;
         calculateDirectLight(s.N, s.V, s.albedo, s.metallic, s.roughness, s.F0, L, radiance, diff, spec);
 
-        float shadow = calculateCascadeShadow(s.worldPos, s.N, L);
+        // Ray-traced shadow — bias-free, no acne, no Peter Panning
+        float shadow = 1.0;
+        {
+            vec3  origin = s.worldPos + s.N * 0.002; // tiny push along normal to avoid self-intersection
+            rayQueryEXT q;
+            rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, 1000.0);
+            rayQueryProceedEXT(q);
+            bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
+            shadow = hit ? 0.0 : 1.0;
+        }
         color += (diff + spec) * shadow;
     }
 

@@ -8,6 +8,7 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 
+#include "Engine/Graphics/AccelBuilder.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
 namespace engine {
     class RenderContext {
@@ -27,9 +28,18 @@ namespace engine {
             return globalSetLayout_->getDescriptorSetLayout();
         }
 
+        void setAccelBuilder(AccelBuilder* builder) {
+            accelBuilder_ = builder;
+        }
+
+        VkAccelerationStructureKHR rebuildTlas(
+            const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
+            VkCommandBuffer cmd);
+
        private:
         Device&                              device_;
         MeshManager&                         meshManager_;
+        AccelBuilder*                        accelBuilder_ = nullptr;
         std::unique_ptr<DescriptorPool>      globalPool_;
         std::unique_ptr<DescriptorSetLayout> globalSetLayout_;
         std::vector<std::unique_ptr<Buffer>> uboBuffers_;
@@ -47,6 +57,7 @@ namespace engine {
         void                                 createLightBuffers(size_t pointCapacity, size_t directionalCapacity, size_t spotCapacity);
         void                                 createGlobalDescriptorSets();
         void                                 updateLightDescriptorSets(int frameIndex);
+        void                                 updateTlasDescriptorSets(int frameIndex);
     };
 }  // namespace engine
 #endif
