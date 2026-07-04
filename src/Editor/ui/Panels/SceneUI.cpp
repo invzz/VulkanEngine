@@ -16,6 +16,7 @@
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Scene/components/NodeIndexComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
@@ -117,19 +118,76 @@ namespace engine::ui {
             }
             ImGui::PopID();
         }
-        void drawEntityChildren(
+        /// Recursively draw node children of a parent entity.
+        void drawNodeChildren(
             entt::entity               parent,
             const entt::registry&      registry,
             FrameInfo&                 frameInfo,
             std::vector<entt::entity>& toDelete) {
-            // Iterate all entities to find children whose parent matches
             auto view = registry.view<ChildComponent>();
             for (auto child : view) {
                 auto& childComp = registry.get<ChildComponent>(child);
                 if (childComp.parent != parent) {
                     continue;
                 }
-                // Determine icon and colour based on components
+                // Only handle node entities here
+                if (!registry.all_of<NodeIndexComponent>(child)) {
+                    continue;
+                }
+                std::string name = "Node";
+                if (registry.all_of<NameComponent>(child)) {
+                    name = registry.get<NameComponent>(child).name;
+                }
+                const char* icon  = ICON_FA_FOLDER;
+                ImVec4      color = ImVec4(0.6f, 0.8f, 1.0f, 1.0f);
+                // Check if this node has children of its own
+                bool hasOwnChildren = false;
+                for (auto grandchild : view) {
+                    if (registry.get<ChildComponent>(grandchild).parent == child) {
+                        hasOwnChildren = true;
+                        break;
+                    }
+                }
+                ImGui::PushID(static_cast<int>(static_cast<uint32_t>(child)));
+                UI::TextColored(icon, color);
+                ImGui::SameLine();
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
+                if (!hasOwnChildren) {
+                    flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                }
+                const bool isSelected = (frameInfo.selectedEntity == child);
+                if (isSelected) {
+                    flags |= ImGuiTreeNodeFlags_Selected;
+                }
+                bool nodeOpen = ImGui::TreeNodeEx(name.c_str(), flags);
+                if (ImGui::IsItemClicked()) {
+                    frameInfo.selectedObjectId = static_cast<uint32_t>(child);
+                    frameInfo.selectedEntity   = child;
+                }
+                if (hasOwnChildren && nodeOpen) {
+                    drawNodeChildren(child, registry, frameInfo, toDelete);
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            }
+        }
+        /// Draw light children of a parent entity as flat selectable rows.
+        void drawLightChildren(
+            entt::entity               parent,
+            const entt::registry&      registry,
+            FrameInfo&                 frameInfo,
+            std::vector<entt::entity>& toDelete) {
+            auto view = registry.view<ChildComponent>();
+            for (auto child : view) {
+                auto& childComp = registry.get<ChildComponent>(child);
+                if (childComp.parent != parent) {
+                    continue;
+                }
+                if (!registry.all_of<PointLightComponent>(child) &&
+                    !registry.all_of<DirectionalLightComponent>(child) &&
+                    !registry.all_of<SpotLightComponent>(child)) {
+                    continue;
+                }
                 const char* icon  = ICON_FA_CIRCLE;
                 ImVec4      color = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
                 if (registry.all_of<PointLightComponent>(child)) {
@@ -141,9 +199,6 @@ namespace engine::ui {
                 } else if (registry.all_of<SpotLightComponent>(child)) {
                     icon  = ICON_FA_LOCATION_ARROW;
                     color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-                } else if (registry.all_of<ModelComponent>(child)) {
-                    icon  = ICON_FA_CUBE;
-                    color = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
                 }
                 drawEntityRow(child, icon, color, frameInfo, registry, toDelete);
             }
@@ -438,19 +493,34 @@ namespace engine::ui {
             for (auto entity : models) {
                 drawEntityRow(entity, ICON_FA_CUBE, ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
 
-                // Render children under this model in a collapsible tree node
-                auto childView = registry.view<ChildComponent>();
-                bool hasChildren = false;
+                // Separate children into lights and nodes
+                auto        childView = registry.view<ChildComponent>();
+                bool        hasLights = false;
+                bool        hasNodes  = false;
                 for (auto child : childView) {
-                    if (registry.get<ChildComponent>(child).parent == entity) {
-                        hasChildren = true;
-                        break;
+                    if (registry.get<ChildComponent>(child).parent != entity) {
+                        continue;
+                    }
+                    if (registry.all_of<PointLightComponent>(child) ||
+                        registry.all_of<DirectionalLightComponent>(child) ||
+                        registry.all_of<SpotLightComponent>(child)) {
+                        hasLights = true;
+                    } else if (registry.all_of<NodeIndexComponent>(child)) {
+                        hasNodes = true;
                     }
                 }
 
-                if (hasChildren) {
+                // Render Lights sub-tree
+                if (hasLights) {
                     if (UI::TreeNode(ICON_FA_LIGHTBULB, "Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
-                        drawEntityChildren(entity, registry, frameInfo, toDelete);
+                        drawLightChildren(entity, registry, frameInfo, toDelete);
+                        ImGui::TreePop();
+                    }
+                }
+                // Render Nodes sub-tree (recursive glTF node hierarchy)
+                if (hasNodes) {
+                    if (UI::TreeNode(ICON_FA_SITEMAP, "Nodes", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        drawNodeChildren(entity, registry, frameInfo, toDelete);
                         ImGui::TreePop();
                     }
                 }

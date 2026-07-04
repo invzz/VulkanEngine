@@ -81,6 +81,13 @@ namespace engine {
             const Model& model,
             entt::entity parentEntity);
         /**
+     * @brief Create entity hierarchy from model's glTF node tree
+     */
+        static void createNodeEntities(
+            Scene&       scene,
+            const Model& model,
+            entt::entity modelEntity);
+        /**
      * @brief Check if static collider should be auto-created
      */
         static bool shouldCreateStaticCollider(

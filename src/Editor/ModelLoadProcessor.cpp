@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ranges>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Engine/Core/Logger.hpp"
@@ -11,6 +12,7 @@
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
+#include "Engine/Scene/components/NodeIndexComponent.hpp"
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
@@ -82,6 +84,8 @@ namespace engine {
         }
         // Handle embedded lights — parent them under the model entity
         createLightEntities(scene, *modelPtr, entity);
+        // Handle glTF node hierarchy — create entities for each node
+        createNodeEntities(scene, *modelPtr, entity);
         Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Added model to scene: ", modelPath);
     }
     ModelLoadProcessor::LoadCallback ModelLoadProcessor::createAsyncCallback(
@@ -162,6 +166,54 @@ namespace engine {
             Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Created light entity: ", light.name, " (",
                 lightTypeStr, ") intensity=", light.intensity);
         }
+    }
+    void ModelLoadProcessor::createNodeEntities(
+        Scene&       scene,
+        const Model& model,
+        entt::entity modelEntity) {
+        auto&            registry = scene.getRegistry();
+        auto const&      nodes    = model.getNodes();
+        const int        nodeCount = static_cast<int>(nodes.size());
+        if (nodeCount == 0) {
+            return;
+        }
+        // Build parent map: for each node index, track its parent node index.
+        // Nodes not in this map are root nodes (parent = modelEntity).
+        std::unordered_map<int, int> nodeParent;
+        for (int i = 0; i < nodeCount; ++i) {
+            for (int childIdx : nodes[i].children) {
+                nodeParent[childIdx] = i;
+            }
+        }
+        // First pass: create an entity for every node
+        std::unordered_map<int, entt::entity> nodeToEntity;
+        nodeToEntity.reserve(nodeCount);
+        for (int i = 0; i < nodeCount; ++i) {
+            auto const& node     = nodes[i];
+            auto        entity   = scene.createEntity();
+            nodeToEntity[i]      = entity;
+            std::string nodeName = node.name.empty() ? std::string("Node_") + std::to_string(i) : node.name;
+            registry.emplace<NameComponent>(entity, nodeName);
+            registry.emplace<NodeIndexComponent>(entity, i);
+            auto& transform = registry.emplace<TransformComponent>(entity);
+            transform.translation = node.translation;
+            transform.rotation    = glm::eulerAngles(node.rotation);
+            transform.scale       = node.scale;
+        }
+        // Second pass: wire parent-child relationships
+        for (int i = 0; i < nodeCount; ++i) {
+            auto entity   = nodeToEntity[i];
+            auto parentIt = nodeParent.find(i);
+            if (parentIt != nodeParent.end()) {
+                // This node has a parent node
+                int parentNodeIdx = parentIt->second;
+                registry.emplace<ChildComponent>(entity, nodeToEntity[parentNodeIdx]);
+            } else {
+                // Root node — parent is the model entity
+                registry.emplace<ChildComponent>(entity, modelEntity);
+            }
+        }
+        Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Created ", nodeCount, " node entities for model");
     }
     bool ModelLoadProcessor::shouldCreateStaticCollider(
         const std::string&                              modelPath,
