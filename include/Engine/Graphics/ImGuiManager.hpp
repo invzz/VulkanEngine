@@ -1,13 +1,10 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_IMGUIMANAGER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_IMGUIMANAGER_HPP
-
 #include <vulkan/vulkan.h>
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-
 namespace engine {
-
     /**
  * @brief Manager for ImGui integration with Vulkan
  *
@@ -19,22 +16,18 @@ namespace engine {
        public:
         ImGuiManager(Window& window, Device& device, VkRenderPass renderPass, uint32_t imageCount);
         ~ImGuiManager();
-
         ImGuiManager(const ImGuiManager&)            = delete;
         ImGuiManager& operator=(const ImGuiManager&) = delete;
-
         /**
    * @brief Start a new ImGui frame
    * Call this before any ImGui UI code
    */
         static void newFrame();
-
         /**
    * @brief Render ImGui draw data to command buffer
    * Call this inside render pass after your scene rendering
    */
         static void render(VkCommandBuffer commandBuffer);
-
         /**
    * @brief Update ImGui fonts/resources
    * Call this after window resize
@@ -42,15 +35,12 @@ namespace engine {
         void updateAfterResize();
 
        private:
-        void initImGui();
-        void setupVulkanBackend(uint32_t imageCount);
-
+        void             initImGui();
+        void             setupVulkanBackend(uint32_t imageCount);
         Window&          window_;
         Device&          device_;
         VkRenderPass     renderPass_;
         VkDescriptorPool imguiDescriptorPool_{VK_NULL_HANDLE};
     };
-
 }  // namespace engine
-
 #endif

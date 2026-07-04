@@ -2,17 +2,14 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
-
 int main(int argc, char** argv) {
     namespace fs = std::filesystem;
     fs::create_directories("assets/scenes/test");
-
     nlohmann::json scene;
     scene["version"]          = 1;
     scene["assets"]           = nlohmann::json::object();
     scene["assets"]["models"] = nlohmann::json::array({"models/example_model.gltf"});
-
-    scene["objects"] = nlohmann::json::array();
+    scene["objects"]          = nlohmann::json::array();
     nlohmann::json obj;
     obj["id"]        = "object_01";
     obj["mesh"]      = "models/example_model.gltf";
@@ -20,7 +17,6 @@ int main(int argc, char** argv) {
     obj["transform"] = {{"translation", {0.0, 0.0, 0.0}}, {"rotation", {0.0, 0.0, 0.0, 1.0}}, {"scale", {1.0, 1.0, 1.0}}};
     obj["lighting"]  = {{"mobility", "Static"}};
     scene["objects"].push_back(obj);
-
     scene["lights"] = nlohmann::json::array();
     nlohmann::json sun;
     sun["id"]        = "sun_01";
@@ -31,7 +27,6 @@ int main(int argc, char** argv) {
     sun["bake"]      = true;
     sun["lightType"] = "static";
     scene["lights"].push_back(sun);
-
     nlohmann::json lamp;
     lamp["id"]        = "lamp_01";
     lamp["type"]      = "point";
@@ -41,7 +36,6 @@ int main(int argc, char** argv) {
     lamp["bake"]      = false;
     lamp["lightType"] = "dynamic";
     scene["lights"].push_back(lamp);
-
     std::ofstream out("assets/scenes/demo_scene.json");
     if (!out) {
         std::cerr << "Failed to open output file\n";
@@ -50,6 +44,5 @@ int main(int argc, char** argv) {
     out << scene.dump(2) << std::endl;
     out.close();
     std::cout << "Wrote assets/scenes/demo_scene.json\n";
-
     return 0;
 }

@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SPATIALSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_SPATIALSYSTEM_HPP
-
 #include <glm/glm.hpp>
 
 #include <entt/entt.hpp>
@@ -8,9 +7,7 @@
 #include <vector>
 
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     /**
      * @brief Spatial acceleration structure for scene-level queries.
      *
@@ -31,7 +28,6 @@ namespace engine {
             float        distance;
             glm::vec3    position;
         };
-
         /**
          * @brief World-space ray.
          */
@@ -39,7 +35,6 @@ namespace engine {
             glm::vec3 origin;
             glm::vec3 direction;
         };
-
         /**
          * @brief Rebuild the BVH from the given ECS registry.
          *
@@ -51,7 +46,6 @@ namespace engine {
          */
         void rebuild(entt::registry&                             registry,
             const std::unordered_map<entt::entity, const AABB*>& modelBounds);
-
         /**
          * @brief Raycast against the BVH broadphase.
          *
@@ -63,7 +57,6 @@ namespace engine {
          * @return RayHit for the closest hit, or std::nullopt.
          */
         [[nodiscard]] std::optional<RayHit> raycast(const Ray& ray) const;
-
         /**
          * @brief AABB query against the BVH.
          *
@@ -87,44 +80,33 @@ namespace engine {
             uint32_t     right  = UINT32_MAX;
             entt::entity entity = entt::null;
         };
-
         /**
          * @brief Insert a leaf into the tree at the given node index.
          */
         uint32_t insertLeaf(uint32_t nodeIdx, AABB bounds, entt::entity entity);
-
         /**
          * @brief Build the tree from leaf data via SAH-like split.
          */
         void buildTree();
-
         /**
          * @brief Recursive tree builder.
          */
         void buildRecursive(uint32_t nodeIdx, uint32_t leafStart, uint32_t leafCount);
-
         /**
          * @brief Ray-AABB test returning t-entry distance.
          */
         bool intersectRayAABB(const Ray& ray, const AABB& aabb, float& tNear) const;
-
         /**
          * @brief Raycast traversal against the BVH.
          */
         std::optional<RayHit> raycastTraversal(const Ray& ray) const;
-
         /**
          * @brief AABB query traversal.
          */
-        void queryAABBT(const AABB& bounds, std::vector<entt::entity>& out) const;
-
-        std::vector<Node> nodes_;
-
+        void                                       queryAABBT(const AABB& bounds, std::vector<entt::entity>& out) const;
+        std::vector<Node>                          nodes_;
         std::vector<std::pair<entt::entity, AABB>> leaves_;
-
-        uint32_t root_ = UINT32_MAX;
+        uint32_t                                   root_ = UINT32_MAX;
     };
-
 }  // namespace engine
-
 #endif

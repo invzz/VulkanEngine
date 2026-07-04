@@ -168,7 +168,7 @@ float calculateCascadeShadow(vec3 worldPos, vec3 normal, vec3 lightDir) {
 
     // View-space depth
     vec4  viewPos   = ubo.view * vec4(worldPos, 1.0);
-    float viewDepth = -viewPos.z;  // Vulkan: positive forward
+    float viewDepth = viewPos.z;  // Camera view matrix uses positive-forward convention
 
     // Select cascade
     int cascadeIndex = 0;

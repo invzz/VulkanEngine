@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_SKYBOX_HPP
-
 #include <vulkan/vulkan.h>
 
 #include <array>
@@ -8,9 +7,7 @@
 #include <string>
 
 #include "Engine/Graphics/Device.hpp"
-
 namespace engine {
-
     /**
  * @brief Cubemap texture for skybox rendering
  *
@@ -26,7 +23,6 @@ namespace engine {
    *                  (right, left, top, bottom, front, back)
    */
         Skybox(Device& device, const std::array<std::string, 6>& facePaths);
-
         /**
    * @brief Load skybox from folder with standard naming
    * @param device Vulkan device
@@ -34,21 +30,17 @@ namespace engine {
    * @param extension File extension (default: "jpg")
    */
         static std::unique_ptr<Skybox> loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension = "jpg");
-
         /**
    * @brief Create an empty skybox cubemap for rendering (e.g. runtime capture)
    * @param device Vulkan device
    * @param size Resolution of each face (e.g. 1024)
    */
         Skybox(Device& device, uint32_t size);
-
         ~Skybox();
-
-        Skybox(const Skybox&)            = delete;
-        Skybox& operator=(const Skybox&) = delete;
-        Skybox(Skybox&&)                 = delete;
-        Skybox& operator=(Skybox&&)      = delete;
-
+        Skybox(const Skybox&)                         = delete;
+        Skybox& operator=(const Skybox&)              = delete;
+        Skybox(Skybox&&)                              = delete;
+        Skybox&                   operator=(Skybox&&) = delete;
         [[nodiscard]] VkImageView getImageView() const {
             return imageView_;
         }
@@ -61,7 +53,6 @@ namespace engine {
         [[nodiscard]] VkFormat getFormat() const {
             return imageFormat_;
         }
-
         [[nodiscard]] VkDescriptorImageInfo getDescriptorInfo() const {
             return VkDescriptorImageInfo{
                 .sampler     = sampler_,
@@ -69,30 +60,23 @@ namespace engine {
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             };
         }
-
         [[nodiscard]] int getSize() const {
             return size_;
         }
 
        private:
-        void createCubemapImage(const std::array<std::string, 6>& facePaths);
-        void createImageView();
-        void createSampler();
-        void transitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout);
-        void copyBufferToImage(VkBuffer buffer, uint32_t faceIndex);
-
-        Device& device_;
-
+        void           createCubemapImage(const std::array<std::string, 6>& facePaths);
+        void           createImageView();
+        void           createSampler();
+        void           transitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout);
+        void           copyBufferToImage(VkBuffer buffer, uint32_t faceIndex);
+        Device&        device_;
         VkImage        image_       = VK_NULL_HANDLE;
         VkDeviceMemory imageMemory_ = VK_NULL_HANDLE;
         VkImageView    imageView_   = VK_NULL_HANDLE;
         VkSampler      sampler_     = VK_NULL_HANDLE;
-
-        VkFormat imageFormat_ = VK_FORMAT_UNDEFINED;
-
-        int size_ = 0;
+        VkFormat       imageFormat_ = VK_FORMAT_UNDEFINED;
+        int            size_        = 0;
     };
-
 }  // namespace engine
-
 #endif

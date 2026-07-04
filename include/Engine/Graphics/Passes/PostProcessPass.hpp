@@ -1,12 +1,8 @@
 #pragma once
-
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
-
 namespace engine {
-
     class EngineState;
     class Renderer;
-
     /**
      * @brief Full-screen post-processing pass.
      *
@@ -21,12 +17,10 @@ namespace engine {
     class PostProcessPass : public RenderPassBase {
        public:
         PostProcessPass(Renderer& renderer, EngineState& engineState);
-
         void execute(FrameInfo& frameInfo) override;
 
        private:
         Renderer&    renderer_;
         EngineState& engineState_;
     };
-
 }  // namespace engine

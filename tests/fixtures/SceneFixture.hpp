@@ -6,10 +6,8 @@
  * Useful for tests involving Scene, SceneSerializer, or components that
  * need model loading capabilities.
  */
-
 #ifndef VULKANENGINE_TESTS_FIXTURES_SCENEFIXTURE_HPP
 #define VULKANENGINE_TESTS_FIXTURES_SCENEFIXTURE_HPP
-
 #include <filesystem>
 #include <memory>
 
@@ -17,9 +15,7 @@
 
 #include "DeviceFixture.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
-
 namespace engine::test {
-
     /**
  * @brief Scene fixture with Device + ResourceManager
  *
@@ -32,29 +28,22 @@ namespace engine::test {
        protected:
         void SetUp() override {
             DeviceFixtureWithSetup::SetUp();
-
             std::filesystem::create_directories("assets/scenes/test");
-
             resourceManager_ = std::make_unique<ResourceManager>(device());
         }
-
         void TearDown() override {
             resourceManager_.reset();
             DeviceFixtureWithSetup::TearDown();
         }
-
         ResourceManager& resourceManager() {
             return *resourceManager_;
         }
-
         std::unique_ptr<Scene> createScene() {
             return std::make_unique<Scene>();
         }
-
         static std::filesystem::path testSceneDir() {
             return "assets/scenes/test";
         }
-
         std::filesystem::path createTestScenePath(const std::string& testName) {
             return testSceneDir() / (testName + ".json");
         }
@@ -62,7 +51,6 @@ namespace engine::test {
        private:
         std::unique_ptr<ResourceManager> resourceManager_;
     };
-
     /**
  * @brief Scene fixture that creates a Scene instance for each test
  *
@@ -74,12 +62,10 @@ namespace engine::test {
             SceneFixture::SetUp();
             scene_ = createScene();
         }
-
         void TearDown() override {
             scene_.reset();
             SceneFixture::TearDown();
         }
-
         Scene& scene() {
             return *scene_;
         }
@@ -87,7 +73,5 @@ namespace engine::test {
        private:
         std::unique_ptr<Scene> scene_;
     };
-
 }  // namespace engine::test
-
 #endif

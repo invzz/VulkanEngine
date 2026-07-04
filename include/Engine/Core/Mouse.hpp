@@ -1,19 +1,15 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_CORE_MOUSE_HPP
-
 #include <GLFW/glfw3.h>
 #include <utility>
 
 #include "Engine/Core/Window.hpp"
-
 namespace engine {
     class Mouse {
        public:
         explicit Mouse(Window& window) : window{window} {}
         ~Mouse() = default;
-
         [[nodiscard]] std::pair<double, double> getCursorPosition() const;
-
         /**
          * @brief Update transform rotation from mouse deltas.
          *
@@ -22,7 +18,6 @@ namespace engine {
          * and applies rotation; it does not manage cursor visibility.
          */
         void lookAround(float deltaTime, struct TransformComponent& transform);
-
         /** Reset internal delta tracking (call when leaving navigation mode). */
         void reset();
 
@@ -30,7 +25,6 @@ namespace engine {
         [[nodiscard]] GLFWwindow* getGLFWwindow() const {
             return window.getGLFWwindow();
         }
-
         Window& window;
         float   lookSpeed         = 1.5f;
         float   pixelSensitivity  = 45.0f / 180.0f;
@@ -39,5 +33,4 @@ namespace engine {
         bool    mouseInitialized_ = false;
     };
 }  // namespace engine
-
 #endif

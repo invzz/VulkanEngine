@@ -25,31 +25,25 @@
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "entt/entity/fwd.hpp"
 #include "nlohmann/json_fwd.hpp"
-
 namespace {
     void glmVec3ToJson(nlohmann::json& j, const glm::vec3& v) {
         j = nlohmann::json{v.x, v.y, v.z};
     }
-
     void glmVec3FromJson(const nlohmann::json& j, glm::vec3& v) {
         v.x = j[0];
         v.y = j[1];
         v.z = j[2];
     }
-
     void glmVec4ToJson(nlohmann::json& j, const glm::vec4& v) {
         j = nlohmann::json{v.x, v.y, v.z, v.w};
     }
-
     void glmVec4FromJson(const nlohmann::json& j, glm::vec4& v) {
         v.x = j[0];
         v.y = j[1];
         v.z = j[2];
         v.w = j[3];
     }
-
 }  // namespace
-
 namespace nlohmann {
     template <>
     struct adl_serializer<glm::vec3> {
@@ -60,7 +54,6 @@ namespace nlohmann {
             glmVec3FromJson(j, v);
         }
     };
-
     template <>
     struct adl_serializer<glm::vec4> {
         static void to_json(json& j, const glm::vec4& v) {
@@ -70,11 +63,8 @@ namespace nlohmann {
             glmVec4FromJson(j, v);
         }
     };
-
 }  // namespace nlohmann
-
 namespace engine {
-
     namespace {
         std::string physicsModeToString(RigidBodyComponent::PhysicsMode mode) {
             switch (mode) {
@@ -88,7 +78,6 @@ namespace engine {
                     return "dynamic";
             }
         }
-
         RigidBodyComponent::PhysicsMode physicsModeFromJson(const nlohmann::json& value) {
             if (value.is_string()) {
                 const std::string mode = value.get<std::string>();
@@ -100,7 +89,6 @@ namespace engine {
                 }
                 return RigidBodyComponent::PhysicsMode::Dynamic;
             }
-
             if (value.is_number_integer()) {
                 const int raw = value.get<int>();
                 if (raw == static_cast<int>(RigidBodyComponent::PhysicsMode::Static)) {
@@ -111,10 +99,8 @@ namespace engine {
                 }
                 return RigidBodyComponent::PhysicsMode::Dynamic;
             }
-
             return RigidBodyComponent::PhysicsMode::Dynamic;
         }
-
         std::string colliderShapeToString(ColliderComponent::ShapeType shape) {
             switch (shape) {
                 case ColliderComponent::ShapeType::Sphere:
@@ -129,7 +115,6 @@ namespace engine {
                     return "sphere";
             }
         }
-
         ColliderComponent::ShapeType colliderShapeFromJson(const nlohmann::json& value) {
             if (value.is_string()) {
                 const std::string shape = value.get<std::string>();
@@ -144,7 +129,6 @@ namespace engine {
                 }
                 return ColliderComponent::ShapeType::Sphere;
             }
-
             if (value.is_number_integer()) {
                 const int raw = value.get<int>();
                 if (raw == static_cast<int>(ColliderComponent::ShapeType::Box)) {
@@ -158,10 +142,8 @@ namespace engine {
                 }
                 return ColliderComponent::ShapeType::Sphere;
             }
-
             return ColliderComponent::ShapeType::Sphere;
         }
-
         std::string variantPolicyToString(ModelRenderSystem::VariantPolicy policy) {
             switch (policy) {
                 case ModelRenderSystem::VariantPolicy::Auto:
@@ -174,7 +156,6 @@ namespace engine {
                     return "auto";
             }
         }
-
         ModelRenderSystem::VariantPolicy variantPolicyFromJson(const nlohmann::json& value) {
             if (value.is_string()) {
                 const std::string mode = value.get<std::string>();
@@ -186,7 +167,6 @@ namespace engine {
                 }
                 return ModelRenderSystem::VariantPolicy::Auto;
             }
-
             if (value.is_number_integer()) {
                 const int raw = value.get<int>();
                 if (raw == static_cast<int>(ModelRenderSystem::VariantPolicy::ForceStandard)) {
@@ -196,10 +176,8 @@ namespace engine {
                     return ModelRenderSystem::VariantPolicy::ForceFull;
                 }
             }
-
             return ModelRenderSystem::VariantPolicy::Auto;
         }
-
         std::string logLevelToString(LogLevel level) {
             switch (level) {
                 case LogLevel::Error:
@@ -214,7 +192,6 @@ namespace engine {
                     return "info";
             }
         }
-
         LogLevel logLevelFromJson(const nlohmann::json& value) {
             if (value.is_string()) {
                 const std::string level = value.get<std::string>();
@@ -229,7 +206,6 @@ namespace engine {
                 }
                 return LogLevel::Info;
             }
-
             if (value.is_number_integer()) {
                 const int raw = value.get<int>();
                 if (raw <= static_cast<int>(LogLevel::Error)) {
@@ -242,10 +218,8 @@ namespace engine {
                     return LogLevel::Debug;
                 }
             }
-
             return LogLevel::Info;
         }
-
         void writePostProcessSettings(nlohmann::json& settingsJson, const PostProcessPushConstants& push) {
             settingsJson["postProcess"] = {
                 {"exposure", push.exposure},
@@ -264,7 +238,6 @@ namespace engine {
                 {"ssaoRadius", push.ssaoRadius},
                 {"ssaoBias", push.ssaoBias}};
         }
-
         void applyPostProcessSettings(const nlohmann::json& settingsJson, PostProcessPushConstants& push) {
             push.exposure        = settingsJson.value("exposure", push.exposure);
             push.contrast        = settingsJson.value("contrast", push.contrast);
@@ -282,51 +255,40 @@ namespace engine {
             push.ssaoRadius      = settingsJson.value("ssaoRadius", push.ssaoRadius);
             push.ssaoBias        = settingsJson.value("ssaoBias", push.ssaoBias);
         }
-
         void ensureDefaultDirectionalLight(Scene& scene) {
-            auto& registry = scene.getRegistry();
-
+            auto&      registry       = scene.getRegistry();
             const bool hasDirectional = !registry.view<DirectionalLightComponent>().empty();
             const bool hasPoint       = !registry.view<PointLightComponent>().empty();
             const bool hasSpot        = !registry.view<SpotLightComponent>().empty();
             if (hasDirectional || hasPoint || hasSpot) {
                 return;
             }
-
             const bool hasModel = !registry.view<ModelComponent>().empty();
             if (!hasModel) {
                 return;
             }
-
             auto  lightEntity     = scene.createEntity();
             auto& transform       = registry.emplace<TransformComponent>(lightEntity);
             transform.translation = {6.0f, 8.0f, -6.0f};
             transform.lookAt(glm::vec3(0.0f, 0.0f, 0.0f));
-
             auto& light     = registry.emplace<DirectionalLightComponent>(lightEntity);
             light.intensity = 4.0f;
             light.color     = glm::vec3(1.0f, 0.95f, 0.9f);
             light.bake      = false;
             light.lightType = LightMobility::Static;
-
             registry.emplace<NameComponent>(lightEntity, "DefaultDirectionalLight");
             std::cout << "SceneSerializer: created default directional light\n";
         }
     }  // namespace
-
     SceneSerializer::SceneSerializer(Scene& scene, ResourceManager& resourceManager) : scene(scene), resourceManager(resourceManager) {}
-
     void SceneSerializer::setRuntimeSettingsBindings(const RuntimeSettingsBindings& bindings) {
         settingsBindings_ = bindings;
     }
-
     void SceneSerializer::serialize(const std::string& filepath) {
         nlohmann::json sceneJson;
         sceneJson["objects"] = nlohmann::json::array();
-
         if (settingsBindings_.showSkybox != nullptr) {
             nlohmann::json settingsJson;
-
             settingsJson["showSkybox"] = *settingsBindings_.showSkybox;
             if (settingsBindings_.showGrid != nullptr) {
                 settingsJson["showGrid"] = *settingsBindings_.showGrid;
@@ -340,25 +302,20 @@ namespace engine {
             if (settingsBindings_.skySettings != nullptr) {
                 settingsJson["sky"] = nlohmann::json{{"debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces}};
             }
-
             if (settingsBindings_.debugMode != nullptr) {
                 settingsJson["debugMode"] = *settingsBindings_.debugMode;
             }
-
             if (settingsBindings_.viewGizmoOrbitSelected != nullptr) {
                 settingsJson["viewGizmoOrbitSelected"] = *settingsBindings_.viewGizmoOrbitSelected;
             }
-
             if (settingsBindings_.multithreadedRecordingEnabled != nullptr && settingsBindings_.multithreadedRecordingThreads != nullptr) {
                 settingsJson["performance"] = {
                     {"multithreadedRecordingEnabled", *settingsBindings_.multithreadedRecordingEnabled},
                     {"multithreadedRecordingThreads", *settingsBindings_.multithreadedRecordingThreads}};
             }
-
             if (settingsBindings_.postProcessPush != nullptr) {
                 writePostProcessSettings(settingsJson, *settingsBindings_.postProcessPush);
             }
-
             if (settingsBindings_.iblSystem != nullptr) {
                 const auto& iblSettings = settingsBindings_.iblSystem->getSettings();
                 settingsJson["ibl"]     = {
@@ -369,13 +326,11 @@ namespace engine {
                     {"prefilterSampleCount", iblSettings.prefilterSampleCount},
                     {"irradianceSampleDelta", iblSettings.irradianceSampleDelta}};
             }
-
             if (settingsBindings_.modelRenderSystem != nullptr) {
                 settingsJson["shaderVariants"] = {
                     {"variantPolicy", variantPolicyToString(settingsBindings_.modelRenderSystem->variantPolicy())},
                     {"shaderHotReloadEnabled", settingsBindings_.modelRenderSystem->shaderHotReloadEnabled()}};
             }
-
             if (settingsBindings_.getGpuProfilerEnabled) {
                 settingsJson["gpuProfiler"] = {{"enabled", settingsBindings_.getGpuProfilerEnabled()}};
             }
@@ -389,10 +344,8 @@ namespace engine {
                         {"scene", Logger::isChannelEnabled(LogChannel::Scene)},
                         {"resource", Logger::isChannelEnabled(LogChannel::Resource)},
                     }}};
-
             sceneJson["settings"] = settingsJson;
         }
-
         auto view = scene.getRegistry().view<entt::entity>();
         for (auto entity : view) {
             nlohmann::json objJson;
@@ -402,12 +355,10 @@ namespace engine {
             } else {
                 objJson["name"] = "GameObject";
             }
-
             if (scene.getRegistry().all_of<TransformComponent>(entity)) {
                 auto& t              = scene.getRegistry().get<TransformComponent>(entity);
                 objJson["transform"] = {{"translation", t.translation}, {"rotation", t.rotation}, {"scale", t.scale}};
             }
-
             if (scene.getRegistry().all_of<CameraComponent>(entity)) {
                 const auto& camera = scene.getRegistry().get<CameraComponent>(entity);
                 objJson["camera"]  = {
@@ -418,12 +369,10 @@ namespace engine {
                     {"isOrthographic", camera.isOrthographic},
                     {"isPrimary", camera.isPrimary}};
             }
-
             if (scene.getRegistry().all_of<ModelComponent>(entity)) {
                 auto& modelComp = scene.getRegistry().get<ModelComponent>(entity);
                 if (modelComp.model) {
                     objJson["modelPath"] = modelComp.model->getFilePath();
-
                     if (scene.getRegistry().all_of<PBRMaterial>(entity)) {
                         auto&          mat = scene.getRegistry().get<PBRMaterial>(entity);
                         nlohmann::json matJson;
@@ -435,23 +384,19 @@ namespace engine {
                     }
                 }
             }
-
             if (scene.getRegistry().all_of<PointLightComponent>(entity)) {
                 auto& pl              = scene.getRegistry().get<PointLightComponent>(entity);
                 objJson["pointLight"] = {{"intensity", pl.intensity}, {"color", pl.color}, {"radius", pl.radius}, {"bake", pl.bake}, {"lightType", to_string(pl.lightType)}};
             }
-
             if (scene.getRegistry().all_of<DirectionalLightComponent>(entity)) {
                 auto& dl                    = scene.getRegistry().get<DirectionalLightComponent>(entity);
                 objJson["directionalLight"] = {{"intensity", dl.intensity}, {"color", dl.color}, {"bake", dl.bake}, {"lightType", to_string(dl.lightType)}};
             }
-
             if (scene.getRegistry().all_of<SpotLightComponent>(entity)) {
                 auto& sl = scene.getRegistry().get<SpotLightComponent>(entity);
                 objJson["spotLight"] =
                     {{"intensity", sl.intensity}, {"color", sl.color}, {"innerAngle", sl.innerCutoffAngle}, {"outerAngle", sl.outerCutoffAngle}, {"bake", sl.bake}, {"lightType", to_string(sl.lightType)}};
             }
-
             if (scene.getRegistry().all_of<LODComponent>(entity)) {
                 auto&          lod     = scene.getRegistry().get<LODComponent>(entity);
                 nlohmann::json lodJson = nlohmann::json::array();
@@ -462,7 +407,6 @@ namespace engine {
                 }
                 objJson["lodComponent"] = lodJson;
             }
-
             if (scene.getRegistry().all_of<RigidBodyComponent>(entity)) {
                 const auto& rb       = scene.getRegistry().get<RigidBodyComponent>(entity);
                 objJson["rigidBody"] = {
@@ -476,7 +420,6 @@ namespace engine {
                     {"restitution", rb.restitution},
                     {"mode", physicsModeToString(rb.mode)}};
             }
-
             if (scene.getRegistry().all_of<ColliderComponent>(entity)) {
                 const auto& collider = scene.getRegistry().get<ColliderComponent>(entity);
                 objJson["collider"]  = {
@@ -488,7 +431,6 @@ namespace engine {
                     {"collisionGroup", collider.collisionGroup},
                     {"collisionMask", collider.collisionMask}};
             }
-
             if (scene.getRegistry().all_of<PhysicsMaterialComponent>(entity)) {
                 const auto& pm             = scene.getRegistry().get<PhysicsMaterialComponent>(entity);
                 objJson["physicsMaterial"] = {
@@ -500,15 +442,12 @@ namespace engine {
                     {"damping", pm.damping},
                     {"angularDamping", pm.angularDamping}};
             }
-
             sceneJson["objects"].push_back(objJson);
         }
-
         std::ofstream out(filepath);
         out << sceneJson.dump(4);
         out.close();
     }
-
     bool SceneSerializer::deserialize(const std::string& filepath) {
         std::cout << "SceneSerializer: attempting to open scene file: " << filepath << " (abs=" << std::filesystem::absolute(filepath) << ")" << std::endl;
         std::ifstream in(filepath);
@@ -516,7 +455,6 @@ namespace engine {
             std::cerr << "Failed to open scene file: " << filepath << '\n';
             return false;
         }
-
         nlohmann::json sceneJson;
         try {
             in >> sceneJson;
@@ -524,22 +462,16 @@ namespace engine {
             std::cerr << "Failed to parse scene file: " << e.what() << '\n';
             return false;
         }
-
         scene.getRegistry().clear();
-
         bool foundAny = false;
-
         if (sceneJson.contains("objects")) {
             foundAny = true;
             for (const auto& objJson : sceneJson["objects"]) {
-                std::string const name = objJson.value("name", "GameObject");
-
-                std::string const id = objJson.value("id", name);
-
-                auto entity = scene.createEntity();
+                std::string const name   = objJson.value("name", "GameObject");
+                std::string const id     = objJson.value("id", name);
+                auto              entity = scene.createEntity();
                 scene.getRegistry().emplace<TransformComponent>(entity);
                 scene.getRegistry().emplace<NameComponent>(entity, id);
-
                 if (objJson.contains("transform")) {
                     auto& t               = objJson["transform"];
                     auto& transform       = scene.getRegistry().get<TransformComponent>(entity);
@@ -547,7 +479,6 @@ namespace engine {
                     transform.rotation    = t.value("rotation", glm::vec3(0.0f));
                     transform.scale       = t.value("scale", glm::vec3(1.0f));
                 }
-
                 if (objJson.contains("camera")) {
                     const auto& cameraJson = objJson["camera"];
                     auto&       camera     = scene.getRegistry().emplace<CameraComponent>(entity);
@@ -558,12 +489,10 @@ namespace engine {
                     camera.isOrthographic  = cameraJson.value("isOrthographic", camera.isOrthographic);
                     camera.isPrimary       = cameraJson.value("isPrimary", camera.isPrimary);
                 }
-
                 if (objJson.contains("modelPath")) {
                     std::string const modelPath = objJson["modelPath"];
                     auto              model     = resourceManager.loadModel(modelPath, true, true, true);
                     scene.getRegistry().emplace<ModelComponent>(entity, model);
-
                     if (objJson.contains("material")) {
                         auto& matJson         = objJson["material"];
                         auto& pbrMaterial     = scene.getRegistry().emplace<PBRMaterial>(entity);
@@ -573,7 +502,6 @@ namespace engine {
                         pbrMaterial.ao        = matJson.value("ao", 1.0f);
                     }
                 }
-
                 if (objJson.contains("pointLight")) {
                     auto& pl             = objJson["pointLight"];
                     auto& pointLight     = scene.getRegistry().emplace<PointLightComponent>(entity);
@@ -583,7 +511,6 @@ namespace engine {
                     pointLight.bake      = pl.value("bake", false);
                     pointLight.lightType = mobility_from_string(pl.value("lightType", std::string("static")));
                 }
-
                 if (objJson.contains("directionalLight")) {
                     auto& dl           = objJson["directionalLight"];
                     auto& dirLight     = scene.getRegistry().emplace<DirectionalLightComponent>(entity);
@@ -592,7 +519,6 @@ namespace engine {
                     dirLight.bake      = dl.value("bake", false);
                     dirLight.lightType = mobility_from_string(dl.value("lightType", std::string("static")));
                 }
-
                 if (objJson.contains("spotLight")) {
                     auto& sl                   = objJson["spotLight"];
                     auto& spotLight            = scene.getRegistry().emplace<SpotLightComponent>(entity);
@@ -603,7 +529,6 @@ namespace engine {
                     spotLight.bake             = sl.value("bake", false);
                     spotLight.lightType        = mobility_from_string(sl.value("lightType", std::string("static")));
                 }
-
                 if (objJson.contains("lodComponent")) {
                     auto& lodComponent = scene.getRegistry().emplace<LODComponent>(entity);
                     for (const auto& levelJson : objJson["lodComponent"]) {
@@ -615,7 +540,6 @@ namespace engine {
                         }
                     }
                 }
-
                 if (objJson.contains("rigidBody")) {
                     const auto& rbJson = objJson["rigidBody"];
                     auto&       rb     = scene.getRegistry().emplace<RigidBodyComponent>(entity);
@@ -634,7 +558,6 @@ namespace engine {
                     }
                     rb.pendingBodyStateOverride = true;
                 }
-
                 if (objJson.contains("collider")) {
                     const auto& colliderJson = objJson["collider"];
                     auto&       collider     = scene.getRegistry().emplace<ColliderComponent>(entity);
@@ -649,7 +572,6 @@ namespace engine {
                     collider.collisionMask       = colliderJson.value("collisionMask", 0xFFFFFFFFu);
                     collider.pendingShapeRebuild = true;
                 }
-
                 if (objJson.contains("physicsMaterial")) {
                     const auto& pmJson = objJson["physicsMaterial"];
                     auto&       pm     = scene.getRegistry().emplace<PhysicsMaterialComponent>(entity);
@@ -663,7 +585,6 @@ namespace engine {
                 }
             }
         }
-
         if (sceneJson.contains("lights")) {
             foundAny              = true;
             auto const& lightsArr = sceneJson["lights"];
@@ -673,7 +594,6 @@ namespace engine {
                 std::cout << "SceneSerializer: parsing light id=" << id << '\n';
                 auto entity = scene.createEntity();
                 scene.getRegistry().emplace<NameComponent>(entity, id);
-
                 std::string const type = lightJson.value("type", std::string("point"));
                 if (type == "point") {
                     auto& pointLight     = scene.getRegistry().emplace<PointLightComponent>(entity);
@@ -702,10 +622,8 @@ namespace engine {
                 }
             }
         }
-
         if (sceneJson.contains("settings") && settingsBindings_.showSkybox != nullptr) {
-            const auto& settingsJson = sceneJson["settings"];
-
+            const auto& settingsJson      = sceneJson["settings"];
             *settingsBindings_.showSkybox = settingsJson.value("showSkybox", *settingsBindings_.showSkybox);
             if (settingsBindings_.showGrid != nullptr) {
                 *settingsBindings_.showGrid = settingsJson.value("showGrid", *settingsBindings_.showGrid);
@@ -716,22 +634,18 @@ namespace engine {
             if (settingsBindings_.physicsSimulationRunning != nullptr) {
                 *settingsBindings_.physicsSimulationRunning = settingsJson.value("physicsSimulationRunning", *settingsBindings_.physicsSimulationRunning);
             }
-
             if (settingsJson.contains("sky") && settingsBindings_.skySettings != nullptr) {
                 const auto& skyJson                              = settingsJson["sky"];
                 settingsBindings_.skySettings->debugCubemapFaces = skyJson.value("debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces);
             }
-
             if (settingsBindings_.debugMode != nullptr) {
                 *settingsBindings_.debugMode = settingsJson.value("debugMode", *settingsBindings_.debugMode);
             }
-
             if (settingsBindings_.viewGizmoOrbitSelected != nullptr) {
                 *settingsBindings_.viewGizmoOrbitSelected = settingsJson.value(
                     "viewGizmoOrbitSelected",
                     *settingsBindings_.viewGizmoOrbitSelected);
             }
-
             if (settingsJson.contains("performance") && settingsBindings_.multithreadedRecordingEnabled != nullptr && settingsBindings_.multithreadedRecordingThreads != nullptr) {
                 const auto& perfJson                             = settingsJson["performance"];
                 *settingsBindings_.multithreadedRecordingEnabled = perfJson.value("multithreadedRecordingEnabled", *settingsBindings_.multithreadedRecordingEnabled);
@@ -742,11 +656,9 @@ namespace engine {
                         *settingsBindings_.multithreadedRecordingThreads);
                 }
             }
-
             if (settingsJson.contains("postProcess") && settingsBindings_.postProcessPush != nullptr) {
                 applyPostProcessSettings(settingsJson["postProcess"], *settingsBindings_.postProcessPush);
             }
-
             if (settingsJson.contains("ibl") && settingsBindings_.iblSystem != nullptr) {
                 auto        iblSettings           = settingsBindings_.iblSystem->getSettings();
                 const auto& iblJson               = settingsJson["ibl"];
@@ -758,7 +670,6 @@ namespace engine {
                 iblSettings.irradianceSampleDelta = iblJson.value("irradianceSampleDelta", iblSettings.irradianceSampleDelta);
                 settingsBindings_.iblSystem->updateSettings(iblSettings);
             }
-
             if (settingsJson.contains("shaderVariants") && settingsBindings_.modelRenderSystem != nullptr) {
                 const auto& variantsJson = settingsJson["shaderVariants"];
                 if (variantsJson.contains("variantPolicy")) {
@@ -767,7 +678,6 @@ namespace engine {
                 settingsBindings_.modelRenderSystem->setShaderHotReloadEnabled(
                     variantsJson.value("shaderHotReloadEnabled", settingsBindings_.modelRenderSystem->shaderHotReloadEnabled()));
             }
-
             if (settingsJson.contains("gpuProfiler")) {
                 const auto& profilerJson = settingsJson["gpuProfiler"];
                 if (settingsBindings_.setGpuProfilerEnabled) {
@@ -775,13 +685,11 @@ namespace engine {
                     settingsBindings_.setGpuProfilerEnabled(profilerJson.value("enabled", current));
                 }
             }
-
             if (settingsJson.contains("logging")) {
                 const auto& loggingJson = settingsJson["logging"];
                 if (loggingJson.contains("minimumLevel")) {
                     Logger::setMinimumLevel(logLevelFromJson(loggingJson["minimumLevel"]));
                 }
-
                 if (loggingJson.contains("channels")) {
                     const auto& channelsJson = loggingJson["channels"];
                     Logger::enableChannel(LogChannel::General, channelsJson.value("general", Logger::isChannelEnabled(LogChannel::General)));
@@ -792,7 +700,6 @@ namespace engine {
                 }
             }
         }
-
         {
             auto camViewCT              = scene.getRegistry().view<engine::CameraComponent, engine::TransformComponent>();
             bool hasCameraWithTransform = (camViewCT.begin() != camViewCT.end());
@@ -811,10 +718,7 @@ namespace engine {
                 }
             }
         }
-
         ensureDefaultDirectionalLight(scene);
-
         return foundAny;
     }
-
 }  // namespace engine

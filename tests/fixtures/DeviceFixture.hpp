@@ -17,18 +17,14 @@
  *     }
  *   };
  */
-
 #ifndef VULKANENGINE_TESTS_FIXTURES_DEVICEFIXTURE_HPP
 #define VULKANENGINE_TESTS_FIXTURES_DEVICEFIXTURE_HPP
-
 #include <gtest/gtest.h>
 #include <memory>
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Device.hpp"
-
 namespace engine::test {
-
     /**
  * @brief Shared Device fixture - creates Window/Device once per test suite
  *
@@ -44,7 +40,6 @@ namespace engine::test {
             }
             ++suiteRefCount;
         }
-
         static void TearDownTestSuite() {
             --suiteRefCount;
             if (suiteRefCount == 0) {
@@ -63,7 +58,6 @@ namespace engine::test {
         static Device& device() {
             return *sharedDevice;
         }
-
         static Window* windowPtr() {
             return sharedWindow.get();
         }
@@ -76,7 +70,6 @@ namespace engine::test {
         static inline std::unique_ptr<Device> sharedDevice;
         static inline int                     suiteRefCount = 0;
     };
-
     /**
  * @brief Device fixture with per-test SetUp/TearDown hooks
  *
@@ -89,12 +82,9 @@ namespace engine::test {
         void SetUp() override {
             device().WaitIdle();
         }
-
         void TearDown() override {
             device().WaitIdle();
         }
     };
-
 }  // namespace engine::test
-
 #endif

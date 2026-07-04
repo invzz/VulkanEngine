@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_ANIMATIONSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_ANIMATIONSYSTEM_HPP
-
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -13,9 +12,7 @@
 
 #include "ModelLib/Resources/Model.hpp"
 #include "ModelLib/Resources/MorphTargetManager.hpp"
-
 namespace engine {
-
     /**
  * @brief Central system for all animation types
  *
@@ -33,10 +30,8 @@ namespace engine {
        public:
         AnimationSystem(Device& device);
         ~AnimationSystem();
-
         AnimationSystem(const AnimationSystem&)            = delete;
         AnimationSystem& operator=(const AnimationSystem&) = delete;
-
         /**
    * @brief Update all registered animations
    *
@@ -49,7 +44,6 @@ namespace engine {
    * @param frameInfo Contains deltaTime, command buffer, and game objects
    */
         void update(FrameInfo& frameInfo);
-
         /**
    * @brief Get the morph target manager (for render systems that need blended buffers)
    */
@@ -60,20 +54,14 @@ namespace engine {
        private:
         Device&                             device_;
         std::unique_ptr<MorphTargetManager> morphManager_;
-
-        void updateAnimations(FrameInfo& frameInfo);
-        void updateMorphTargets(FrameInfo& frameInfo);
-
-        void updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation);
-        void computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform);
-
-        glm::vec3 interpolateVec3(float time, const std::vector<std::pair<float, glm::vec3>>& keyframes);
-
-        static glm::vec3          interpolateVec3(const Model::AnimationSampler& sampler, float time);
-        static glm::quat          interpolateQuat(const Model::AnimationSampler& sampler, float time);
-        static std::vector<float> interpolateMorphWeights(const Model::AnimationSampler& sampler, float time);
+        void                                updateAnimations(FrameInfo& frameInfo);
+        void                                updateMorphTargets(FrameInfo& frameInfo);
+        void                                updateNodeTransforms(AnimationComponent& animComp, const Model::Animation& animation);
+        void                                computeGlobalTransforms(AnimationComponent& animComp, int nodeIndex, const glm::mat4& parentTransform);
+        glm::vec3                           interpolateVec3(float time, const std::vector<std::pair<float, glm::vec3>>& keyframes);
+        static glm::vec3                    interpolateVec3(const Model::AnimationSampler& sampler, float time);
+        static glm::quat                    interpolateQuat(const Model::AnimationSampler& sampler, float time);
+        static std::vector<float>           interpolateMorphWeights(const Model::AnimationSampler& sampler, float time);
     };
-
 }  // namespace engine
-
 #endif

@@ -1,8 +1,6 @@
 #ifndef EDITOR_DEBUGPANEL_HPP
 #define EDITOR_DEBUGPANEL_HPP
-
 #include "Editor/ui/UIPanel.hpp"
-
 namespace engine {
     class DebugPanel : public UIPanel {
        public:
@@ -13,5 +11,4 @@ namespace engine {
         int& debugMode_;
     };
 }  // namespace engine
-
 #endif

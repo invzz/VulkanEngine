@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SKYBOXRENDERSYSTEM_HPP
-
 #include <vulkan/vulkan.h>
 
 #include <memory>
@@ -10,15 +9,11 @@
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
-
 namespace engine {
-
     class Skybox;
-
     struct SkyboxSettings {
         bool debugCubemapFaces{false};
     };
-
     /**
  * @brief Render system for skybox/environment maps
  *
@@ -29,10 +24,8 @@ namespace engine {
        public:
         SkyboxRenderSystem(Device& device, VkRenderPass renderPass);
         ~SkyboxRenderSystem();
-
         SkyboxRenderSystem(const SkyboxRenderSystem&)            = delete;
         SkyboxRenderSystem& operator=(const SkyboxRenderSystem&) = delete;
-
         /**
    * @brief Render the skybox
    * @param frameInfo Current frame information (camera, etc.)
@@ -42,21 +35,15 @@ namespace engine {
         void render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings);
 
        private:
-        void createDescriptorSetLayout();
-        void createPipelineLayout();
-        void createPipeline(VkRenderPass renderPass);
-
-        Device& device_;
-
-        std::unique_ptr<Pipeline> pipeline_;
-
+        void                                    createDescriptorSetLayout();
+        void                                    createPipelineLayout();
+        void                                    createPipeline(VkRenderPass renderPass);
+        Device&                                 device_;
+        std::unique_ptr<Pipeline>               pipeline_;
         VkPipelineLayout                        pipelineLayout_      = VK_NULL_HANDLE;
         VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
         std::unique_ptr<engine::DescriptorPool> descriptorPool_;
-
-        std::vector<VkDescriptorSet> descriptorSets_;
+        std::vector<VkDescriptorSet>            descriptorSets_;
     };
-
 }  // namespace engine
-
 #endif

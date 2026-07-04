@@ -7,16 +7,13 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "vulkan/vulkan_core.h"
-
 namespace engine {
-
     ShadowMap::ShadowMap(Device& device, uint32_t width, uint32_t height) : device_{device}, width_{width}, height_{height} {
         createDepthResources();
         createRenderPass();
         createFramebuffer();
         createSampler();
     }
-
     ShadowMap::~ShadowMap() {
         if (sampler_ != VK_NULL_HANDLE) {
             vkDestroySampler(device_.device(), sampler_, nullptr);
@@ -37,7 +34,6 @@ namespace engine {
             vkFreeMemory(device_.device(), depthImageMemory_, nullptr);
         }
     }
-
     void ShadowMap::createDepthResources() {
         VkImageCreateInfo imageInfo{};
         imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -53,25 +49,19 @@ namespace engine {
         imageInfo.usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
-
         if (vkCreateImage(device_.device(), &imageInfo, nullptr, &depthImage_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create shadow map depth image");
         }
-
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), depthImage_, &memRequirements);
-
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize  = memRequirements.size;
         allocInfo.memoryTypeIndex = device_.memory().findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
         if (vkAllocateMemory(device_.device(), &allocInfo, nullptr, &depthImageMemory_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to allocate shadow map depth image memory");
         }
-
         vkBindImageMemory(device_.device(), depthImage_, depthImageMemory_, 0);
-
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image                           = depthImage_;
@@ -82,13 +72,10 @@ namespace engine {
         viewInfo.subresourceRange.levelCount     = 1;
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount     = 1;
-
         if (vkCreateImageView(device_.device(), &viewInfo, nullptr, &depthImageView_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create shadow map depth image view");
         }
-
-        VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
-
+        VkCommandBuffer      commandBuffer = device_.memory().beginSingleTimeCommands();
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -103,12 +90,9 @@ namespace engine {
         barrier.subresourceRange.layerCount     = 1;
         barrier.srcAccessMask                   = 0;
         barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-
         vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
         device_.memory().endSingleTimeCommands(commandBuffer);
     }
-
     void ShadowMap::createRenderPass() {
         VkAttachmentDescription depthAttachment{};
         depthAttachment.format         = depthFormat_;
@@ -119,19 +103,15 @@ namespace engine {
         depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         depthAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
         depthAttachment.finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-
         VkAttachmentReference depthAttachmentRef{};
         depthAttachmentRef.attachment = 0;
         depthAttachmentRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount    = 0;
         subpass.pColorAttachments       = nullptr;
         subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
         std::array<VkSubpassDependency, 2> dependencies{};
-
         dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
         dependencies[0].dstSubpass      = 0;
         dependencies[0].srcStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
@@ -139,7 +119,6 @@ namespace engine {
         dependencies[0].srcAccessMask   = VK_ACCESS_SHADER_READ_BIT;
         dependencies[0].dstAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
         dependencies[1].srcSubpass      = 0;
         dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
         dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -147,7 +126,6 @@ namespace engine {
         dependencies[1].srcAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         dependencies[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
         dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = 1;
@@ -156,12 +134,10 @@ namespace engine {
         renderPassInfo.pSubpasses      = &subpass;
         renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
         renderPassInfo.pDependencies   = dependencies.data();
-
         if (vkCreateRenderPass(device_.device(), &renderPassInfo, nullptr, &renderPass_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create shadow map render pass");
         }
     }
-
     void ShadowMap::createFramebuffer() {
         VkFramebufferCreateInfo framebufferInfo{};
         framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -171,12 +147,10 @@ namespace engine {
         framebufferInfo.width           = width_;
         framebufferInfo.height          = height_;
         framebufferInfo.layers          = 1;
-
         if (vkCreateFramebuffer(device_.device(), &framebufferInfo, nullptr, &framebuffer_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create shadow map framebuffer");
         }
     }
-
     void ShadowMap::createSampler() {
         VkSamplerCreateInfo samplerInfo{};
         samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -195,16 +169,13 @@ namespace engine {
         samplerInfo.mipLodBias              = 0.0f;
         samplerInfo.minLod                  = 0.0f;
         samplerInfo.maxLod                  = 1.0f;
-
         if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &sampler_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create shadow map sampler");
         }
     }
-
     void ShadowMap::beginRenderPass(VkCommandBuffer commandBuffer) {
         VkClearValue clearValue{};
         clearValue.depthStencil = {1.0f, 0};
-
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass        = renderPass_;
@@ -213,9 +184,7 @@ namespace engine {
         renderPassInfo.renderArea.extent = {width_, height_};
         renderPassInfo.clearValueCount   = 1;
         renderPassInfo.pClearValues      = &clearValue;
-
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
         VkViewport viewport{};
         viewport.x        = 0.0f;
         viewport.y        = 0.0f;
@@ -224,15 +193,12 @@ namespace engine {
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
         VkRect2D scissor{};
         scissor.offset = {0, 0};
         scissor.extent = {width_, height_};
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
-
     void ShadowMap::endRenderPass(VkCommandBuffer commandBuffer) {
         vkCmdEndRenderPass(commandBuffer);
     }
-
 }  // namespace engine

@@ -1,15 +1,12 @@
 #ifndef EDITOR_WORKSPACE_LAYOUT_BUILDER_HPP
 #define EDITOR_WORKSPACE_LAYOUT_BUILDER_HPP
-
 #include <imgui.h>
 
 #include <string>
 #include <vector>
 
 #include "Layout.hpp"
-
 namespace engine {
-
     /**
      * @brief One panel's intended placement in a layout preset.
      *
@@ -20,7 +17,6 @@ namespace engine {
         std::string panelName;
         DockZone    zone;
     };
-
     /**
      * @brief Builds editor layouts using ImGui::DockBuilder.
      *
@@ -41,23 +37,16 @@ namespace engine {
     class LayoutBuilder {
        public:
         LayoutBuilder() = default;
-
-        void addEntry(const std::string& panelName, DockZone zone);
-
-        void clear();
-
-        void apply(ImGuiID dockspaceId, const ImVec2& dockspaceSize, LayoutPreset preset);
-
+        void   addEntry(const std::string& panelName, DockZone zone);
+        void   clear();
+        void   apply(ImGuiID dockspaceId, const ImVec2& dockspaceSize, LayoutPreset preset);
         size_t entryCount() const {
             return entries_.size();
         }
 
        private:
-        void dockWindowToNode(ImGuiID nodeId, const std::string& windowName);
-
+        void                     dockWindowToNode(ImGuiID nodeId, const std::string& windowName);
         std::vector<LayoutEntry> entries_;
     };
-
 }  // namespace engine
-
 #endif

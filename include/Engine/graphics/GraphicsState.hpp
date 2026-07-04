@@ -1,6 +1,5 @@
 #ifndef ENGINE_GRAPHICSSTATE_HPP
 #define ENGINE_GRAPHICSSTATE_HPP
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,14 +23,11 @@
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 #include "ModelLib/Resources/ResourceManager.hpp"
-
 namespace engine {
-
     class Device;
     class Renderer;
     class IRenderContextPort;
     class SystemRegistry;
-
     /**
  * @brief Owns all rendering systems, descriptor resources, and scene rendering state.
  *
@@ -46,7 +42,6 @@ namespace engine {
         ~GraphicsState()                               = default;
         GraphicsState(const GraphicsState&)            = delete;
         GraphicsState& operator=(const GraphicsState&) = delete;
-
         /**
      * @brief Initialize all rendering systems and descriptor resources.
      * @param device Vulkan device
@@ -57,13 +52,12 @@ namespace engine {
      * @param multithreadedRecordingThreads Number of recording threads
      * @return true if initialization succeeded
      */
-        bool initialize(Device& device,
+        bool                             initialize(Device& device,
             Renderer&           renderer,
             ResourceManager&    resourceManager,
             IRenderContextPort* renderContextPort,
             bool                multithreadedRecordingEnabled,
             uint32_t            multithreadedRecordingThreads);
-
         [[nodiscard]] ModelRenderSystem* modelRenderSystem() const {
             return modelRenderSystem_.get();
         }
@@ -103,11 +97,9 @@ namespace engine {
         [[nodiscard]] MorphTargetManager* morphTargetManager() const {
             return morphTargetManager_.get();
         }
-
         [[nodiscard]] DescriptorManager& descriptorManager() const {
             return *descriptorManager_;
         }
-
         [[nodiscard]] Scene& scene() const {
             return scene_;
         }
@@ -135,7 +127,6 @@ namespace engine {
         [[nodiscard]] PostProcessPushConstants& postProcessPush() const {
             return postProcessPush_;
         }
-
         [[nodiscard]] bool showSkybox() const {
             return showSkybox_;
         }
@@ -178,42 +169,36 @@ namespace engine {
         [[nodiscard]] bool& solidGroundEnabledRef() {
             return solidGroundEnabled_;
         }
-
         [[nodiscard]] ResourceManager* resourceManager() const {
             return resourceManager_;
         }
         [[nodiscard]] IRenderContextPort* renderContextPort() const {
             return renderContextPort_;
         }
-
         /**
      * @brief Register core systems with the system registry.
      * @param registry System registry to register systems with
      * @return true if registration succeeded
      */
         bool registerCoreSystems(SystemRegistry& registry);
-
         /**
      * @brief Register descriptor resources with the system registry.
      * @param registry System registry to register systems with
      * @return true if registration succeeded
      */
         bool registerDescriptorResources(SystemRegistry& registry);
-
         /**
      * @brief Register per-frame descriptors with the system registry.
      * @param registry System registry to register systems with
      * @return true if registration succeeded
      */
         bool registerPerFrameDescriptors(SystemRegistry& registry);
-
         /**
      * @brief Register pipeline links with the system registry.
      * @param registry System registry to register systems with
      * @return true if registration succeeded
      */
         bool registerPipelineLinks(SystemRegistry& registry);
-
         /**
      * @brief Register post-processing with the system registry.
      * @param registry System registry to register systems with
@@ -235,33 +220,26 @@ namespace engine {
         std::unique_ptr<AnimationSystem>           animationSystem_;
         std::unique_ptr<ColliderDebugRenderSystem> colliderDebugRenderSystem_;
         std::unique_ptr<MorphTargetManager>        morphTargetManager_;
-
-        std::unique_ptr<DescriptorManager> descriptorManager_;
-
-        Scene                    scene_;
-        entt::entity             selectedEntity_ = entt::null;
-        entt::entity             cameraEntity_   = entt::null;
-        std::unique_ptr<Skybox>  skybox_;
-        SkyboxSettings           skySettings_;
-        ShadowSettings           shadowSettings_;
-        PostProcessPushConstants postProcessPush_{};
-
-        bool showSkybox_               = false;
-        bool showGrid_                 = false;
-        bool showDebugObjects_         = false;
-        bool showColliderWireframes_   = false;
-        bool debugMode_                = false;
-        bool physicsSimulationRunning_ = false;
-        bool solidGroundEnabled_       = true;
-
-        IRenderContextPort* renderContextPort_ = nullptr;
-        ResourceManager*    resourceManager_   = nullptr;
-
-        bool initDescriptorResources(Device& device, Renderer& renderer);
-        bool allocatePerFrameDescriptors(Renderer& renderer);
-        bool initPostProcessing(Device& device, Renderer& renderer);
+        std::unique_ptr<DescriptorManager>         descriptorManager_;
+        Scene                                      scene_;
+        entt::entity                               selectedEntity_ = entt::null;
+        entt::entity                               cameraEntity_   = entt::null;
+        std::unique_ptr<Skybox>                    skybox_;
+        SkyboxSettings                             skySettings_;
+        ShadowSettings                             shadowSettings_;
+        PostProcessPushConstants                   postProcessPush_{};
+        bool                                       showSkybox_               = false;
+        bool                                       showGrid_                 = false;
+        bool                                       showDebugObjects_         = false;
+        bool                                       showColliderWireframes_   = false;
+        bool                                       debugMode_                = false;
+        bool                                       physicsSimulationRunning_ = false;
+        bool                                       solidGroundEnabled_       = true;
+        IRenderContextPort*                        renderContextPort_        = nullptr;
+        ResourceManager*                           resourceManager_          = nullptr;
+        bool                                       initDescriptorResources(Device& device, Renderer& renderer);
+        bool                                       allocatePerFrameDescriptors(Renderer& renderer);
+        bool                                       initPostProcessing(Device& device, Renderer& renderer);
     };
-
 }  // namespace engine
-
 #endif

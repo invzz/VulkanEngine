@@ -1,6 +1,5 @@
 #ifndef CUBE_RENDERCONTEXT_HPP
 #define CUBE_RENDERCONTEXT_HPP
-
 #include <memory>
 #include <vector>
 
@@ -10,15 +9,11 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 
 #include "ModelLib/Resources/MeshManager.hpp"
-
 namespace engine {
-
     class RenderContext {
        public:
         explicit RenderContext(Device& device, MeshManager& meshManager);
-
         void updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold);
-
         struct LightCounts {
             int point       = 0;
             int directional = 0;
@@ -39,24 +34,19 @@ namespace engine {
         std::unique_ptr<DescriptorSetLayout> globalSetLayout_;
         std::vector<std::unique_ptr<Buffer>> uboBuffers_;
         std::vector<std::unique_ptr<Buffer>> uboColdBuffers_;
-
         std::vector<std::unique_ptr<Buffer>> pointLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> directionalLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> spotLightBuffers_;
         size_t                               pointLightCapacity_       = 0;
         size_t                               directionalLightCapacity_ = 0;
         size_t                               spotLightCapacity_        = 0;
-
-        std::vector<VkDescriptorSet> globalDescriptorSets_;
-
-        void createDescriptorPool();
-        void createGlobalSetLayout();
-        void createUBOBuffers();
-        void createLightBuffers(size_t pointCapacity, size_t directionalCapacity, size_t spotCapacity);
-        void createGlobalDescriptorSets();
-        void updateLightDescriptorSets(int frameIndex);
+        std::vector<VkDescriptorSet>         globalDescriptorSets_;
+        void                                 createDescriptorPool();
+        void                                 createGlobalSetLayout();
+        void                                 createUBOBuffers();
+        void                                 createLightBuffers(size_t pointCapacity, size_t directionalCapacity, size_t spotCapacity);
+        void                                 createGlobalDescriptorSets();
+        void                                 updateLightDescriptorSets(int frameIndex);
     };
-
 }  // namespace engine
-
 #endif

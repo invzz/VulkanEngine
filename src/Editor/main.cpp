@@ -6,16 +6,13 @@
 #include "Engine/Core/Logger.hpp"
 
 #include "Editor/app.hpp"
-
 #ifndef SHADER_PATH
 #define SHADER_PATH "assets/shaders/compiled/"
 #endif
-
 int main(int argc, char** argv) {
     bool fullscreen            = false;
     bool validationOverrideSet = false;
     bool validationEnabled     = false;
-
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--fullscreen" || arg == "-f") {
@@ -33,21 +30,17 @@ int main(int argc, char** argv) {
             continue;
         }
     }
-
     if (validationOverrideSet) {
         engine::Device::setValidationLayersEnabledOverride(validationEnabled);
     } else {
         engine::Device::clearValidationLayersEnabledOverride();
     }
-
     engine::App app(fullscreen);
-
     try {
         app.run();
     } catch (const std::exception& e) {
         engine::Logger::error(engine::LogChannel::General, "Error: ", e.what());
         return EXIT_FAILURE;
     }
-
     return EXIT_SUCCESS;
 }

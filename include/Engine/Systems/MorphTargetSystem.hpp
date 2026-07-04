@@ -1,15 +1,12 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MORPHTARGETSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MORPHTARGETSYSTEM_HPP
-
 #include <memory>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
-
 namespace engine {
-
     /**
  * @brief System for managing morph target animations
  *
@@ -20,10 +17,8 @@ namespace engine {
        public:
         MorphTargetSystem(Device& device);
         ~MorphTargetSystem();
-
         MorphTargetSystem(const MorphTargetSystem&)            = delete;
         MorphTargetSystem& operator=(const MorphTargetSystem&) = delete;
-
         /**
    * @brief Update morph targets for all models
    *
@@ -33,7 +28,6 @@ namespace engine {
    * @param frameInfo Contains command buffer and game objects
    */
         void update(FrameInfo& frameInfo);
-
         /**
    * @brief Get the underlying manager (for use by render systems)
    */
@@ -44,7 +38,5 @@ namespace engine {
        private:
         std::unique_ptr<MorphTargetManager> manager_;
     };
-
 }  // namespace engine
-
 #endif

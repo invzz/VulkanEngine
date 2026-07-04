@@ -13,20 +13,16 @@
 #include "Engine/Scene/Skybox.hpp"
 
 #include "vulkan/vulkan_core.h"
-
 namespace engine {
-
     struct SkyboxPushConstants {
         glm::mat4 viewProjection;
         glm::vec4 debugParams;
     };
-
     SkyboxRenderSystem::SkyboxRenderSystem(Device& device, VkRenderPass renderPass) : device_{device} {
         createDescriptorSetLayout();
         createPipelineLayout();
         createPipeline(renderPass);
     }
-
     SkyboxRenderSystem::~SkyboxRenderSystem() {
         if (pipelineLayout_ != VK_NULL_HANDLE) {
             vkDestroyPipelineLayout(device_.device(), pipelineLayout_, nullptr);
@@ -35,7 +31,6 @@ namespace engine {
             vkDestroyDescriptorSetLayout(device_.device(), descriptorSetLayout_, nullptr);
         }
     }
-
     void SkyboxRenderSystem::createDescriptorSetLayout() {
         VkDescriptorSetLayoutBinding samplerBinding{};
         samplerBinding.binding            = 0;
@@ -43,20 +38,15 @@ namespace engine {
         samplerBinding.descriptorCount    = 1;
         samplerBinding.stageFlags         = VK_SHADER_STAGE_FRAGMENT_BIT;
         samplerBinding.pImmutableSamplers = nullptr;
-
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = 1;
         layoutInfo.pBindings    = &samplerBinding;
-
         if (vkCreateDescriptorSetLayout(device_.device(), &layoutInfo, nullptr, &descriptorSetLayout_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create skybox descriptor set layout");
         }
-
         const uint32_t count = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
-
-        descriptorPool_ = engine::DescriptorPool::Builder(device_).setMaxSets(count).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, count).build();
-
+        descriptorPool_      = engine::DescriptorPool::Builder(device_).setMaxSets(count).addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, count).build();
         descriptorSets_.resize(count);
         for (uint32_t i = 0; i < count; ++i) {
             if (!descriptorPool_->allocateDescriptor(descriptorSetLayout_, descriptorSets_[i])) {
@@ -64,61 +54,46 @@ namespace engine {
             }
         }
     }
-
     void SkyboxRenderSystem::createPipelineLayout() {
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset     = 0;
         pushConstantRange.size       = sizeof(SkyboxPushConstants);
-
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         layoutInfo.setLayoutCount         = 1;
         layoutInfo.pSetLayouts            = &descriptorSetLayout_;
         layoutInfo.pushConstantRangeCount = 1;
         layoutInfo.pPushConstantRanges    = &pushConstantRange;
-
         if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &pipelineLayout_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create skybox pipeline layout");
         }
     }
-
     void SkyboxRenderSystem::createPipeline(VkRenderPass renderPass) {
         PipelineConfigInfo configInfo{};
         Pipeline::defaultPipelineConfigInfo(configInfo);
-
         configInfo.bindingDescriptions.clear();
         configInfo.attributeDescriptions.clear();
-
-        configInfo.inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
+        configInfo.inputAssemblyInfo.topology        = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         configInfo.depthStencilInfo.depthTestEnable  = VK_TRUE;
         configInfo.depthStencilInfo.depthWriteEnable = VK_FALSE;
         configInfo.depthStencilInfo.depthCompareOp   = VK_COMPARE_OP_LESS_OR_EQUAL;
-
-        configInfo.rasterizationInfo.cullMode = VK_CULL_MODE_NONE;
-
-        configInfo.renderPass     = renderPass;
-        configInfo.pipelineLayout = pipelineLayout_;
-
-        pipeline_ = std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(skybox_fullscreen.vert.spv)", std::string(SHADER_PATH) + R"(skybox_fullscreen.frag.spv)", configInfo);
+        configInfo.rasterizationInfo.cullMode        = VK_CULL_MODE_NONE;
+        configInfo.renderPass                        = renderPass;
+        configInfo.pipelineLayout                    = pipelineLayout_;
+        pipeline_                                    = std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(skybox_fullscreen.vert.spv)", std::string(SHADER_PATH) + R"(skybox_fullscreen.frag.spv)", configInfo);
     }
-
     void SkyboxRenderSystem::render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings) {
         if (skybox == nullptr) {
             return;
         }
-
         glm::mat4 view = frameInfo.camera.getView();
         view[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
         SkyboxPushConstants push{};
-        push.viewProjection = frameInfo.camera.getProjection() * view;
-        push.debugParams    = glm::vec4(settings.debugCubemapFaces ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
-
+        push.viewProjection                   = frameInfo.camera.getProjection() * view;
+        push.debugParams                      = glm::vec4(settings.debugCubemapFaces ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
         VkDescriptorImageInfo const imageInfo = skybox->getDescriptorInfo();
-
-        VkWriteDescriptorSet descriptorWrite{};
+        VkWriteDescriptorSet        descriptorWrite{};
         descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet          = descriptorSets_[frameInfo.frameIndex];
         descriptorWrite.dstBinding      = 0;
@@ -126,11 +101,8 @@ namespace engine {
         descriptorWrite.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pImageInfo      = &imageInfo;
-
         vkUpdateDescriptorSets(device_.device(), 1, &descriptorWrite, 0, nullptr);
-
         pipeline_->bind(frameInfo.commandBuffer);
-
         assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "SkyboxRenderSystem: descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -140,10 +112,7 @@ namespace engine {
             &descriptorSets_[frameInfo.frameIndex],
             0,
             nullptr);
-
         vkCmdPushConstants(frameInfo.commandBuffer, pipelineLayout_, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(SkyboxPushConstants), &push);
-
         vkCmdDraw(frameInfo.commandBuffer, 3, 1, 0, 0);
     }
-
 }  // namespace engine

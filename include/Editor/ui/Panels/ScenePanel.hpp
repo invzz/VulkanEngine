@@ -1,6 +1,5 @@
 #ifndef EDITOR_SCENEPANEL_HPP
 #define EDITOR_SCENEPANEL_HPP
-
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
@@ -8,17 +7,12 @@
 
 #include "Editor/ui/UI.hpp"
 #include "Editor/ui/UIPanel.hpp"
-
 namespace engine {
-
     class EngineState;
-
     class ScenePanel : public UIPanel {
        public:
         using StaticColliderImportMode = ModelInsertionOptions::StaticColliderImportMode;
-
         ScenePanel(Device& device, EngineState& state);
-
         void               render(FrameInfo& frameInfo) override;
         [[nodiscard]] bool isSeparateWindow() const override {
             return true;
@@ -32,6 +26,5 @@ namespace engine {
         std::vector<ui::ScenePendingModelLoad> pendingLoads_;
         StaticColliderImportMode               colliderImportMode_{StaticColliderImportMode::AutoDetect};
     };
-
 }  // namespace engine
 #endif

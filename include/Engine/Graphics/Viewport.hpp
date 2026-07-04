@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_ENGINE_GRAPHICS_VIEWPORT_HPP
 #define VULKANENGINE_ENGINE_GRAPHICS_VIEWPORT_HPP
-
 #include <vulkan/vulkan.h>
 
 #include <imgui.h>
@@ -8,11 +7,8 @@
 #include <array>
 
 #include "Engine/Graphics/Device.hpp"
-
 namespace engine {
-
     class Renderer;
-
     /**
      * @brief Viewport that displays the offscreen framebuffer's color attachment
      *        directly in ImGui — no copy, no separate texture. Unreal-style:
@@ -24,24 +20,20 @@ namespace engine {
      */
     class Viewport {
        public:
-        Viewport()  = default;
-        ~Viewport() = default;
-
+        Viewport()                           = default;
+        ~Viewport()                          = default;
         Viewport(const Viewport&)            = delete;
         Viewport& operator=(const Viewport&) = delete;
-
         /**
          * @brief Register offscreen color images with ImGui Vulkan backend.
          * @param device The Vulkan device (used for ImGui_ImplVulkan_AddTexture).
          * @param renderer The Renderer whose offscreen color attachments to register.
          */
         void create(Device& device, Renderer& renderer);
-
         /**
          * @brief Resize the offscreen framebuffer and re-register color images.
          */
         void resize(Device& device, Renderer& renderer, VkExtent2D newExtent);
-
         /**
          * @brief Get the ImTextureID for the current frame's offscreen color image.
          */
@@ -50,11 +42,8 @@ namespace engine {
         }
 
        private:
-        void registerAllFrames(Device& device, Renderer& renderer);
-
+        void                       registerAllFrames(Device& device, Renderer& renderer);
         std::array<ImTextureID, 4> imTextureIDs_{};
     };
-
 }  // namespace engine
-
 #endif

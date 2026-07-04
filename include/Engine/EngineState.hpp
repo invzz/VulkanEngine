@@ -1,5 +1,4 @@
 #pragma once
-
 #include <glm/glm.hpp>
 
 #include <entt/entt.hpp>
@@ -37,15 +36,12 @@
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
-
 namespace engine {
-
     class Device;
     class Renderer;
     class Keyboard;
     class Mouse;
     class Window;
-
     /**
      * EngineState — single source of truth: scene, settings, skybox/IBL,
      * and type-safe DI system registry. Replaces the old port/adapter/use-case
@@ -54,16 +50,13 @@ namespace engine {
     class EngineState {
        public:
         ~EngineState();
-
         void initialize(Device& device, Renderer& renderer, ResourceManager& rm,
             IRenderContextPort* renderContext, Window* window,
             bool mtRecording, uint32_t mtThreads);
-
         template <typename T>
         void registerSystem(std::unique_ptr<T>& sys) {
             systems_[typeid(T)] = sys.get();
         }
-
         template <typename T>
         T& system() {
             return *static_cast<T*>(systems_.at(typeid(T)));
@@ -73,20 +66,17 @@ namespace engine {
             auto it = systems_.find(typeid(T));
             return it != systems_.end() ? static_cast<T*>(it->second) : nullptr;
         }
-
         Scene& scene() {
             return scene_;
         }
         entt::entity createEntity();
         void         destroyEntity(entt::entity e);
         bool         isValidEntity(entt::entity e) const;
-
         entt::entity addCamera(const std::string& name = "");
         entt::entity addDirectionalLight(const std::string& name = "");
         entt::entity addPointLight(const std::string& name = "");
         entt::entity addSpotLight(const std::string& name = "");
         entt::entity addModel(const std::string& name = "", const std::string& path = "");
-
         entt::entity selectedEntity() const {
             return editor_.selectedEntity;
         }
@@ -99,26 +89,22 @@ namespace engine {
         void setCameraEntity(entt::entity e) {
             cameraEntity_ = e;
         }
-
         void setSerializer(class SceneSerializer* s) {
             serializer_ = s;
         }
-        void saveScene(const std::string& path);
-        bool loadScene(const std::string& path);
-        void reconcileSceneLoad();
-
-        void syncEnvironmentLighting(bool show);
-        bool loadIBL(const char* path);
-        void resetIBLToFallback();
-
+        void      saveScene(const std::string& path);
+        bool      loadScene(const std::string& path);
+        void      reconcileSceneLoad();
+        void      syncEnvironmentLighting(bool show);
+        bool      loadIBL(const char* path);
+        void      resetIBLToFallback();
         glm::vec3 getTranslation(entt::entity e) const;
         void      setTranslation(entt::entity e, const glm::vec3& v);
         glm::vec3 getRotation(entt::entity e) const;
         void      setRotation(entt::entity e, const glm::vec3& v);
         glm::vec3 getScale(entt::entity e) const;
         void      setScale(entt::entity e, const glm::vec3& v);
-
-        bool& showSkybox() {
+        bool&     showSkybox() {
             return editor_.showSkybox;
         }
         bool& showGrid() {
@@ -151,12 +137,10 @@ namespace engine {
         PostProcessPushConstants& postProcess() {
             return postProcess_;
         }
-        void resetShadowSettings();
-        void changeShadowSettings(bool cull, float plr, float slr);
-
-        void clearSceneBodies();
-        void setGroundEnabled(bool enabled);
-
+        void                          resetShadowSettings();
+        void                          changeShadowSettings(bool cull, float plr, float slr);
+        void                          clearSceneBodies();
+        void                          setGroundEnabled(bool enabled);
         VkDescriptorSet               gbufferDescriptorSet(int frameIndex) const;
         VkDescriptorSet&              gbufferDescriptorSetRef(int frameIndex);
         VkDescriptorSet               deferredShadowDescriptorSet(int frameIndex) const;
@@ -173,20 +157,16 @@ namespace engine {
         DescriptorPool&               deferredIblPool();
         DescriptorSetLayout&          deferredShadowSetLayout();
         DescriptorPool&               deferredShadowPool();
-
-        void recreatePostProcessingSystem(Device& device, VkRenderPass rp);
-
+        void                          recreatePostProcessingSystem(Device& device, VkRenderPass rp);
         /**
          * @brief Update post-processing descriptors to point to the current
          * offscreen color/depth images. Must be called after offscreen framebuffer
          * resize so descriptors don't reference destroyed image views.
          */
-        void updatePostProcessDescriptors(int frameIndex, Renderer& renderer);
-
+        void           updatePostProcessDescriptors(int frameIndex, Renderer& renderer);
         SpatialSystem& spatialSystem() {
             return *spatial_;
         }
-
         EditorState& editor() {
             return editor_;
         }
@@ -204,19 +184,17 @@ namespace engine {
         }
 
        private:
-        void createInputDevices(Window* w);
-        void initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th);
-        void initDescriptorResources(Device& d, Renderer& r);
-        void allocatePerFrameDescriptorSets(Renderer& r);
-        void initPostProcessing(Device& d, Renderer& r);
-        void initInputRelatedSystems(Window* w);
-        void ensureCameraExists();
-        void writeIBLDescriptorsToSets();
-
+        void                                       createInputDevices(Window* w);
+        void                                       initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th);
+        void                                       initDescriptorResources(Device& d, Renderer& r);
+        void                                       allocatePerFrameDescriptorSets(Renderer& r);
+        void                                       initPostProcessing(Device& d, Renderer& r);
+        void                                       initInputRelatedSystems(Window* w);
+        void                                       ensureCameraExists();
+        void                                       writeIBLDescriptorsToSets();
         std::unordered_map<std::type_index, void*> systems_;
         ::engine::SystemRegistry                   initRegistry_;
         std::unique_ptr<DescriptorManager>         descriptors_;
-
         std::unique_ptr<ObjectSelectionSystem>     objSel_;
         std::unique_ptr<InputSystem>               input_;
         std::unique_ptr<CameraSystem>              cameraSys_;
@@ -238,24 +216,18 @@ namespace engine {
         std::unique_ptr<SpatialSystem>             spatial_;
         std::unique_ptr<Keyboard>                  kbd_;
         std::unique_ptr<Mouse>                     mouse_;
-
-        IRenderContextPort* renderContextPort_ = nullptr;
-        ResourceManager*    resourceManager_   = nullptr;
-        Device*             device_            = nullptr;
-
-        Scene        scene_;
-        entt::entity cameraEntity_        = entt::null;
-        bool         pendingCamAfterLoad_ = false;
-
-        std::unique_ptr<Skybox>  skybox_;
-        SkyboxSettings           skySettings_{};
-        ShadowSettings           shadowSettings_{};
-        PostProcessPushConstants postProcess_{};
-
-        EditorState editor_{};
-
-        SceneSerializer* serializer_    = nullptr;
-        uint64_t         iblGeneration_ = 0;
+        IRenderContextPort*                        renderContextPort_ = nullptr;
+        ResourceManager*                           resourceManager_   = nullptr;
+        Device*                                    device_            = nullptr;
+        Scene                                      scene_;
+        entt::entity                               cameraEntity_        = entt::null;
+        bool                                       pendingCamAfterLoad_ = false;
+        std::unique_ptr<Skybox>                    skybox_;
+        SkyboxSettings                             skySettings_{};
+        ShadowSettings                             shadowSettings_{};
+        PostProcessPushConstants                   postProcess_{};
+        EditorState                                editor_{};
+        SceneSerializer*                           serializer_    = nullptr;
+        uint64_t                                   iblGeneration_ = 0;
     };
-
 }  // namespace engine

@@ -1,9 +1,7 @@
 #pragma once
 #pragma once
-
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 namespace engine {
-
     class ModelRenderSystem;
     class GridRenderSystem;
     class LightSystem;
@@ -15,7 +13,6 @@ namespace engine {
     class Skybox;
     struct EditorState;
     struct SkyboxSettings;
-
     class ForwardPass : public RenderPassBase {
        public:
         ForwardPass(ModelRenderSystem& models, GridRenderSystem& grid,
@@ -25,7 +22,6 @@ namespace engine {
             SkyboxRenderSystem&        skybox,
             Renderer& renderer, const EditorState& editor,
             std::unique_ptr<Skybox>& skyboxPtr, const SkyboxSettings& skyboxSettings);
-
         void execute(FrameInfo& frameInfo) override;
 
        private:
@@ -41,5 +37,4 @@ namespace engine {
         std::unique_ptr<Skybox>&   skyboxPtr_;
         const SkyboxSettings&      skyboxSettings_;
     };
-
 }  // namespace engine

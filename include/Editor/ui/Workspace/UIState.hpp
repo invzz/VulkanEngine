@@ -1,16 +1,12 @@
 #ifndef EDITOR_WORKSPACE_UI_STATE_HPP
 #define EDITOR_WORKSPACE_UI_STATE_HPP
-
 #include <cstdint>
 #include <entt/entt.hpp>
 #include <functional>
 
 #include "Layout.hpp"
-
 namespace engine {
-
     class Scene;
-
     /**
  * @brief Editor-wide UI state (selection, active camera, etc.).
  *
@@ -24,89 +20,69 @@ namespace engine {
        public:
         UIState();
         ~UIState() = default;
-
         /** Get the currently selected entity. */
         [[nodiscard]] entt::entity getSelectedEntity() const {
             return selectedEntity_;
         }
-
         /** Set the selected entity. Emits selectionChanged signal. */
         void setSelectedEntity(entt::entity entity);
-
         /** Get the selected object ID (for ImGui compatibility). */
         [[nodiscard]] uint32_t getSelectedObjectId() const {
             return selectedObjectId_;
         }
-
         /** Set the selected object ID. */
         void setSelectedObjectId(uint32_t id);
-
         /** Register a callback to be called when selection changes. */
         void onSelectionChanged(std::function<void(entt::entity)> callback);
-
         /** Get the active camera entity. */
         [[nodiscard]] entt::entity getActiveCameraEntity() const {
             return activeCameraEntity_;
         }
-
         /** Set the active camera entity. */
         void setActiveCameraEntity(entt::entity entity);
-
         /** Get the current scene. */
         [[nodiscard]] Scene* getScene() const {
             return scene_;
         }
-
         /** Set the current scene. */
         void setScene(Scene* scene);
-
         /** Get the current theme preset (0=dark, 1=light, 2=midnight). */
         [[nodiscard]] int getThemePreset() const {
             return themePreset_;
         }
-
         /** Set the current theme preset. */
         void setThemePreset(int preset);
-
         /** Get the current layout preset. */
         [[nodiscard]] LayoutPreset getLayoutPreset() const {
             return layoutPreset_;
         }
-
         /** Set the current layout preset. */
         void setLayoutPreset(LayoutPreset preset);
-
         /** Get the current frame time in milliseconds. */
         [[nodiscard]] float getFrameTimeMs() const {
             return frameTimeMs_;
         }
-
         /** Set the current frame time. */
         void setFrameTimeMs(float ms) {
             frameTimeMs_ = ms;
         }
-
         /** Get the current FPS. */
         [[nodiscard]] float getFPS() const {
             return fps_;
         }
-
         /** Update FPS counter. */
         void updateFPS(float frameTimeSec);
 
        private:
-        entt::entity selectedEntity_     = entt::null;
-        uint32_t     selectedObjectId_   = 0;
-        entt::entity activeCameraEntity_ = entt::null;
-        Scene*       scene_              = nullptr;
-        int          themePreset_        = 0;
-        LayoutPreset layoutPreset_       = LayoutPreset::Default;
-        float        frameTimeMs_        = 0.0f;
-        float        fps_                = 0.0f;
-
+        entt::entity                      selectedEntity_     = entt::null;
+        uint32_t                          selectedObjectId_   = 0;
+        entt::entity                      activeCameraEntity_ = entt::null;
+        Scene*                            scene_              = nullptr;
+        int                               themePreset_        = 0;
+        LayoutPreset                      layoutPreset_       = LayoutPreset::Default;
+        float                             frameTimeMs_        = 0.0f;
+        float                             fps_                = 0.0f;
         std::function<void(entt::entity)> selectionChangedCallback_;
     };
-
 }  // namespace engine
-
 #endif

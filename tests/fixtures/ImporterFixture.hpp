@@ -5,16 +5,12 @@
  * Provides common setup for finding assets paths and creating temp directories.
  * Both GLTFImporter and OBJImporter tests can inherit from this fixture.
  */
-
 #ifndef VULKANENGINE_TESTS_FIXTURES_IMPORTERFIXTURE_HPP
 #define VULKANENGINE_TESTS_FIXTURES_IMPORTERFIXTURE_HPP
-
 #include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
-
 namespace engine::test {
-
     /**
  * @brief Base fixture for model importer tests
  *
@@ -31,18 +27,15 @@ namespace engine::test {
                 assetsPath_ = assetsPath_.parent_path();
             }
             gltfAssetsPath_ = assetsPath_ / "assets" / "models" / "glTF";
-
-            tempDir_ = std::filesystem::temp_directory_path() / "vulkanengine_importer_tests";
+            tempDir_        = std::filesystem::temp_directory_path() / "vulkanengine_importer_tests";
             std::filesystem::create_directories(tempDir_);
         }
-
         void TearDown() override {
             if (std::filesystem::exists(tempDir_)) {
                 std::error_code ec;
                 std::filesystem::remove_all(tempDir_, ec);
             }
         }
-
         const std::filesystem::path& gltfAssetsPath() const {
             return gltfAssetsPath_;
         }
@@ -52,30 +45,24 @@ namespace engine::test {
         const std::filesystem::path& projectRoot() const {
             return assetsPath_;
         }
-
         bool gltfModelExists(const std::string& modelName) const {
             return std::filesystem::exists(gltfAssetsPath_ / modelName / "glTF" / (modelName + ".gltf"));
         }
-
         std::filesystem::path getGltfModelPath(const std::string& modelName) const {
             return gltfAssetsPath_ / modelName / "glTF" / (modelName + ".gltf");
         }
-
         std::filesystem::path getGlbModelPath(const std::string& modelName) const {
             return gltfAssetsPath_ / modelName / "glTF-Binary" / (modelName + ".glb");
         }
-
         std::filesystem::path createTempFile(const std::string& filename, const std::string& content) {
             auto          path = tempDir_ / filename;
             std::ofstream file(path);
             file << content;
             return path;
         }
-
         std::filesystem::path createInvalidGltfFile() {
             return createTempFile("invalid_test.gltf", "not valid gltf content");
         }
-
         std::filesystem::path createTriangleObj() {
             return createTempFile("triangle.obj",
                 "# Simple triangle\n"
@@ -88,7 +75,6 @@ namespace engine::test {
                 "vt 0.5 1.0\n"
                 "f 1/1/1 2/2/1 3/3/1\n");
         }
-
         std::filesystem::path createCubeObj() {
             return createTempFile("cube.obj",
                 "# Simple cube\n"
@@ -119,13 +105,11 @@ namespace engine::test {
                 "f 1
                 "f 1
         }
-
         
         struct ObjWithMaterial {
             std::filesystem::path objPath;
             std::filesystem::path mtlPath;
         };
-
         ObjWithMaterial createObjWithMaterial() {
             auto mtlPath = createTempFile("with_material.mtl",
                 "# Test material\n"
@@ -141,7 +125,6 @@ namespace engine::test {
                 "Ns 1000.0\n"
                 "Pm 1.0\n"
                 "Pr 0.02\n");
-
             auto objPath = createTempFile("with_material.obj",
                 "# OBJ with material\n"
                 "mtllib with_material.mtl\n"
@@ -151,7 +134,6 @@ namespace engine::test {
                 "vn 0.0 0.0 1.0\n"
                 "usemtl TestMaterial\n"
                 "f 1
-
             return {objPath, mtlPath};
         }
 
@@ -160,7 +142,5 @@ namespace engine::test {
         std::filesystem::path gltfAssetsPath_;
         std::filesystem::path tempDir_;
     };
-
 }  // namespace engine::test
-
 #endif

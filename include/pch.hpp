@@ -1,8 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_PCH_HPP
 #define VULKANENGINE_INCLUDE_PCH_HPP
-
 #pragma once
-
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
@@ -39,5 +37,4 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #endif

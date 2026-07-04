@@ -12,51 +12,41 @@
 #include "ModelLib/Resources/Model.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "vulkan/vulkan_core.h"
-
 namespace engine {
-
     namespace {
         constexpr uint32_t kBoxVertexCount     = 24;
         constexpr uint32_t kSphereSegmentCount = 24;
         constexpr uint32_t kSphereVertexCount  = 3 * (kSphereSegmentCount * 2);
         constexpr uint32_t kCapsuleVertexCount = (2 * kSphereSegmentCount * 2) + 8;
     }  // namespace
-
     ColliderDebugRenderSystem::ColliderDebugRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout)
         : device_(device) {
         createPipelineLayout(globalSetLayout);
         createPipeline(renderPass);
     }
-
     ColliderDebugRenderSystem::~ColliderDebugRenderSystem() {
         if (pipelineLayout_ != VK_NULL_HANDLE) {
             vkDestroyPipelineLayout(device_.device(), pipelineLayout_, nullptr);
         }
     }
-
     void ColliderDebugRenderSystem::createPipelineLayout(VkDescriptorSetLayout globalSetLayout) {
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset     = 0;
         pushConstantRange.size       = sizeof(PushConstantData);
-
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts{globalSetLayout};
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+        VkPipelineLayoutCreateInfo         pipelineLayoutInfo{};
         pipelineLayoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount         = static_cast<uint32_t>(descriptorSetLayouts.size());
         pipelineLayoutInfo.pSetLayouts            = descriptorSetLayouts.data();
         pipelineLayoutInfo.pushConstantRangeCount = 1;
         pipelineLayoutInfo.pPushConstantRanges    = &pushConstantRange;
-
         if (vkCreatePipelineLayout(device_.device(), &pipelineLayoutInfo, nullptr, &pipelineLayout_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create collider debug pipeline layout");
         }
     }
-
     void ColliderDebugRenderSystem::createPipeline(VkRenderPass renderPass) {
         assert(pipelineLayout_ != VK_NULL_HANDLE && "Pipeline layout must be created before pipeline");
-
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
         pipelineConfig.attributeDescriptions.clear();
@@ -66,14 +56,12 @@ namespace engine {
         pipelineConfig.inputAssemblyInfo.topology        = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
-
-        pipeline_ = std::make_unique<Pipeline>(
+        pipeline_                                        = std::make_unique<Pipeline>(
             device_,
             std::string(SHADER_PATH) + "debug_collider.vert.spv",
             std::string(SHADER_PATH) + "debug_collider.frag.spv",
             pipelineConfig);
     }
-
     glm::mat4 ColliderDebugRenderSystem::makeNoScaleModelMatrix(const TransformComponent& transform) {
         glm::mat4 model = glm::mat4(1.0f);
         model           = glm::translate(model, transform.translation);
@@ -82,7 +70,6 @@ namespace engine {
         model           = glm::rotate(model, transform.rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
         return model;
     }
-
     void ColliderDebugRenderSystem::render(FrameInfo& frameInfo) const {
         pipeline_->bind(frameInfo.commandBuffer);
         assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "ColliderDebugRenderSystem: global descriptor set is null");
@@ -95,17 +82,13 @@ namespace engine {
             &frameInfo.globalDescriptorSet,
             0,
             nullptr);
-
         auto& registry = frameInfo.scene->getRegistry();
         auto  view     = registry.view<ColliderComponent, TransformComponent>();
-
         for (auto entity : view) {
             auto [collider, transform] = view.get<ColliderComponent, TransformComponent>(entity);
-
             PushConstantData push{};
             push.modelMatrix = makeNoScaleModelMatrix(transform);
             push.modelMatrix = glm::translate(push.modelMatrix, collider.centerOffset);
-
             if (registry.all_of<RigidBodyComponent>(entity)) {
                 const auto& rb = registry.get<RigidBodyComponent>(entity);
                 if (rb.isStatic || rb.mode == RigidBodyComponent::PhysicsMode::Static) {
@@ -114,9 +97,7 @@ namespace engine {
                     push.color = glm::vec4(0.2f, 0.9f, 1.0f, 1.0f);
                 }
             }
-
             uint32_t vertexCount = kBoxVertexCount;
-
             switch (collider.shape) {
                 case ColliderComponent::ShapeType::Sphere: {
                     const glm::vec3 absScale = glm::abs(transform.scale);
@@ -159,7 +140,6 @@ namespace engine {
                     break;
                 }
             }
-
             vkCmdPushConstants(
                 frameInfo.commandBuffer,
                 pipelineLayout_,
@@ -167,9 +147,7 @@ namespace engine {
                 0,
                 sizeof(PushConstantData),
                 &push);
-
             vkCmdDraw(frameInfo.commandBuffer, vertexCount, 1, 0, 0);
         }
     }
-
 }  // namespace engine

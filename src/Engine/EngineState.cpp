@@ -18,25 +18,20 @@
 
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/TextureManager.hpp"
-
 namespace {
     auto const _vtex = &engine::ibl_detail::vtex::loadImage;
 }
-
 namespace engine {
-
     EngineState::~EngineState() = default;
-
     void EngineState::initialize(Device& device, Renderer& renderer, ResourceManager& rm,
         IRenderContextPort* renderContext, Window* window, bool mtRecording, uint32_t mtThreads) {
         if (renderContext == nullptr) {
             throw RuntimeException("EngineState: null IRenderContextPort");
-}
+        }
         resourceManager_   = &rm;
         renderContextPort_ = renderContext;
         device_            = &device;
         createInputDevices(window);
-
         initRegistry_.clear();
         std::string e;
         initRegistry_.registerSystem("core", {}, [&](auto&) { initCoreSystems(device, renderer, mtRecording, mtThreads); return true; }, &e);
@@ -53,20 +48,18 @@ namespace engine {
         std::string ie;
         if (!initRegistry_.initializeAll(&ie)) {
             throw RuntimeException(ie);
-}
+        }
     }
-
     void EngineState::createInputDevices(Window* w) {
         if (w != nullptr) {
             kbd_   = std::make_unique<Keyboard>(*w);
             mouse_ = std::make_unique<Mouse>(*w);
         }
     }
-
     void EngineState::initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th) {
         if (renderContextPort_ == nullptr) {
             throw RuntimeException("initCore: null");
-}
+        }
         auto rp      = r.getOffscreenRenderPassLoadColorDepth();
         auto sl      = renderContextPort_->getGlobalSetLayout();
         cameraSys_   = std::make_unique<CameraSystem>(d, rp, sl);
@@ -96,7 +89,6 @@ namespace engine {
         registerSystem(light_);
         spatial_ = std::make_unique<SpatialSystem>();
     }
-
     void EngineState::initDescriptorResources(Device& d, Renderer& r) {
         descriptors_ = std::make_unique<DescriptorManager>();
         descriptors_->createDescriptorResources(d, r);
@@ -108,7 +100,6 @@ namespace engine {
                 descriptors_->deferredIblSetLayout().getDescriptorSetLayout()});
         registerSystem(deferred_);
     }
-
     void EngineState::allocatePerFrameDescriptorSets(Renderer& r) {
         descriptors_->allocatePerFrameDescriptors(r);
         deferredIblDescriptorSetsRef().resize(SwapChain::maxFramesInFlight());
@@ -123,14 +114,12 @@ namespace engine {
                 .buildOrThrow(deferredIblDescriptorSetsRef()[i]);
         }
     }
-
     void EngineState::initPostProcessing(Device& d, Renderer& r) {
         descriptors_->recreatePostProcessDescriptorSets(d, r, VK_NULL_HANDLE);
         postProc_ = std::make_unique<PostProcessingSystem>(d, r.getPostFxRenderPass(),
             std::vector<VkDescriptorSetLayout>{descriptors_->postProcessSetLayout().getDescriptorSetLayout()});
         registerSystem(postProc_);
     }
-
     void EngineState::initInputRelatedSystems(Window* w) {
         if (kbd_ && mouse_ && (w != nullptr)) {
             objSel_ = std::make_unique<ObjectSelectionSystem>(*kbd_);
@@ -139,7 +128,6 @@ namespace engine {
             registerSystem(input_);
         }
     }
-
     entt::entity EngineState::createEntity() {
         return scene_.createEntity();
     }
@@ -149,7 +137,6 @@ namespace engine {
     bool EngineState::isValidEntity(entt::entity e) const {
         return scene_.getRegistry().valid(e);
     }
-
     entt::entity EngineState::addCamera(const std::string& n) {
         auto  e = createEntity();
         auto& r = scene_.getRegistry();
@@ -189,7 +176,6 @@ namespace engine {
         r.emplace<NameComponent>(e, n.empty() ? "Model" : n);
         return e;
     }
-
     void EngineState::saveScene(const std::string& p) {
         if (serializer_ != nullptr) {
             serializer_->serialize(p);
@@ -228,7 +214,6 @@ namespace engine {
         }
         addCamera("Camera");
     }
-
     void EngineState::syncEnvironmentLighting(bool show) {
         if (show && !skybox_) {
             skybox_      = Skybox::loadFromFolder(*device_, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
@@ -258,7 +243,6 @@ namespace engine {
             DescriptorWriter(deferredIblSetLayout(), deferredIblPool()).writeImage(0, &ir).writeImage(1, &pr).writeImage(2, &br).overwrite(s);
         }
     }
-
     glm::vec3 EngineState::getTranslation(entt::entity e) const {
         auto& r = scene_.getRegistry();
         return r.all_of<TransformComponent>(e) ? r.get<TransformComponent>(e).translation : glm::vec3{};
@@ -280,7 +264,6 @@ namespace engine {
     void EngineState::setScale(entt::entity e, const glm::vec3& v) {
         scene_.getRegistry().get<TransformComponent>(e).scale = v;
     }
-
     void EngineState::resetShadowSettings() {
         shadowSettings_ = ShadowSettings{};
     }
@@ -289,7 +272,6 @@ namespace engine {
         shadowSettings_.pointLightDefaultRange = pl;
         shadowSettings_.spotLightDefaultRange  = sl;
     }
-
     void EngineState::clearSceneBodies() {
         if (jolt_) {
             jolt_->clear();
@@ -300,7 +282,6 @@ namespace engine {
             jolt_->setGroundEnabled(e);
         }
     }
-
     VkDescriptorSet EngineState::gbufferDescriptorSet(int frameIndex) const {
         return descriptors_->gbufferDescriptorSet(frameIndex);
     }
@@ -349,14 +330,11 @@ namespace engine {
     DescriptorPool& EngineState::deferredShadowPool() {
         return descriptors_->deferredShadowPool();
     }
-
     void EngineState::recreatePostProcessingSystem(Device& d, VkRenderPass rp) {
         postProc_ = std::make_unique<PostProcessingSystem>(d, rp, std::vector<VkDescriptorSetLayout>{postProcessSetLayout().getDescriptorSetLayout()});
         registerSystem(postProc_);
     }
-
     void EngineState::updatePostProcessDescriptors(int frameIndex, Renderer& renderer) {
         descriptors_->updatePostProcessDescriptors(frameIndex, renderer);
     }
-
 }  // namespace engine

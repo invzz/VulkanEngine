@@ -5,10 +5,8 @@
  * Provides common setup for render system tests that require FrameInfo,
  * Camera, and Scene instances.
  */
-
 #ifndef VULKANENGINE_TESTS_FIXTURES_FRAMEINFOFIXTURE_HPP
 #define VULKANENGINE_TESTS_FIXTURES_FRAMEINFOFIXTURE_HPP
-
 #include <memory>
 
 #include "Engine/Graphics/FrameInfo.hpp"
@@ -16,9 +14,7 @@
 #include "Engine/Scene/Scene.hpp"
 
 #include "DeviceFixture.hpp"
-
 namespace engine::test {
-
     /**
  * @brief Fixture for render system tests requiring FrameInfo
  *
@@ -30,8 +26,7 @@ namespace engine::test {
     class FrameInfoFixture : public DeviceFixture {
        protected:
         static constexpr VkExtent2D kDefaultExtent = {64, 64};
-
-        static FrameInfo makeFrameInfo(Camera& camera, Scene* scene, VkExtent2D extent = kDefaultExtent) {
+        static FrameInfo            makeFrameInfo(Camera& camera, Scene* scene, VkExtent2D extent = kDefaultExtent) {
             return FrameInfo{
                 .frameIndex          = 0,
                 .frameTime           = 0.0f,
@@ -48,14 +43,12 @@ namespace engine::test {
                 .debugMode           = 0,
             };
         }
-
         static Camera createTestCamera(float fov = 45.0f, float near = 0.1f, float far = 100.0f) {
             Camera camera;
             camera.setPerspectiveProjection(glm::radians(fov), 1.0f, near, far);
             return camera;
         }
     };
-
     /**
  * @brief Fixture with pre-created Camera and Scene
  *
@@ -67,18 +60,15 @@ namespace engine::test {
             camera_ = createTestCamera();
             scene_  = std::make_unique<Scene>();
         }
-
         void TearDown() override {
             scene_.reset();
         }
-
         Camera& camera() {
             return camera_;
         }
         Scene& scene() {
             return *scene_;
         }
-
         FrameInfo makeFrameInfo(VkExtent2D extent = kDefaultExtent) {
             return FrameInfoFixture::makeFrameInfo(camera_, scene_.get(), extent);
         }
@@ -87,7 +77,5 @@ namespace engine::test {
         Camera                 camera_;
         std::unique_ptr<Scene> scene_;
     };
-
 }  // namespace engine::test
-
 #endif

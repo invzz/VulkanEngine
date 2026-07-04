@@ -1,10 +1,7 @@
 #ifndef EDITOR_WORKSPACE_LAYOUT_HPP
 #define EDITOR_WORKSPACE_LAYOUT_HPP
-
 #include <string>
-
 namespace engine {
-
     /**
  * @brief Docking zone positions for panels.
  *
@@ -24,7 +21,6 @@ namespace engine {
         DockRight,
         DockCenter,
     };
-
     /**
  * @brief Panel docking constraints.
  *
@@ -40,7 +36,6 @@ namespace engine {
         float       minSizeY      = 150.0f;
         std::string dockToPanel;
     };
-
     /**
  * @brief Layout preset for the editor.
  *
@@ -53,7 +48,5 @@ namespace engine {
         Rendering,
         Custom,
     };
-
 }  // namespace engine
-
 #endif

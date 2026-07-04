@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
-
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -9,29 +8,21 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     class MeshManager {
        public:
         MeshManager(Device& device);
         ~MeshManager() = default;
-
-        uint32_t registerModel(const Model* model);
-
+        uint32_t                             registerModel(const Model* model);
         [[nodiscard]] VkDescriptorBufferInfo getDescriptorInfo() const;
-
-        static VkDescriptorSetLayoutBinding getDescriptorSetLayoutBinding();
+        static VkDescriptorSetLayoutBinding  getDescriptorSetLayoutBinding();
 
        private:
         Device&                                    device;
         std::unique_ptr<Buffer>                    meshBuffer;
         std::vector<MeshBuffers>                   meshInfos;
         std::unordered_map<const Model*, uint32_t> modelToId;
-
-        void updateBuffer();
+        void                                       updateBuffer();
     };
-
 }  // namespace engine
-
 #endif

@@ -1,8 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_INTERNAL_HPP
 #define VULKANENGINE_INCLUDE_INTERNAL_HPP
-
 #pragma once
-
 #include "Engine/Core/ErrorCodes.hpp"
 #include "Engine/Core/Exceptions.hpp"
 #include "Engine/Core/ansi_colors.hpp"
@@ -75,5 +73,4 @@
 #include "ModelLib/importers/GLTFImporter.hpp"
 #include "ModelLib/importers/ModelImporter.hpp"
 #include "ModelLib/importers/OBJImporter.hpp"
-
 #endif

@@ -10,9 +10,7 @@
 #include "Engine/Scene/components/ModelComponent.hpp"
 
 #include "ModelLib/Resources/MorphTargetManager.hpp"
-
 namespace engine {
-
     MorphTargetSystem::MorphTargetSystem(Device& device) {
         try {
             manager_ = std::make_unique<MorphTargetManager>(device);
@@ -22,14 +20,11 @@ namespace engine {
             throw;
         }
     }
-
     MorphTargetSystem::~MorphTargetSystem() = default;
-
     void MorphTargetSystem::update(FrameInfo& frameInfo) {
         if (!manager_) {
             return;
         }
-
         auto view = frameInfo.scene->getRegistry().view<ModelComponent>();
         for (auto entity : view) {
             auto& modelComp = view.get<ModelComponent>(entity);
@@ -42,10 +37,8 @@ namespace engine {
                         continue;
                     }
                 }
-
                 manager_->updateAndBlend(frameInfo.commandBuffer, modelComp.model);
             }
         }
     }
-
 }  // namespace engine

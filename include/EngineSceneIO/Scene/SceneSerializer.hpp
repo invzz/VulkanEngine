@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENESERIALIZER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_SCENESERIALIZER_HPP
-
 #include <functional>
 #include <string>
 
@@ -9,12 +8,9 @@
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 #include "ModelLib/Resources/ResourceManager.hpp"
-
 namespace engine {
-
     class IBLSystem;
     class ModelRenderSystem;
-
     struct RuntimeSettingsBindings {
         bool*                     showSkybox               = nullptr;
         bool*                     showGrid                 = nullptr;
@@ -31,13 +27,10 @@ namespace engine {
         int*                      debugMode                     = nullptr;
         bool*                     viewGizmoOrbitSelected        = nullptr;
     };
-
     class SceneSerializer {
        public:
         SceneSerializer(Scene& scene, ResourceManager& resourceManager);
-
         void setRuntimeSettingsBindings(const RuntimeSettingsBindings& bindings);
-
         void serialize(const std::string& filepath);
         bool deserialize(const std::string& filepath);
 
@@ -46,7 +39,5 @@ namespace engine {
         ResourceManager&        resourceManager;
         RuntimeSettingsBindings settingsBindings_{};
     };
-
 }  // namespace engine
-
 #endif

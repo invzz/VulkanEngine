@@ -3,13 +3,9 @@
 #include <algorithm>
 
 #include "Engine/Core/Logger.hpp"
-
 namespace engine {
-
-    ShaderMonitor::ShaderMonitor() = default;
-
+    ShaderMonitor::ShaderMonitor()  = default;
     ShaderMonitor::~ShaderMonitor() = default;
-
     void ShaderMonitor::addShader(const std::string& filePath) {
         try {
             auto timestamp              = std::filesystem::last_write_time(filePath);
@@ -18,11 +14,9 @@ namespace engine {
             Logger::warn(LogChannel::Render, "Failed to add shader for monitoring: ", filePath, " - ", e.what());
         }
     }
-
     void ShaderMonitor::removeShader(const std::string& filePath) {
         shaderTimestamps_.erase(filePath);
     }
-
     bool ShaderMonitor::hasAnyShaderChanged(std::string* changedShaderPath) const {
         auto hasChanged = std::ranges::any_of(shaderTimestamps_, [this, changedShaderPath](const auto& entry) {
             const auto& filePath   = entry.first;
@@ -42,7 +36,6 @@ namespace engine {
         });
         return hasChanged;
     }
-
     void ShaderMonitor::refreshTimestamps() {
         for (auto& [filePath, timestamp] : shaderTimestamps_) {
             try {
@@ -52,7 +45,6 @@ namespace engine {
             }
         }
     }
-
     std::filesystem::file_time_type ShaderMonitor::getShaderTimestamp(const std::string& filePath) const {
         auto it = shaderTimestamps_.find(filePath);
         if (it != shaderTimestamps_.end()) {
@@ -60,5 +52,4 @@ namespace engine {
         }
         return {};
     }
-
 }  // namespace engine

@@ -1,17 +1,13 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_INPUTSYSTEM_HPP
-
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Mouse.hpp"
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
-
 namespace engine {
-
     class InputSystem {
        public:
         InputSystem(Keyboard& keyboard, Mouse& mouse, Window& window);
-
         void update(FrameInfo& frameInfo);
 
        private:
@@ -19,7 +15,5 @@ namespace engine {
         Mouse&    mouse_;
         Window&   window_;
     };
-
 }  // namespace engine
-
 #endif

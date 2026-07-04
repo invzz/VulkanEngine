@@ -12,14 +12,11 @@
  * - FrameInfoFixture / FrameInfoWithSceneFixture - Render system tests
  * - ImporterFixture - Model importer tests
  */
-
 #ifndef VULKANENGINE_TESTS_FIXTURES_FIXTURES_HPP
 #define VULKANENGINE_TESTS_FIXTURES_FIXTURES_HPP
-
 #include "DescriptorFixture.hpp"
 #include "DeviceFixture.hpp"
 #include "FrameInfoFixture.hpp"
 #include "ImporterFixture.hpp"
 #include "SceneFixture.hpp"
-
 #endif

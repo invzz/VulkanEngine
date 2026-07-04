@@ -5,23 +5,19 @@
 
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
-
 namespace engine {
-
     glm::quat Camera::rotationQuatFromYXZ(const glm::vec3& rotation) {
         const glm::quat qy = glm::angleAxis(rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
         const glm::quat qx = glm::angleAxis(rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
         const glm::quat qz = glm::angleAxis(rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
         return qy * qx * qz;
     }
-
     glm::vec3 Camera::rotationYXZFromQuat(const glm::quat& q) {
         const glm::mat3 m    = glm::mat3_cast(q);
         const float     x    = std::asin(glm::clamp(-m[2][1], -1.0f, 1.0f));
         const float     cosX = std::cos(x);
         float           y;
         float           z;
-
         if (std::abs(cosX) > 1e-6f) {
             y = std::atan2(m[2][0], m[2][2]);
             z = std::atan2(m[0][1], m[1][1]);
@@ -29,10 +25,8 @@ namespace engine {
             y = std::atan2(-m[0][2], m[0][0]);
             z = 0.0f;
         }
-
         return glm::vec3(x, y, z);
     }
-
     void Camera::setPerspectiveProjection(float fovY, float aspect, float nearZ, float farZ) {
         assert(glm::abs(aspect - std::numeric_limits<float>::epsilon()) > 0.0f);
         auto tanHalfFovy       = tan(fovY / 2.f);
@@ -43,7 +37,6 @@ namespace engine {
         projectionMatrix[2][3] = 1.f;
         projectionMatrix[3][2] = -(farZ * nearZ) / (farZ - nearZ);
     }
-
     void Camera::setOrtographicProjection(float left, float right, float bottom, float top, float nearZ, float farZ) {
         projectionMatrix       = glm::mat4{1.0f};
         projectionMatrix[0][0] = 2.f / (right - left);
@@ -53,26 +46,23 @@ namespace engine {
         projectionMatrix[3][1] = -(bottom + top) / (bottom - top);
         projectionMatrix[3][2] = -nearZ / (farZ - nearZ);
     }
-
     void Camera::setViewDirection(glm::vec3 position, glm::vec3 direction, glm::vec3 up) {
         const glm::vec3 w{glm::normalize(direction)};
         const glm::vec3 u{glm::normalize(glm::cross(w, up))};
         const glm::vec3 v{glm::cross(w, u)};
-
-        viewMatrix       = glm::mat4{1.f};
-        viewMatrix[0][0] = u.x;
-        viewMatrix[1][0] = u.y;
-        viewMatrix[2][0] = u.z;
-        viewMatrix[0][1] = v.x;
-        viewMatrix[1][1] = v.y;
-        viewMatrix[2][1] = v.z;
-        viewMatrix[0][2] = w.x;
-        viewMatrix[1][2] = w.y;
-        viewMatrix[2][2] = w.z;
-        viewMatrix[3][0] = -glm::dot(u, position);
-        viewMatrix[3][1] = -glm::dot(v, position);
-        viewMatrix[3][2] = -glm::dot(w, position);
-
+        viewMatrix              = glm::mat4{1.f};
+        viewMatrix[0][0]        = u.x;
+        viewMatrix[1][0]        = u.y;
+        viewMatrix[2][0]        = u.z;
+        viewMatrix[0][1]        = v.x;
+        viewMatrix[1][1]        = v.y;
+        viewMatrix[2][1]        = v.z;
+        viewMatrix[0][2]        = w.x;
+        viewMatrix[1][2]        = w.y;
+        viewMatrix[2][2]        = w.z;
+        viewMatrix[3][0]        = -glm::dot(u, position);
+        viewMatrix[3][1]        = -glm::dot(v, position);
+        viewMatrix[3][2]        = -glm::dot(w, position);
         inverseViewMatrix       = glm::mat4{1.f};
         inverseViewMatrix[0][0] = u.x;
         inverseViewMatrix[0][1] = u.y;
@@ -87,11 +77,9 @@ namespace engine {
         inverseViewMatrix[3][1] = position.y;
         inverseViewMatrix[3][2] = position.z;
     }
-
     void Camera::setViewTarget(glm::vec3 position, glm::vec3 target, glm::vec3 up) {
         setViewDirection(position, target - position, up);
     }
-
     void Camera::setViewYXZ(glm::vec3 position, glm::vec3 rotation) {
         const float     c3 = glm::cos(rotation.z);
         const float     s3 = glm::sin(rotation.z);
@@ -102,20 +90,19 @@ namespace engine {
         const glm::vec3 u{((c1 * c3) + (s1 * s2 * s3)), (c2 * s3), ((c1 * s2 * s3) - (c3 * s1))};
         const glm::vec3 v{((c3 * s1 * s2) - (c1 * s3)), (c2 * c3), ((c1 * c3 * s2) + (s1 * s3))};
         const glm::vec3 w{(c2 * s1), (-s2), (c1 * c2)};
-        viewMatrix       = glm::mat4{1.f};
-        viewMatrix[0][0] = u.x;
-        viewMatrix[1][0] = u.y;
-        viewMatrix[2][0] = u.z;
-        viewMatrix[0][1] = v.x;
-        viewMatrix[1][1] = v.y;
-        viewMatrix[2][1] = v.z;
-        viewMatrix[0][2] = w.x;
-        viewMatrix[1][2] = w.y;
-        viewMatrix[2][2] = w.z;
-        viewMatrix[3][0] = -glm::dot(u, position);
-        viewMatrix[3][1] = -glm::dot(v, position);
-        viewMatrix[3][2] = -glm::dot(w, position);
-
+        viewMatrix              = glm::mat4{1.f};
+        viewMatrix[0][0]        = u.x;
+        viewMatrix[1][0]        = u.y;
+        viewMatrix[2][0]        = u.z;
+        viewMatrix[0][1]        = v.x;
+        viewMatrix[1][1]        = v.y;
+        viewMatrix[2][1]        = v.z;
+        viewMatrix[0][2]        = w.x;
+        viewMatrix[1][2]        = w.y;
+        viewMatrix[2][2]        = w.z;
+        viewMatrix[3][0]        = -glm::dot(u, position);
+        viewMatrix[3][1]        = -glm::dot(v, position);
+        viewMatrix[3][2]        = -glm::dot(w, position);
         inverseViewMatrix       = glm::mat4{1.f};
         inverseViewMatrix[0][0] = u.x;
         inverseViewMatrix[0][1] = u.y;
@@ -130,28 +117,19 @@ namespace engine {
         inverseViewMatrix[3][1] = position.y;
         inverseViewMatrix[3][2] = position.z;
     }
-
     void Camera::updateFrustum() {
-        glm::mat4 vp = projectionMatrix * viewMatrix;
-
+        glm::mat4 vp      = projectionMatrix * viewMatrix;
         frustum.planes[0] = glm::vec4(vp[0][3] + vp[0][0], vp[1][3] + vp[1][0], vp[2][3] + vp[2][0], vp[3][3] + vp[3][0]);
-
         frustum.planes[1] = glm::vec4(vp[0][3] - vp[0][0], vp[1][3] - vp[1][0], vp[2][3] - vp[2][0], vp[3][3] - vp[3][0]);
-
         frustum.planes[2] = glm::vec4(vp[0][3] + vp[0][1], vp[1][3] + vp[1][1], vp[2][3] + vp[2][1], vp[3][3] + vp[3][1]);
-
         frustum.planes[3] = glm::vec4(vp[0][3] - vp[0][1], vp[1][3] - vp[1][1], vp[2][3] - vp[2][1], vp[3][3] - vp[3][1]);
-
         frustum.planes[4] = glm::vec4(vp[0][3] + vp[0][2], vp[1][3] + vp[1][2], vp[2][3] + vp[2][2], vp[3][3] + vp[3][2]);
-
         frustum.planes[5] = glm::vec4(vp[0][3] - vp[0][2], vp[1][3] - vp[1][2], vp[2][3] - vp[2][2], vp[3][3] - vp[3][2]);
-
         for (auto& plane : frustum.planes) {
             float const length = glm::length(glm::vec3(plane));
             plane /= length;
         }
     }
-
     bool Camera::isInFrustum(const glm::vec3& center, float radius) const {
         for (auto plane : frustum.planes) {
             float const distance = glm::dot(glm::vec3(plane), center) + plane.w;

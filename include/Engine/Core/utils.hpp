@@ -1,19 +1,16 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_UTILS_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_CORE_UTILS_HPP
-
 #include <glm/glm.hpp>
 
 #include <cstddef>
 #include <functional>
 #include <type_traits>
-
 namespace engine {
     namespace detail {
         template <class T>
         concept StdHashable = std::is_default_constructible_v<std::hash<T>> && requires(const T& v) {
             { std::hash<T>{}(v) } -> std::convertible_to<std::size_t>;
         };
-
         template <typename T>
         inline void hashCombineOne(std::size_t& seed, const T& value) {
             if constexpr (StdHashable<T>) {
@@ -24,7 +21,6 @@ namespace engine {
                     "or an engine::detail::hashCombineOne overload.");
             }
         }
-
         template <glm::length_t L, typename T, glm::qualifier Q>
         inline void hashCombineOne(std::size_t& seed, const glm::vec<L, T, Q>& value) {
             for (glm::length_t i = 0; i < L; ++i) {
@@ -32,12 +28,10 @@ namespace engine {
             }
         }
     }  // namespace detail
-
     template <typename T, typename... Rest>
     void hashCombine(std::size_t& seed, const T& value, const Rest&... args) {
         detail::hashCombineOne(seed, value);
         (detail::hashCombineOne(seed, args), ...);
     }
 }  // namespace engine
-
 #endif

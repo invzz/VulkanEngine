@@ -1,6 +1,5 @@
 #ifndef EDITOR_MODEL_LOAD_PROCESSOR_HPP
 #define EDITOR_MODEL_LOAD_PROCESSOR_HPP
-
 #include <functional>
 #include <string>
 
@@ -8,11 +7,8 @@
 
 #include "Editor/ui/ModelInsertionOptions.hpp"
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     struct ModelInsertionOptions;
-
     /**
  * @brief Centralized processor for model loading operations.
  * 
@@ -36,7 +32,6 @@ namespace engine {
             const std::shared_ptr<Model>& modelPtr,
             const std::string&            modelPath,
             entt::entity                  entity)>;
-
         /**
      * @brief Process a loaded model into the scene
      * 
@@ -59,7 +54,6 @@ namespace engine {
             const std::string&                              modelPath,
             const std::string&                              modelName,
             ModelInsertionOptions::StaticColliderImportMode colliderMode);
-
         /**
      * @brief Create a lambda that processes loaded models (for async loading)
      * 
@@ -85,7 +79,6 @@ namespace engine {
         static void createLightEntities(
             Scene&       scene,
             const Model& model);
-
         /**
      * @brief Check if static collider should be auto-created
      */
@@ -94,7 +87,5 @@ namespace engine {
             const std::string&                              name,
             ModelInsertionOptions::StaticColliderImportMode mode);
     };
-
 }  // namespace engine
-
 #endif  // EDITOR_MODEL_LOAD_PROCESSOR_HPP

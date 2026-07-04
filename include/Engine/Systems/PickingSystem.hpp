@@ -1,17 +1,13 @@
 #pragma once
-
 #include <glm/glm.hpp>
 
 #include <entt/entt.hpp>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-
 namespace engine {
-
     class FrameInfo;
     class SpatialSystem;
-
     /**
      * @brief Viewport picking system with ray-triangle precision.
      *
@@ -29,7 +25,6 @@ namespace engine {
        public:
         PickingSystem()  = default;
         ~PickingSystem() = default;
-
         /**
          * @brief Set the spatial acceleration structure.
          *
@@ -39,7 +34,6 @@ namespace engine {
         void setSpatialSystem(SpatialSystem* spatial) {
             spatial_ = spatial;
         }
-
         /**
          * @brief Pick the entity under the given normalized viewport coordinates.
          * @param frameInfo  Frame data (camera, scene, extent).
@@ -55,25 +49,18 @@ namespace engine {
             glm::vec3 origin;
             glm::vec3 direction;
         };
-
         /** Build a world-space ray from normalized viewport coordinates. */
         Ray viewportToWorldRay(FrameInfo& frameInfo, float vpX, float vpY) const;
-
         /** Project a world-space point to viewport-normalized [0,1]². */
         glm::vec2 worldToViewport(FrameInfo& frameInfo, const glm::vec3& worldPos) const;
-
-        bool intersectRayAABB(const Ray& ray,
+        bool      intersectRayAABB(const Ray& ray,
             const glm::vec3& aabbMin, const glm::vec3& aabbMax,
             float& tNear) const;
-
-        bool intersectRayTriangle(const Ray& ray,
+        bool      intersectRayTriangle(const Ray& ray,
             const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2,
             float& t, float& u, float& v) const;
-
         /** Screen-space pick radius in pixels (for cameras, lights, etc.). */
         static constexpr float kPickRadiusPx = 18.0f;
-
-        SpatialSystem* spatial_{nullptr};
+        SpatialSystem*         spatial_{nullptr};
     };
-
 }  // namespace engine

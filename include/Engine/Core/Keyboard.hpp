@@ -1,41 +1,32 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_CORE_KEYBOARD_HPP
-
 #include <GLFW/glfw3.h>
 
 #include "Engine/Core/Window.hpp"
-
 namespace engine {
-
     class Keyboard {
        public:
         explicit Keyboard(Window& window) : windowRef{window} {}
-
         struct KeyMappings {
-            int moveForward  = GLFW_KEY_W;
-            int moveBackward = GLFW_KEY_S;
-            int moveLeft     = GLFW_KEY_A;
-            int moveRight    = GLFW_KEY_D;
-            int moveUp       = GLFW_KEY_SPACE;
-            int moveDown     = GLFW_KEY_LEFT_SHIFT;
-
-            int lookUp    = GLFW_KEY_UP;
-            int lookDown  = GLFW_KEY_DOWN;
-            int lookLeft  = GLFW_KEY_LEFT;
-            int lookRight = GLFW_KEY_RIGHT;
-
+            int moveForward    = GLFW_KEY_W;
+            int moveBackward   = GLFW_KEY_S;
+            int moveLeft       = GLFW_KEY_A;
+            int moveRight      = GLFW_KEY_D;
+            int moveUp         = GLFW_KEY_SPACE;
+            int moveDown       = GLFW_KEY_LEFT_SHIFT;
+            int lookUp         = GLFW_KEY_UP;
+            int lookDown       = GLFW_KEY_DOWN;
+            int lookLeft       = GLFW_KEY_LEFT;
+            int lookRight      = GLFW_KEY_RIGHT;
             int selectNext     = GLFW_KEY_Y;
             int selectPrevious = GLFW_KEY_U;
             int selectCamera   = GLFW_KEY_C;
-
-            int toggleCursor = GLFW_KEY_ESCAPE;
+            int toggleCursor   = GLFW_KEY_ESCAPE;
         };
-
         void               moveInPlaneXZ(float deltaTime, struct TransformComponent& transform) const;
         [[nodiscard]] bool isKeyPressed(int key) const {
             return glfwGetKey(windowRef.getGLFWwindow(), key) == GLFW_PRESS;
         }
-
         KeyMappings mappings{};
 
        private:
@@ -43,7 +34,5 @@ namespace engine {
         float   moveSpeed = 3.0f;
         float   lookSpeed = 1.5f;
     };
-
 }  // namespace engine
-
 #endif

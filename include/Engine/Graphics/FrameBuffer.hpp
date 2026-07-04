@@ -1,13 +1,10 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_FRAMEBUFFER_HPP
-
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/RenderTarget.hpp"
-
 namespace engine {
-
     class FrameBuffer {
        public:
         struct Attachment {
@@ -15,15 +12,11 @@ namespace engine {
             VkImageUsageFlags usage;
             VkImageLayout     finalLayout;
         };
-
         FrameBuffer(Device& device, VkExtent2D extent, uint32_t frameCount, bool useMipmaps = false);
         ~FrameBuffer();
-
-        FrameBuffer(const FrameBuffer&)            = delete;
-        FrameBuffer& operator=(const FrameBuffer&) = delete;
-
-        void resize(VkExtent2D newExtent);
-
+        FrameBuffer(const FrameBuffer&)                          = delete;
+        FrameBuffer&               operator=(const FrameBuffer&) = delete;
+        void                       resize(VkExtent2D newExtent);
         [[nodiscard]] VkRenderPass getRenderPass() const {
             return renderPass;
         }
@@ -53,29 +46,25 @@ namespace engine {
         [[nodiscard]] VkDescriptorImageInfo getGbufferNormalImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferAlbedoImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getGbufferMaterialImageInfo(int index) const;
-
-        void        beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void        beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void        beginRenderPassLoadDepth(VkCommandBuffer commandBuffer, int frameIndex);
-        void        beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
-        void        beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex, bool allowSecondaryCommandBuffers = false);
-        void        beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void        beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        static void endRenderPass(VkCommandBuffer commandBuffer);
-        void        generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
-        void        generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
-
+        void                                beginRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginDepthPrepassRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginRenderPassLoadDepth(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex, bool allowSecondaryCommandBuffers = false);
+        void                                beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        static void                         endRenderPass(VkCommandBuffer commandBuffer);
+        void                                generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
         /**
          * @brief Transition all depth mip levels from DEPTH_STENCIL_ATTACHMENT_OPTIMAL
          * to DEPTH_STENCIL_READ_ONLY_OPTIMAL. Must be called after the G-buffer pass
          * completes and before depth is sampled by lighting passes.
          */
-        void transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
-
+        void                transitionDepthToShaderReadOnly(VkCommandBuffer commandBuffer);
         [[nodiscard]] float getAspectRatio() const {
             return static_cast<float>(extent.width) / static_cast<float>(extent.height);
         }
-
         [[nodiscard]] VkImageView getDepthImageView(int frameIndex) const {
             return depthTargets[frameIndex].getView();
         }
@@ -85,7 +74,6 @@ namespace engine {
         [[nodiscard]] VkImage getDepthImage(int frameIndex) const {
             return depthTargets[frameIndex].getImage();
         }
-
         [[nodiscard]] VkImage getColorImage(int frameIndex) const {
             return colorTargets[frameIndex].getImage();
         }
@@ -95,7 +83,6 @@ namespace engine {
         [[nodiscard]] VkSampler getColorSampler(int frameIndex) const {
             return colorTargets[frameIndex].getSampler();
         }
-
         [[nodiscard]] VkImageView getGbufferNormalImageView(int frameIndex) const {
             return gbufferNormalTargets[frameIndex].getView();
         }
@@ -105,14 +92,12 @@ namespace engine {
         [[nodiscard]] VkImageView getGbufferMaterialImageView(int frameIndex) const {
             return gbufferMaterialTargets[frameIndex].getView();
         }
-
         [[nodiscard]] VkImageView getSceneColorImageView(int frameIndex) const {
             return sceneColorTargets[frameIndex].getView();
         }
         [[nodiscard]] VkImage getSceneColorImage(int frameIndex) const {
             return sceneColorTargets[frameIndex].getImage();
         }
-
         [[nodiscard]] VkImageView getPostFxImageView(int frameIndex) const {
             return postFxTargets[frameIndex].getView();
         }
@@ -125,39 +110,29 @@ namespace engine {
         [[nodiscard]] VkDescriptorImageInfo getPostFxDescriptorImageInfo(int frameIndex) const;
 
        private:
-        void createRenderPass();
-        void createImages();
-        void createFramebuffers();
-        void cleanup();
-
-        Device&    device;
-        VkExtent2D extent;
-        uint32_t   frameCount;
-        bool       useMipmaps;
-        uint32_t   mipLevels{1};
-
-        VkRenderPass renderPass{VK_NULL_HANDLE};
-        VkRenderPass depthPrepassRenderPass{VK_NULL_HANDLE};
-        VkRenderPass renderPassLoadDepth{VK_NULL_HANDLE};
-        VkRenderPass renderPassLoadColorDepth{VK_NULL_HANDLE};
-        VkRenderPass gbufferRenderPass{VK_NULL_HANDLE};
-        VkRenderPass deferredLightingRenderPass{VK_NULL_HANDLE};
-        VkRenderPass postFxRenderPass{VK_NULL_HANDLE};
-
-        std::vector<RenderTarget> colorTargets;
-
-        std::vector<RenderTarget> sceneColorTargets;
-
-        std::vector<RenderTarget> gbufferNormalTargets;
-
-        std::vector<RenderTarget> gbufferAlbedoTargets;
-
-        std::vector<RenderTarget> gbufferMaterialTargets;
-
-        std::vector<RenderTarget> depthTargets;
-
-        std::vector<RenderTarget> postFxTargets;
-
+        void                       createRenderPass();
+        void                       createImages();
+        void                       createFramebuffers();
+        void                       cleanup();
+        Device&                    device;
+        VkExtent2D                 extent;
+        uint32_t                   frameCount;
+        bool                       useMipmaps;
+        uint32_t                   mipLevels{1};
+        VkRenderPass               renderPass{VK_NULL_HANDLE};
+        VkRenderPass               depthPrepassRenderPass{VK_NULL_HANDLE};
+        VkRenderPass               renderPassLoadDepth{VK_NULL_HANDLE};
+        VkRenderPass               renderPassLoadColorDepth{VK_NULL_HANDLE};
+        VkRenderPass               gbufferRenderPass{VK_NULL_HANDLE};
+        VkRenderPass               deferredLightingRenderPass{VK_NULL_HANDLE};
+        VkRenderPass               postFxRenderPass{VK_NULL_HANDLE};
+        std::vector<RenderTarget>  colorTargets;
+        std::vector<RenderTarget>  sceneColorTargets;
+        std::vector<RenderTarget>  gbufferNormalTargets;
+        std::vector<RenderTarget>  gbufferAlbedoTargets;
+        std::vector<RenderTarget>  gbufferMaterialTargets;
+        std::vector<RenderTarget>  depthTargets;
+        std::vector<RenderTarget>  postFxTargets;
         std::vector<VkFramebuffer> framebuffers;
         std::vector<VkFramebuffer> depthPrepassFramebuffers;
         std::vector<VkFramebuffer> loadDepthFramebuffers;
@@ -166,7 +141,5 @@ namespace engine {
         std::vector<VkFramebuffer> deferredLightingFramebuffers;
         std::vector<VkFramebuffer> postFxFramebuffers;
     };
-
 }  // namespace engine
-
 #endif

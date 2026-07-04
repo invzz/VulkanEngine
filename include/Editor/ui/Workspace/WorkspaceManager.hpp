@@ -1,6 +1,5 @@
 #ifndef EDITOR_WORKSPACE_WORKSPACE_MANAGER_HPP
 #define EDITOR_WORKSPACE_WORKSPACE_MANAGER_HPP
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -13,11 +12,8 @@
 #include "PanelRegistry.hpp"
 #include "ThemeSystem.hpp"
 #include "UIState.hpp"
-
 namespace engine {
-
     class ImGuiManager;
-
     /**
  * @brief Central manager for editor workspace layout, panels, and state.
  *
@@ -36,40 +32,34 @@ namespace engine {
        public:
         WorkspaceManager();
         ~WorkspaceManager() = default;
-
         /**
      * @brief Initialize the workspace manager.
      * Called once during App::init().
      */
         void initialize(ImGuiManager& imguiManager);
-
         /**
      * @brief Get the panel registry.
      */
         PanelRegistry& getPanelRegistry() {
             return panelRegistry_;
         }
-
         /**
      * @brief Get the UI state.
      */
         UIState& getUIState() {
             return uiState_;
         }
-
         /**
      * @brief Get the theme system.
      */
         ThemeSystem& getThemeSystem() {
             return themeSystem_;
         }
-
         /**
      * @brief Render the workspace (dockspace + all visible panels).
      * Called every frame from UIManager::render().
      */
         void render(FrameInfo& frameInfo, VkCommandBuffer commandBuffer, bool drawUI);
-
         /**
      * @brief Apply a layout preset.
      *
@@ -79,99 +69,84 @@ namespace engine {
      * Layout" in the toolbar.
      */
         void applyLayoutPreset(LayoutPreset preset);
-
         /**
      * @brief Reset the layout to the current preset.
      *
      * Convenience alias for applyLayoutPreset(getCurrentLayout()).
      */
         void resetLayout();
-
         /**
      * @brief Register a panel with its docking constraints.
      * Convenience wrapper around panelRegistry_.registerPanel().
      */
         void registerPanel(const std::string& name, std::unique_ptr<UIPanel> panel,
             DockConstraints constraints = DockConstraints{});
-
         /**
      * @brief Get the current toolbar visibility.
      */
         bool isToolbarVisible() const {
             return toolbarVisible_;
         }
-
         /**
      * @brief Set the toolbar visibility.
      */
         void setToolbarVisible(bool visible) {
             toolbarVisible_ = visible;
         }
-
         /**
      * @brief Get the toolbar panel (if registered).
      */
         class ToolbarPanel* getToolbarPanel() const {
             return toolbarPanel_.get();
         }
-
         /**
      * @brief Set the toolbar panel.
      */
         void setToolbarPanel(std::unique_ptr<class ToolbarPanel> toolbar);
-
         /**
      * @brief Add a toggle for a panel in the toolbar.
      */
         void addToolbarToggle(const std::string& label, UIPanel* panel);
-
         /**
      * @brief Set the frame time for the toolbar FPS display.
      */
         void setFrameTimeMs(float ms);
-
         /**
      * @brief Get the main dockspace ID.
      */
         ImGuiID getDockspaceID() const {
             return mainDockspaceID_;
         }
-
         /**
      * @brief Get the viewport panel (future).
      */
         static class ViewportPanel* getViewportPanel() {
             return nullptr;
         }
-
         /**
      * @brief Get the scene hierarchy panel (future).
      */
         class SceneHierarchyPanel* getSceneHierarchyPanel() const {
             return nullptr;
         }
-
         /**
      * @brief Get the inspector panel (future).
      */
         class InspectorPanel* getInspectorPanel() const {
             return nullptr;
         }
-
         /**
      * @brief Get the console panel (future).
      */
         class ConsolePanel* getConsolePanel() const {
             return nullptr;
         }
-
         /**
      * @brief Get the asset browser panel (future).
      */
         class AssetBrowserPanel* getAssetBrowserPanel() const {
             return nullptr;
         }
-
         /**
      * @brief Validate the current layout and enforce workspace constraints.
      *
@@ -183,7 +158,6 @@ namespace engine {
      *         and corrected.
      */
         bool validateLayout();
-
         /**
      * @brief Enforce docking constraints for a specific panel.
      *
@@ -196,14 +170,12 @@ namespace engine {
      * @return true if constraints are valid, false if they were corrected.
      */
         bool enforceConstraints(const std::string& name, const DockConstraints& constraints);
-
         /**
      * @brief Get the current layout preset.
      */
         LayoutPreset getCurrentLayout() const {
             return currentLayout_;
         }
-
         /**
      * @brief Set the current layout preset.
      */
@@ -212,11 +184,10 @@ namespace engine {
         }
 
        private:
-        ImGuiManager* imguiManager_ = nullptr;
-        PanelRegistry panelRegistry_;
-        UIState       uiState_;
-        ThemeSystem   themeSystem_;
-
+        ImGuiManager*                       imguiManager_ = nullptr;
+        PanelRegistry                       panelRegistry_;
+        UIState                             uiState_;
+        ThemeSystem                         themeSystem_;
         bool                                toolbarVisible_ = true;
         std::unique_ptr<class ToolbarPanel> toolbarPanel_;
         struct ToolbarToggleEntry {
@@ -224,22 +195,15 @@ namespace engine {
             UIPanel*    panel;
         };
         std::vector<ToolbarToggleEntry> toolbarToggles_;
-
-        float frameTimeMs_ = 0.0f;
-
-        ImGuiID mainDockspaceID_ = 0;
-
-        LayoutPreset currentLayout_ = LayoutPreset::Default;
-
-        bool layoutApplied_ = false;
-
+        float                           frameTimeMs_     = 0.0f;
+        ImGuiID                         mainDockspaceID_ = 0;
+        LayoutPreset                    currentLayout_   = LayoutPreset::Default;
+        bool                            layoutApplied_   = false;
         class ViewportPanel;
         class SceneHierarchyPanel;
         class InspectorPanel;
         class ConsolePanel;
         class AssetBrowserPanel;
     };
-
 }  // namespace engine
-
 #endif

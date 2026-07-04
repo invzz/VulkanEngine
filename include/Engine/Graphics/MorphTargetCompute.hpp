@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_MORPHTARGETCOMPUTE_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_GRAPHICS_MORPHTARGETCOMPUTE_HPP
-
 #include <vulkan/vulkan.h>
 
 #include <memory>
@@ -10,9 +9,7 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     /**
  * @brief Manages GPU-side morph target blending using compute shaders
  *
@@ -28,13 +25,10 @@ namespace engine {
             uint32_t morphTargetCount;
             uint32_t deltaOffset;
         };
-
         MorphTargetCompute(Device& device);
         ~MorphTargetCompute();
-
         MorphTargetCompute(const MorphTargetCompute&)            = delete;
         MorphTargetCompute& operator=(const MorphTargetCompute&) = delete;
-
         /**
    * @brief Execute morph target blending for a mesh
    * @param commandBuffer Vulkan command buffer to record commands into
@@ -56,19 +50,15 @@ namespace engine {
             const PushConstants&              pushConstants);
 
        private:
-        Device& device_;
-
+        Device&                              device_;
         VkPipelineLayout                     pipelineLayout_;
         VkPipeline                           computePipeline_;
         std::unique_ptr<DescriptorSetLayout> descriptorSetLayout_;
         std::unique_ptr<DescriptorPool>      descriptorPool_;
-
-        void           createDescriptorSetLayout();
-        void           createComputePipeline();
-        void           createDescriptorPool();
-        VkShaderModule createShaderModule(const std::vector<char>& code);
+        void                                 createDescriptorSetLayout();
+        void                                 createComputePipeline();
+        void                                 createDescriptorPool();
+        VkShaderModule                       createShaderModule(const std::vector<char>& code);
     };
-
 }  // namespace engine
-
 #endif

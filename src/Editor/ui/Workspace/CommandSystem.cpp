@@ -1,21 +1,15 @@
 #include "Editor/ui/Workspace/CommandSystem.hpp"
-
 namespace engine {
-
     CommandSystem::CommandSystem() = default;
-
     void CommandSystem::executeCommand(std::unique_ptr<Command> command, const std::string& name) {
         command->execute();
         HistoryEntry entry{std::move(command), name};
         undoStack_.push_back(std::move(entry));
-
         redoStack_.clear();
-
         if (undoStack_.size() > MAX_HISTORY) {
             undoStack_.pop_front();
         }
     }
-
     bool CommandSystem::undo() {
         if (undoStack_.empty())
             return false;
@@ -27,7 +21,6 @@ namespace engine {
         }
         return true;
     }
-
     bool CommandSystem::redo() {
         if (redoStack_.empty())
             return false;
@@ -39,22 +32,18 @@ namespace engine {
         }
         return true;
     }
-
     void CommandSystem::clear() {
         undoStack_.clear();
         redoStack_.clear();
     }
-
     std::string CommandSystem::getLastUndoName() const {
         if (undoStack_.empty())
             return "";
         return undoStack_.back().name;
     }
-
     std::string CommandSystem::getLastRedoName() const {
         if (redoStack_.empty())
             return "";
         return redoStack_.back().name;
     }
-
 }  // namespace engine

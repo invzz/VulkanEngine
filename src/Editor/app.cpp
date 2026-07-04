@@ -45,7 +45,6 @@
 namespace {
     auto const _vtex_link = &engine::ibl_detail::vtex::loadImage;
 }
-
 #include "Engine/Graphics/Passes/CompositionPass.hpp"
 #include "Engine/Graphics/Passes/ComputePass.hpp"
 #include "Engine/Graphics/Passes/DeferredLightingPass.hpp"
@@ -64,9 +63,7 @@ namespace {
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
 #include "Editor/ui/Panels/ViewportPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
-
 namespace engine {
-
     App::App(bool fullscreen)
         : window(width(), height(), "Vulkan Editor", fullscreen),
           device(window),
@@ -75,7 +72,6 @@ namespace engine {
           sceneSerializer(engineState.scene(), resourceManager) {
         init();
     }
-
     App::~App() {
         try {
             resourceManager.waitForAsyncLoads();
@@ -88,20 +84,15 @@ namespace engine {
         }
         GpuProfiler::instance().shutdown();
     }
-
     void App::init() {
         device.enableThreadLocalCommandPools();
-
         renderContext        = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
         renderContextAdapter = std::make_unique<RenderContextAdapter>(renderContext.get());
-
         setupScene();
-
         engineState.initialize(device, renderer, resourceManager,
             renderContextAdapter.get(), &window,
             multithreadedRecordingEnabled, multithreadedRecordingThreads);
         engineState.setSerializer(&sceneSerializer);
-
         sceneSerializer.setRuntimeSettingsBindings(RuntimeSettingsBindings{
             .showSkybox                    = &engineState.showSkybox(),
             .showGrid                      = &engineState.showGrid(),
@@ -118,19 +109,15 @@ namespace engine {
             .debugMode                     = &debugMode,
             .viewGizmoOrbitSelected        = &engineState.editor().viewGizmoOrbitSelected,
         });
-
         setupUI();
-
         if (std::filesystem::exists("scene.json")) {
             engine::Logger::info(engine::LogChannel::General, "[App] Loading scene.json at startup...");
             if (engineState.loadScene("scene.json")) {
                 engine::Logger::info(engine::LogChannel::General, "[App] Loaded scene.json");
             }
         }
-
         renderPipeline = std::make_unique<RenderPipeline>(renderer);
         setupRenderGraph();
-
         viewport_.create(device, renderer);
         if (viewportPanel_ != nullptr) {
             viewportPanel_->setViewport(&viewport_, renderer.getSwapChainExtent());
@@ -141,13 +128,11 @@ namespace engine {
                 viewportResize_.extent_  = extent;
             };
         }
-
         GpuProfiler::instance().initialize(device.device(),
             device.getProperties().limits.timestampPeriod,
             static_cast<uint32_t>(SwapChain::maxFramesInFlight()), 32);
         GpuProfiler::instance().setEnabled(false);
     }
-
     void App::setupScene() {
         camera         = std::make_unique<Camera>();
         auto camEntity = engineState.createEntity();
@@ -157,81 +142,63 @@ namespace engine {
         engineState.scene().getRegistry().emplace<CameraComponent>(camEntity);
         engineState.setCameraEntity(camEntity);
     }
-
     void App::setupUI() {
         imguiManager = std::make_unique<ImGuiManager>(window, device, renderer.getSwapChainRenderPass(),
             static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
         uiManager    = std::make_unique<UIManager>(*imguiManager);
-
         uiManager->setOnSaveScene([this]() {
             engineState.saveScene("scene.json");
         });
         uiManager->setOnLoadScene([this]() {
             engineState.loadScene("scene.json");
         });
-
-        auto& registry = uiManager->getPanelRegistry();
-
-        auto scenePanel = std::make_unique<ScenePanel>(device, engineState);
-
+        auto& registry   = uiManager->getPanelRegistry();
+        auto  scenePanel = std::make_unique<ScenePanel>(device, engineState);
         registry.registerPanel("Scene Objects", std::move(scenePanel), DockConstraints{.preferredZone = DockZone::DockLeft, .minSizeX = 250.0f, .minSizeY = 200.0f});
-
         auto inspectorPanel = std::make_unique<InspectorPanel>(engineState);
         registry.registerPanel("Inspector", std::move(inspectorPanel), DockConstraints{.preferredZone = DockZone::DockRight, .minSizeX = 300.0f, .minSizeY = 200.0f});
-
         auto settingsPanel = std::make_unique<SettingsPanel>(&engineState,
             multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
         registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::None, .dockable = false, .floatable = true, .minSizeX = 420.0f, .minSizeY = 260.0f});
         registry.hidePanel("Settings");
-
         auto physicsPanel = std::make_unique<PhysicsPanel>(engineState);
         registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 300.0f, .minSizeY = 200.0f});
-
         auto toolbar = std::make_unique<ToolbarPanel>();
         toolbar->setSettingsPanel(registry.getPanel("Settings"));
         uiManager->setToolbarPanel(std::move(toolbar));
         uiManager->addToolbarToggle("Scene", registry.getPanel("Scene Objects"));
         uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
-
         auto vp        = std::make_unique<ViewportPanel>();
         viewportPanel_ = vp.get();
         registry.registerPanel("Viewport", std::move(vp), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 400.0f, .minSizeY = 300.0f});
     }
-
     void App::setupRenderGraph() {
         auto graph = std::make_unique<RenderGraph>();
-
         graph->addPass(std::make_unique<UpdatePass>(
             engineState.systemPtr<ObjectSelectionSystem>(),
             engineState.systemPtr<InputSystem>(),
             engineState.systemPtr<JoltPhysicsSystem>(),
             engineState.physicsRunning(),
             renderer));
-
         graph->addPass(std::make_unique<ComputePass>(engineState.systemPtr<AnimationSystem>()));
-
         graph->addPass(std::make_unique<ShadowPass>(
             engineState.system<ShadowSystem>(),
             engineState.renderContext(),
             engineState.scene(),
             engineState.shadowSettings()));
-
         graph->addPass(std::make_unique<DepthPrepass>(
             engineState.system<ModelRenderSystem>(),
             renderer));
-
         graph->addPass(std::make_unique<GbufferPass>(
             engineState.system<ModelRenderSystem>(),
             engineState, renderer,
             engineState.renderContext()));
-
         graph->addPass(std::make_unique<DeferredLightingPass>(
             engineState.system<DeferredLightingSystem>(),
             engineState.system<ShadowSystem>(),
             engineState, renderer, device,
             engineState.renderContext()));
-
         graph->addPass(std::make_unique<ForwardPass>(
             engineState.system<ModelRenderSystem>(),
             engineState.system<GridRenderSystem>(),
@@ -244,48 +211,35 @@ namespace engine {
             engineState.editor(),
             engineState.skybox(),
             engineState.skySettings()));
-
         graph->addPass(std::make_unique<LambdaRenderPass>("TransitionToReadOnly",
             [this](FrameInfo& frameInfo) {
                 renderer.transitionColorToShaderReadOnly(frameInfo.commandBuffer);
             }));
-
         graph->addPass(std::make_unique<PostProcessPass>(renderer, engineState));
-
         graph->addPass(std::make_unique<CompositionPass>(renderer, [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) { uiManager->render(frameInfo, cmd, cursorVisible); }, window));
-
         renderPipeline->setRenderGraph(std::move(graph));
     }
-
     void App::run() {
         auto currentTime = std::chrono::high_resolution_clock::now();
-
         while (!window.shouldClose()) {
             glfwPollEvents();
-
             auto  newTime   = std::chrono::high_resolution_clock::now();
             float frameTime = std::chrono::duration<float>(newTime - currentTime).count();
             currentTime     = newTime;
             frameTime       = glm::min(frameTime, 0.1f);
-
             update(frameTime);
             render(frameTime);
         }
-
         device.WaitIdle();
     }
-
     void App::update(float /*frameTime*/) {
         engineState.resourceManager().updateAsyncCallbacks();
-
         engineState.reconcileSceneLoad();
-
         auto showSkybox = &engineState.showSkybox();
         if (showSkybox != nullptr) {
             engineState.syncEnvironmentLighting(*showSkybox);
         }
     }
-
     void App::render(float frameTime) {
         {
             VkExtent2D panelExtent = (viewportPanel_ != nullptr) ? viewportPanel_->getExtent() : VkExtent2D{0, 0};
@@ -303,7 +257,6 @@ namespace engine {
                 if (viewportPanel_ != nullptr) {
                     viewportPanel_->setViewport(&viewport_, targetExtent);
                 }
-
                 // Post-process descriptor sets reference the offscreen color/depth
                 // images which were just destroyed and recreated — update them.
                 for (int i = 0; i < SwapChain::maxFramesInFlight(); ++i) {
@@ -311,14 +264,11 @@ namespace engine {
                 }
             }
         }
-
         if (auto commandBuffer = renderer.beginFrame()) {
             if (renderer.wasSwapChainRecreated()) {
                 engineState.recreatePostProcessingSystem(device, renderer.getPostFxRenderPass());
             }
-
-            int frameIndex = renderer.getFrameIndex();
-
+            int           frameIndex = renderer.getFrameIndex();
             PickingSystem pickingSystem;
             pickingSystem.setSpatialSystem(&engineState.spatialSystem());
             FrameInfo frameInfo{
@@ -343,7 +293,6 @@ namespace engine {
                 .gizmoEnabled           = engineState.editor().gizmoEnabled,
                 .viewGizmoOrbitSelected = engineState.editor().viewGizmoOrbitSelected,
             };
-
             if (frameInfo.viewportMouseClicked) {
                 auto pickResult = pickingSystem.pickViewport(frameInfo,
                     frameInfo.viewportMousePos.x,
@@ -356,13 +305,10 @@ namespace engine {
                     frameInfo.selectedObjectId = 0;
                 }
             }
-
             renderPipeline->execute(frameInfo);
-
             if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {
                 scenePanel->processDelayedDeletions(frameInfo.selectedEntity, frameInfo.selectedObjectId);
             }
-
             engineState.editor().viewportSettings.mode = frameInfo.viewportMode;
             selectedObjectId                           = frameInfo.selectedObjectId;
             engineState.setSelectedEntity(frameInfo.selectedEntity);
@@ -371,9 +317,7 @@ namespace engine {
             engineState.editor().gizmoMode              = frameInfo.gizmoMode;
             engineState.editor().gizmoEnabled           = frameInfo.gizmoEnabled;
             engineState.editor().viewGizmoOrbitSelected = frameInfo.viewGizmoOrbitSelected;
-
             renderer.endFrame();
         }
     }
-
 }  // namespace engine

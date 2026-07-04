@@ -5,9 +5,7 @@
 #include <cstring>
 
 #include "Engine/Core/Logger.hpp"
-
 namespace engine {
-
     std::vector<VkExtensionProperties> enumerateInstanceExtensions() {
         uint32_t extensionCount = 0;
         if (vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr) != VK_SUCCESS) {
@@ -20,7 +18,6 @@ namespace engine {
         }
         return available;
     }
-
     std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice device) {
         uint32_t extensionCount = 0;
         if (vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr) != VK_SUCCESS) {
@@ -33,7 +30,6 @@ namespace engine {
         }
         return available;
     }
-
     bool ensureExtensionsPresent(const std::vector<const char*>& required, const std::vector<VkExtensionProperties>& available) {
         for (const char* name : required) {
             bool found = false;
@@ -49,5 +45,4 @@ namespace engine {
         }
         return true;
     }
-
 }  // namespace engine

@@ -3,9 +3,7 @@
 #include <algorithm>
 
 #include "Engine/Scene/components/AnimationComponent.hpp"
-
 namespace engine {
-
     int AnimationGraph::addNode(const std::string& name, int clipIndex, bool isEntryNode) {
         int                id = static_cast<int>(nodes_.size());
         AnimationGraphNode node(id, name, clipIndex);
@@ -19,7 +17,6 @@ namespace engine {
         }
         return id;
     }
-
     void AnimationGraph::addTransition(int sourceId, int targetId, const std::string& name,
         TransitionCondition cond,
         float               timeThreshold,
@@ -43,21 +40,18 @@ namespace engine {
         transition.isDefault     = isDefault;
         transitions_.push_back(transition);
     }
-
     const AnimationGraphNode* AnimationGraph::getNode(int nodeId) const {
         auto it = nodeIndex_.find(nodeId);
         if (it != nodeIndex_.end())
             return it->second;
         return nullptr;
     }
-
     const AnimationGraphNode* AnimationGraph::getNodeByName(const std::string& name) const {
         auto it = nodeByName_.find(name);
         if (it != nodeByName_.end())
             return getNode(it->second);
         return nullptr;
     }
-
     std::vector<const AnimationTransition*> AnimationGraph::getTransitions(int sourceId) const {
         std::vector<const AnimationTransition*> result;
         for (const auto& t : transitions_) {
@@ -67,15 +61,12 @@ namespace engine {
         }
         return result;
     }
-
     std::vector<AnimationTransition> AnimationGraph::getTransitionsCopy() const {
         return transitions_;
     }
-
     std::vector<AnimationGraphNode> AnimationGraph::getAllNodes() const {
         return nodes_;
     }
-
     const AnimationTransition* AnimationGraph::getDefaultTransition(int sourceId) const {
         for (const auto& t : transitions_) {
             if (t.sourceNodeId == sourceId && t.isDefault) {
@@ -84,20 +75,16 @@ namespace engine {
         }
         return nullptr;
     }
-
     const AnimationGraphNode* AnimationGraph::getEntryNode() const {
         return getNode(entryNodeId_);
     }
-
     const AnimationGraphNode* AnimationGraph::getCurrentNode() const {
         return getNode(currentNodeId_);
     }
-
     void AnimationGraph::setCurrentNode(int nodeId) {
         currentNodeId_     = nodeId;
         elapsedSinceEntry_ = 0.0f;
     }
-
     const AnimationTransition* AnimationGraph::findTransitionByCondition(int sourceId,
         TransitionCondition                                                  cond) const {
         for (const auto& t : transitions_) {
@@ -107,51 +94,39 @@ namespace engine {
         }
         return nullptr;
     }
-
     const AnimationTransition* AnimationGraph::evaluateNextTransition() const {
         const auto* current = getNode(currentNodeId_);
         if (!current)
             return nullptr;
-
         auto trans = getTransitions(current->id);
-
         for (const auto* t : trans) {
             switch (t->condition) {
                 case TransitionCondition::NONE:
                     return t;
                 case TransitionCondition::TIME_BASED:
-
                     break;
                 case TransitionCondition::EVENT_BASED:
-
                     break;
                 case TransitionCondition::PARAM_BASED:
-
                     break;
                 case TransitionCondition::BLEND_COMPLETE:
                     break;
             }
         }
-
         for (const auto* t : trans) {
             if (t->condition == TransitionCondition::TIME_BASED) {
                 return t;
             }
         }
-
         return getDefaultTransition(current->id);
     }
-
     AnimationGraph::TransitionTrigger AnimationGraph::step(float deltaTime) {
         AnimationGraph::TransitionTrigger trigger;
         trigger.sourceNodeId = currentNodeId_;
-
-        const auto* current = getNode(currentNodeId_);
+        const auto* current  = getNode(currentNodeId_);
         if (!current)
             return trigger;
-
         elapsedSinceEntry_ += deltaTime;
-
         auto trans = getTransitions(current->id);
         for (const auto* t : trans) {
             if (t->condition == TransitionCondition::TIME_BASED) {
@@ -166,7 +141,6 @@ namespace engine {
                 }
             }
         }
-
         if (!trigger.triggered) {
             const auto* defaultTrans = getDefaultTransition(current->id);
             if (defaultTrans) {
@@ -178,7 +152,6 @@ namespace engine {
                 trigger.triggered     = true;
             }
         }
-
         if (currentNodeId_ >= 0 && static_cast<size_t>(currentNodeId_) < nodes_.size()) {
             nodes_[static_cast<size_t>(currentNodeId_)].active = true;
         }
@@ -186,10 +159,8 @@ namespace engine {
         if (newCurrent && newCurrent->id >= 0 && static_cast<size_t>(newCurrent->id) < nodes_.size()) {
             nodes_[static_cast<size_t>(newCurrent->id)].active = true;
         }
-
         return trigger;
     }
-
     std::vector<std::string> AnimationGraph::getRequiredEvents() const {
         std::vector<std::string> events;
         for (const auto& t : transitions_) {
@@ -199,5 +170,4 @@ namespace engine {
         }
         return events;
     }
-
 }  // namespace engine

@@ -13,35 +13,28 @@
 
 #include "Editor/ui/UI.hpp"
 #include "IconsFontAwesome6.h"
-
 namespace engine {
-
     PhysicsPanel::PhysicsPanel(EngineState& state)
         : state_(state) {}
-
     void PhysicsPanel::render(FrameInfo& frameInfo) {
         if (!visible_) {
             return;
         }
-
         ui::UI::PushThemeStyle();
         if (ImGui::Begin("Physics", &visible_)) {
             bool& simRunning  = state_.physicsRunning();
             bool& showWires   = state_.showColliderWireframes();
             bool& solidGround = state_.solidGround();
             auto* jolt        = state_.systemPtr<JoltPhysicsSystem>();
-
             ui::UI::BeginSurface("physics_runtime", "Simulation", "Global physics runtime controls");
             if (ui::UI::PrimaryButton((std::string(simRunning ? ICON_FA_PAUSE : ICON_FA_PLAY) + " Toggle Simulation##physics_toggle").c_str())) {
                 simRunning = !simRunning;
             }
             std::string statusText = simRunning ? "Status: Running" : "Status: Stopped";
             ui::UI::TextDisabled(statusText.c_str());
-
             ui::UI::CheckboxRow("Collider Wireframes", "Draw collision shape overlays", &showWires);
             std::string wireStatus = showWires ? "Collider Debug: On" : "Collider Debug: Off";
             ui::UI::TextDisabled(wireStatus.c_str());
-
             bool groundChanged = ui::UI::CheckboxRow("Solid Ground", "Enable static ground plane", &solidGround);
             if (groundChanged) {
                 if (jolt != nullptr) {
@@ -51,17 +44,13 @@ namespace engine {
             std::string groundStatus = solidGround ? "Ground Plane: On" : "Ground Plane: Off";
             ui::UI::TextDisabled(groundStatus.c_str());
             ui::UI::EndSurface();
-
             if (frameInfo.selectedEntity != entt::null) {
-                auto  entity   = frameInfo.selectedEntity;
-                auto& registry = state_.scene().getRegistry();
-
-                bool hasRigidBody = registry.all_of<RigidBodyComponent>(entity);
-                bool hasCollider  = registry.all_of<ColliderComponent>(entity);
-
+                auto        entity       = frameInfo.selectedEntity;
+                auto&       registry     = state_.scene().getRegistry();
+                bool        hasRigidBody = registry.all_of<RigidBodyComponent>(entity);
+                bool        hasCollider  = registry.all_of<ColliderComponent>(entity);
                 std::string selectedText = "Selected: Object " + std::to_string((uint32_t) entity);
                 ui::UI::BeginSurface("physics_entity", "Selected Entity", selectedText.c_str());
-
                 if (!hasRigidBody) {
                     if (ui::UI::TonalButton((std::string(ICON_FA_PLUS) + " Add Rigid Body##physics_add_rb").c_str())) {
                         addPhysicsComponent(frameInfo);
@@ -74,7 +63,6 @@ namespace engine {
                     }
                     editPhysicsProperties(frameInfo);
                 }
-
                 if (!hasCollider) {
                     if (ui::UI::TonalButton((std::string(ICON_FA_PLUS) + " Add Collider##physics_add_collider").c_str())) {
                         auto& collider               = registry.emplace<ColliderComponent>(entity);
@@ -106,7 +94,6 @@ namespace engine {
                     }
                     editColliderProperties(frameInfo);
                 }
-
                 if (hasRigidBody) {
                     auto& rb = registry.get<RigidBodyComponent>(entity);
                     ui::UI::TextDisabled(("Mass: " + std::to_string(rb.mass).substr(0, 5)).c_str());
@@ -126,7 +113,6 @@ namespace engine {
         ImGui::End();
         ui::UI::PopThemeStyle();
     }
-
     void PhysicsPanel::addPhysicsComponent(FrameInfo& frameInfo) {
         auto& registry = state_.scene().getRegistry();
         auto  entity   = frameInfo.selectedEntity;
@@ -140,7 +126,6 @@ namespace engine {
         rb.useGravity                                      = true;
         rb.pendingBodyStateOverride                        = true;
     }
-
     void PhysicsPanel::editPhysicsProperties(FrameInfo& frameInfo) {
         auto& registry = state_.scene().getRegistry();
         auto  entity   = frameInfo.selectedEntity;
@@ -149,12 +134,10 @@ namespace engine {
         }
         auto& rb     = registry.get<RigidBodyComponent>(entity);
         bool  edited = false;
-
         ui::UI::SectionTitle("Rigid Body", "Mass and linear/angular dynamics");
         edited |= ui::UI::FloatRow("Mass", "Total body mass in kilograms", &rb.mass, 0.1f, 0.01f, 1000.0f);
         edited |= ui::UI::CheckboxRow("Static Body", "Locks the body in world space", &rb.isStatic);
         edited |= ui::UI::CheckboxRow("Use Gravity", "Apply gravity acceleration", &rb.useGravity);
-
         if (ui::UI::Section("Velocity")) {
             edited |= ui::UI::FloatRow("Velocity X", "Linear velocity axis X", &rb.velocity.x, 0.1f);
             edited |= ui::UI::FloatRow("Velocity Y", "Linear velocity axis Y", &rb.velocity.y, 0.1f);
@@ -174,17 +157,15 @@ namespace engine {
             rb.pendingBodyStateOverride = true;
         }
     }
-
     void PhysicsPanel::editColliderProperties(FrameInfo& frameInfo) {
         auto& registry = state_.scene().getRegistry();
         auto  entity   = frameInfo.selectedEntity;
         if (!registry.all_of<ColliderComponent>(entity)) {
             return;
         }
-        auto& col     = registry.get<ColliderComponent>(entity);
-        auto* rb      = registry.try_get<RigidBodyComponent>(entity);
-        bool  changed = false;
-
+        auto&       col           = registry.get<ColliderComponent>(entity);
+        auto*       rb            = registry.try_get<RigidBodyComponent>(entity);
+        bool        changed       = false;
         const char* shapeLabels[] = {"Sphere", "Box", "Capsule", "Mesh"};
         int         si            = static_cast<int>(col.shape);
         ui::UI::SectionTitle("Collider", "Collision geometry and trigger behavior");
@@ -215,5 +196,4 @@ namespace engine {
             }
         }
     }
-
 }  // namespace engine

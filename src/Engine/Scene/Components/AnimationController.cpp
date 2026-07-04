@@ -2,9 +2,7 @@
 
 #include <algorithm>
 #include <limits>
-
 namespace engine {
-
     void AnimationController::addClip(int clipIndex, const Model& model,
         int priority, bool play) {
         for (auto& clip : clips_) {
@@ -20,7 +18,6 @@ namespace engine {
                 return;
             }
         }
-
         AnimationClip newClip;
         newClip.clipIndex = clipIndex;
         if (clipIndex >= 0 && clipIndex < static_cast<int>(model.getAnimations().size())) {
@@ -36,13 +33,11 @@ namespace engine {
         }
         clips_.push_back(std::move(newClip));
     }
-
     void AnimationController::removeClip(int clipIndex) {
         clips_.erase(std::remove_if(clips_.begin(), clips_.end(),
                          [clipIndex](const AnimationClip& c) { return c.clipIndex == clipIndex; }),
             clips_.end());
     }
-
     void AnimationController::setClipWeight(int clipIndex, float weight) {
         for (auto& clip : clips_) {
             if (clip.clipIndex == clipIndex) {
@@ -51,7 +46,6 @@ namespace engine {
             }
         }
     }
-
     void AnimationController::setClipSpeed(int clipIndex, float speed) {
         for (auto& clip : clips_) {
             if (clip.clipIndex == clipIndex) {
@@ -60,7 +54,6 @@ namespace engine {
             }
         }
     }
-
     void AnimationController::stop(int clipIndex) {
         for (auto& clip : clips_) {
             if (clip.clipIndex == clipIndex) {
@@ -72,7 +65,6 @@ namespace engine {
             }
         }
     }
-
     void AnimationController::stopAll() {
         for (auto& clip : clips_) {
             clip.active         = false;
@@ -81,13 +73,11 @@ namespace engine {
             clip.nextEventIndex = 0;
         }
     }
-
     void AnimationController::setClipTime(int clipIndex, float time) {
         for (auto& clip : clips_) {
             if (clip.clipIndex == clipIndex) {
-                float duration   = clip.duration > 0.0f ? clip.duration : 1.0f;
-                clip.currentTime = std::max(0.0f, std::min(time, duration));
-
+                float duration      = clip.duration > 0.0f ? clip.duration : 1.0f;
+                clip.currentTime    = std::max(0.0f, std::min(time, duration));
                 clip.nextEventIndex = 0;
                 for (size_t i = 0; i < clip.events.size(); ++i) {
                     if (clip.events[i].time > clip.currentTime) {
@@ -99,14 +89,12 @@ namespace engine {
             }
         }
     }
-
     void AnimationController::reset() {
         for (auto& clip : clips_) {
             clip.reset();
         }
         firedEvents_.clear();
     }
-
     void AnimationController::applyClipToAccumulators(
         const AnimationClip& clip, const Model& model,
         std::vector<glm::vec3>& outTranslations,
@@ -115,29 +103,23 @@ namespace engine {
         bool                    isFirst) const {
         if (!clip.active || clip.weight <= 0.0f)
             return;
-
         if (clip.clipIndex < 0 || clip.clipIndex >= static_cast<int>(model.getAnimations().size()))
             return;
-
         const auto& animation = model.getAnimations()[static_cast<size_t>(clip.clipIndex)];
         const auto& samplers  = animation.samplers;
         const auto& channels  = animation.channels;
         const auto& nodes     = model.getNodes();
-
         for (const auto& channel : channels) {
             if (channel.targetNode < 0 || channel.targetNode >= static_cast<int>(nodes.size()))
                 continue;
             if (channel.samplerIndex < 0 || channel.samplerIndex >= static_cast<int>(samplers.size()))
                 continue;
-
             const auto& sampler = samplers[static_cast<size_t>(channel.samplerIndex)];
-
             switch (channel.path) {
                 case Model::AnimationChannel::TRANSLATION: {
                     glm::vec3 translated = glm::vec3(0.0f);
                     if (sampler.translations.empty())
                         break;
-
                     if (clip.currentTime <= sampler.times.front())
                         translated = sampler.translations.front();
                     else if (clip.currentTime >= sampler.times.back())
@@ -153,16 +135,13 @@ namespace engine {
                         size_t prevIdx = nextIdx - 1;
                         float  factor  = (clip.currentTime - sampler.times[prevIdx]) /
                                          (sampler.times[nextIdx] - sampler.times[prevIdx]);
-
                         if (sampler.interpolation == Model::AnimationSampler::STEP)
                             translated = sampler.translations[prevIdx];
                         else
                             translated = glm::mix(sampler.translations[prevIdx],
                                 sampler.translations[nextIdx], factor);
                     }
-
                     translated *= clip.weight;
-
                     if (isFirst || clip.mode == AnimationClip::OVERRIDE) {
                         if (outTranslations.size() > static_cast<size_t>(channel.targetNode)) {
                             outTranslations[static_cast<size_t>(channel.targetNode)] = translated;
@@ -174,12 +153,10 @@ namespace engine {
                     }
                     break;
                 }
-
                 case Model::AnimationChannel::ROTATION: {
                     glm::quat rotated{1.0f, 0.0f, 0.0f, 0.0f};
                     if (sampler.rotations.empty())
                         break;
-
                     if (clip.currentTime <= sampler.times.front())
                         rotated = sampler.rotations.front();
                     else if (clip.currentTime >= sampler.times.back())
@@ -195,17 +172,14 @@ namespace engine {
                         size_t prevIdx = nextIdx - 1;
                         float  factor  = (clip.currentTime - sampler.times[prevIdx]) /
                                          (sampler.times[nextIdx] - sampler.times[prevIdx]);
-
                         if (sampler.interpolation == Model::AnimationSampler::STEP)
                             rotated = sampler.rotations[prevIdx];
                         else
                             rotated = glm::normalize(glm::slerp(sampler.rotations[prevIdx],
                                 sampler.rotations[nextIdx], factor));
                     }
-
                     glm::quat identity{1.0f, 0.0f, 0.0f, 0.0f};
                     rotated = glm::normalize(glm::slerp(identity, rotated, clip.weight));
-
                     if (isFirst || clip.mode == AnimationClip::OVERRIDE) {
                         if (outRotations.size() > static_cast<size_t>(channel.targetNode)) {
                             outRotations[static_cast<size_t>(channel.targetNode)] = rotated;
@@ -218,12 +192,10 @@ namespace engine {
                     }
                     break;
                 }
-
                 case Model::AnimationChannel::SCALE: {
                     glm::vec3 scaled = glm::vec3(1.0f);
                     if (sampler.scales.empty())
                         break;
-
                     if (clip.currentTime <= sampler.times.front())
                         scaled = sampler.scales.front();
                     else if (clip.currentTime >= sampler.times.back())
@@ -239,16 +211,13 @@ namespace engine {
                         size_t prevIdx = nextIdx - 1;
                         float  factor  = (clip.currentTime - sampler.times[prevIdx]) /
                                          (sampler.times[nextIdx] - sampler.times[prevIdx]);
-
                         if (sampler.interpolation == Model::AnimationSampler::STEP)
                             scaled = sampler.scales[prevIdx];
                         else
                             scaled = glm::mix(sampler.scales[prevIdx],
                                 sampler.scales[nextIdx], factor);
                     }
-
                     scaled = glm::mix(glm::vec3(1.0f), scaled, clip.weight);
-
                     if (isFirst || clip.mode == AnimationClip::OVERRIDE) {
                         if (outScales.size() > static_cast<size_t>(channel.targetNode)) {
                             outScales[static_cast<size_t>(channel.targetNode)] = scaled;
@@ -260,36 +229,28 @@ namespace engine {
                     }
                     break;
                 }
-
                 case Model::AnimationChannel::WEIGHTS:
-
                     break;
             }
         }
     }
-
     int AnimationController::findDominantClipForBone(int boneIndex) const {
         int bestIdx      = -1;
         int bestPriority = std::numeric_limits<int>::min();
-
         for (int i = 0; i < static_cast<int>(clips_.size()); ++i) {
             const auto& clip = clips_[i];
             if (!clip.active || clip.weight <= 0.0f)
                 continue;
-
             if (clip.clipIndex < 0) {
                 continue;
             }
-
             if (clip.priority > bestPriority) {
                 bestPriority = clip.priority;
                 bestIdx      = i;
             }
         }
-
         return bestIdx;
     }
-
     void AnimationController::setGraph(std::shared_ptr<AnimationGraph> graph) {
         graph_ = graph;
         if (graph_ && graph_->getEntryNode()) {
@@ -298,15 +259,12 @@ namespace engine {
             transitionTimer_     = 0.0f;
         }
     }
-
     void AnimationController::triggerTransition(int targetNodeId) {
         if (!graph_)
             return;
-
         const auto* currentNode = getCurrentGraphNode();
         if (!currentNode)
             return;
-
         auto                       allTrans   = graph_->getTransitions(currentNode->id);
         const AnimationTransition* foundTrans = nullptr;
         for (const auto* t : allTrans) {
@@ -315,22 +273,17 @@ namespace engine {
                 break;
             }
         }
-
         transitioningToNode_ = targetNodeId;
         transitionTimer_     = foundTrans ? foundTrans->blendDuration : 0.25f;
         if (transitionTimer_ <= 0.0f)
             transitionTimer_ = 0.25f;
-
         graph_->setCurrentNode(targetNodeId);
     }
-
     bool AnimationController::handleEvent(const std::string& eventName) {
         if (!graph_ || transitioningToNode_ != -1)
             return false;
-
         int  currentId = currentGraphNodeId_;
         auto allTrans  = graph_->getTransitions(currentId);
-
         for (const auto* t : allTrans) {
             if (t->condition == TransitionCondition::EVENT_BASED && t->eventName == eventName) {
                 transitioningToNode_ = t->targetNodeId;
@@ -342,25 +295,21 @@ namespace engine {
         }
         return false;
     }
-
     const AnimationGraphNode* AnimationController::getCurrentGraphNode() const {
         if (!graph_ || currentGraphNodeId_ < 0)
             return nullptr;
         return graph_->getNode(currentGraphNodeId_);
     }
-
     std::string AnimationController::getCurrentGraphNodeName() const {
         const auto* node = getCurrentGraphNode();
         return node ? node->name : "None";
     }
-
     std::vector<std::pair<std::string, void*>> AnimationController::update(float deltaTime,
         const Model&                                                             model,
         std::vector<glm::vec3>&                                                  outTranslations,
         std::vector<glm::quat>&                                                  outRotations,
         std::vector<glm::vec3>&                                                  outScales) {
         firedEvents_.clear();
-
         if (graph_ && !transitioningToNode_) {
             auto trigger = graph_->step(deltaTime);
             if (trigger.triggered) {
@@ -368,14 +317,12 @@ namespace engine {
                 transitionTimer_     = trigger.blendDuration > 0.0f ? trigger.blendDuration : 0.25f;
             }
         }
-
         if (transitioningToNode_ != -1) {
             transitionTimer_ -= deltaTime;
             if (transitionTimer_ <= 0.0f) {
-                currentGraphNodeId_  = transitioningToNode_;
-                transitioningToNode_ = -1;
-                transitionTimer_     = 0.0f;
-
+                currentGraphNodeId_    = transitioningToNode_;
+                transitioningToNode_   = -1;
+                transitionTimer_       = 0.0f;
                 const auto* targetNode = getCurrentGraphNode();
                 if (targetNode && targetNode->clipIndex >= 0) {
                     for (auto& clip : clips_) {
@@ -386,54 +333,41 @@ namespace engine {
                 }
             }
         }
-
         for (auto& clip : clips_) {
             if (!clip.active || clip.weight <= 0.0f)
                 continue;
             clip.step(deltaTime, model, outTranslations, outRotations, outScales);
-
             while (clip.nextEventIndex < clip.events.size() &&
                    clip.events[clip.nextEventIndex].time <= clip.currentTime) {
                 const auto& evt = clip.events[clip.nextEventIndex];
                 firedEvents_.emplace_back(evt.name, evt.userData);
-
                 if (eventCallback_) {
                     eventCallback_(evt.name, evt.userData);
                 }
-
                 handleEvent(evt.name);
-
                 ++clip.nextEventIndex;
             }
         }
-
         return std::move(firedEvents_);
     }
-
     std::vector<glm::mat4> AnimationController::computeGlobalTransforms(
         const Model&                  model,
         const std::vector<glm::mat4>& baseTransforms) const {
         std::vector<glm::mat4> globalTransforms;
         if (baseTransforms.empty())
             return globalTransforms;
-
         globalTransforms.resize(baseTransforms.size(), glm::mat4(1.0f));
-
         for (const auto& clip : clips_) {
             if (!clip.active || clip.weight <= 0.0f)
                 continue;
             if (clip.clipIndex < 0 || clip.clipIndex >= static_cast<int>(model.getAnimations().size()))
                 continue;
-
             const auto& animation = model.getAnimations()[static_cast<size_t>(clip.clipIndex)];
             const auto& nodes     = model.getNodes();
-
             for (const auto& channel : animation.channels) {
                 if (channel.targetNode < 0 || channel.targetNode >= static_cast<int>(nodes.size()))
                     continue;
-
                 auto& node = nodes[static_cast<size_t>(channel.targetNode)];
-
                 if (channel.path == Model::AnimationChannel::TRANSLATION) {
                     globalTransforms[static_cast<size_t>(channel.targetNode)] =
                         baseTransforms[static_cast<size_t>(channel.targetNode)] *
@@ -449,8 +383,6 @@ namespace engine {
                 }
             }
         }
-
         return globalTransforms;
     }
-
 }  // namespace engine

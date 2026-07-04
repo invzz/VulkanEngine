@@ -12,42 +12,33 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     void SpatialSystem::rebuild(entt::registry&              registry,
         const std::unordered_map<entt::entity, const AABB*>& modelBounds) {
         leaves_.clear();
         nodes_.clear();
-
         auto view = registry.view<TransformComponent>();
         for (auto entity : view) {
             const auto& transform = registry.get<TransformComponent>(entity);
-
-            AABB bounds;
-            bool hasBounds = false;
-
+            AABB        bounds;
+            bool        hasBounds = false;
             if (const auto* localBoundsPtr = modelBounds.count(entity) ? modelBounds.at(entity) : nullptr;
                 localBoundsPtr && localBoundsPtr->isValid()) {
                 const glm::mat4& worldMat = transform.modelTransform();
                 bounds                    = transformAABB(*localBoundsPtr, worldMat);
                 hasBounds                 = true;
             }
-
             if (!hasBounds) {
                 const glm::vec3& pos = transform.translation;
                 bounds.min           = pos - glm::vec3(0.5f);
                 bounds.max           = pos + glm::vec3(0.5f);
             }
-
             leaves_.emplace_back(entity, bounds);
         }
-
         if (leaves_.empty()) {
             root_ = UINT32_MAX;
             return;
         }
-
         AABB rootBounds;
         rootBounds.min = glm::vec3(std::numeric_limits<float>::max());
         rootBounds.max = glm::vec3(-std::numeric_limits<float>::max());
@@ -55,45 +46,35 @@ namespace engine {
             rootBounds.min = glm::min(rootBounds.min, bnd.min);
             rootBounds.max = glm::max(rootBounds.max, bnd.max);
         }
-
         nodes_.clear();
         nodes_.emplace_back();
         nodes_.back().bounds = rootBounds;
         root_                = 0;
-
         buildTree();
     }
-
     std::optional<SpatialSystem::RayHit> SpatialSystem::raycast(const Ray& ray) const {
         return raycastTraversal(ray);
     }
-
     std::vector<entt::entity> SpatialSystem::queryAABB(const AABB& bounds) const {
         std::vector<entt::entity> out;
         queryAABBT(bounds, out);
         return out;
     }
-
     uint32_t SpatialSystem::insertLeaf(uint32_t nodeIdx, AABB bounds, entt::entity entity) {
         if (nodeIdx >= nodes_.size()) {
             nodes_.resize(nodeIdx + 1);
         }
-
         nodes_[nodeIdx].bounds = bounds;
         nodes_[nodeIdx].entity = entity;
         nodes_[nodeIdx].left   = UINT32_MAX;
         nodes_[nodeIdx].right  = UINT32_MAX;
-
         return nodeIdx;
     }
-
     void SpatialSystem::buildTree() {
         if (leaves_.empty())
             return;
-
         buildRecursive(root_, 0, static_cast<uint32_t>(leaves_.size()));
     }
-
     void SpatialSystem::buildRecursive(uint32_t nodeIdx, uint32_t leafStart, uint32_t leafCount) {
         if (leafCount <= 1) {
             if (leafCount == 1) {
@@ -105,7 +86,6 @@ namespace engine {
             }
             return;
         }
-
         AABB bounds;
         bounds.min = glm::vec3(std::numeric_limits<float>::max());
         bounds.max = glm::vec3(-std::numeric_limits<float>::max());
@@ -113,15 +93,13 @@ namespace engine {
             bounds.min = glm::min(bounds.min, leaves_[leafStart + i].second.min);
             bounds.max = glm::max(bounds.max, leaves_[leafStart + i].second.max);
         }
-        nodes_[nodeIdx].bounds = bounds;
-
+        nodes_[nodeIdx].bounds  = bounds;
         const glm::vec3 extents = bounds.max - bounds.min;
         int             axis    = 0;
         if (extents.y > extents.x && extents.y > extents.z)
             axis = 1;
         else if (extents.z > extents.x)
             axis = 2;
-
         const float mid = (bounds.min[axis] + bounds.max[axis]) * 0.5f;
         std::sort(leaves_.begin() + leafStart,
             leaves_.begin() + leafStart + leafCount,
@@ -130,91 +108,67 @@ namespace engine {
                 const float bMid = (b.second.min[axis] + b.second.max[axis]) * 0.5f;
                 return aMid < bMid;
             });
-
         const uint32_t leftCount  = leafCount / 2;
         const uint32_t rightCount = leafCount - leftCount;
-
-        const uint32_t leftChild = static_cast<uint32_t>(nodes_.size());
+        const uint32_t leftChild  = static_cast<uint32_t>(nodes_.size());
         nodes_.emplace_back();
-        nodes_[nodeIdx].left = leftChild;
-
+        nodes_[nodeIdx].left      = leftChild;
         const uint32_t rightChild = static_cast<uint32_t>(nodes_.size());
         nodes_.emplace_back();
         nodes_[nodeIdx].right = rightChild;
-
         buildRecursive(leftChild, leafStart, leftCount);
         buildRecursive(rightChild, leafStart + leftCount, rightCount);
     }
-
     bool SpatialSystem::intersectRayAABB(const Ray& ray, const AABB& aabb, float& tNear) const {
         const glm::vec3 invDir = glm::vec3(1.0f) / ray.direction;
         const glm::vec3 tMin   = (aabb.min - ray.origin) * invDir;
         const glm::vec3 tMax   = (aabb.max - ray.origin) * invDir;
-
-        const glm::vec3 t1 = glm::min(tMin, tMax);
-        const glm::vec3 t2 = glm::max(tMin, tMax);
-
-        const float tEntry = glm::max(glm::max(t1.x, t1.y), t1.z);
-        const float tExit  = glm::min(glm::min(t2.x, t2.y), t2.z);
-
+        const glm::vec3 t1     = glm::min(tMin, tMax);
+        const glm::vec3 t2     = glm::max(tMin, tMax);
+        const float     tEntry = glm::max(glm::max(t1.x, t1.y), t1.z);
+        const float     tExit  = glm::min(glm::min(t2.x, t2.y), t2.z);
         if (tEntry > tExit || tExit < 0.0f)
             return false;
-
         tNear = (tEntry > 0.0f) ? tEntry : 0.0f;
         return true;
     }
-
     std::optional<SpatialSystem::RayHit> SpatialSystem::raycastTraversal(const Ray& ray) const {
         if (root_ == UINT32_MAX)
             return std::nullopt;
-
         std::optional<RayHit> bestHit;
         float                 bestT = std::numeric_limits<float>::max();
-
         struct StackEntry {
             uint32_t nodeIdx;
             float    tMin;
         };
         std::vector<StackEntry> stack;
         stack.reserve(64);
-
         float rootT = 0.0f;
         if (!intersectRayAABB(ray, nodes_[root_].bounds, rootT))
             return std::nullopt;
-
         stack.emplace_back(root_, rootT);
-
         while (!stack.empty()) {
             const StackEntry entry = stack.back();
             stack.pop_back();
-
             const uint32_t nodeIdx = entry.nodeIdx;
             const float    tMin    = entry.tMin;
-
             if (nodes_[nodeIdx].left == UINT32_MAX) {
                 if (tMin >= bestT)
                     continue;
-
                 const float tEntry = tMin;
                 if (bestHit.has_value() && tEntry >= bestHit->distance)
                     continue;
-
                 const glm::vec3 hitPos = ray.origin + ray.direction * tEntry;
-
-                bestHit = RayHit{nodes_[nodeIdx].entity, tEntry, hitPos};
-                bestT   = tEntry;
+                bestHit                = RayHit{nodes_[nodeIdx].entity, tEntry, hitPos};
+                bestT                  = tEntry;
                 continue;
             }
-
-            const uint32_t left  = nodes_[nodeIdx].left;
-            const uint32_t right = nodes_[nodeIdx].right;
-
-            float tLeft  = std::numeric_limits<float>::max();
-            float tRight = std::numeric_limits<float>::max();
-
-            const bool leftHit  = intersectRayAABB(ray, nodes_[left].bounds, tLeft);
-            const bool rightHit = intersectRayAABB(ray, nodes_[right].bounds, tRight);
-
+            const uint32_t left     = nodes_[nodeIdx].left;
+            const uint32_t right    = nodes_[nodeIdx].right;
+            float          tLeft    = std::numeric_limits<float>::max();
+            float          tRight   = std::numeric_limits<float>::max();
+            const bool     leftHit  = intersectRayAABB(ray, nodes_[left].bounds, tLeft);
+            const bool     rightHit = intersectRayAABB(ray, nodes_[right].bounds, tRight);
             if (leftHit && rightHit) {
                 if (tLeft < tRight) {
                     stack.emplace_back(left, tLeft);
@@ -229,42 +183,33 @@ namespace engine {
                 stack.emplace_back(right, tRight);
             }
         }
-
         return bestHit;
     }
-
     void SpatialSystem::queryAABBT(const AABB& bounds, std::vector<entt::entity>& out) const {
         if (root_ == UINT32_MAX)
             return;
-
         struct StackEntry {
             uint32_t nodeIdx;
         };
         std::vector<StackEntry> stack;
         stack.reserve(64);
         stack.emplace_back(root_);
-
         while (!stack.empty()) {
             const uint32_t nodeIdx = stack.back().nodeIdx;
             stack.pop_back();
-
             const AABB& nodeBounds = nodes_[nodeIdx].bounds;
             const bool  overlaps =
                 nodeBounds.min.x <= bounds.max.x && nodeBounds.max.x >= bounds.min.x &&
                 nodeBounds.min.y <= bounds.max.y && nodeBounds.max.y >= bounds.min.y &&
                 nodeBounds.min.z <= bounds.max.z && nodeBounds.max.z >= bounds.min.z;
-
             if (!overlaps)
                 continue;
-
             if (nodes_[nodeIdx].left == UINT32_MAX) {
                 out.push_back(nodes_[nodeIdx].entity);
                 continue;
             }
-
             stack.emplace_back(nodes_[nodeIdx].left);
             stack.emplace_back(nodes_[nodeIdx].right);
         }
     }
-
 }  // namespace engine

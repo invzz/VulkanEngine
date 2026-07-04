@@ -4,9 +4,7 @@
 #include <cassert>
 
 #include "Engine/Core/Exceptions.hpp"
-
 namespace engine {
-
     void ThreadLocalCommandPool::init(VkDevice device, uint32_t queueFamilyIndex) {
         if (device_ != VK_NULL_HANDLE) {
             return;
@@ -14,7 +12,6 @@ namespace engine {
         device_           = device;
         queueFamilyIndex_ = queueFamilyIndex;
     }
-
     VkCommandPool ThreadLocalCommandPool::getForCurrentThread() {
         assert(device_ != VK_NULL_HANDLE && "ThreadLocalCommandPool not initialized");
         const auto tid = std::this_thread::get_id();
@@ -25,26 +22,20 @@ namespace engine {
                 return it->second;
             }
         }
-
         VkCommandPoolCreateInfo poolInfo{};
         poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         poolInfo.flags            = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = queueFamilyIndex_;
-
-        VkCommandPool pool = VK_NULL_HANDLE;
+        VkCommandPool pool        = VK_NULL_HANDLE;
         if (vkCreateCommandPool(device_, &poolInfo, nullptr, &pool) != VK_SUCCESS) {
             throw engine::RuntimeException("failed to create command pool for thread");
         }
-
         {
             std::lock_guard<std::mutex> lk(mutex_);
-
             pools_[tid] = pool;
         }
-
         return pool;
     }
-
     void ThreadLocalCommandPool::destroyForCurrentThread() noexcept {
         const auto                  tid = std::this_thread::get_id();
         std::lock_guard<std::mutex> lk(mutex_);
@@ -57,7 +48,6 @@ namespace engine {
         }
         pools_.erase(it);
     }
-
     void ThreadLocalCommandPool::destroyAll() noexcept {
         std::lock_guard<std::mutex> lk(mutex_);
         if (device_ == VK_NULL_HANDLE) {
@@ -70,10 +60,8 @@ namespace engine {
         }
         pools_.clear();
     }
-
     bool ThreadLocalCommandPool::ownsPool(VkCommandPool pool) const {
         std::lock_guard<std::mutex> lk(mutex_);
         return std::ranges::any_of(pools_, [pool](const auto& kv) { return kv.second == pool; });
     }
-
 }  // namespace engine

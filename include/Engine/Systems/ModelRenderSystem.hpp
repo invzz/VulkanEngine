@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_MODELRENDERSYSTEM_HPP
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -12,12 +11,10 @@
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Systems/MaterialRenderBindings.hpp"
-
 namespace engine {
     class ShadowSystem;
     class IBLSystem;
     struct PBRMaterial;
-
     struct MeshPushConstantData {
         glm::mat4 modelMatrix{1.0f};
         glm::mat4 normalMatrix{1.0f};
@@ -29,7 +26,6 @@ namespace engine {
         uint32_t  meshletOffset{0};
         uint32_t  meshletCount{0};
     };
-
     static_assert(offsetof(MeshPushConstantData, modelMatrix) == 0u, "MeshPushConstantData layout mismatch: modelMatrix offset");
     static_assert(offsetof(MeshPushConstantData, normalMatrix) == 64u, "MeshPushConstantData layout mismatch: normalMatrix offset");
     static_assert(offsetof(MeshPushConstantData, meshId) == 128u, "MeshPushConstantData layout mismatch: meshId offset");
@@ -40,10 +36,8 @@ namespace engine {
     static_assert(offsetof(MeshPushConstantData, meshletOffset) == 168u, "MeshPushConstantData layout mismatch: meshletOffset offset");
     static_assert(offsetof(MeshPushConstantData, meshletCount) == 172u, "MeshPushConstantData layout mismatch: meshletCount offset");
     static_assert(sizeof(MeshPushConstantData) == 176u, "MeshPushConstantData size mismatch");
-
     class MaterialRenderBindings;
     class LightingRenderBindings;
-
     class ModelRenderSystem {
        public:
         enum class VariantPolicy : std::uint8_t {
@@ -51,24 +45,18 @@ namespace engine {
             ForceStandard,
             ForceFull,
         };
-
         ModelRenderSystem(Device& device, VkRenderPass renderPass, VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
         ~ModelRenderSystem();
-
         ModelRenderSystem(const ModelRenderSystem&)            = delete;
         ModelRenderSystem& operator=(const ModelRenderSystem&) = delete;
-
-        void beginFrame(int frameIndex);
-
-        void enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
-
-        void setVariantPolicy(VariantPolicy policy) {
+        void               beginFrame(int frameIndex);
+        void               enableMultiThreadedRecording(bool enable, uint32_t threadCount = 0);
+        void               setVariantPolicy(VariantPolicy policy) {
             variantPolicy_ = policy;
         }
         [[nodiscard]] VariantPolicy variantPolicy() const {
             return variantPolicy_;
         }
-
         void setShaderHotReloadEnabled(bool enabled) {
             shaderHotReloadEnabled_ = enabled;
         }
@@ -84,65 +72,48 @@ namespace engine {
         [[nodiscard]] bool isMultiThreadedRecordingEnabled() const {
             return multithreadedRecordingEnabled_;
         }
-
-        void renderGbuffer(FrameInfo& frameInfo);
-        void renderTransmission(FrameInfo& frameInfo);
-        void renderAlphaBlend(FrameInfo& frameInfo);
-
-        void createGbufferPipeline(VkRenderPass renderPass);
-
-        void updateSceneColorDescriptor(int frameIndex, VkDescriptorImageInfo const& sceneColorInfo);
-
-        void renderDepthPrepass(FrameInfo& frameInfo);
-
-        void createDepthPrepassPipeline(VkRenderPass renderPass);
-
-        void setShadowSystem(ShadowSystem* shadowSystem);
-        void setIBLSystem(IBLSystem* iblSystem);
-
+        void                                       renderGbuffer(FrameInfo& frameInfo);
+        void                                       renderTransmission(FrameInfo& frameInfo);
+        void                                       renderAlphaBlend(FrameInfo& frameInfo);
+        void                                       createGbufferPipeline(VkRenderPass renderPass);
+        void                                       updateSceneColorDescriptor(int frameIndex, VkDescriptorImageInfo const& sceneColorInfo);
+        void                                       renderDepthPrepass(FrameInfo& frameInfo);
+        void                                       createDepthPrepassPipeline(VkRenderPass renderPass);
+        void                                       setShadowSystem(ShadowSystem* shadowSystem);
+        void                                       setIBLSystem(IBLSystem* iblSystem);
         [[nodiscard]] MaterialDescriptorCacheStats getMaterialDescriptorCacheStats() const;
         void                                       resetMaterialDescriptorCacheStats();
 
        private:
-        void createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
-        void createPipeline(VkRenderPass renderPass);
-        void createSceneColorDescriptorResources();
-
-        void                    bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
-        void                    hotReloadPipelinesIfNeeded();
-        [[nodiscard]] Pipeline* chooseTransparentPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
-        [[nodiscard]] Pipeline* chooseTransmissionPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
-
-        Device&                   device;
-        std::unique_ptr<Pipeline> depthPrepassPipeline;
-        std::unique_ptr<Pipeline> transparentPipeline;
-        std::unique_ptr<Pipeline> transmissionPipeline;
-        std::unique_ptr<Pipeline> standardTransparentPipeline;
-        std::unique_ptr<Pipeline> standardTransmissionPipeline;
-        std::unique_ptr<Pipeline> gbufferPipeline;
-        VkPipelineLayout          pipelineLayout;
-
+        void                                    createPipelineLayout(VkDescriptorSetLayout globalSetLayout, VkDescriptorSetLayout bindlessSetLayout);
+        void                                    createPipeline(VkRenderPass renderPass);
+        void                                    createSceneColorDescriptorResources();
+        void                                    bindBaseDescriptorSets(FrameInfo& frameInfo, bool bindSceneColor) const;
+        void                                    hotReloadPipelinesIfNeeded();
+        [[nodiscard]] Pipeline*                 chooseTransparentPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
+        [[nodiscard]] Pipeline*                 chooseTransmissionPipeline(FrameInfo const& frameInfo, const PBRMaterial* material) const;
+        Device&                                 device;
+        std::unique_ptr<Pipeline>               depthPrepassPipeline;
+        std::unique_ptr<Pipeline>               transparentPipeline;
+        std::unique_ptr<Pipeline>               transmissionPipeline;
+        std::unique_ptr<Pipeline>               standardTransparentPipeline;
+        std::unique_ptr<Pipeline>               standardTransmissionPipeline;
+        std::unique_ptr<Pipeline>               gbufferPipeline;
+        VkPipelineLayout                        pipelineLayout;
         std::unique_ptr<MaterialRenderBindings> materialBindings_;
-
         std::unique_ptr<LightingRenderBindings> lightingBindings_;
-
-        VkRenderPass renderPass_ = VK_NULL_HANDLE;
-
-        VkRenderPass gbufferRenderPass_ = VK_NULL_HANDLE;
-
-        bool               multithreadedRecordingEnabled_ = false;
-        uint32_t           multithreadedRecordingThreads_ = 0;
-        mutable std::mutex multithreadBindMutex_;
-
+        VkRenderPass                            renderPass_                    = VK_NULL_HANDLE;
+        VkRenderPass                            gbufferRenderPass_             = VK_NULL_HANDLE;
+        bool                                    multithreadedRecordingEnabled_ = false;
+        uint32_t                                multithreadedRecordingThreads_ = 0;
+        mutable std::mutex                      multithreadBindMutex_;
         VkDescriptorSetLayout                   sceneColorDescriptorSetLayout_{VK_NULL_HANDLE};
         std::unique_ptr<engine::DescriptorPool> sceneColorDescriptorPool_;
         std::vector<VkDescriptorSet>            sceneColorDescriptorSets_;
-
-        VariantPolicy variantPolicy_                 = VariantPolicy::Auto;
-        bool          shaderHotReloadEnabled_        = true;
-        bool          standardVariantFallbackActive_ = false;
-        std::string   standardVariantFallbackReason_;
+        VariantPolicy                           variantPolicy_                 = VariantPolicy::Auto;
+        bool                                    shaderHotReloadEnabled_        = true;
+        bool                                    standardVariantFallbackActive_ = false;
+        std::string                             standardVariantFallbackReason_;
     };
 }  // namespace engine
-
 #endif

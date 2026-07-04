@@ -11,23 +11,17 @@
 #include "Editor/ui/UI.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/trigonometric.hpp"
-
 namespace engine {
-
     TransformPanel::TransformPanel(Scene& scene) : scene_(scene) {}
-
     void TransformPanel::render(FrameInfo& frameInfo) {
         if (!visible_)
             return;
-
         ui::UI::PushThemeStyle();
-
         bool open = ui::UI::Section("Transform");
         if (!open) {
             ui::UI::PopThemeStyle();
             return;
         }
-
         if (frameInfo.selectedEntity != entt::null) {
             auto  entity   = frameInfo.selectedEntity;
             auto& registry = scene_.getRegistry();
@@ -36,12 +30,10 @@ namespace engine {
                 ui::UI::PopThemeStyle();
                 return;
             }
-            auto& transform = registry.get<TransformComponent>(entity);
-
+            auto&       transform = registry.get<TransformComponent>(entity);
             std::string entityStr = std::to_string((uint32_t) entity);
             ui::UI::TextColored(entityStr.c_str(), ImVec4(0.9f, 0.9f, 0.9f, 1.0f));
             ui::UI::Separator();
-
             if (ImGui::BeginTabBar("TransformTabs")) {
                 if (ImGui::BeginTabItem("Translation")) {
                     ImGui::Spacing();
@@ -49,13 +41,11 @@ namespace engine {
                     translationChanged |= ui::UI::DragFloat("X##trans_x", &transform.translation.x, 0.1f);
                     translationChanged |= ui::UI::DragFloat("Y##trans_y", &transform.translation.y, 0.1f);
                     translationChanged |= ui::UI::DragFloat("Z##trans_z", &transform.translation.z, 0.1f);
-
                     ui::UI::Separator();
                     if (ui::UI::Button("Reset Position##trans_reset")) {
                         transform.translation = glm::vec3(0.0f);
                         translationChanged    = true;
                     }
-
                     if (translationChanged) {
                         if (auto* rigidBody = registry.try_get<RigidBodyComponent>(entity)) {
                             rigidBody->pendingBodyStateOverride = true;
@@ -63,7 +53,6 @@ namespace engine {
                     }
                     ImGui::EndTabItem();
                 }
-
                 if (ImGui::BeginTabItem("Rotation")) {
                     ImGui::Spacing();
                     ui::UI::TextDisabled("Degrees:");
@@ -72,7 +61,6 @@ namespace engine {
                         glm::degrees(transform.rotation.y),
                         glm::degrees(transform.rotation.z)};
                     bool rotationChanged = false;
-
                     if (ui::UI::DragFloat("X##rot_x", &rotationDegrees[0], 1.0f, -180.0f, 180.0f)) {
                         transform.rotation.x = glm::radians(rotationDegrees[0]);
                         rotationChanged      = true;
@@ -85,13 +73,11 @@ namespace engine {
                         transform.rotation.z = glm::radians(rotationDegrees[2]);
                         rotationChanged      = true;
                     }
-
                     ui::UI::Separator();
                     if (ui::UI::Button("Reset Rotation##rot_reset")) {
                         transform.rotation = glm::vec3(0.0f);
                         rotationChanged    = true;
                     }
-
                     if (rotationChanged) {
                         if (auto* rigidBody = registry.try_get<RigidBodyComponent>(entity)) {
                             rigidBody->pendingBodyStateOverride = true;
@@ -99,22 +85,16 @@ namespace engine {
                     }
                     ImGui::EndTabItem();
                 }
-
                 if (ImGui::BeginTabItem("Scale")) {
                     ImGui::Spacing();
-
                     ui::UI::Checkbox("Lock Axes##scale_lock", &lockAxes_);
                     ui::UI::InfoTooltip("When locked, all axes scale uniformly");
-
                     ImGui::Spacing();
-
                     bool const isAnimated  = registry.all_of<AnimationComponent>(entity);
                     glm::vec3& targetScale = isAnimated ? transform.baseScale : transform.scale;
-
                     if (isAnimated) {
                         ui::UI::TextDisabled("(Animated - modifying base scale)");
                     }
-
                     if (lockAxes_) {
                         float uniformScale = targetScale.x;
                         if (ui::UI::DragFloat("Uniform##scale_uniform", &uniformScale, 0.01f, 0.01f, 100.0f)) {
@@ -125,7 +105,6 @@ namespace engine {
                         ui::UI::DragFloat("Y##scale_y", &targetScale.y, 0.01f, 0.01f, 100.0f);
                         ui::UI::DragFloat("Z##scale_z", &targetScale.z, 0.01f, 0.01f, 100.0f);
                     }
-
                     ui::UI::Separator();
                     ui::UI::TextDisabled("Quick Scale:");
                     if (ui::UI::Button("Reset (1.0)##scale_reset")) {
@@ -141,7 +120,6 @@ namespace engine {
                     }
                     ImGui::EndTabItem();
                 }
-
                 ImGui::EndTabBar();
             }
         } else {
@@ -149,8 +127,6 @@ namespace engine {
             ui::UI::TextDisabled("Press Y/U to select objects");
             ui::UI::TextDisabled("Press C to select camera");
         }
-
         ui::UI::PopThemeStyle();
     }
-
 }  // namespace engine

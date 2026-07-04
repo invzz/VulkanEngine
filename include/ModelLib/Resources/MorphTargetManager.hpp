@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MORPHTARGETMANAGER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MORPHTARGETMANAGER_HPP
-
 #include <memory>
 #include <unordered_map>
 
@@ -9,9 +8,7 @@
 #include "Engine/Graphics/MorphTargetCompute.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     /**
  * @brief Manages GPU buffers and compute operations for morph target blending
  *
@@ -21,36 +18,30 @@ namespace engine {
     class MorphTargetManager {
        public:
         MorphTargetManager(Device& device);
-        ~MorphTargetManager() = default;
-
+        ~MorphTargetManager()                                    = default;
         MorphTargetManager(const MorphTargetManager&)            = delete;
         MorphTargetManager& operator=(const MorphTargetManager&) = delete;
-
         /**
    * @brief Initialize GPU buffers for a model's morph targets
    * @param model The model containing morph target data
    * @return Model ID for future updates
    */
         void initializeModel(const std::shared_ptr<Model>& model);
-
         /**
    * @brief Update morph target weights for a model and dispatch compute shader
    * @param commandBuffer Vulkan command buffer
    * @param model The model to update
    */
         void updateAndBlend(VkCommandBuffer commandBuffer, const std::shared_ptr<Model>& model);
-
         /**
    * @brief Check if a model has been initialized for morph target blending
    */
         bool isModelInitialized(const Model* model) const;
-
         /**
    * @brief Get the blended vertex buffer for a model (to use for rendering)
    * @return VkBuffer handle or VK_NULL_HANDLE if not initialized
    */
         VkBuffer getBlendedBuffer(const Model* model) const;
-
         /**
    * @brief Get the device address of the blended vertex buffer
    * @return Device address or 0 if not initialized
@@ -67,14 +58,10 @@ namespace engine {
             size_t                  vertexCount;
             uint32_t                vertexOffset;
         };
-
         Device&                                          device_;
         std::unique_ptr<MorphTargetCompute>              compute_;
         std::unordered_map<const Model*, ModelMorphData> modelData_;
-
-        void createMorphBuffers(const Model& model, ModelMorphData& data);
+        void                                             createMorphBuffers(const Model& model, ModelMorphData& data);
     };
-
 }  // namespace engine
-
 #endif

@@ -1,8 +1,6 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_HPP
-
 #pragma once
-
 #include "Engine/Core/Keyboard.hpp"
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Core/Mouse.hpp"
@@ -18,5 +16,4 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/SystemRegistry.hpp"
 #include "Engine/graphics/GraphicsState.hpp"
-
 #endif

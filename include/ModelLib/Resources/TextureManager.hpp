@@ -1,6 +1,5 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTUREMANAGER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_TEXTUREMANAGER_HPP
-
 #include <memory>
 #include <unordered_map>
 #include <vector>
@@ -9,21 +8,15 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "ModelLib/Resources/Texture.hpp"
-
 namespace engine {
-
     class TextureManager {
        public:
         static constexpr uint32_t MAX_TEXTURES = 1024;
-
         TextureManager(Device& device);
         ~TextureManager();
-
-        TextureManager(const TextureManager&)            = delete;
-        TextureManager& operator=(const TextureManager&) = delete;
-
-        uint32_t addTexture(const std::shared_ptr<Texture>& texture);
-
+        TextureManager(const TextureManager&)                                = delete;
+        TextureManager&                     operator=(const TextureManager&) = delete;
+        uint32_t                            addTexture(const std::shared_ptr<Texture>& texture);
         [[nodiscard]] VkDescriptorSetLayout getDescriptorSetLayout() const {
             return descriptorSetLayout->getDescriptorSetLayout();
         }
@@ -32,23 +25,17 @@ namespace engine {
         }
 
        private:
-        void createDescriptorSetLayout();
-        void createDescriptorPool();
-        void createDescriptorSet();
-        void updateDescriptorSet(uint32_t index, VkDescriptorImageInfo& imageInfo);
-
-        Device& device;
-
-        std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
-        std::unique_ptr<DescriptorPool>      descriptorPool;
-        VkDescriptorSet                      descriptorSet;
-
+        void                                   createDescriptorSetLayout();
+        void                                   createDescriptorPool();
+        void                                   createDescriptorSet();
+        void                                   updateDescriptorSet(uint32_t index, VkDescriptorImageInfo& imageInfo);
+        Device&                                device;
+        std::unique_ptr<DescriptorSetLayout>   descriptorSetLayout;
+        std::unique_ptr<DescriptorPool>        descriptorPool;
+        VkDescriptorSet                        descriptorSet;
         std::vector<std::shared_ptr<Texture>>  textures;
         std::unordered_map<Texture*, uint32_t> textureIndexMap;
-
-        std::shared_ptr<Texture> placeholderTexture;
+        std::shared_ptr<Texture>               placeholderTexture;
     };
-
 }  // namespace engine
-
 #endif

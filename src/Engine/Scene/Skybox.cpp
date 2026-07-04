@@ -9,21 +9,17 @@
 #include "Engine/Graphics/Device.hpp"
 
 #include "vulkan/vulkan_core.h"
-
 #define STB_IMAGE_IMPLEMENTATION_ALREADY_DEFINED
 #include <stb_image.h>
 
 #include "Engine/Graphics/Buffer.hpp"
-
 namespace engine {
-
     Skybox::Skybox(Device& device, const std::array<std::string, 6>& facePaths) : device_(device) {
         imageFormat_ = VK_FORMAT_R8G8B8A8_SRGB;
         createCubemapImage(facePaths);
         createImageView();
         createSampler();
     }
-
     Skybox::Skybox(Device& device, uint32_t size) : device_(device), size_(static_cast<int>(size)) {
         imageFormat_ = VK_FORMAT_R16G16B16A16_SFLOAT;
         VkImageCreateInfo imageInfo{};
@@ -41,40 +37,31 @@ namespace engine {
         imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.flags         = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-
         if (vkCreateImage(device_.device(), &imageInfo, nullptr, &image_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create skybox image");
         }
-
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), image_, &memRequirements);
-
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize  = memRequirements.size;
         allocInfo.memoryTypeIndex = device_.memory().findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
         if (vkAllocateMemory(device_.device(), &allocInfo, nullptr, &imageMemory_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to allocate skybox image memory");
         }
-
         vkBindImageMemory(device_.device(), image_, imageMemory_, 0);
-
         createImageView();
         createSampler();
     }
-
     Skybox::~Skybox() {
         VkSampler      sampler = sampler_;
         VkImageView    view    = imageView_;
         VkImage        image   = image_;
         VkDeviceMemory memory  = imageMemory_;
-
-        sampler_     = VK_NULL_HANDLE;
-        imageView_   = VK_NULL_HANDLE;
-        image_       = VK_NULL_HANDLE;
-        imageMemory_ = VK_NULL_HANDLE;
-
+        sampler_               = VK_NULL_HANDLE;
+        imageView_             = VK_NULL_HANDLE;
+        image_                 = VK_NULL_HANDLE;
+        imageMemory_           = VK_NULL_HANDLE;
         if (sampler != VK_NULL_HANDLE) {
             device_.deferDestroy([sampler](VkDevice dev) { vkDestroySampler(dev, sampler, nullptr); });
         }
@@ -88,7 +75,6 @@ namespace engine {
             device_.deferDestroy([memory](VkDevice dev) { vkFreeMemory(dev, memory, nullptr); });
         }
     }
-
     std::unique_ptr<Skybox> Skybox::loadFromFolder(Device& device, const std::string& folderPath, const std::string& extension) {
         std::array<std::string, 6> const facePaths = {
             folderPath + "/posx." + extension,
@@ -98,16 +84,13 @@ namespace engine {
             folderPath + "/posz." + extension,
             folderPath + "/negz." + extension,
         };
-
         return std::make_unique<Skybox>(device, facePaths);
     }
-
     void Skybox::createCubemapImage(const std::array<std::string, 6>& facePaths) {
         std::array<unsigned char*, 6> faceData{};
         int                           width    = 0;
         int                           height   = 0;
         int                           channels = 0;
-
         for (int i = 0; i < 6; i++) {
             faceData[i] = stbi_load(facePaths[i].c_str(), &width, &height, &channels, STBI_rgb_alpha);
             if (faceData[i] == nullptr) {
@@ -116,7 +99,6 @@ namespace engine {
                 }
                 throw std::runtime_error("Failed to load skybox face: " + facePaths[i]);
             }
-
             if (i == 0) {
                 size_ = width;
                 if (width != height) {
@@ -130,24 +112,20 @@ namespace engine {
                 throw std::runtime_error("All skybox faces must be same size: " + facePaths[i]);
             }
         }
-
         VkDeviceSize const faceSize = static_cast<VkDeviceSize>(size_) * size_ * 4;
-
-        Buffer stagingBuffer{
+        Buffer             stagingBuffer{
             device_,
             faceSize,
             6,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         };
-
         stagingBuffer.map();
         for (int i = 0; i < 6; i++) {
             stagingBuffer.writeToIndex(faceData[i], i);
             stbi_image_free(faceData[i]);
         }
         stagingBuffer.unmap();
-
         VkImageCreateInfo imageInfo{};
         imageInfo.sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType     = VK_IMAGE_TYPE_2D;
@@ -163,29 +141,21 @@ namespace engine {
         imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.flags         = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-
         if (vkCreateImage(device_.device(), &imageInfo, nullptr, &image_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create cubemap image");
         }
-
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(device_.device(), image_, &memRequirements);
-
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize  = memRequirements.size;
         allocInfo.memoryTypeIndex = device_.memory().findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
         if (vkAllocateMemory(device_.device(), &allocInfo, nullptr, &imageMemory_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to allocate cubemap image memory");
         }
-
         vkBindImageMemory(device_.device(), image_, imageMemory_, 0);
-
         transitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-        VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
-
+        VkCommandBuffer                  commandBuffer = device_.memory().beginSingleTimeCommands();
         std::array<VkBufferImageCopy, 6> regions{};
         for (int i = 0; i < 6; i++) {
             regions[i].bufferOffset                    = i * faceSize;
@@ -198,14 +168,10 @@ namespace engine {
             regions[i].imageOffset                     = {0, 0, 0};
             regions[i].imageExtent                     = {static_cast<uint32_t>(size_), static_cast<uint32_t>(size_), 1};
         }
-
         vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.getBuffer(), image_, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 6, regions.data());
-
         device_.memory().endSingleTimeCommands(commandBuffer);
-
         transitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
-
     void Skybox::createImageView() {
         VkImageViewCreateInfo viewInfo{};
         viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -217,16 +183,13 @@ namespace engine {
         viewInfo.subresourceRange.levelCount     = 1;
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount     = 6;
-
         if (vkCreateImageView(device_.device(), &viewInfo, nullptr, &imageView_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create cubemap image view");
         }
     }
-
     void Skybox::createSampler() {
         const VkPhysicalDeviceProperties& properties = device_.getProperties();
-
-        VkSamplerCreateInfo samplerInfo{};
+        VkSamplerCreateInfo               samplerInfo{};
         samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
         samplerInfo.magFilter               = VK_FILTER_LINEAR;
         samplerInfo.minFilter               = VK_FILTER_LINEAR;
@@ -243,15 +206,12 @@ namespace engine {
         samplerInfo.mipLodBias              = 0.0f;
         samplerInfo.minLod                  = 0.0f;
         samplerInfo.maxLod                  = 0.0f;
-
         if (vkCreateSampler(device_.device(), &samplerInfo, nullptr, &sampler_) != VK_SUCCESS) {
             throw std::runtime_error("Failed to create cubemap sampler");
         }
     }
-
     void Skybox::transitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout) {
-        VkCommandBuffer commandBuffer = device_.memory().beginSingleTimeCommands();
-
+        VkCommandBuffer      commandBuffer = device_.memory().beginSingleTimeCommands();
         VkImageMemoryBarrier barrier{};
         barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.oldLayout                       = oldLayout;
@@ -264,29 +224,22 @@ namespace engine {
         barrier.subresourceRange.levelCount     = 1;
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount     = 6;
-
         VkPipelineStageFlags sourceStage;
         VkPipelineStageFlags destinationStage;
-
         if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
             barrier.srcAccessMask = 0;
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-            sourceStage      = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            sourceStage           = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
         } else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
             barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-            sourceStage      = VK_PIPELINE_STAGE_TRANSFER_BIT;
-            destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            sourceStage           = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            destinationStage      = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         } else {
             throw std::runtime_error("Unsupported layout transition");
         }
-
         vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
         device_.memory().endSingleTimeCommands(commandBuffer);
     }
-
 }  // namespace engine

@@ -1,13 +1,10 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_IMPORTERS_MODELIMPORTER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_IMPORTERS_MODELIMPORTER_HPP
-
 #include <string>
 #include <vector>
 
 #include "ModelLib/Resources/Model.hpp"
-
 namespace engine {
-
     /**
  * @brief Abstract base class for model importers
  *
@@ -17,7 +14,6 @@ namespace engine {
     class ModelImporter {
        public:
         virtual ~ModelImporter() = default;
-
         /**
    * @brief Load a model from a file into the provided builder
    *
@@ -29,20 +25,16 @@ namespace engine {
    * @return true if loading succeeded, false otherwise
    */
         virtual bool load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ) = 0;
-
         /**
    * @brief Get supported file extensions for this importer
    * @return Vector of file extensions (e.g., {"obj", "mtl"})
    */
         [[nodiscard]] virtual std::vector<std::string> getSupportedExtensions() const = 0;
-
         /**
    * @brief Get the name of this importer
    * @return Name string (e.g., "OBJ Importer", "glTF Importer")
    */
         [[nodiscard]] virtual std::string getName() const = 0;
     };
-
 }  // namespace engine
-
 #endif
