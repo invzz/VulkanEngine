@@ -10,6 +10,7 @@
 #include "Engine/EngineState.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
+#include "Engine/Scene/components/ChildComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 
@@ -83,6 +84,15 @@ namespace engine {
             if (entity == selectedEntity) {
                 selectedEntity   = entt::null;
                 selectedObjectId = 0;
+            }
+            // Cascade delete children (lights parented to a model)
+            if (scene.getRegistry().all_of<ModelComponent>(entity)) {
+                auto childView = scene.getRegistry().view<ChildComponent>();
+                for (auto child : childView) {
+                    if (scene.getRegistry().get<ChildComponent>(child).parent == entity) {
+                        scene.destroyEntity(child);
+                    }
+                }
             }
             scene.destroyEntity(entity);
         }

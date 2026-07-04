@@ -78,7 +78,8 @@ namespace engine {
      */
         static void createLightEntities(
             Scene&       scene,
-            const Model& model);
+            const Model& model,
+            entt::entity parentEntity);
         /**
      * @brief Check if static collider should be auto-created
      */

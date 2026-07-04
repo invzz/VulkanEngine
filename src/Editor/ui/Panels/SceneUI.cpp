@@ -12,6 +12,7 @@
 
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
+#include "Engine/Scene/components/ChildComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
@@ -29,6 +30,9 @@ namespace engine::ui {
                 return static_cast<char>(std::tolower(c));
             });
             return value;
+        }
+        bool isRootEntity(const entt::registry& registry, entt::entity entity) {
+            return !registry.all_of<ChildComponent>(entity);
         }
         bool shouldAutoCreateStaticCollider(const std::string& path, const std::string& name) {
             const std::string                     combined = toLower(path + " " + name);
@@ -113,6 +117,37 @@ namespace engine::ui {
             }
             ImGui::PopID();
         }
+        void drawEntityChildren(
+            entt::entity               parent,
+            const entt::registry&      registry,
+            FrameInfo&                 frameInfo,
+            std::vector<entt::entity>& toDelete) {
+            // Iterate all entities to find children whose parent matches
+            auto view = registry.view<ChildComponent>();
+            for (auto child : view) {
+                auto& childComp = registry.get<ChildComponent>(child);
+                if (childComp.parent != parent) {
+                    continue;
+                }
+                // Determine icon and colour based on components
+                const char* icon  = ICON_FA_CIRCLE;
+                ImVec4      color = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+                if (registry.all_of<PointLightComponent>(child)) {
+                    icon  = ICON_FA_BULLSEYE;
+                    color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                } else if (registry.all_of<DirectionalLightComponent>(child)) {
+                    icon  = ICON_FA_SUN;
+                    color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                } else if (registry.all_of<SpotLightComponent>(child)) {
+                    icon  = ICON_FA_LOCATION_ARROW;
+                    color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                } else if (registry.all_of<ModelComponent>(child)) {
+                    icon  = ICON_FA_CUBE;
+                    color = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
+                }
+                drawEntityRow(child, icon, color, frameInfo, registry, toDelete);
+            }
+        }
     }  // namespace
     SceneEntityCollection UI::CollectSceneEntities(const engine::Scene& scene) {
         SceneEntityCollection result;
@@ -124,6 +159,10 @@ namespace engine::ui {
         result.spotLights.reserve(view.size());
         result.models.reserve(view.size());
         for (auto entity : view) {
+            // Skip non-root entities (children of a parent)
+            if (!isRootEntity(registry, entity)) {
+                continue;
+            }
             if (registry.all_of<CameraComponent>(entity)) {
                 result.cameras.push_back(entity);
                 continue;
@@ -398,6 +437,23 @@ namespace engine::ui {
         if (open) {
             for (auto entity : models) {
                 drawEntityRow(entity, ICON_FA_CUBE, ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
+
+                // Render children under this model in a collapsible tree node
+                auto childView = registry.view<ChildComponent>();
+                bool hasChildren = false;
+                for (auto child : childView) {
+                    if (registry.get<ChildComponent>(child).parent == entity) {
+                        hasChildren = true;
+                        break;
+                    }
+                }
+
+                if (hasChildren) {
+                    if (UI::TreeNode(ICON_FA_LIGHTBULB, "Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        drawEntityChildren(entity, registry, frameInfo, toDelete);
+                        ImGui::TreePop();
+                    }
+                }
             }
             ImGui::TreePop();
         }

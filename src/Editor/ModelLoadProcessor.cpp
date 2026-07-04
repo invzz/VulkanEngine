@@ -7,6 +7,7 @@
 
 #include "Engine/Core/Logger.hpp"
 #include "Engine/Scene/components/AnimationComponent.hpp"
+#include "Engine/Scene/components/ChildComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
@@ -79,8 +80,8 @@ namespace engine {
         if (modelPtr->hasAnimations() || modelPtr->hasMorphTargets()) {
             registry.emplace<AnimationComponent>(entity, modelPtr);
         }
-        // Handle embedded lights
-        createLightEntities(scene, *modelPtr);
+        // Handle embedded lights — parent them under the model entity
+        createLightEntities(scene, *modelPtr, entity);
         Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Added model to scene: ", modelPath);
     }
     ModelLoadProcessor::LoadCallback ModelLoadProcessor::createAsyncCallback(
@@ -102,7 +103,8 @@ namespace engine {
     }
     void ModelLoadProcessor::createLightEntities(
         Scene&       scene,
-        const Model& model) {
+        const Model& model,
+        entt::entity parentEntity) {
         if (!model.hasLights()) {
             return;
         }
@@ -121,6 +123,7 @@ namespace engine {
                 transform.translation       = glm::vec3(engineTransform[3]);
                 transform.rotation          = glm::eulerAngles(glm::quat_cast(engineTransform));
             }
+            scene.getRegistry().emplace<ChildComponent>(lightEntity, parentEntity);
             scene.getRegistry().emplace<NameComponent>(lightEntity, light.name);
             switch (light.type) {
                 case Model::LightType::Point: {
