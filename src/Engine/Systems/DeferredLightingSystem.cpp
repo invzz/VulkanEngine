@@ -14,9 +14,9 @@
 
 #include "vulkan/vulkan_core.h"
 namespace engine {
-    DeferredLightingSystem::DeferredLightingSystem(Device& device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> setLayouts) : device{device} {
+    DeferredLightingSystem::DeferredLightingSystem(Device& device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> setLayouts, bool rayQueryEnabled) : device{device} {
         createPipelineLayout(std::move(setLayouts));
-        createPipeline(renderPass);
+        createPipeline(renderPass, rayQueryEnabled);
     }
     DeferredLightingSystem::~DeferredLightingSystem() {
         if (pipelineLayout != VK_NULL_HANDLE) {
@@ -33,7 +33,7 @@ namespace engine {
             throw std::runtime_error("failed to create deferred lighting pipeline layout!");
         }
     }
-    void DeferredLightingSystem::createPipeline(VkRenderPass renderPass) {
+    void DeferredLightingSystem::createPipeline(VkRenderPass renderPass, bool rayQueryEnabled) {
         assert(pipelineLayout != VK_NULL_HANDLE && "Cannot create pipeline before pipeline layout");
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultPipelineConfigInfo(pipelineConfig);
@@ -51,7 +51,11 @@ namespace engine {
         pipelineConfig.rasterizationInfo.cullMode               = VK_CULL_MODE_NONE;
         pipelineConfig.bindingDescriptions.clear();
         pipelineConfig.attributeDescriptions.clear();
-        pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(post_process.vert.spv)", std::string(SHADER_PATH) + R"(deferred_lighting.frag.spv)", pipelineConfig);
+        std::string fragShader = std::string(SHADER_PATH) + R"(deferred_lighting.frag.spv)";
+        if (rayQueryEnabled) {
+            fragShader = std::string(SHADER_PATH) + R"(deferred_lighting_rt.frag.spv)";
+        }
+        pipeline = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(post_process.vert.spv)", fragShader, pipelineConfig);
     }
     void DeferredLightingSystem::render(FrameInfo& frameInfo, VkDescriptorSet globalSet, VkDescriptorSet gbufferSet, VkDescriptorSet shadowSet, VkDescriptorSet iblSet) {
         pipeline->bind(frameInfo.commandBuffer);

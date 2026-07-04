@@ -39,7 +39,8 @@ namespace engine {
        private:
         Device&                              device_;
         MeshManager&                         meshManager_;
-        AccelBuilder*                        accelBuilder_ = nullptr;
+        AccelBuilder*                        accelBuilder_     = nullptr;
+        bool                                 rayTracingEnabled_ = false;
         std::unique_ptr<DescriptorPool>      globalPool_;
         std::unique_ptr<DescriptorSetLayout> globalSetLayout_;
         std::vector<std::unique_ptr<Buffer>> uboBuffers_;

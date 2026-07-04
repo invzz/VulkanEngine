@@ -97,7 +97,8 @@ namespace engine {
             std::vector<VkDescriptorSetLayout>{renderContextPort_->getGlobalSetLayout(),
                 descriptors_->gbufferSetLayout().getDescriptorSetLayout(),
                 descriptors_->deferredShadowSetLayout().getDescriptorSetLayout(),
-                descriptors_->deferredIblSetLayout().getDescriptorSetLayout()});
+                descriptors_->deferredIblSetLayout().getDescriptorSetLayout()},
+            d.rayQuerySupported());
         registerSystem(deferred_);
     }
     void EngineState::allocatePerFrameDescriptorSets(Renderer& r) {

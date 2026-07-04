@@ -9,7 +9,7 @@
 namespace engine {
     class DeferredLightingSystem {
        public:
-        DeferredLightingSystem(Device& device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> setLayouts);
+        DeferredLightingSystem(Device& device, VkRenderPass renderPass, std::vector<VkDescriptorSetLayout> setLayouts, bool rayQueryEnabled = false);
         ~DeferredLightingSystem();
         DeferredLightingSystem(const DeferredLightingSystem&)            = delete;
         DeferredLightingSystem& operator=(const DeferredLightingSystem&) = delete;
@@ -17,7 +17,7 @@ namespace engine {
 
        private:
         void                      createPipelineLayout(std::vector<VkDescriptorSetLayout> setLayouts);
-        void                      createPipeline(VkRenderPass renderPass);
+        void                      createPipeline(VkRenderPass renderPass, bool rayQueryEnabled = false);
         Device&                   device;
         std::unique_ptr<Pipeline> pipeline;
         VkPipelineLayout          pipelineLayout{VK_NULL_HANDLE};

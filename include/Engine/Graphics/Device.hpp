@@ -73,6 +73,9 @@ namespace engine {
         [[nodiscard]] bool supportsPresentId() const {
             return presentIdSupported_;
         }
+        [[nodiscard]] bool rayQuerySupported() const {
+            return rayQuerySupported_;
+        }
         SwapChainSupportDetails getSwapChainSupport() {
             return querySwapChainSupport(physicalDevice);
         }
@@ -147,6 +150,7 @@ namespace engine {
         };
         static std::atomic<int>                                                    validationLayersOverride_;
         bool                                                                       presentIdSupported_ = false;
+        bool                                                                       rayQuerySupported_  = false;
         std::unique_ptr<DeviceMemory>                                              memory_;
         uint32_t                                                                   currentFrameIndex_ = 0;
         std::array<std::vector<std::function<void(VkDevice)>>, kMaxFramesInFlight> deferredDestroy_;

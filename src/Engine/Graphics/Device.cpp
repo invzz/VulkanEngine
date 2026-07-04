@@ -457,6 +457,7 @@ namespace engine {
         if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device_) != VK_SUCCESS) {
             throw engine::RuntimeException("failed to create logical device!");
         }
+        rayQuerySupported_ = true;
         vkGetDeviceQueue(device_, indices.graphicsFamily, 0, &graphicsQueue_);
         vkGetDeviceQueue(device_, indices.presentFamily, 0, &presentQueue_);
         vkCmdDrawMeshTasksEXT = (PFN_vkCmdDrawMeshTasksEXT) vkGetDeviceProcAddr(device_, "vkCmdDrawMeshTasksEXT");

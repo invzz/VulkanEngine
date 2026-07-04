@@ -26,7 +26,8 @@ namespace engine {
           meshManager_{meshManager},
           uboBuffers_(SwapChain::maxFramesInFlight()),
           uboColdBuffers_(SwapChain::maxFramesInFlight()),
-          globalDescriptorSets_(SwapChain::maxFramesInFlight()) {
+          globalDescriptorSets_(SwapChain::maxFramesInFlight()),
+          rayTracingEnabled_(device.rayQuerySupported()) {
         createDescriptorPool();
         createGlobalSetLayout();
         createUBOBuffers();
@@ -37,19 +38,23 @@ namespace engine {
         }
     }
     void RenderContext::createDescriptorPool() {
-        globalPool_ = DescriptorPool::Builder(device_)
-                          .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
-                          .addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
-                          .build();
+        auto pool = DescriptorPool::Builder(device_)
+                        .setMaxSets(static_cast<uint32_t>(SwapChain::maxFramesInFlight()))
+                        .addPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4))
+                        .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4));
+        if (rayTracingEnabled_) {
+            pool.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
+        }
+        globalPool_ = pool.build();
     }
     void RenderContext::createGlobalSetLayout() {
-        globalSetLayout_ = DescriptorSetLayout::Builder(device_)
-                               .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
-                               .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT)
-                               .addBinding(2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT)
-                               .addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
+        auto builder = DescriptorSetLayout::Builder(device_)
+                           .addBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
+                           .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
+        if (rayTracingEnabled_) {
+            builder.addBinding(2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT);
+        }
+        globalSetLayout_ = builder.addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
