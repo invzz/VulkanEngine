@@ -28,7 +28,9 @@ namespace engine {
         if (skyboxPtr_) {
             skybox_.render(frameInfo, skyboxPtr_.get(), skyboxSettings_);
         }
-        grid_.render(frameInfo);
+        if (editor_.showGrid) {
+            grid_.render(frameInfo);
+        }
         models_.renderTransmission(frameInfo);
         models_.renderAlphaBlend(frameInfo);
         if (editor_.showDebugObjects) {
