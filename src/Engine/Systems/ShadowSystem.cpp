@@ -91,10 +91,10 @@ namespace engine {
         Pipeline::defaultMeshPipelineConfigInfo(configInfo);
         configInfo.colorBlendInfo.attachmentCount            = 0;
         configInfo.colorBlendAttachment                      = {};
-        configInfo.rasterizationInfo.depthBiasEnable         = VK_FALSE;
-        configInfo.rasterizationInfo.depthBiasConstantFactor = 0.0f;
-        configInfo.rasterizationInfo.depthBiasSlopeFactor    = 0.0f;
-        configInfo.rasterizationInfo.cullMode                = VK_CULL_MODE_NONE;
+        configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
+        configInfo.rasterizationInfo.depthBiasConstantFactor = 1.5f;
+        configInfo.rasterizationInfo.depthBiasSlopeFactor    = 2.0f;
+        configInfo.rasterizationInfo.cullMode                = VK_CULL_MODE_FRONT_BIT;
         configInfo.renderPass                                = shadowMaps_[0]->getRenderPass();
         configInfo.pipelineLayout                            = meshPipelineLayout_;
         meshPipeline_                                        = std::make_unique<Pipeline>(device_,
@@ -124,9 +124,9 @@ namespace engine {
         configInfo.colorBlendInfo.attachmentCount            = 0;
         configInfo.colorBlendAttachment                      = {};
         configInfo.rasterizationInfo.depthBiasEnable         = VK_TRUE;
-        configInfo.rasterizationInfo.depthBiasConstantFactor = 1.25f;
-        configInfo.rasterizationInfo.depthBiasSlopeFactor    = 1.75f;
-        configInfo.rasterizationInfo.cullMode                = VK_CULL_MODE_NONE;
+        configInfo.rasterizationInfo.depthBiasConstantFactor = 1.5f;
+        configInfo.rasterizationInfo.depthBiasSlopeFactor    = 2.0f;
+        configInfo.rasterizationInfo.cullMode                = VK_CULL_MODE_FRONT_BIT;
         configInfo.renderPass                                = cubeShadowMaps_[0]->getRenderPass();
         configInfo.pipelineLayout                            = cubeMeshPipelineLayout_;
         cubeMeshPipeline_                                    = std::make_unique<Pipeline>(device_,
@@ -358,6 +358,16 @@ namespace engine {
             // from outside the visible frustum slice.
             minBounds.z               = -100.0f;  // extend far behind the frustum
             maxBounds.z               = std::max(maxBounds.z + 50.0f, 100.0f);
+
+            // --- 6. Texel snapping — snap ortho bounds to texel grid units to
+            //    prevent shimmering when the camera rotates or translates.
+            float texelUnitX = (maxBounds.x - minBounds.x) / static_cast<float>(shadowMapSize_);
+            float texelUnitY = (maxBounds.y - minBounds.y) / static_cast<float>(shadowMapSize_);
+            minBounds.x      = std::floor(minBounds.x / texelUnitX) * texelUnitX;
+            maxBounds.x      = std::floor(maxBounds.x / texelUnitX) * texelUnitX;
+            minBounds.y      = std::floor(minBounds.y / texelUnitY) * texelUnitY;
+            maxBounds.y      = std::floor(maxBounds.y / texelUnitY) * texelUnitY;
+
             glm::mat4 const lightProj = glm::ortho(
                 minBounds.x, maxBounds.x,
                 minBounds.y, maxBounds.y,
