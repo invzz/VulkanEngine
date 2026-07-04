@@ -41,6 +41,16 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
+// Burley (Disney) diffuse — adds roughness-dependent retro-reflection
+// for more natural diffuse on rough/matte surfaces
+float burleyDiffuse(float NdotL, float NdotV, float NdotH, float roughness) {
+    float a      = roughness * roughness;
+    float fd90   = 0.5 + 2.0 * a * NdotH * NdotH;
+    float fLam1  = 1.0 + (fd90 - 1.0) * pow(1.0 - NdotL, 5.0);
+    float fLam2  = 1.0 + (fd90 - 1.0) * pow(1.0 - NdotV, 5.0);
+    return fLam1 * fLam2;
+}
+
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) *
     pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);

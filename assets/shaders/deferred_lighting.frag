@@ -199,7 +199,9 @@ LightingResult computeIBL(Surface s) {
     vec3 kD = (1.0 - kS) * (1.0 - s.metallic);
 
     vec3 irradiance = texture(irradianceMap, s.N).rgb;
-    r.diffuse       = kD * irradiance * s.albedo * s.ao;
+    // Apply Burley-like roughness scaling to IBL diffuse for consistency with direct lighting
+    float fdIBL = 1.0 + s.roughness * s.roughness * 0.5;
+    r.diffuse       = kD * irradiance * s.albedo * s.ao * fdIBL;
 
     vec3 prefiltered = textureLod(prefilterMap, R, s.roughness * MAX_REFLECTION_LOD).rgb;
 
@@ -262,6 +264,7 @@ void calculateDirectLight(vec3 N, vec3 V, vec3 albedo, float metallic, float rou
     }
 
     vec3  H   = normalize(V + L);
+    float NdotH = max(dot(N, H), 0.0);
     float NDF = DistributionGGX(N, H, roughness);
     float G   = GeometrySmith(NdotV, NdotL, roughness);
     vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
@@ -273,7 +276,9 @@ void calculateDirectLight(vec3 N, vec3 V, vec3 albedo, float metallic, float rou
     float denominator = 4.0 * NdotV * NdotL + 1e-4;
     vec3  specular    = numerator / denominator;
 
-    outDiffuse  = (kD * albedo / PI) * radiance * NdotL;
+    // Burley (Disney) diffuse — more realistic than Lambert for rough surfaces
+    float fd = burleyDiffuse(NdotL, NdotV, NdotH, roughness);
+    outDiffuse  = (kD * albedo / PI) * radiance * NdotL * fd;
     outSpecular = specular * radiance * NdotL;
 }
 

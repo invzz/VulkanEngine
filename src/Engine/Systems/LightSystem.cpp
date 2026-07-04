@@ -124,7 +124,7 @@ namespace engine {
             push.modelMatrix = modelMatrix;
             push.color       = glm::vec4(dirLight.color, dirLight.intensity);
             vkCmdPushConstants(frameInfo.commandBuffer, directionalPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), &push);
-            vkCmdDraw(frameInfo.commandBuffer, 18, 1, 0, 0);
+            vkCmdDraw(frameInfo.commandBuffer, 80, 1, 0, 0);
         }
         spotPipeline->bind(frameInfo.commandBuffer);
         assert(frameInfo.globalDescriptorSet != VK_NULL_HANDLE && "LightSystem: global descriptor set is null for spot lights");
@@ -216,7 +216,8 @@ namespace engine {
         pipelineConfig.renderPass                        = renderPass;
         pipelineConfig.pipelineLayout                    = directionalPipelineLayout;
         pipelineConfig.inputAssemblyInfo.topology        = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;
+        pipelineConfig.rasterizationInfo.cullMode        = VK_CULL_MODE_NONE;
+        pipelineConfig.depthStencilInfo.depthTestEnable  = VK_TRUE;
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
         directionalPipeline                              = std::make_unique<Pipeline>(device, std::string(SHADER_PATH) + R"(directional_light.vert.spv)", std::string(SHADER_PATH) + R"(directional_light.frag.spv)", pipelineConfig);
     }
