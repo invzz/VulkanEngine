@@ -22,6 +22,7 @@
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
@@ -63,6 +64,7 @@ namespace {
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
 #include "Editor/ui/Panels/ViewportPanel.hpp"
 #include "Editor/ui/UIManager.hpp"
+#include "Engine/Graphics/AccelBuilder.hpp"
 namespace engine {
     App::App(bool fullscreen)
         : window(width(), height(), "Vulkan Editor", fullscreen),
@@ -88,6 +90,12 @@ namespace engine {
         device.enableThreadLocalCommandPools();
         renderContext        = std::make_unique<RenderContext>(device, resourceManager.getMeshManager());
         renderContextAdapter = std::make_unique<RenderContextAdapter>(renderContext.get());
+        // Create AccelBuilder if raytracing is supported
+        if (device.rayQuerySupported()) {
+            accelBuilder = std::make_unique<AccelBuilder>(device);
+            resourceManager.setAccelBuilder(accelBuilder.get());
+            renderContext->setAccelBuilder(accelBuilder.get());
+        }
         setupScene();
         engineState.initialize(device, renderer, resourceManager,
             renderContextAdapter.get(), &window,
@@ -305,7 +313,23 @@ namespace engine {
                     frameInfo.selectedObjectId = 0;
                 }
             }
+            // Rebuild TLAS before the render pipeline executes (deferred pass reads it)
+            if (accelBuilder) {
+                tlasInstances_.clear();
+                auto view = engineState.scene().getRegistry().view<ModelComponent, TransformComponent>();
+                for (auto entity : view) {
+                    auto [mc, tc] = view.get<ModelComponent, TransformComponent>(entity);
+                    if (mc.model) {
+                        VkAccelerationStructureKHR blas = accelBuilder->getBlas(*mc.model);
+                        if (blas != VK_NULL_HANDLE) {
+                            tlasInstances_.emplace_back(tc.modelTransform(), blas);
+                        }
+                    }
+                }
+                renderContext->rebuildTlas(tlasInstances_, commandBuffer);
+            }
             renderPipeline->execute(frameInfo);
+
             if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {
                 scenePanel->processDelayedDeletions(frameInfo.selectedEntity, frameInfo.selectedObjectId);
             }

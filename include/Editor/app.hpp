@@ -10,6 +10,8 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Graphics/Viewport.hpp"
 
+#include "Engine/Graphics/AccelBuilder.hpp"
+
 #include "Editor/ui/Panels/ViewportPanel.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/ResourceManager.hpp"
@@ -62,6 +64,9 @@ namespace engine {
         uint32_t                        multithreadedRecordingThreads = 0;
         std::unique_ptr<RenderPipeline> renderPipeline;
         uint32_t                        selectedObjectId = 0;
+        std::unique_ptr<AccelBuilder>   accelBuilder;
+        using BlasInstance = std::pair<glm::mat4, VkAccelerationStructureKHR>;
+        std::vector<BlasInstance> tlasInstances_;
     };
 }  // namespace engine
 #endif

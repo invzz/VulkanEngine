@@ -50,6 +50,12 @@ namespace engine {
             return tlas_;
         }
 
+        /// Get the BLAS handle for a model (returns VK_NULL_HANDLE if not built).
+        [[nodiscard]] VkAccelerationStructureKHR getBlas(const Model& model) const {
+            auto it = blasMap_.find(&model);
+            return (it != blasMap_.end()) ? it->second : VK_NULL_HANDLE;
+        }
+
         /// Load Vulkan RT function pointers.
         void loadFunctions();
 

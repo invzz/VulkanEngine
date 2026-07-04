@@ -9,9 +9,11 @@
 #include <string>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "Engine/Graphics/Device.hpp"
 
+#include "Engine/Graphics/AccelBuilder.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
 namespace engine {
     class Texture;
@@ -243,10 +245,15 @@ namespace engine {
             return *meshManager_;
         }
 
+        void setAccelBuilder(AccelBuilder* builder) {
+            accelBuilder_ = builder;
+        }
+
        private:
         Device&                                                 device_;
         std::unique_ptr<TextureManager>                         textureManager_;
         std::unique_ptr<MeshManager>                            meshManager_;
+        AccelBuilder*                                           accelBuilder_ = nullptr;
         mutable std::mutex                                      textureMutex_;
         std::unordered_map<std::string, std::weak_ptr<Texture>> textureCache_;
         mutable std::mutex                                      modelMutex_;

@@ -161,6 +161,10 @@ namespace engine {
         updateModelAccess(key, memSize, priority);
         uint32_t const meshId = meshManager_->registerModel(model.get());
         model->setMeshId(meshId);
+        // Build BLAS for raytracing if available
+        if (accelBuilder_ != nullptr) {
+            accelBuilder_->buildBlas(*model);
+        }
         return model;
     }
     std::shared_ptr<Texture> ResourceManager::loadTextureFromMemory(const unsigned char* data, size_t dataSize, const std::string& debugName, bool srgb, ResourcePriority priority) {
