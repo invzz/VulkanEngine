@@ -47,6 +47,9 @@ namespace engine {
         Renderer                              renderer{window, device};
         ResourceManager                       resourceManager{device};
         int                                   debugMode = 0;
+        bool                                  rtDirectional = true;
+        bool                                  rtPoint       = true;
+        bool                                  rtSpot        = true;
         EngineState                           engineState;
         SceneSerializer                       sceneSerializer;
         std::unique_ptr<RenderContext>        renderContext;

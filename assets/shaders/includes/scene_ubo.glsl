@@ -39,8 +39,11 @@ layout(set = 0, binding = 0, std140) uniform UBO {
     int  shadowLightCount;
     int  cubeShadowLightCount;
     int  debugMode;
-    int  _padDebug;
-    // Note: 8 ints = 32 bytes; explicit pad int keeps intent obvious and mirror C++ layout.
+    int  rtDirectional;
+    int  rtPoint;
+    int  rtSpot;
+    int  rtPad;
+    int  rtPad2;
     int  _padDebug0;
     vec4 frustumPlanes[6];
 }

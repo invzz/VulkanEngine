@@ -68,6 +68,9 @@ namespace engine {
             ubo.pointLightShadowData[i] = glm::vec4(
                 shadow_.getPointLightPosition(i), shadow_.getPointLightRange(i));
         ubo.debugMode = frameInfo.debugMode;
+        ubo.rtDirectional = frameInfo.rtDirectional ? 1 : 0;
+        ubo.rtPoint       = frameInfo.rtPoint ? 1 : 0;
+        ubo.rtSpot        = frameInfo.rtSpot ? 1 : 0;
         GlobalUboCold uboCold{};
         renderCtx_.updateUBO(frameInfo.frameIndex, ubo, uboCold);
     }

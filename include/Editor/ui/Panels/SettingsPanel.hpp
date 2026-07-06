@@ -13,7 +13,7 @@ namespace engine {
     class EngineState;
     class SettingsPanel : public UIPanel {
        public:
-        SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled, uint32_t& multithreadedRecordingThreads, int& debugMode);
+        SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled, uint32_t& multithreadedRecordingThreads, int& debugMode, bool& rtDirectional, bool& rtPoint, bool& rtSpot);
         void                              render(FrameInfo& frameInfo) override;
         EngineState*                      engineState_ = nullptr;
         std::unique_ptr<CameraPanel>      cameraPanel_;
@@ -22,6 +22,9 @@ namespace engine {
         std::unique_ptr<DebugPanel>       debugPanel_;
         bool&                             multithreadedRecordingEnabled_;
         uint32_t&                         multithreadedRecordingThreads_;
+        bool&                             rtDirectional_;
+        bool&                             rtPoint_;
+        bool&                             rtSpot_;
 
        private:
         bool wasVisibleLastFrame_ = false;

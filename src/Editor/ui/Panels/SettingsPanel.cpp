@@ -11,10 +11,14 @@
 #include "Editor/ui/UI.hpp"
 namespace engine {
     SettingsPanel::SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled,
-        uint32_t& multithreadedRecordingThreads, int& debugMode)
+        uint32_t& multithreadedRecordingThreads, int& debugMode,
+        bool& rtDirectional, bool& rtPoint, bool& rtSpot)
         : engineState_(engineState),
           multithreadedRecordingEnabled_(multithreadedRecordingEnabled),
-          multithreadedRecordingThreads_(multithreadedRecordingThreads) {
+          multithreadedRecordingThreads_(multithreadedRecordingThreads),
+          rtDirectional_(rtDirectional),
+          rtPoint_(rtPoint),
+          rtSpot_(rtSpot) {
         cameraPanel_      = std::make_unique<CameraPanel>(*engineState_);
         iblPanel_         = std::make_unique<IBLPanel>(&engineState_->system<IBLSystem>());
         postProcessPanel_ = std::make_unique<PostProcessPanel>(engineState_->postProcess());
@@ -83,6 +87,11 @@ namespace engine {
                     }
                 }
             }
+            ui::UI::EndSurface();
+            ui::UI::BeginSurface("settings_raytracing", "Ray Tracing", "Per-light-type RT shadow toggles");
+            ui::UI::CheckboxRow("Directional", "Ray-traced shadows for directional lights", &rtDirectional_);
+            ui::UI::CheckboxRow("Point", "Ray-traced shadows for point lights", &rtPoint_);
+            ui::UI::CheckboxRow("Spot", "Ray-traced shadows for spot lights", &rtSpot_);
             ui::UI::EndSurface();
         }
         ImGui::End();

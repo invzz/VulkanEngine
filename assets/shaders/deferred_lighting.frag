@@ -311,20 +311,20 @@ vec3 handleDirectionalLights(in Surface s) {
         vec3 diff, spec;
         calculateDirectLight(s.N, s.V, s.albedo, s.metallic, s.roughness, s.F0, L, radiance, diff, spec);
 
-#if RAY_TRACING_ENABLED
-        // Ray-traced shadow — bias-free, no acne, no Peter Panning
         float shadow = 1.0;
-        {
+#if RAY_TRACING_ENABLED
+        if (ubo.rtDirectional != 0) {
             vec3  origin = s.worldPos + s.N * 0.002;
             rayQueryEXT q;
             rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, 1000.0);
             rayQueryProceedEXT(q);
             bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
             shadow = hit ? 0.0 : 1.0;
-        }
-#else
-        float shadow = calculateCascadeShadow(s.worldPos, s.N, L);
+        } else
 #endif
+        {
+            shadow = calculateCascadeShadow(s.worldPos, s.N, L);
+        }
         color += (diff + spec) * shadow;
     }
 
@@ -349,7 +349,21 @@ vec3 handlePointLights(in Surface s) {
             continue;
 
         vec3  L      = normalize(Lvec);
-        float shadow = calculatePointLightShadow(s.worldPos, i);
+        float shadow = 1.0;
+#if RAY_TRACING_ENABLED
+        if (ubo.rtPoint != 0) {
+            float dist = sqrt(dist2);
+            vec3  origin = s.worldPos + s.N * 0.002;
+            rayQueryEXT q;
+            rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, dist);
+            rayQueryProceedEXT(q);
+            bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
+            shadow = hit ? 0.0 : 1.0;
+        } else
+#endif
+        {
+            shadow = calculatePointLightShadow(s.worldPos, i);
+        }
 
         vec3 radiance = pointLights[i].colorIntensity.xyz * intensity * att * shadow;
 
@@ -387,7 +401,21 @@ vec3 handleSpotLights(in Surface s) {
 
         float cone = clamp((theta - spotLights[i].attenOuter.x) / max(spotLights[i].directionInner.w - spotLights[i].attenOuter.x, 1e-4), 0.0, 1.0);
 
-        float shadow = calculateShadow(s.worldPos, s.N, L, shadowBase + i);
+        float shadow = 1.0;
+#if RAY_TRACING_ENABLED
+        if (ubo.rtSpot != 0) {
+            float dist = sqrt(dist2);
+            vec3  origin = s.worldPos + s.N * 0.002;
+            rayQueryEXT q;
+            rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, dist);
+            rayQueryProceedEXT(q);
+            bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
+            shadow = hit ? 0.0 : 1.0;
+        } else
+#endif
+        {
+            shadow = calculateShadow(s.worldPos, s.N, L, shadowBase + i);
+        }
 
         vec3 radiance = spotLights[i].colorIntensity.xyz * intensity * att * cone * shadow;
 

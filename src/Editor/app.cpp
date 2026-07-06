@@ -166,7 +166,8 @@ namespace engine {
         auto inspectorPanel = std::make_unique<InspectorPanel>(engineState);
         registry.registerPanel("Inspector", std::move(inspectorPanel), DockConstraints{.preferredZone = DockZone::DockRight, .minSizeX = 300.0f, .minSizeY = 200.0f});
         auto settingsPanel = std::make_unique<SettingsPanel>(&engineState,
-            multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode);
+            multithreadedRecordingEnabled, multithreadedRecordingThreads, debugMode,
+            rtDirectional, rtPoint, rtSpot);
         registry.registerPanel("Settings", std::move(settingsPanel), DockConstraints{.preferredZone = DockZone::None, .dockable = false, .floatable = true, .minSizeX = 420.0f, .minSizeY = 260.0f});
         registry.hidePanel("Settings");
         auto physicsPanel = std::make_unique<PhysicsPanel>(engineState);
@@ -300,6 +301,9 @@ namespace engine {
                 .gizmoMode              = engineState.editor().gizmoMode,
                 .gizmoEnabled           = engineState.editor().gizmoEnabled,
                 .viewGizmoOrbitSelected = engineState.editor().viewGizmoOrbitSelected,
+                .rtDirectional          = rtDirectional,
+                .rtPoint                = rtPoint,
+                .rtSpot                 = rtSpot,
             };
             if (frameInfo.viewportMouseClicked) {
                 auto pickResult = pickingSystem.pickViewport(frameInfo,

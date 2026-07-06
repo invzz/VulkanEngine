@@ -129,6 +129,26 @@ def main():
             "--target-spv=spv1.5",
         )
 
+        # Raytracing variant for deferred_lighting.frag
+        if shader.name == "deferred_lighting.frag":
+            rt_output = output_dir / "deferred_lighting_rt.frag.spv"
+            cmd = [
+                "glslc",
+                "--target-spv=spv1.5",
+                "-DRAY_TRACING_ENABLED=1",
+                *include_args,
+                str(shader),
+                "-o",
+                str(rt_output),
+            ]
+            if run_glslc(cmd):
+                print(
+                    f"[ {GREEN}RT{NC} ] "
+                    f"{shader} -> {VIOLET}{rt_output}{NC}"
+                )
+            else:
+                print(f"[ {RED}Failed RT{NC} ] {shader}")
+
         if shader.name == "pbr_shader.frag":
             if build_standard_variant != "0":
                 standard_out = (

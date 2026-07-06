@@ -57,7 +57,13 @@ namespace engine {
         int shadowLightCount      = 0;
         int cubeShadowLightCount  = 0;
         int debugMode             = 0;
-        int _padDebug             = 0;
+
+        // Runtime raytracing toggles (only meaningful when RAY_TRACING_ENABLED is defined)
+        int rtDirectional         = 1;
+        int rtPoint               = 1;
+        int rtSpot                = 1;
+        int rtPad                 = 0;
+        int rtPad2                = 0;
 
         int       _padDebug0 = 0;
         glm::vec4 frustumPlanes[6];
@@ -95,6 +101,11 @@ namespace engine {
         int  gizmoMode{1};
         bool gizmoEnabled{true};
         bool viewGizmoOrbitSelected{true};
+
+        // Raytracing shadow toggles (checked per-light-type at runtime in the shader)
+        bool rtDirectional{true};
+        bool rtPoint{true};
+        bool rtSpot{true};
     };
 
 }  // namespace engine
