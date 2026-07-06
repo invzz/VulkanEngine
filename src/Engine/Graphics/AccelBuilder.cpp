@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <mutex>
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
@@ -108,6 +109,8 @@ namespace engine {
     }
 
     void AccelBuilder::buildBlas(Model& model) {
+        std::scoped_lock const lock(mutex_);
+
         // Destroy previous BLAS if rebuilding
         auto it = blasMap_.find(&model);
         if (it != blasMap_.end()) {
@@ -162,9 +165,10 @@ namespace engine {
 
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
         sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        uint32_t primitiveCount = hasIndices ? (indexCount / 3) : (vertexCount / 3);
         vkGetAccelerationStructureBuildSizesKHR_(device_.device(),
             VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-            &buildInfo, &buildInfo.geometryCount, &sizeInfo);
+            &buildInfo, &primitiveCount, &sizeInfo);
 
         // Scratch buffer
         createBlasScratch(sizeInfo.buildScratchSize);
@@ -214,6 +218,7 @@ namespace engine {
     }
 
     void AccelBuilder::destroyBlas(const Model& model) {
+        std::scoped_lock const lock(mutex_);
         auto it = blasMap_.find(&model);
         if (it != blasMap_.end()) {
             if (it->second != VK_NULL_HANDLE) {
@@ -229,6 +234,16 @@ namespace engine {
         VkCommandBuffer cmd) {
 
         uint32_t instanceCount = static_cast<uint32_t>(instances.size());
+
+        // No instances — nothing to build. Destroy any previous TLAS and return.
+        if (instanceCount == 0) {
+            if (tlas_ != VK_NULL_HANDLE) {
+                vkDestroyAccelerationStructureKHR_(device_.device(), tlas_, nullptr);
+                tlas_ = VK_NULL_HANDLE;
+                tlasBuffer_.reset();
+            }
+            return VK_NULL_HANDLE;
+        }
 
         // Build instance buffer on host
         std::vector<VkAccelerationStructureInstanceKHR> instanceData(instanceCount);
@@ -290,9 +305,10 @@ namespace engine {
 
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
         sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        uint32_t maxInstanceCount = instanceCount;
         vkGetAccelerationStructureBuildSizesKHR_(device_.device(),
             VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
-            &buildInfo, &buildInfo.geometryCount, &sizeInfo);
+            &buildInfo, &maxInstanceCount, &sizeInfo);
 
         createTlasScratch(sizeInfo.buildScratchSize);
 
@@ -334,6 +350,19 @@ namespace engine {
         const VkAccelerationStructureBuildRangeInfoKHR* pRangeInfo = &rangeInfo;
 
         vkCmdBuildAccelerationStructuresKHR_(cmd, 1, &buildInfo, &pRangeInfo);
+
+        // Barrier: ensure TLAS build completes before fragment shader reads it via ray query
+        VkMemoryBarrier barrier{};
+        barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+        barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        vkCmdPipelineBarrier(cmd,
+            VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            1, &barrier,
+            0, nullptr,
+            0, nullptr);
 
         // Get device address
         VkAccelerationStructureDeviceAddressInfoKHR addrInfo{};

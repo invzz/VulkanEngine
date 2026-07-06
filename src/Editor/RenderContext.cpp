@@ -117,35 +117,28 @@ namespace engine {
             auto pointInfo      = pointLightBuffers_[i]->descriptorInfo();
             auto dirInfo        = directionalLightBuffers_[i]->descriptorInfo();
             auto spotInfo       = spotLightBuffers_[i]->descriptorInfo();
-            DescriptorWriter(*globalSetLayout_, *globalPool_)
-                .writeBuffer(0, &bufferInfo)
+
+            // Start the writer chain
+            DescriptorWriter writer(*globalSetLayout_, *globalPool_);
+            writer.writeBuffer(0, &bufferInfo)
                 .writeBuffer(1, &meshInfo)
                 .writeBuffer(3, &pointInfo)
                 .writeBuffer(4, &dirInfo)
                 .writeBuffer(5, &spotInfo)
-                .writeBuffer(6, &coldBufferInfo)
-                .build(globalDescriptorSets_[i]);
+                .writeBuffer(6, &coldBufferInfo);
+
+            // Write TLAS at binding 2 if ray tracing is enabled
+            // (passes validation in DescriptorWriter::build which checks all bindings)
+            if (rayTracingEnabled_) {
+                VkAccelerationStructureKHR tlasHandle =
+                    (accelBuilder_ != nullptr) ? accelBuilder_->getTlas() : VK_NULL_HANDLE;
+                writer.writeAccelerationStructure(2, tlasHandle);
+            }
+
+            writer.build(globalDescriptorSets_[i]);
             if (globalDescriptorSets_[i] == VK_NULL_HANDLE) {
                 throw std::runtime_error("failed to allocate global descriptor set");
             }
-
-            // Write TLAS at binding 2 (DescriptorWriter has no writeAccelerationStructure helper)
-            VkAccelerationStructureKHR tlasHandle =
-                (accelBuilder_ != nullptr) ? accelBuilder_->getTlas() : VK_NULL_HANDLE;
-            VkWriteDescriptorSetAccelerationStructureKHR accelWriteInfo{};
-            accelWriteInfo.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-            accelWriteInfo.accelerationStructureCount = 1;
-            accelWriteInfo.pAccelerationStructures    = &tlasHandle;
-
-            VkWriteDescriptorSet writeAccel{};
-            writeAccel.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writeAccel.pNext           = &accelWriteInfo;
-            writeAccel.dstSet          = globalDescriptorSets_[i];
-            writeAccel.dstBinding      = 2;
-            writeAccel.dstArrayElement = 0;
-            writeAccel.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-            writeAccel.descriptorCount = 1;
-            vkUpdateDescriptorSets(device_.device(), 1, &writeAccel, 0, nullptr);
         }
     }
     void RenderContext::updateLightDescriptorSets(int frameIndex) {

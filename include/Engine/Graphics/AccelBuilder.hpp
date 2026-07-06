@@ -4,6 +4,7 @@
 #include <vulkan/vulkan.h>
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -47,11 +48,13 @@ namespace engine {
 
         /// Get the raw TLAS handle for descriptor binding.
         [[nodiscard]] VkAccelerationStructureKHR getTlas() const {
+            std::scoped_lock const lock(mutex_);
             return tlas_;
         }
 
         /// Get the BLAS handle for a model (returns VK_NULL_HANDLE if not built).
         [[nodiscard]] VkAccelerationStructureKHR getBlas(const Model& model) const {
+            std::scoped_lock const lock(mutex_);
             auto it = blasMap_.find(&model);
             return (it != blasMap_.end()) ? it->second : VK_NULL_HANDLE;
         }
@@ -66,6 +69,7 @@ namespace engine {
         Buffer createAccelBuffer(VkAccelerationStructureKHR accel);
 
         Device& device_;
+        mutable std::mutex mutex_;
 
         // Per-model BLAS storage
         std::unordered_map<const Model*, VkAccelerationStructureKHR> blasMap_;

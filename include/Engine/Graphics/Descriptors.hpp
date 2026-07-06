@@ -84,6 +84,7 @@ namespace engine {
         DescriptorWriter& writeBuffer(uint32_t binding, VkDescriptorBufferInfo* bufferInfo);
         DescriptorWriter& writeImage(uint32_t binding, VkDescriptorImageInfo* imageInfo);
         DescriptorWriter& writeImageArray(uint32_t binding, VkDescriptorImageInfo* imageInfos, uint32_t count);
+        DescriptorWriter& writeAccelerationStructure(uint32_t binding, VkAccelerationStructureKHR accel);
         bool              build(VkDescriptorSet& set, VkResult* outResult = nullptr);
         void              buildOrThrow(VkDescriptorSet& set);
         void              overwrite(VkDescriptorSet& set);
@@ -92,6 +93,10 @@ namespace engine {
         DescriptorSetLayout&              setLayout;
         DescriptorPool&                   pool;
         std::vector<VkWriteDescriptorSet> writes;
+        // Parallel to writes: non-empty entries carry the pNext for accel writes
+        std::vector<VkWriteDescriptorSetAccelerationStructureKHR> accelWrites;
+        // Stable storage for accel handles pointed to by accelWrites entries
+        std::vector<VkAccelerationStructureKHR>                   accelStructHandles_;
     };
 }  // namespace engine
 #endif

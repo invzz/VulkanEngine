@@ -1,6 +1,7 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_RESOURCES_MESHMANAGER_HPP
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -22,6 +23,7 @@ namespace engine {
         std::unique_ptr<Buffer>                    meshBuffer;
         std::vector<MeshBuffers>                   meshInfos;
         std::unordered_map<const Model*, uint32_t> modelToId;
+        mutable std::mutex                         mutex_;
         void                                       updateBuffer();
     };
 }  // namespace engine

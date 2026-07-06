@@ -15,6 +15,7 @@ namespace engine {
         updateBuffer();
     }
     uint32_t MeshManager::registerModel(const Model* model) {
+        std::scoped_lock const lock(mutex_);
         if (modelToId.contains(model)) {
             return modelToId[model];
         }
@@ -45,6 +46,7 @@ namespace engine {
         device.memory().copyBufferImmediate(stagingBuffer.getBuffer(), meshBuffer->getBuffer(), bufferSize, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
     }
     VkDescriptorBufferInfo MeshManager::getDescriptorInfo() const {
+        std::scoped_lock const lock(mutex_);
         return meshBuffer->descriptorInfo();
     }
     VkDescriptorSetLayoutBinding MeshManager::getDescriptorSetLayoutBinding() {

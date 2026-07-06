@@ -326,7 +326,11 @@ namespace engine {
                         }
                     }
                 }
-                renderContext->rebuildTlas(tlasInstances_, commandBuffer);
+                // Skip TLAS rebuild when there are no instances — avoids 0-size buffer/VkBuffer
+                // creation that violates Vulkan spec and crashes on RADV and other drivers.
+                if (!tlasInstances_.empty()) {
+                    renderContext->rebuildTlas(tlasInstances_, commandBuffer);
+                }
             }
             renderPipeline->execute(frameInfo);
 

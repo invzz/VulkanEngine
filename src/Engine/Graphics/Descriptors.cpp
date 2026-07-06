@@ -245,6 +245,8 @@ namespace engine {
         write.pBufferInfo     = bufferInfo;
         write.descriptorCount = 1;
         writes.push_back(write);
+        // Maintain parallel sentinel for non-accel writes
+        accelWrites.push_back({});
         return *this;
     }
     DescriptorWriter& DescriptorWriter::writeImage(uint32_t binding, VkDescriptorImageInfo* imageInfo) {
@@ -258,6 +260,7 @@ namespace engine {
         write.pImageInfo      = imageInfo;
         write.descriptorCount = 1;
         writes.push_back(write);
+        accelWrites.push_back({});
         return *this;
     }
     DescriptorWriter& DescriptorWriter::writeImageArray(uint32_t binding, VkDescriptorImageInfo* imageInfos, uint32_t count) {
@@ -270,6 +273,27 @@ namespace engine {
         write.dstBinding      = binding;
         write.pImageInfo      = imageInfos;
         write.descriptorCount = count;
+        writes.push_back(write);
+        accelWrites.push_back({});
+        return *this;
+    }
+    DescriptorWriter& DescriptorWriter::writeAccelerationStructure(uint32_t binding, VkAccelerationStructureKHR accel) {
+        assert(setLayout.bindings.count(binding) == 1 && "Layout does not contain specified binding");
+        const auto& bindingDescription = setLayout.bindings[binding];
+        assert(bindingDescription.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR &&
+            "Binding is not an acceleration structure type");
+
+        VkWriteDescriptorSetAccelerationStructureKHR accelWrite{};
+        accelWrite.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+        accelWrite.accelerationStructureCount = 1;
+        accelWrite.pAccelerationStructures    = &accelStructHandles_.emplace_back(accel);
+
+        VkWriteDescriptorSet write{};
+        write.sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.descriptorType = bindingDescription.descriptorType;
+        write.dstBinding     = binding;
+        write.pNext          = &accelWrites.emplace_back(accelWrite);
+        write.descriptorCount = 1;
         writes.push_back(write);
         return *this;
     }
@@ -319,5 +343,7 @@ namespace engine {
         }
         vkUpdateDescriptorSets(pool.device.device(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
         writes.clear();
+        accelWrites.clear();
+        accelStructHandles_.clear();
     }
 }  // namespace engine
