@@ -75,7 +75,7 @@ namespace engine {
     Texture::Texture(Device& device, const unsigned char* pixels, int width, int height, VkFormat format) : device_{device}, width_{width}, height_{height} {
         format_                      = format;
         VkDeviceSize const imageSize = width_ * height_ * 4;
-        mipLevels_                   = 1;
+        mipLevels_                   = static_cast<uint32_t>(std::floor(std::log2(std::max(width_, height_)))) + 1;
         Buffer stagingBuffer{device_, 1, static_cast<uint32_t>(imageSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
         stagingBuffer.map();
         stagingBuffer.writeToBuffer((void*) pixels);
@@ -89,13 +89,16 @@ namespace engine {
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
         transitionImageLayout(image_, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels_);
         copyBufferToImage(stagingBuffer.getBuffer(), image_, static_cast<uint32_t>(width_), static_cast<uint32_t>(height_));
-        transitionImageLayout(image_, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, mipLevels_);
+        generateMipmaps(image_, format_, width_, height_, mipLevels_);
         createImageView(format);
         createSampler();
     }
     std::shared_ptr<Texture> Texture::createWhiteTexture(Device& device) {
         unsigned char whitePixel[4] = {255, 255, 255, 255};
         return std::shared_ptr<Texture>(new Texture(device, whitePixel, 1, 1, VK_FORMAT_R8G8B8A8_UNORM));
+    }
+    std::shared_ptr<Texture> Texture::createFromDecoded(Device& device, const unsigned char* pixels, int width, int height, VkFormat format) {
+        return std::shared_ptr<Texture>(new Texture(device, pixels, width, height, format));
     }
     std::shared_ptr<Texture> Texture::createNormalTexture(Device& device) {
         unsigned char normalPixel[4] = {128, 128, 255, 255};

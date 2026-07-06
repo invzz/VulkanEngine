@@ -18,22 +18,14 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <future>
 #include <iostream>
+#include <cstring>
 #include <tiny_gltf.h>
 #include <unordered_map>
 
 #include "Engine/Core/ansi_colors.hpp"
 #include "Engine/Core/utils.hpp"
-namespace std {
-    template <>
-    struct hash<engine::Model::Vertex> {
-        size_t operator()(engine::Model::Vertex const& vertex) const {
-            size_t seed = 0;
-            engine::hashCombine(seed, vertex.position, vertex.color, vertex.normal, vertex.uv);
-            return seed;
-        }
-    };
-}  // namespace std
 namespace engine {
     namespace {
         std::string getTexturePath(const tinygltf::Model& model, int textureIndex, const std::string& baseDir, const std::string& cacheDir) {
@@ -54,14 +46,18 @@ namespace engine {
                         extension = ".png";
                     }
                     std::string cachePath = cacheDir + "/texture_" + std::to_string(texture.source) + extension;
-                    std::filesystem::create_directories(cacheDir);
-                    std::ofstream outFile(cachePath, std::ios::binary);
-                    if (outFile.is_open()) {
-                        outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
-                        outFile.close();
+                    if (!std::filesystem::exists(cachePath)) {
+                        std::filesystem::create_directories(cacheDir);
+                        std::ofstream outFile(cachePath, std::ios::binary);
+                        if (outFile.is_open()) {
+                            outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
+                            outFile.close();
+                            return cachePath;
+                        }
+                        std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << '\n';
+                    } else {
                         return cachePath;
                     }
-                    std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write cached texture: " << cachePath << RESET << '\n';
                     return "";
                 }
                 return baseDir + image.uri;
@@ -74,14 +70,18 @@ namespace engine {
                     extension = ".png";
                 }
                 std::string cachePath = cacheDir + "/embedded_texture_" + std::to_string(texture.source) + extension;
-                std::filesystem::create_directories(cacheDir);
-                std::ofstream outFile(cachePath, std::ios::binary);
-                if (outFile.is_open()) {
-                    outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
-                    outFile.close();
+                if (!std::filesystem::exists(cachePath)) {
+                    std::filesystem::create_directories(cacheDir);
+                    std::ofstream outFile(cachePath, std::ios::binary);
+                    if (outFile.is_open()) {
+                        outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
+                        outFile.close();
+                        return cachePath;
+                    }
+                    std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << '\n';
+                } else {
                     return cachePath;
                 }
-                std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write embedded texture: " << cachePath << RESET << '\n';
                 return "";
             }
             if (!image.image.empty()) {
@@ -92,21 +92,78 @@ namespace engine {
                     extension = ".png";
                 }
                 std::string cachePath = cacheDir + "/embedded_buffer_image_" + std::to_string(texture.source) + extension;
-                std::filesystem::create_directories(cacheDir);
-                std::ofstream outFile(cachePath, std::ios::binary);
-                if (outFile.is_open()) {
-                    outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
-                    outFile.close();
+                if (!std::filesystem::exists(cachePath)) {
+                    std::filesystem::create_directories(cacheDir);
+                    std::ofstream outFile(cachePath, std::ios::binary);
+                    if (outFile.is_open()) {
+                        outFile.write(reinterpret_cast<const char*>(image.image.data()), image.image.size());
+                        outFile.close();
+                        return cachePath;
+                    }
+                    std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write image from buffer: " << cachePath << RESET << '\n';
+                } else {
                     return cachePath;
                 }
-                std::cerr << YELLOW << "[GLTFImporter] Warning: Failed to write image from buffer: " << cachePath << RESET << '\n';
             }
             return "";
         }
+    struct PrimitivePatch {
+        std::vector<Model::Vertex> vertices;
+        std::vector<uint32_t> positionIndices;
+        uint32_t               indexCount = 0;
+    };
+    PrimitivePatch buildPrimitivePatch(const tinygltf::Model& model,
+        const tinygltf::Primitive& p, const glm::mat4& xf, bool anim,
+        int matId, bool hasMorph, float xM, float yM, float zM) {
+        PrimitivePatch pp;
+        const auto& pa = model.accessors[p.attributes.at("POSITION")];
+        const auto* ps = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[pa.bufferView].buffer].data[
+            model.bufferViews[pa.bufferView].byteOffset + pa.byteOffset]);
+        const float* ns = nullptr, *ts = nullptr;
+        if (p.attributes.contains("NORMAL")) { const auto& na = model.accessors[p.attributes.at("NORMAL")];
+            ns = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[na.bufferView].buffer].data[
+                model.bufferViews[na.bufferView].byteOffset + na.byteOffset]); }
+        if (p.attributes.contains("TEXCOORD_0")) { const auto& ta = model.accessors[p.attributes.at("TEXCOORD_0")];
+            ts = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[ta.bufferView].buffer].data[
+                model.bufferViews[ta.bufferView].byteOffset + ta.byteOffset]); }
+        const auto& ia = model.accessors[p.indices];
+        const uint8_t* id = &model.buffers[model.bufferViews[ia.bufferView].buffer].data[
+            model.bufferViews[ia.bufferView].byteOffset + ia.byteOffset];
+        pp.vertices.reserve(ia.count);
+        if (hasMorph) pp.positionIndices.reserve(ia.count);
+        glm::mat3 nm; if (!anim && ns) nm = glm::transpose(glm::inverse(glm::mat3(xf)));
+        for (size_t i = 0; i < ia.count; i++) {
+            uint32_t idx = 0;
+            if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) idx = ((const uint16_t*)id)[i];
+            else if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) idx = ((const uint32_t*)id)[i];
+            else if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) idx = id[i];
+            Model::Vertex v{}; v.materialId = matId;
+            if (anim) v.position = {xM*ps[idx*3], yM*ps[idx*3+1], zM*ps[idx*3+2]};
+            else { auto tr = xf * glm::vec4(ps[idx*3], ps[idx*3+1], ps[idx*3+2], 1); v.position = {xM*tr.x, yM*tr.y, zM*tr.z}; }
+            if (ns) { glm::vec3 wn = anim ? glm::vec3(ns[idx*3], ns[idx*3+1], ns[idx*3+2]) : glm::normalize(nm * glm::vec3(ns[idx*3], ns[idx*3+1], ns[idx*3+2]));
+                v.normal = {xM*wn.x, yM*wn.y, zM*wn.z}; } else v.normal = {0,1,0};
+            v.uv = ts ? glm::vec2(ts[idx*2], 1-ts[idx*2+1]) : glm::vec2(0);
+            v.color = {1,1,1};
+            pp.vertices.push_back(v);
+            if (hasMorph) pp.positionIndices.push_back(idx);
+        }
+        pp.indexCount = (uint32_t)ia.count;
+        return pp;
+    }
     }  // namespace
     bool GLTFImporter::load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ) {
         tinygltf::Model    gltfModel;
         tinygltf::TinyGLTF loader;
+        // Skip pixel decode during parse -- store raw encoded bytes instead.
+        // This avoids stb_image decode during file load; textures are decoded
+        // lazily by the texture system when first used.
+        loader.SetImageLoader(
+            [](tinygltf::Image* image, const int, std::string*, std::string*, int, int,
+                const unsigned char* bytes, int size, void*) -> bool {
+                image->image.assign(bytes, bytes + size);
+                return true;
+            },
+            nullptr);
         std::string        err;
         std::string        warn;
         bool               ret = false;
@@ -140,8 +197,32 @@ namespace engine {
         builder.indices.clear();
         builder.materials.clear();
         builder.subMeshes.clear();
-        std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
-        std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
+        // Pre-calculate total vertex/index count to avoid vector reallocation during mesh loading.
+        {
+            size_t totalIndices = 0;
+            std::function<void(int)> countNode = [&](int nodeIndex) {
+                const auto& node = gltfModel.nodes[nodeIndex];
+                if (node.mesh >= 0) {
+                    const auto& mesh = gltfModel.meshes[node.mesh];
+                    for (const auto& prim : mesh.primitives) {
+                        if (prim.indices >= 0) {
+                            totalIndices += gltfModel.accessors[prim.indices].count;
+                        }
+                    }
+                }
+                for (int const child : node.children) {
+                    countNode(child);
+                }
+            };
+            const auto& scene = gltfModel.scenes[gltfModel.defaultScene >= 0 ? gltfModel.defaultScene : 0];
+            for (int const nodeIndex : scene.nodes) {
+                countNode(nodeIndex);
+            }
+            builder.vertices.reserve(totalIndices);
+            builder.indices.reserve(totalIndices);
+        }
+        std::unordered_map<uint64_t, uint32_t> primitiveVertexOffsets;
+        std::unordered_map<uint64_t, uint32_t> primitiveVertexCounts;
         std::unordered_map<uint32_t, uint32_t>    vertexToPositionIndex;
         loadMaterials(builder, gltfModel, baseDir, cacheDir);
         loadMeshes(builder, gltfModel, flipX, flipY, flipZ, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex, hasAnimations);
@@ -181,142 +262,6 @@ namespace engine {
                     node.morphWeights[w] = static_cast<float>(gltfNode.weights[w]);
                 }
             }
-        }
-        for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++) {
-            const auto& gltfMesh = gltfModel.meshes[meshIdx];
-            for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++) {
-                const auto& primitive = gltfMesh.primitives[primIdx];
-                if (primitive.targets.empty()) {
-                    continue;
-                }
-                Model::MorphTargetSet morphSet;
-                std::string const     key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
-                std::cout << "[GLTFImporter] Looking up morph target key: " << key << '\n';
-                if (primitiveVertexOffsets.contains(key)) {
-                    morphSet.vertexOffset = primitiveVertexOffsets[key];
-                    morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts[key]);
-                    morphSet.positionIndices.resize(morphSet.vertexCount);
-                    for (uint32_t i = 0; i < morphSet.vertexCount; i++) {
-                        uint32_t const vertexIdx    = morphSet.vertexOffset + i;
-                        morphSet.positionIndices[i] = vertexToPositionIndex[vertexIdx];
-                    }
-                    std::cout << "[GLTFImporter] Found vertex offset: " << morphSet.vertexOffset << ", count: " << morphSet.vertexCount << '\n';
-                } else {
-                    morphSet.vertexOffset = 0;
-                    morphSet.vertexCount  = static_cast<uint32_t>(gltfModel.accessors[primitive.attributes.at("POSITION")].count);
-                    std::cerr << RED << "[GLTFImporter] Warning: Could not find vertex offset for mesh " << meshIdx << " primitive " << primIdx << RESET << '\n';
-                }
-                if (!gltfMesh.weights.empty()) {
-                    morphSet.weights.resize(gltfMesh.weights.size());
-                    for (size_t w = 0; w < gltfMesh.weights.size(); w++) {
-                        morphSet.weights[w] = static_cast<float>(gltfMesh.weights[w]);
-                    }
-                } else {
-                    morphSet.weights.resize(primitive.targets.size(), 0.0f);
-                }
-                for (const auto& target : primitive.targets) {
-                    Model::MorphTarget morphTarget;
-                    if (target.contains("POSITION")) {
-                        const auto& posAccessor   = gltfModel.accessors[target.at("POSITION")];
-                        const auto& posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
-                        const auto& posBuffer     = gltfModel.buffers[posBufferView.buffer];
-                        const auto* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
-                        morphTarget.positionDeltas.resize(posAccessor.count);
-                        for (size_t i = 0; i < posAccessor.count; i++) {
-                            morphTarget.positionDeltas[i] = glm::vec3(positions[(i * 3) + 0], positions[(i * 3) + 1], positions[(i * 3) + 2]);
-                        }
-                    }
-                    if (target.contains("NORMAL")) {
-                        const auto& normAccessor   = gltfModel.accessors[target.at("NORMAL")];
-                        const auto& normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
-                        const auto& normBuffer     = gltfModel.buffers[normBufferView.buffer];
-                        const auto* normals        = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
-                        morphTarget.normalDeltas.resize(normAccessor.count);
-                        for (size_t i = 0; i < normAccessor.count; i++) {
-                            morphTarget.normalDeltas[i] = glm::vec3(normals[(i * 3) + 0], normals[(i * 3) + 1], normals[(i * 3) + 2]);
-                        }
-                    }
-                    morphSet.targets.push_back(morphTarget);
-                }
-                if (!morphSet.targets.empty()) {
-                    builder.morphTargetSets.push_back(morphSet);
-                    std::cout << GREEN << "[GLTFImporter] Loaded " << morphSet.targets.size() << " morph targets for mesh " << meshIdx << RESET << '\n';
-                }
-            }
-        }
-        for (const auto& gltfAnim : gltfModel.animations) {
-            Model::Animation animation;
-            animation.name = gltfAnim.name.empty() ? "animation_" + std::to_string(builder.animations.size()) : gltfAnim.name;
-            for (const auto& gltfSampler : gltfAnim.samplers) {
-                Model::AnimationSampler sampler;
-                const auto&             timeAccessor   = gltfModel.accessors[gltfSampler.input];
-                const auto&             timeBufferView = gltfModel.bufferViews[timeAccessor.bufferView];
-                const auto&             timeBuffer     = gltfModel.buffers[timeBufferView.buffer];
-                const auto*             times          = reinterpret_cast<const float*>(&timeBuffer.data[timeBufferView.byteOffset + timeAccessor.byteOffset]);
-                sampler.times.resize(timeAccessor.count);
-                for (size_t i = 0; i < timeAccessor.count; i++) {
-                    sampler.times[i]   = times[i];
-                    animation.duration = std::max(sampler.times[i], animation.duration);
-                }
-                const auto& outputAccessor   = gltfModel.accessors[gltfSampler.output];
-                const auto& outputBufferView = gltfModel.bufferViews[outputAccessor.bufferView];
-                const auto& outputBuffer     = gltfModel.buffers[outputBufferView.buffer];
-                const auto* outputs          = reinterpret_cast<const float*>(&outputBuffer.data[outputBufferView.byteOffset + outputAccessor.byteOffset]);
-                if (outputAccessor.type == TINYGLTF_TYPE_VEC3) {
-                    sampler.translations.resize(outputAccessor.count);
-                    sampler.scales.resize(outputAccessor.count);
-                    for (size_t i = 0; i < outputAccessor.count; i++) {
-                        sampler.translations[i] = glm::vec3(outputs[(i * 3) + 0], outputs[(i * 3) + 1], outputs[(i * 3) + 2]);
-                        sampler.scales[i]       = sampler.translations[i];
-                    }
-                } else if (outputAccessor.type == TINYGLTF_TYPE_VEC4) {
-                    sampler.rotations.resize(outputAccessor.count);
-                    for (size_t i = 0; i < outputAccessor.count; i++) {
-                        sampler.rotations[i] = glm::quat(outputs[(i * 4) + 3], outputs[(i * 4) + 0], outputs[(i * 4) + 1], outputs[(i * 4) + 2]);
-                    }
-                } else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR) {
-                    size_t const weightsPerFrame = outputAccessor.count / timeAccessor.count;
-                    sampler.morphWeights.resize(timeAccessor.count);
-                    for (size_t i = 0; i < timeAccessor.count; i++) {
-                        sampler.morphWeights[i].resize(weightsPerFrame);
-                        for (size_t w = 0; w < weightsPerFrame; w++) {
-                            sampler.morphWeights[i][w] = outputs[(i * weightsPerFrame) + w];
-                        }
-                    }
-                }
-                if (gltfSampler.interpolation == "LINEAR") {
-                    sampler.interpolation = Model::AnimationSampler::LINEAR;
-                } else if (gltfSampler.interpolation == "STEP") {
-                    sampler.interpolation = Model::AnimationSampler::STEP;
-                } else if (gltfSampler.interpolation == "CUBICSPLINE") {
-                    sampler.interpolation = Model::AnimationSampler::CUBICSPLINE;
-                }
-                animation.samplers.push_back(sampler);
-            }
-            for (const auto& gltfChannel : gltfAnim.channels) {
-                Model::AnimationChannel channel;
-                channel.samplerIndex = gltfChannel.sampler;
-                channel.targetNode   = gltfChannel.target_node;
-                if (gltfChannel.target_path == "translation") {
-                    channel.path = Model::AnimationChannel::TRANSLATION;
-                } else if (gltfChannel.target_path == "rotation") {
-                    channel.path = Model::AnimationChannel::ROTATION;
-                } else if (gltfChannel.target_path == "scale") {
-                    channel.path = Model::AnimationChannel::SCALE;
-                } else if (gltfChannel.target_path == "weights") {
-                    channel.path = Model::AnimationChannel::WEIGHTS;
-                    std::cout << GREEN << "[GLTFImporter] Found morph target weight animation channel" << RESET << '\n';
-                } else {
-                    continue;
-                }
-                animation.channels.push_back(channel);
-            }
-            if (animation.channels.empty()) {
-                std::cout << YELLOW << "[GLTFImporter] Warning: Animation '" << animation.name << "' has no supported channels, skipping" << RESET << '\n';
-                continue;
-            }
-            builder.animations.push_back(animation);
-            std::cout << GREEN << "[GLTFImporter] Loaded animation: " << BLUE << animation.name << RESET << " (" << animation.duration << "s, " << animation.channels.size() << " channels)" << '\n';
         }
         return true;
     }
@@ -510,183 +455,68 @@ namespace engine {
         int                                             meshIndex,
         int                                             nodeIndex,
         const glm::mat4&                                globalTransform,
-        std::unordered_map<Model::Vertex, uint32_t>&    uniqueVertices,
         std::unordered_map<int, std::vector<uint32_t>>& indicesByMaterial,
-        std::unordered_map<std::string, uint32_t>&      primitiveVertexOffsets,
-        std::unordered_map<std::string, uint32_t>&      primitiveVertexCounts,
+        std::unordered_map<uint64_t, uint32_t>&         primitiveVertexOffsets,
+        std::unordered_map<uint64_t, uint32_t>&         primitiveVertexCounts,
         std::unordered_map<uint32_t, uint32_t>&         vertexToPositionIndex,
         bool                                            hasAnimations,
         float                                           xMultiplier,
         float                                           yMultiplier,
         float                                           zMultiplier) {
-        const tinygltf::Mesh& mesh          = model.meshes[meshIndex];
-        int                   firstMaterial = -1;
-        for (size_t primIdx = 0; primIdx < mesh.primitives.size(); primIdx++) {
-            const auto& primitive = mesh.primitives[primIdx];
-            if (firstMaterial < 0 && primitive.material >= 0) {
-                firstMaterial = primitive.material;
-            }
-            auto const        primitiveVertexOffset = static_cast<uint32_t>(builder.vertices.size());
-            std::string const key                   = std::to_string(meshIndex) + "_" + std::to_string(primIdx);
-            primitiveVertexOffsets[key]             = primitiveVertexOffset;
-            builder.nodePrimitiveIndices[nodeIndex].push_back(static_cast<int>(primIdx));
-            bool const   hasMorphTargets = !primitive.targets.empty();
-            int const    materialId      = primitive.material;
-            const auto&  posAccessor     = model.accessors[primitive.attributes.at("POSITION")];
-            const auto&  posBufferView   = model.bufferViews[posAccessor.bufferView];
-            const auto&  posBuffer       = model.buffers[posBufferView.buffer];
-            const auto*  positions       = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
-            const float* normals         = nullptr;
-            const float* texCoords       = nullptr;
-            if (primitive.attributes.contains("NORMAL")) {
-                const auto& normAccessor   = model.accessors[primitive.attributes.at("NORMAL")];
-                const auto& normBufferView = model.bufferViews[normAccessor.bufferView];
-                const auto& normBuffer     = model.buffers[normBufferView.buffer];
-                normals                    = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
-            }
-            if (primitive.attributes.contains("TEXCOORD_0")) {
-                const auto& uvAccessor   = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-                const auto& uvBufferView = model.bufferViews[uvAccessor.bufferView];
-                const auto& uvBuffer     = model.buffers[uvBufferView.buffer];
-                texCoords                = reinterpret_cast<const float*>(&uvBuffer.data[uvBufferView.byteOffset + uvAccessor.byteOffset]);
-            }
-            if (primitive.indices < 0) {
-                std::cerr << YELLOW
-                          << "[GLTFImporter] Warning: Primitive without indices not "
-                             "supported yet"
-                          << RESET << '\n';
-                continue;
-            }
-            const auto&    indAccessor   = model.accessors[primitive.indices];
-            const auto&    indBufferView = model.bufferViews[indAccessor.bufferView];
-            const auto&    indBuffer     = model.buffers[indBufferView.buffer];
-            const uint8_t* indData       = &indBuffer.data[indBufferView.byteOffset + indAccessor.byteOffset];
-            for (size_t i = 0; i < indAccessor.count; i++) {
-                uint32_t index = 0;
-                if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-                    index = reinterpret_cast<const uint16_t*>(indData)[i];
-                } else if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-                    index = reinterpret_cast<const uint32_t*>(indData)[i];
-                } else if (indAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
-                    index = indData[i];
-                }
-                Model::Vertex vertex{};
-                vertex.materialId = materialId;
-                glm::vec3 worldPos;
-                if (hasAnimations) {
-                    worldPos = glm::vec3(positions[(index * 3) + 0], positions[(index * 3) + 1], positions[(index * 3) + 2]);
-                } else {
-                    glm::vec4 const localPos    = glm::vec4(positions[(index * 3) + 0], positions[(index * 3) + 1], positions[(index * 3) + 2], 1.0f);
-                    glm::vec4 const transformed = globalTransform * localPos;
-                    worldPos                    = glm::vec3(transformed);
-                }
-                vertex.position = {xMultiplier * worldPos.x, yMultiplier * worldPos.y, zMultiplier * worldPos.z};
-                if (normals != nullptr) {
-                    glm::vec3 worldNormal;
-                    if (hasAnimations) {
-                        worldNormal = glm::vec3(normals[(index * 3) + 0], normals[(index * 3) + 1], normals[(index * 3) + 2]);
-                    } else {
-                        glm::mat3 const normalMatrix = glm::transpose(glm::inverse(glm::mat3(globalTransform)));
-                        glm::vec3 const localNormal  = glm::vec3(normals[(index * 3) + 0], normals[(index * 3) + 1], normals[(index * 3) + 2]);
-                        worldNormal                  = glm::normalize(normalMatrix * localNormal);
-                    }
-                    vertex.normal = {xMultiplier * worldNormal.x, yMultiplier * worldNormal.y, zMultiplier * worldNormal.z};
-                } else {
-                    vertex.normal = {0.0f, 1.0f, 0.0f};
-                }
-                if (texCoords != nullptr) {
-                    vertex.uv = {texCoords[(index * 2) + 0], 1.0f - texCoords[(index * 2) + 1]};
-                } else {
-                    vertex.uv = {0.0f, 0.0f};
-                }
-                vertex.color = {1.0f, 1.0f, 1.0f};
-                if (hasMorphTargets) {
-                    auto const vertexIdx = static_cast<uint32_t>(builder.vertices.size());
-                    builder.indices.push_back(vertexIdx);
-                    builder.vertices.push_back(vertex);
-                    indicesByMaterial[materialId].push_back(vertexIdx);
-                    vertexToPositionIndex[vertexIdx] = index;
-                } else {
-                    if (!uniqueVertices.contains(vertex)) {
-                        uniqueVertices[vertex] = static_cast<uint32_t>(builder.vertices.size());
-                        builder.vertices.push_back(vertex);
-                    }
-                    uint32_t const vertexIndex = uniqueVertices[vertex];
-                    builder.indices.push_back(vertexIndex);
-                    indicesByMaterial[materialId].push_back(vertexIndex);
-                }
-            }
-            uint32_t const primitiveVertexCount = static_cast<uint32_t>(builder.vertices.size()) - primitiveVertexOffset;
-            primitiveVertexCounts[key]          = primitiveVertexCount;
-            std::cout << "[GLTFImporter] Mesh " << meshIndex << " prim " << primIdx << " added " << primitiveVertexCount << " vertices" << '\n';
-        }
+        // Deprecated.
     }
     void GLTFImporter::loadMeshes(Model::Builder&  builder,
         const tinygltf::Model&                     model,
         bool                                       flipX,
         bool                                       flipY,
         bool                                       flipZ,
-        std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-        std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+        std::unordered_map<uint64_t, uint32_t>&    primitiveVertexOffsets,
+        std::unordered_map<uint64_t, uint32_t>&    primitiveVertexCounts,
         std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
         bool                                       hasAnimations) {
-        const tinygltf::Scene&                         scene = model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
-        std::unordered_map<Model::Vertex, uint32_t>    uniqueVertices{};
-        std::unordered_map<int, std::vector<uint32_t>> indicesByMaterial;
-        float                                          xMultiplier = flipX ? -1.0f : 1.0f;
-        float                                          yMultiplier = flipY ? -1.0f : 1.0f;
-        float                                          zMultiplier = flipZ ? -1.0f : 1.0f;
-        std::function<void(int, const glm::mat4&)>     processNode = [&](int nodeIndex, const glm::mat4& parentTransform) {
-            const tinygltf::Node& node            = model.nodes[nodeIndex];
-            glm::mat4 const       nodeTransform   = computeNodeTransform(node);
-            glm::mat4 const       globalTransform = parentTransform * nodeTransform;
-            if (node.mesh >= 0) {
-                processMesh(builder,
-                    model,
-                    node.mesh,
-                    nodeIndex,
-                    globalTransform,
-                    uniqueVertices,
-                    indicesByMaterial,
-                    primitiveVertexOffsets,
-                    primitiveVertexCounts,
-                    vertexToPositionIndex,
-                    hasAnimations,
-                    xMultiplier,
-                    yMultiplier,
-                    zMultiplier);
-            }
-            for (int const childIndex : node.children) {
-                processNode(childIndex, globalTransform);
-            }
+        struct NM { int n,m; glm::mat4 x; };
+        std::vector<NM> refs;
+        std::function<void(int,glm::mat4)> cl = [&](int i, glm::mat4 p){
+            const auto& nd = model.nodes[i]; glm::mat4 g = p * computeNodeTransform(nd);
+            if (nd.mesh>=0) refs.push_back({i,nd.mesh,g});
+            for (int c:nd.children) cl(c,g);
         };
-        for (int const nodeIndex : scene.nodes) {
-            processNode(nodeIndex, glm::mat4(1.0f));
-        }
-        uint32_t currentOffset = 0;
-        for (auto& [matId, matIndices] : indicesByMaterial) {
-            if (!matIndices.empty()) {
-                Model::SubMesh subMesh;
-                subMesh.materialId  = matId;
-                subMesh.indexOffset = currentOffset;
-                subMesh.indexCount  = static_cast<uint32_t>(matIndices.size());
-                builder.subMeshes.push_back(subMesh);
-                currentOffset += subMesh.indexCount;
-            }
-        }
-        std::vector<uint32_t> groupedIndices;
-        groupedIndices.reserve(builder.indices.size());
-        for (const auto& subMesh : builder.subMeshes) {
-            const auto& matIndices = indicesByMaterial[subMesh.materialId];
-            groupedIndices.insert(groupedIndices.end(), matIndices.begin(), matIndices.end());
-        }
-        builder.indices = std::move(groupedIndices);
-        std::cout << GREEN << "[GLTFImporter] Meshes processed" << RESET << '\n';
+        const auto& sn = model.scenes[model.defaultScene>=0?model.defaultScene:0];
+        for (int n:sn.nodes) cl(n,glm::mat4(1));
+        float xM=flipX?-1:1,yM=flipY?-1:1,zM=flipZ?-1:1;
+        struct J{ int n,m; glm::mat4 x; std::vector<std::pair<int,const tinygltf::Primitive*>> pr; };
+        std::vector<J> js; js.reserve(refs.size());
+        for (auto& r:refs){
+            J j; j.n=r.n; j.m=r.m; j.x=r.x;
+            for (size_t pp=0;pp<model.meshes[r.m].primitives.size();++pp) j.pr.emplace_back((int)pp,&model.meshes[r.m].primitives[pp]);
+            js.push_back(std::move(j));}
+        std::vector<std::future<std::vector<PrimitivePatch>>> ff;
+        for (auto& j:js) ff.push_back(std::async(std::launch::async,[&model,&j,hasAnimations,xM,yM,zM](){
+            std::vector<PrimitivePatch> pp; pp.reserve(j.pr.size());
+            for (auto& [_,pr]:j.pr) pp.push_back(buildPrimitivePatch(model,*pr,j.x,hasAnimations,pr->material,!pr->targets.empty(),xM,yM,zM));
+            return pp;}));
+        std::unordered_map<int,std::vector<uint32_t>> ibm;
+        for (size_t ji=0;ji<js.size();++ji){
+            auto pp=ff[ji].get(); auto& j=js[ji];
+            builder.nodePrimitiveIndices[j.n].reserve(builder.nodePrimitiveIndices[j.n].size()+pp.size());
+            for (size_t pi=0;pi<pp.size();++pi){
+                auto& p=pp[pi]; int pri=j.pr[pi].first,mat=j.pr[pi].second->material;
+                uint64_t k=((uint64_t)j.m<<32)|(uint32_t)pri; uint32_t o=(uint32_t)builder.vertices.size();
+                primitiveVertexOffsets[k]=o; builder.nodePrimitiveIndices[j.n].push_back(pri);
+                builder.vertices.insert(builder.vertices.end(),p.vertices.begin(),p.vertices.end());
+                for (uint32_t i=0;i<p.indexCount;++i){uint32_t g=o+i;builder.indices.push_back(g);ibm[mat].push_back(g);}
+                if (!p.positionIndices.empty()) for (uint32_t i=0;i<p.indexCount;++i) vertexToPositionIndex[o+i]=p.positionIndices[i];
+                primitiveVertexCounts[k]=p.indexCount;}}
+        uint32_t co=0;
+        for (auto& [mi,ii]:ibm){if(!ii.empty()){Model::SubMesh sm;sm.materialId=mi;sm.indexOffset=co;sm.indexCount=(uint32_t)ii.size();builder.subMeshes.push_back(sm);co+=sm.indexCount;}}
+        std::vector<uint32_t> gi; gi.reserve(builder.indices.size());
+        for (auto& sm:builder.subMeshes){auto& ii=ibm[sm.materialId];gi.insert(gi.end(),ii.begin(),ii.end());}
+        builder.indices=std::move(gi); std::cout<<GREEN<<"[GLTFImporter] Meshes processed"<<RESET<<"\n";
     }
     void GLTFImporter::loadMorphTargets(Model::Builder&  builder,
         const tinygltf::Model&                           gltfModel,
-        const std::unordered_map<std::string, uint32_t>& primitiveVertexOffsets,
-        const std::unordered_map<std::string, uint32_t>& primitiveVertexCounts,
+        const std::unordered_map<uint64_t, uint32_t>&    primitiveVertexOffsets,
+        const std::unordered_map<uint64_t, uint32_t>&    primitiveVertexCounts,
         const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex) {
         for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++) {
             const auto& gltfMesh = gltfModel.meshes[meshIdx];
@@ -695,7 +525,7 @@ namespace engine {
                 if (primitive.targets.empty())
                     continue;
                 Model::MorphTargetSet morphSet;
-                std::string const     key = std::to_string(meshIdx) + "_" + std::to_string(primIdx);
+                uint64_t const         key = (static_cast<uint64_t>(meshIdx) << 32) | static_cast<uint32_t>(primIdx);
                 if (primitiveVertexOffsets.contains(key)) {
                     morphSet.vertexOffset = primitiveVertexOffsets.at(key);
                     morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts.at(key));
@@ -717,29 +547,45 @@ namespace engine {
                 } else {
                     morphSet.weights.resize(primitive.targets.size(), 0.0f);
                 }
+                // Process each morph target's deltas in parallel (each reads from independent accessors).
+                std::vector<std::future<Model::MorphTarget>> targetFutures;
+                targetFutures.reserve(primitive.targets.size());
                 for (const auto& target : primitive.targets) {
-                    Model::MorphTarget morphTarget;
-                    if (target.contains("POSITION")) {
-                        const auto& posAccessor   = gltfModel.accessors[target.at("POSITION")];
-                        const auto& posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
-                        const auto& posBuffer     = gltfModel.buffers[posBufferView.buffer];
-                        const auto* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
-                        morphTarget.positionDeltas.resize(posAccessor.count);
-                        for (size_t i = 0; i < posAccessor.count; i++) {
-                            morphTarget.positionDeltas[i] = glm::vec3(positions[(i * 3) + 0], positions[(i * 3) + 1], positions[(i * 3) + 2]);
+                    targetFutures.push_back(std::async(std::launch::async, [&gltfModel, &target]() {
+                        Model::MorphTarget mt;
+                        if (target.contains("POSITION")) {
+                            const auto& posAccessor   = gltfModel.accessors[target.at("POSITION")];
+                            const auto& posBufferView = gltfModel.bufferViews[posAccessor.bufferView];
+                            const auto& posBuffer     = gltfModel.buffers[posBufferView.buffer];
+                            const auto* positions     = reinterpret_cast<const float*>(&posBuffer.data[posBufferView.byteOffset + posAccessor.byteOffset]);
+                            mt.positionDeltas.resize(posAccessor.count);
+                            if (posAccessor.ByteStride(posBufferView) == 0 || posAccessor.ByteStride(posBufferView) == sizeof(glm::vec3)) {
+                                std::memcpy(mt.positionDeltas.data(), positions, posAccessor.count * sizeof(glm::vec3));
+                            } else {
+                                for (size_t i = 0; i < posAccessor.count; i++) {
+                                    mt.positionDeltas[i] = glm::vec3(positions[(i * 3) + 0], positions[(i * 3) + 1], positions[(i * 3) + 2]);
+                                }
+                            }
                         }
-                    }
-                    if (target.contains("NORMAL")) {
-                        const auto& normAccessor   = gltfModel.accessors[target.at("NORMAL")];
-                        const auto& normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
-                        const auto& normBuffer     = gltfModel.buffers[normBufferView.buffer];
-                        const auto* normals        = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
-                        morphTarget.normalDeltas.resize(normAccessor.count);
-                        for (size_t i = 0; i < normAccessor.count; i++) {
-                            morphTarget.normalDeltas[i] = glm::vec3(normals[(i * 3) + 0], normals[(i * 3) + 1], normals[(i * 3) + 2]);
+                        if (target.contains("NORMAL")) {
+                            const auto& normAccessor   = gltfModel.accessors[target.at("NORMAL")];
+                            const auto& normBufferView = gltfModel.bufferViews[normAccessor.bufferView];
+                            const auto& normBuffer     = gltfModel.buffers[normBufferView.buffer];
+                            const auto* normals        = reinterpret_cast<const float*>(&normBuffer.data[normBufferView.byteOffset + normAccessor.byteOffset]);
+                            mt.normalDeltas.resize(normAccessor.count);
+                            if (normAccessor.ByteStride(normBufferView) == 0 || normAccessor.ByteStride(normBufferView) == sizeof(glm::vec3)) {
+                                std::memcpy(mt.normalDeltas.data(), normals, normAccessor.count * sizeof(glm::vec3));
+                            } else {
+                                for (size_t i = 0; i < normAccessor.count; i++) {
+                                    mt.normalDeltas[i] = glm::vec3(normals[(i * 3) + 0], normals[(i * 3) + 1], normals[(i * 3) + 2]);
+                                }
+                            }
                         }
-                    }
-                    morphSet.targets.push_back(morphTarget);
+                        return mt;
+                    }));
+                }
+                for (auto& f : targetFutures) {
+                    morphSet.targets.push_back(f.get());
                 }
                 if (!morphSet.targets.empty()) {
                     builder.morphTargetSets.push_back(morphSet);
@@ -759,8 +605,8 @@ namespace engine {
                 const auto&             timeBuffer     = gltfModel.buffers[timeBufferView.buffer];
                 const auto*             times          = reinterpret_cast<const float*>(&timeBuffer.data[timeBufferView.byteOffset + timeAccessor.byteOffset]);
                 sampler.times.resize(timeAccessor.count);
+                std::memcpy(sampler.times.data(), times, timeAccessor.count * sizeof(float));
                 for (size_t i = 0; i < timeAccessor.count; i++) {
-                    sampler.times[i]   = times[i];
                     animation.duration = std::max(sampler.times[i], animation.duration);
                 }
                 const auto& outputAccessor   = gltfModel.accessors[gltfSampler.output];
@@ -770,14 +616,23 @@ namespace engine {
                 if (outputAccessor.type == TINYGLTF_TYPE_VEC3) {
                     sampler.translations.resize(outputAccessor.count);
                     sampler.scales.resize(outputAccessor.count);
-                    for (size_t i = 0; i < outputAccessor.count; i++) {
-                        sampler.translations[i] = glm::vec3(outputs[(i * 3) + 0], outputs[(i * 3) + 1], outputs[(i * 3) + 2]);
-                        sampler.scales[i]       = sampler.translations[i];
+                    if (outputAccessor.ByteStride(outputBufferView) == 0 || outputAccessor.ByteStride(outputBufferView) == sizeof(glm::vec3)) {
+                        std::memcpy(sampler.translations.data(), outputs, outputAccessor.count * sizeof(glm::vec3));
+                        std::memcpy(sampler.scales.data(), outputs, outputAccessor.count * sizeof(glm::vec3));
+                    } else {
+                        for (size_t i = 0; i < outputAccessor.count; i++) {
+                            sampler.translations[i] = glm::vec3(outputs[(i * 3) + 0], outputs[(i * 3) + 1], outputs[(i * 3) + 2]);
+                            sampler.scales[i]       = sampler.translations[i];
+                        }
                     }
                 } else if (outputAccessor.type == TINYGLTF_TYPE_VEC4) {
                     sampler.rotations.resize(outputAccessor.count);
-                    for (size_t i = 0; i < outputAccessor.count; i++) {
-                        sampler.rotations[i] = glm::quat(outputs[(i * 4) + 3], outputs[(i * 4) + 0], outputs[(i * 4) + 1], outputs[(i * 4) + 2]);
+                    if (outputAccessor.ByteStride(outputBufferView) == 0 || outputAccessor.ByteStride(outputBufferView) == sizeof(glm::vec4)) {
+                        std::memcpy(sampler.rotations.data(), outputs, outputAccessor.count * sizeof(glm::quat));
+                    } else {
+                        for (size_t i = 0; i < outputAccessor.count; i++) {
+                            sampler.rotations[i] = glm::quat(outputs[(i * 4) + 3], outputs[(i * 4) + 0], outputs[(i * 4) + 1], outputs[(i * 4) + 2]);
+                        }
                     }
                 } else if (outputAccessor.type == TINYGLTF_TYPE_SCALAR) {
                     size_t const weightsPerFrame = outputAccessor.count / timeAccessor.count;

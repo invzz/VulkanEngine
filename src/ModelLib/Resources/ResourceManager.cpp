@@ -12,6 +12,7 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <sstream>
+#include <stb_image.h>
 #include <string>
 #include <thread>
 #include <unordered_set>
@@ -34,6 +35,13 @@ namespace engine {
             }
             return hash;
         }
+
+        template <typename T>
+        std::future<T> makeReadyFuture(T value) {
+            std::promise<T> p;
+            p.set_value(std::move(value));
+            return p.get_future();
+        }
     }  // namespace
     ResourceManager::ResourceManager(Device& device) : device_(device) {
         textureManager_   = std::make_unique<TextureManager>(device);
@@ -43,6 +51,17 @@ namespace engine {
             numThreads = 4;
         }
         initThreadPool(numThreads);
+
+        // Wire up content-hash cleanup when GC removes textures
+        textureCache_.onKeysRemoved = [this](const std::unordered_set<std::string>& removedKeys) {
+            for (auto it = contentHashToKey_.begin(); it != contentHashToKey_.end();) {
+                if (removedKeys.contains(it->second)) {
+                    it = contentHashToKey_.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        };
     }
     ResourceManager::~ResourceManager() {
         shutdownThreadPool();
@@ -56,42 +75,20 @@ namespace engine {
         return oss.str();
     }
     std::shared_ptr<Texture> ResourceManager::loadTexture(const std::string& path, bool srgb, bool flipY, ResourcePriority priority) {
-        std::string            key = makeTextureKey(path, srgb) + (flipY ? "|flipY" : "");
-        std::scoped_lock const lock(textureMutex_);
-        auto                   it = textureCache_.find(key);
-        if (it != textureCache_.end()) {
-            if (auto cachedTexture = it->second.lock()) {
-                updateTextureAccess(key, cachedTexture->getMemorySize(), priority);
-                return cachedTexture;
-            }
-            textureCache_.erase(it);
-            textureAccessOrder_.erase(std::remove_if(textureAccessOrder_.begin(), textureAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), textureAccessOrder_.end());
+        std::string const key = makeTextureKey(path, srgb) + (flipY ? "|flipY" : "");
+        if (auto cached = textureCache_.find(key, priority)) {
+            return cached;
         }
-        auto         texture = std::make_shared<Texture>(device_, path, srgb, flipY);
-        size_t const memSize = texture->getMemorySize();
-        if (memoryBudget_ > 0) {
-            cachedTextureMemory_ += memSize;
-            while (cachedTextureMemory_ > memoryBudget_ && !textureCache_.empty()) {
-                evictLRUTextures();
-            }
-        }
-        textureCache_[key] = texture;
-        updateTextureAccess(key, memSize, priority);
-        uint32_t const globalIndex = textureManager_->addTexture(texture);
-        texture->setGlobalIndex(globalIndex);
-        return texture;
+        auto        texture = std::make_shared<Texture>(device_, path, srgb, flipY);
+        auto        stored  = textureCache_.insert(key, texture, memoryBudget_, priority);
+        uint32_t const globalIndex = textureManager_->addTexture(stored);
+        stored->setGlobalIndex(globalIndex);
+        return stored;
     }
     std::shared_ptr<Model> ResourceManager::loadModel(const std::string& path, bool enableTextures, bool loadMaterials, bool enableMorphTargets, ResourcePriority priority) {
-        std::string            key = makeModelKey(path, enableTextures, loadMaterials, enableMorphTargets);
-        std::scoped_lock const lock(modelMutex_);
-        auto                   it = modelCache_.find(key);
-        if (it != modelCache_.end()) {
-            if (auto cachedModel = it->second.lock()) {
-                updateModelAccess(key, cachedModel->getMemorySize(), priority);
-                return cachedModel;
-            }
-            modelCache_.erase(it);
-            modelAccessOrder_.erase(std::remove_if(modelAccessOrder_.begin(), modelAccessOrder_.end(), [&key](const ResourceInfo& info) { return info.key == key; }), modelAccessOrder_.end());
+        std::string const key = makeModelKey(path, enableTextures, loadMaterials, enableMorphTargets);
+        if (auto cached = modelCache_.find(key, priority)) {
+            return cached;
         }
         auto toLower = [](std::string s) {
             std::transform(s.begin(), s.end(), s.begin(), ::tolower);
@@ -103,16 +100,11 @@ namespace engine {
             ext = toLower(path.substr(pos + 1));
         }
         std::shared_ptr<Model> model;
-        try {
-            if (ext == "gltf" || ext == "glb") {
-                model = std::shared_ptr<Model>(Model::createModelFromGLTF(device_, path, false, true, true));
-            } else {
-                model = std::shared_ptr<Model>(Model::createModelFromFile(device_, path, false, true, true));
-            }
-        } catch (const std::exception& e) {
-            throw;
+        if (ext == "gltf" || ext == "glb") {
+            model = std::shared_ptr<Model>(Model::createModelFromGLTF(device_, path, false, true, true));
+        } else {
+            model = std::shared_ptr<Model>(Model::createModelFromFile(device_, path, false, true, true));
         }
-        size_t const memSize = model->getMemorySize();
         if (enableTextures || loadMaterials) {
             try {
                 for (auto& mat : model->getMaterials()) {
@@ -151,262 +143,86 @@ namespace engine {
                 std::cerr << "ResourceManager: failed loading material textures for " << path << ": " << e.what() << '\n';
             }
         }
-        if (memoryBudget_ > 0) {
-            cachedModelMemory_ += memSize;
-            while (cachedModelMemory_ > memoryBudget_ && !modelCache_.empty()) {
-                evictLRUModels();
-            }
-        }
-        modelCache_[key] = model;
-        updateModelAccess(key, memSize, priority);
-        uint32_t const meshId = meshManager_->registerModel(model.get());
-        model->setMeshId(meshId);
+        auto stored = modelCache_.insert(key, model, memoryBudget_, priority);
+        uint32_t const meshId = meshManager_->registerModel(stored.get());
+        stored->setMeshId(meshId);
         // Build BLAS for raytracing if available
         if (accelBuilder_ != nullptr) {
-            accelBuilder_->buildBlas(*model);
+            accelBuilder_->buildBlas(*stored);
         }
-        return model;
+        return stored;
     }
     std::shared_ptr<Texture> ResourceManager::loadTextureFromMemory(const unsigned char* data, size_t dataSize, const std::string& debugName, bool srgb, ResourcePriority priority) {
-        std::string const      contentHash = computeContentHash(data, dataSize);
-        std::string            cacheKey;
-        std::scoped_lock const lock(textureMutex_);
-        auto                   hashIt = contentHashToKey_.find(contentHash);
-        if (hashIt != contentHashToKey_.end()) {
-            cacheKey = hashIt->second;
-            auto it  = textureCache_.find(cacheKey);
-            if (it != textureCache_.end()) {
-                if (auto cachedTexture = it->second.lock()) {
-                    updateTextureAccess(cacheKey, cachedTexture->getMemorySize(), priority);
-                    return cachedTexture;
+        std::string const contentHash = computeContentHash(data, dataSize);
+        std::string       cacheKey;
+        // Check via content-hash map first
+        {
+            auto hashIt = contentHashToKey_.find(contentHash);
+            if (hashIt != contentHashToKey_.end()) {
+                cacheKey = hashIt->second;
+                if (auto cached = textureCache_.find(cacheKey, priority)) {
+                    return cached;
                 }
+                // expired entry in the hash map — will be rebuilt below
             }
         }
         cacheKey = "embedded:" + contentHash + "|" + debugName + (srgb ? "|srgb" : "|linear");
-        auto it  = textureCache_.find(cacheKey);
-        if (it != textureCache_.end()) {
-            if (auto cachedTexture = it->second.lock()) {
-                updateTextureAccess(cacheKey, cachedTexture->getMemorySize(), priority);
-                return cachedTexture;
-            }
+        // Check direct key (e.g. if hash-to-key mapping was lost but texture still alive)
+        if (auto cached = textureCache_.find(cacheKey, priority)) {
+            contentHashToKey_[contentHash] = cacheKey; // repair the hash map
+            return cached;
         }
         std::string const tempPath = "/tmp/embedded_texture_" + contentHash + ".dat";
         auto              texture  = std::make_shared<Texture>(device_, tempPath, srgb);
-        size_t const      memSize  = texture->getMemorySize();
-        if (memoryBudget_ > 0) {
-            cachedTextureMemory_ += memSize;
-            while (cachedTextureMemory_ > memoryBudget_ && !textureCache_.empty()) {
-                evictLRUTextures();
-            }
-        }
-        textureCache_[cacheKey]        = texture;
+        auto              stored   = textureCache_.insert(cacheKey, texture, memoryBudget_, priority);
         contentHashToKey_[contentHash] = cacheKey;
-        updateTextureAccess(cacheKey, memSize, priority);
-        uint32_t const globalIndex = textureManager_->addTexture(texture);
-        texture->setGlobalIndex(globalIndex);
-        return texture;
+        uint32_t const globalIndex = textureManager_->addTexture(stored);
+        stored->setGlobalIndex(globalIndex);
+        return stored;
     }
     size_t ResourceManager::garbageCollect() {
-        size_t removedCount = 0;
-        {
-            std::scoped_lock const lock(textureMutex_);
-            cachedTextureMemory_ = 0;
-            std::unordered_set<std::string> removedKeys;
-            for (auto it = textureCache_.begin(); it != textureCache_.end();) {
-                const std::string& key = it->first;
-                if (auto texture = it->second.lock()) {
-                    cachedTextureMemory_ += texture->getMemorySize();
-                    ++it;
-                    continue;
-                }
-                removedKeys.insert(key);
-                it = textureCache_.erase(it);
-                ++removedCount;
-            }
-            if (!removedKeys.empty()) {
-                auto const removed = std::ranges::remove_if(textureAccessOrder_, [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); });
-                textureAccessOrder_.erase(removed.begin(), removed.end());
-                for (auto it = contentHashToKey_.begin(); it != contentHashToKey_.end();) {
-                    if (removedKeys.contains(it->second)) {
-                        it = contentHashToKey_.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-            }
-        }
-        {
-            std::scoped_lock const lock(modelMutex_);
-            cachedModelMemory_ = 0;
-            std::unordered_set<std::string> removedKeys;
-            for (auto it = modelCache_.begin(); it != modelCache_.end();) {
-                const std::string& key = it->first;
-                if (auto model = it->second.lock()) {
-                    cachedModelMemory_ += model->getMemorySize();
-                    ++it;
-                    continue;
-                }
-                removedKeys.insert(key);
-                it = modelCache_.erase(it);
-                ++removedCount;
-            }
-            if (!removedKeys.empty()) {
-                auto const removed = std::ranges::remove_if(modelAccessOrder_, [&removedKeys](const ResourceInfo& info) { return removedKeys.contains(info.key); });
-                modelAccessOrder_.erase(removed.begin(), removed.end());
-            }
-        }
-        return removedCount;
+        size_t removed = textureCache_.garbageCollect();
+        removed += modelCache_.garbageCollect();
+        return removed;
     }
     size_t ResourceManager::getMemoryUsage() const {
-        size_t totalMemory = 0;
-        {
-            std::scoped_lock const lock(textureMutex_);
-            for (const auto& [key, weakTexture] : textureCache_) {
-                if (auto texture = weakTexture.lock()) {
-                    totalMemory += texture->getMemorySize();
-                }
-            }
-        }
-        {
-            std::scoped_lock const lock(modelMutex_);
-            for (const auto& [key, weakModel] : modelCache_) {
-                if (auto model = weakModel.lock()) {
-                    totalMemory += model->getMemorySize();
-                }
-            }
-        }
-        return totalMemory;
+        return textureCache_.memoryUsage() + modelCache_.memoryUsage();
     }
     size_t ResourceManager::getCachedTextureCount() const {
-        std::scoped_lock const lock(textureMutex_);
-        size_t                 count = 0;
-        for (const auto& [key, weakTexture] : textureCache_) {
-            if (!weakTexture.expired()) {
-                ++count;
-            }
-        }
-        return count;
+        return textureCache_.cachedCount();
     }
     size_t ResourceManager::getCachedModelCount() const {
-        std::scoped_lock const lock(modelMutex_);
-        size_t                 count = 0;
-        for (const auto& [key, weakModel] : modelCache_) {
-            if (!weakModel.expired()) {
-                ++count;
-            }
-        }
-        return count;
+        return modelCache_.cachedCount();
     }
     void ResourceManager::clearAll() {
-        {
-            std::scoped_lock const lock(textureMutex_);
-            textureCache_.clear();
-            textureAccessOrder_.clear();
-            cachedTextureMemory_ = 0;
-        }
-        {
-            std::scoped_lock const lock(modelMutex_);
-            modelCache_.clear();
-            modelAccessOrder_.clear();
-            cachedModelMemory_ = 0;
-        }
+        textureCache_.clear();
+        modelCache_.clear();
+        contentHashToKey_.clear();
     }
     bool ResourceManager::isTextureCached(const std::string& path) const {
-        std::scoped_lock const lock(textureMutex_);
-        std::string const      srgbKey      = makeTextureKey(path, true);
-        std::string const      linearKey    = makeTextureKey(path, false);
-        auto                   srgbIt       = textureCache_.find(srgbKey);
-        auto                   linearIt     = textureCache_.find(linearKey);
-        bool const             srgbCached   = (srgbIt != textureCache_.end() && !srgbIt->second.expired());
-        bool const             linearCached = (linearIt != textureCache_.end() && !linearIt->second.expired());
-        return srgbCached || linearCached;
+        std::string const srgbKey   = makeTextureKey(path, true);
+        std::string const linearKey = makeTextureKey(path, false);
+        return textureCache_.anyCached([&](const std::string& k) { return k == srgbKey || k == linearKey; });
     }
     bool ResourceManager::isModelCached(const std::string& path) const {
-        std::scoped_lock const lock(modelMutex_);
-        return std::ranges::any_of(modelCache_, [&path](const auto& pair) {
-            const auto& [key, weakModel] = pair;
-            return key.starts_with(path) && !weakModel.expired();
-        });
+        // Check all four flag combinations since callers don't know the flags
+        for (bool tex : {false, true}) {
+            for (bool mat : {false, true}) {
+                for (bool morph : {false, true}) {
+                    std::string const key = makeModelKey(path, tex, mat, morph);
+                    if (modelCache_.anyCached([&](const std::string& k) { return k == key; }))
+                        return true;
+                }
+            }
+        }
+        return false;
     }
     void ResourceManager::setMemoryBudget(size_t budgetBytes) {
         memoryBudget_ = budgetBytes;
         if (budgetBytes > 0) {
-            {
-                std::scoped_lock const lock(textureMutex_);
-                while (cachedTextureMemory_ > memoryBudget_ && !textureCache_.empty()) {
-                    evictLRUTextures();
-                }
-            }
-            {
-                std::scoped_lock const lock(modelMutex_);
-                while (cachedModelMemory_ > memoryBudget_ && !modelCache_.empty()) {
-                    evictLRUModels();
-                }
-            }
+            textureCache_.applyBudget(budgetBytes);
+            modelCache_.applyBudget(budgetBytes);
         }
-    }
-    void ResourceManager::updateTextureAccess(const std::string& key, size_t memorySize, ResourcePriority priority) {
-        auto const removed = std::ranges::remove_if(textureAccessOrder_, [&key](const ResourceInfo& info) { return info.key == key; });
-        textureAccessOrder_.erase(removed.begin(), removed.end());
-        textureAccessOrder_.push_back({key, memorySize, getCurrentTime(), priority});
-    }
-    void ResourceManager::updateModelAccess(const std::string& key, size_t memorySize, ResourcePriority priority) {
-        auto const removed = std::ranges::remove_if(modelAccessOrder_, [&key](const ResourceInfo& info) { return info.key == key; });
-        modelAccessOrder_.erase(removed.begin(), removed.end());
-        modelAccessOrder_.push_back({key, memorySize, getCurrentTime(), priority});
-    }
-    void ResourceManager::evictLRUTextures() {
-        if (textureAccessOrder_.empty()) {
-            return;
-        }
-        std::ranges::sort(textureAccessOrder_, [](const ResourceInfo& a, const ResourceInfo& b) {
-            if (a.priority != b.priority) {
-                return a.priority < b.priority;
-            }
-            return a.lastAccessTime < b.lastAccessTime;
-        });
-        size_t evictIndex = 0;
-        while (evictIndex < textureAccessOrder_.size() && textureAccessOrder_[evictIndex].priority == ResourcePriority::CRITICAL) {
-            ++evictIndex;
-        }
-        if (evictIndex >= textureAccessOrder_.size()) {
-            return;
-        }
-        const auto& toEvict = textureAccessOrder_[evictIndex];
-        auto        it      = textureCache_.find(toEvict.key);
-        if (it != textureCache_.end()) {
-            textureCache_.erase(it);
-            cachedTextureMemory_ -= toEvict.memorySize;
-        }
-        textureAccessOrder_.erase(std::next(textureAccessOrder_.begin(), static_cast<std::vector<ResourceInfo>::difference_type>(evictIndex)));
-    }
-    void ResourceManager::evictLRUModels() {
-        if (modelAccessOrder_.empty()) {
-            return;
-        }
-        std::ranges::sort(modelAccessOrder_, [](const ResourceInfo& a, const ResourceInfo& b) {
-            if (a.priority != b.priority) {
-                return a.priority < b.priority;
-            }
-            return a.lastAccessTime < b.lastAccessTime;
-        });
-        size_t evictIndex = 0;
-        while (evictIndex < modelAccessOrder_.size() && modelAccessOrder_[evictIndex].priority == ResourcePriority::CRITICAL) {
-            ++evictIndex;
-        }
-        if (evictIndex >= modelAccessOrder_.size()) {
-            return;
-        }
-        const auto& toEvict = modelAccessOrder_[evictIndex];
-        auto        it      = modelCache_.find(toEvict.key);
-        if (it != modelCache_.end()) {
-            modelCache_.erase(it);
-            cachedModelMemory_ -= toEvict.memorySize;
-        }
-        modelAccessOrder_.erase(modelAccessOrder_.begin() + static_cast<std::vector<ResourceInfo>::difference_type>(evictIndex));
-    }
-    uint64_t ResourceManager::getCurrentTime() {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     }
     std::string ResourceManager::computeContentHash(const unsigned char* data, size_t dataSize) {
         uint64_t const     hash = hashBytes(data, dataSize);
@@ -456,17 +272,8 @@ namespace engine {
     }
     std::future<std::shared_ptr<Texture>> ResourceManager::loadTextureAsync(const std::string& path, bool srgb, ResourcePriority priority) {
         std::string const key = makeTextureKey(path, srgb);
-        {
-            std::scoped_lock const lock(textureMutex_);
-            auto                   it = textureCache_.find(key);
-            if (it != textureCache_.end()) {
-                if (auto existingTexture = it->second.lock()) {
-                    updateTextureAccess(key, existingTexture->getMemorySize(), priority);
-                    std::promise<std::shared_ptr<Texture>> promise;
-                    promise.set_value(existingTexture);
-                    return promise.get_future();
-                }
-            }
+        if (auto cached = textureCache_.find(key, priority)) {
+            return makeReadyFuture<std::shared_ptr<Texture>>(cached);
         }
         auto                                  promise = std::make_shared<std::promise<std::shared_ptr<Texture>>>();
         std::future<std::shared_ptr<Texture>> future  = promise->get_future();
@@ -486,17 +293,8 @@ namespace engine {
     }
     std::future<std::shared_ptr<Model>> ResourceManager::loadModelAsync(const std::string& path, bool enableTextures, bool loadMaterials, bool enableMorphTargets, ResourcePriority priority) {
         std::string const key = makeModelKey(path, enableTextures, loadMaterials, enableMorphTargets);
-        {
-            std::scoped_lock const lock(modelMutex_);
-            auto                   it = modelCache_.find(key);
-            if (it != modelCache_.end()) {
-                if (auto existingModel = it->second.lock()) {
-                    updateModelAccess(key, existingModel->getMemorySize(), priority);
-                    std::promise<std::shared_ptr<Model>> promise;
-                    promise.set_value(existingModel);
-                    return promise.get_future();
-                }
-            }
+        if (auto cached = modelCache_.find(key, priority)) {
+            return makeReadyFuture<std::shared_ptr<Model>>(cached);
         }
         auto                                promise = std::make_shared<std::promise<std::shared_ptr<Model>>>();
         std::future<std::shared_ptr<Model>> future  = promise->get_future();

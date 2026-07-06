@@ -32,6 +32,9 @@ namespace engine {
         createGlobalSetLayout();
         createUBOBuffers();
         createLightBuffers(64, 16, 64);
+        if (rayTracingEnabled_) {
+            createInstanceOpacityBuffers();
+        }
         createGlobalDescriptorSets();
         for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
             updateLightDescriptorSets(i);
@@ -44,6 +47,7 @@ namespace engine {
                         .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4));
         if (rayTracingEnabled_) {
             pool.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
+            pool.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
         }
         globalPool_ = pool.build();
     }
@@ -53,12 +57,25 @@ namespace engine {
                            .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
         if (rayTracingEnabled_) {
             builder.addBinding(2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT);
+            builder.addBinding(7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
         }
         globalSetLayout_ = builder.addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .build();
+    }
+    void RenderContext::createInstanceOpacityBuffers() {
+        instanceOpacityBuffers_.resize(SwapChain::maxFramesInFlight());
+        for (size_t i = 0; i < SwapChain::maxFramesInFlight(); i++) {
+            instanceOpacityBuffers_[i] = std::make_unique<Buffer>(device_,
+                sizeof(float),
+                1024,  // Max 1024 instances
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                device_.getProperties().limits.minStorageBufferOffsetAlignment);
+            instanceOpacityBuffers_[i]->map();
+        }
     }
     void RenderContext::createUBOBuffers() {
         for (size_t i = 0; i < uboBuffers_.size(); ++i) {
@@ -133,6 +150,10 @@ namespace engine {
                 VkAccelerationStructureKHR tlasHandle =
                     (accelBuilder_ != nullptr) ? accelBuilder_->getTlas() : VK_NULL_HANDLE;
                 writer.writeAccelerationStructure(2, tlasHandle);
+                if (i < instanceOpacityBuffers_.size() && instanceOpacityBuffers_[i]) {
+                    auto opacityInfo = instanceOpacityBuffers_[i]->descriptorInfo();
+                    writer.writeBuffer(7, &opacityInfo);
+                }
             }
 
             writer.build(globalDescriptorSets_[i]);
@@ -299,11 +320,21 @@ namespace engine {
     }
     VkAccelerationStructureKHR RenderContext::rebuildTlas(
         const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
+        const std::vector<float>& opacityValues,
         VkCommandBuffer cmd) {
         if (!accelBuilder_)
             return VK_NULL_HANDLE;
 
         VkAccelerationStructureKHR tlas = accelBuilder_->rebuildTlas(instances, cmd);
+
+        // Upload per-instance opacity data
+        if (!instanceOpacityBuffers_.empty() && instanceOpacityBuffers_[0]) {
+            size_t count = std::min(opacityValues.size(), size_t{1024});
+            for (size_t fi = 0; fi < instanceOpacityBuffers_.size(); ++fi) {
+                instanceOpacityBuffers_[fi]->writeToBuffer(opacityValues.data(), count * sizeof(float));
+                instanceOpacityBuffers_[fi]->flush();
+            }
+        }
 
         // Update all descriptor sets with the new TLAS handle
         for (int i = 0; i < static_cast<int>(globalDescriptorSets_.size()); ++i) {

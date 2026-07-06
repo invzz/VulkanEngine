@@ -70,6 +70,7 @@ namespace engine {
         std::unique_ptr<AccelBuilder>   accelBuilder;
         using BlasInstance = std::pair<glm::mat4, VkAccelerationStructureKHR>;
         std::vector<BlasInstance> tlasInstances_;
+        std::vector<float>        instanceOpacityValues_;
     };
 }  // namespace engine
 #endif

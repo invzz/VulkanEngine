@@ -15,6 +15,7 @@
 
 #include "Engine/Graphics/AccelBuilder.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
+#include "ModelLib/Resources/ResourceLRUCache.hpp"
 namespace engine {
     class Texture;
     class Model;
@@ -50,22 +51,12 @@ namespace engine {
         float                           progress;
     };
     /**
- * @brief Resource priority for eviction policy
- * Higher priority resources are kept in cache longer
- */
-    enum class ResourcePriority : std::uint8_t {
-        LOW      = 0,
-        MEDIUM   = 1,
-        HIGH     = 2,
-        CRITICAL = 3
-    };
-    /**
  * @brief Centralized resource management with automatic deduplication and
  * lifetime tracking
  *
  * Features:
  * - Automatic resource deduplication (same path loaded once)
- * - Memory tracking and budgeting
+ * - Memory tracking and budgeting via ResourceLRUCache
  * - Automatic cleanup of unused resources via weak_ptr
  * - Thread-safe resource access
  * - Prepared for future async loading support
@@ -250,33 +241,16 @@ namespace engine {
         }
 
        private:
-        Device&                                                 device_;
-        std::unique_ptr<TextureManager>                         textureManager_;
-        std::unique_ptr<MeshManager>                            meshManager_;
-        AccelBuilder*                                           accelBuilder_ = nullptr;
-        mutable std::mutex                                      textureMutex_;
-        std::unordered_map<std::string, std::weak_ptr<Texture>> textureCache_;
-        mutable std::mutex                                      modelMutex_;
-        std::unordered_map<std::string, std::weak_ptr<Model>>   modelCache_;
-        struct ResourceInfo {
-            std::string      key;
-            size_t           memorySize;
-            uint64_t         lastAccessTime;
-            ResourcePriority priority;
-        };
-        std::vector<ResourceInfo>                    textureAccessOrder_;
-        std::vector<ResourceInfo>                    modelAccessOrder_;
+        Device&                                    device_;
+        std::unique_ptr<TextureManager>            textureManager_;
+        std::unique_ptr<MeshManager>               meshManager_;
+        AccelBuilder*                              accelBuilder_ = nullptr;
+        ResourceLRUCache<Texture>                  textureCache_;
+        ResourceLRUCache<Model>                    modelCache_;
         std::unordered_map<std::string, std::string> contentHashToKey_;
-        size_t                                       memoryBudget_        = 0;
-        mutable size_t                               cachedTextureMemory_ = 0;
-        mutable size_t                               cachedModelMemory_   = 0;
+        size_t                                       memoryBudget_ = 0;
         static std::string                           makeTextureKey(const std::string& path, bool srgb);
         static std::string                           makeModelKey(const std::string& path, bool enableTextures, bool loadMaterials, bool enableMorphTargets);
-        void                                         updateTextureAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
-        void                                         updateModelAccess(const std::string& key, size_t memorySize, ResourcePriority priority);
-        void                                         evictLRUTextures();
-        void                                         evictLRUModels();
-        static uint64_t                              getCurrentTime();
         static std::string                           computeContentHash(const unsigned char* data, size_t dataSize);
         std::vector<std::thread>                     workerThreads_;
         std::queue<std::function<void()>>            taskQueue_;

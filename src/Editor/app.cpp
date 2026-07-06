@@ -320,6 +320,7 @@ namespace engine {
             // Rebuild TLAS before the render pipeline executes (deferred pass reads it)
             if (accelBuilder) {
                 tlasInstances_.clear();
+                instanceOpacityValues_.clear();
                 auto view = engineState.scene().getRegistry().view<ModelComponent, TransformComponent>();
                 for (auto entity : view) {
                     auto [mc, tc] = view.get<ModelComponent, TransformComponent>(entity);
@@ -327,13 +328,31 @@ namespace engine {
                         VkAccelerationStructureKHR blas = accelBuilder->getBlas(*mc.model);
                         if (blas != VK_NULL_HANDLE) {
                             tlasInstances_.emplace_back(tc.modelTransform(), blas);
+                            // Compute effective shadow opacity from the model's materials
+                            float opacity = 1.0f;
+                            const auto& materials = mc.model->getMaterials();
+                            for (const auto& mat : materials) {
+                                float matOpacity = 1.0f;
+                                switch (mat.pbrMaterial.alphaMode) {
+                                    case AlphaMode::Opaque:
+                                    case AlphaMode::Mask:
+                                        matOpacity = 1.0f;
+                                        break;
+                                    case AlphaMode::Blend:
+                                        matOpacity = mat.pbrMaterial.albedo.a;
+                                        break;
+                                }
+                                // Use the minimum opacity (most transparent material dominates)
+                                opacity = std::min(opacity, matOpacity);
+                            }
+                            instanceOpacityValues_.push_back(opacity);
                         }
                     }
                 }
                 // Skip TLAS rebuild when there are no instances — avoids 0-size buffer/VkBuffer
                 // creation that violates Vulkan spec and crashes on RADV and other drivers.
                 if (!tlasInstances_.empty()) {
-                    renderContext->rebuildTlas(tlasInstances_, commandBuffer);
+                    renderContext->rebuildTlas(tlasInstances_, instanceOpacityValues_, commandBuffer);
                 }
             }
             // Update the mesh buffer descriptor every frame so newly loaded models

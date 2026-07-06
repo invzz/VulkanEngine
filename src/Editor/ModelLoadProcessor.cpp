@@ -40,8 +40,8 @@ namespace engine {
         bool shouldAutoCreateStaticCollider(const std::string& modelPath, const std::string& name) {
             std::string loweredPath = modelPath;
             std::string loweredName = name;
-            std::transform(loweredPath.begin(), loweredPath.end(), loweredPath.begin(), [](unsigned char c) { return std::tolower(c); });
-            std::transform(loweredName.begin(), loweredName.end(), loweredName.begin(), [](unsigned char c) { return std::tolower(c); });
+            std::ranges::transform(loweredPath.begin(), loweredPath.end(), loweredPath.begin(), [](unsigned char c) { return std::tolower(c); });
+            std::ranges::transform(loweredName.begin(), loweredName.end(), loweredName.begin(), [](unsigned char c) { return std::tolower(c); });
             const std::string                     combined = loweredPath + " " + loweredName;
             static const std::vector<std::string> tokens   = {
                 "col_", "ucx_", "collision", "collider", "wall", "floor", "ground", "world", "level", "static"};

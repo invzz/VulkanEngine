@@ -431,7 +431,7 @@ namespace engine::ui {
                     }
                 }
             }
-            const std::string indexPath = std::string(MODEL_PATH) + "/glTF/model-index.json";
+            const std::string indexPath = std::string(MODEL_PATH) + "glTF/model-index.json";
             try {
                 std::ifstream f(indexPath);
                 if (!f.is_open()) {
@@ -448,7 +448,11 @@ namespace engine::ui {
                         std::string       relativePath;
                         if (item.contains("variants") && item["variants"].contains("glTF")) {
                             const std::string variantFile = item["variants"]["glTF"].get<std::string>();
-                            relativePath.append("glTF/").append(name).append("/glTF/").append(variantFile);
+                            relativePath
+                            .append("glTF/")
+                            .append(name)
+                            .append("/glTF/")
+                            .append(variantFile);
                         }
                         if (filterModel[0] != '\0') {
                             std::string lowName   = name;
@@ -463,14 +467,13 @@ namespace engine::ui {
                             std::string fullPath;
                             if (relativePath.empty()) {
                                 fullPath.append(MODEL_PATH);
-                                fullPath.append("/glTF/");
+                                fullPath.append("glTF/");
                                 fullPath.append(name);
                                 fullPath.append("/glTF/");
                                 fullPath.append(name);
                                 fullPath.append(".gltf");
                             } else {
                                 fullPath.append(MODEL_PATH);
-                                fullPath.append("/");
                                 fullPath.append(relativePath);
                             }
                             ModelInsertionOptions opts;

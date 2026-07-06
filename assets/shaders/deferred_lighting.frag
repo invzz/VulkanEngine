@@ -53,9 +53,51 @@ layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 #if RAY_TRACING_ENABLED
 /* Ray tracing TLAS (global set, binding 2) */
 layout(set = 0, binding = 2) uniform accelerationStructureEXT tlas;
+/* Per-instance opacity for transparent shadow accumulation (binding 7) */
+layout(set = 0, binding = 7, std430) readonly buffer InstanceOpacityBuffer {
+    float instanceOpacity[];
+};
 #endif
 
 #include "includes/shadows.glsl"
+
+#if RAY_TRACING_ENABLED
+/*==============================================================================
+  Ray traced shadow with transparency accumulation
+  Uses the per-instance opacity buffer to let rays pass through transparent
+  geometry. Directly accumulates transmittance inside the ray query loop
+  since geometry is non-opaque (candidate intersections are NOT auto-confirmed).
+==============================================================================*/
+float computeShadowTransmittance(vec3 origin, vec3 dir, float maxDist) {
+    float transmittance = 1.0;
+
+    rayQueryEXT q;
+    rayQueryInitializeEXT(q, tlas, gl_RayFlagsNoneEXT, 0xFF, origin, 0.0, normalize(dir), maxDist);
+
+    while (rayQueryProceedEXT(q)) {
+        if (rayQueryGetIntersectionTypeEXT(q, false) == gl_RayQueryCandidateIntersectionTriangleEXT) {
+            int instId = rayQueryGetIntersectionInstanceCustomIndexEXT(q, false);
+            float hitOpacity = instanceOpacity[min(instId, 1023)];
+
+            if (hitOpacity >= 0.999) {
+                // Fully opaque — block all remaining light
+                rayQueryConfirmIntersectionEXT(q);
+                return 0.0;
+            } else {
+                // Transparent — attenuate and let the ray pass through
+                transmittance *= (1.0 - hitOpacity);
+                if (transmittance <= 0.01) {
+                    // Negligible light left, bail out early
+                    return 0.0;
+                }
+            }
+        }
+    }
+
+    // No opaque intersection — shadow factor is the accumulated transmittance
+    return transmittance;
+}
+#endif
 
 /*==============================================================================
   Structs
@@ -314,12 +356,8 @@ vec3 handleDirectionalLights(in Surface s) {
         float shadow = 1.0;
 #if RAY_TRACING_ENABLED
         if (ubo.rtDirectional != 0) {
-            vec3  origin = s.worldPos + s.N * 0.002;
-            rayQueryEXT q;
-            rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, 1000.0);
-            rayQueryProceedEXT(q);
-            bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
-            shadow = hit ? 0.0 : 1.0;
+            vec3 origin = s.worldPos + s.N * 0.002;
+            shadow = computeShadowTransmittance(origin, L, 1000.0);
         } else
 #endif
         {
@@ -354,11 +392,7 @@ vec3 handlePointLights(in Surface s) {
         if (ubo.rtPoint != 0) {
             float dist = sqrt(dist2);
             vec3  origin = s.worldPos + s.N * 0.002;
-            rayQueryEXT q;
-            rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, dist);
-            rayQueryProceedEXT(q);
-            bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
-            shadow = hit ? 0.0 : 1.0;
+            shadow = computeShadowTransmittance(origin, L, dist);
         } else
 #endif
         {
@@ -406,11 +440,7 @@ vec3 handleSpotLights(in Surface s) {
         if (ubo.rtSpot != 0) {
             float dist = sqrt(dist2);
             vec3  origin = s.worldPos + s.N * 0.002;
-            rayQueryEXT q;
-            rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF, origin, 0.0, L, dist);
-            rayQueryProceedEXT(q);
-            bool hit = rayQueryGetIntersectionTypeEXT(q, true) != gl_RayQueryCommittedIntersectionNoneEXT;
-            shadow = hit ? 0.0 : 1.0;
+            shadow = computeShadowTransmittance(origin, L, dist);
         } else
 #endif
         {

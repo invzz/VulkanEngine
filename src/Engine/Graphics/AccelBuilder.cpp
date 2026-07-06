@@ -140,7 +140,7 @@ namespace engine {
         VkAccelerationStructureGeometryKHR geometry{};
         geometry.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
         geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-        geometry.flags        = VK_GEOMETRY_OPAQUE_BIT_KHR;
+        geometry.flags        = 0;
         geometry.geometry.triangles.sType =
             VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
         geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
@@ -288,7 +288,7 @@ namespace engine {
         VkAccelerationStructureGeometryKHR geometry{};
         geometry.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
         geometry.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-        geometry.flags        = VK_GEOMETRY_OPAQUE_BIT_KHR;
+        geometry.flags        = 0;
         geometry.geometry.instances.sType =
             VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
         geometry.geometry.instances.arrayOfPointers = VK_FALSE;

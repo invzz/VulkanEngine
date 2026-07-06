@@ -193,8 +193,8 @@ namespace engine {
             std::vector<Animation>                    animations;
             std::vector<Node>                         nodes;
             std::unordered_map<int, std::vector<int>> nodePrimitiveIndices;
-            std::unordered_map<std::string, uint32_t> primitiveVertexOffsets;
-            std::unordered_map<std::string, uint32_t> primitiveVertexCounts;
+            std::unordered_map<uint64_t, uint32_t> primitiveVertexOffsets;
+            std::unordered_map<uint64_t, uint32_t> primitiveVertexCounts;
             std::vector<MorphTargetSet>               morphTargetSets;
             std::vector<LightInfo>                    lights;
             std::string                               filePath;

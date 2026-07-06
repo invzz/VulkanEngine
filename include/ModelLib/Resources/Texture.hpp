@@ -21,6 +21,7 @@ namespace engine {
         static std::shared_ptr<Texture>
                                         createFromEXR_CPUOnly(Device& device, const std::string& exrPath, const std::string& outVtexPath, bool loadIntoGpu = false, VkFormat targetFormat = VK_FORMAT_R32G32B32A32_SFLOAT);
         static std::shared_ptr<Texture> createFromVTEX(Device& device, const std::string& filepath);
+        static std::shared_ptr<Texture> createFromDecoded(Device& device, const unsigned char* pixels, int width, int height, VkFormat format);
 
        public:
         [[nodiscard]] VkImageView getImageView() const {

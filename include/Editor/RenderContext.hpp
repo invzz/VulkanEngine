@@ -34,6 +34,7 @@ namespace engine {
 
         VkAccelerationStructureKHR rebuildTlas(
             const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
+            const std::vector<float>& opacityValues,
             VkCommandBuffer cmd);
 
         /// Update the mesh buffer descriptor for a specific frame index so newly
@@ -52,12 +53,14 @@ namespace engine {
         std::vector<std::unique_ptr<Buffer>> pointLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> directionalLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> spotLightBuffers_;
+        std::vector<std::unique_ptr<Buffer>> instanceOpacityBuffers_;
         size_t                               pointLightCapacity_       = 0;
         size_t                               directionalLightCapacity_ = 0;
         size_t                               spotLightCapacity_        = 0;
         std::vector<VkDescriptorSet>         globalDescriptorSets_;
         void                                 createDescriptorPool();
         void                                 createGlobalSetLayout();
+        void                                 createInstanceOpacityBuffers();
         void                                 createUBOBuffers();
         void                                 createLightBuffers(size_t pointCapacity, size_t directionalCapacity, size_t spotCapacity);
         void                                 createGlobalDescriptorSets();
