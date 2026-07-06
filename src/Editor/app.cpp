@@ -330,20 +330,12 @@ namespace engine {
                 // creation that violates Vulkan spec and crashes on RADV and other drivers.
                 if (!tlasInstances_.empty()) {
                     renderContext->rebuildTlas(tlasInstances_, commandBuffer);
-                } else {
-                    // Even when no TLAS instances exist, update the mesh buffer descriptor so
-                    // new model entries are visible to the shader next frame.
-                    for (int i = 0; i < SwapChain::maxFramesInFlight(); ++i) {
-                        renderContext->updateMeshDescriptorSet(i);
-                    }
-                }
-            } else {
-                // Raytracing not available — still update mesh buffer descriptor per frame
-                // so newly loaded models are visible via the global SSBO.
-                for (int i = 0; i < SwapChain::maxFramesInFlight(); ++i) {
-                    renderContext->updateMeshDescriptorSet(i);
                 }
             }
+            // Update the mesh buffer descriptor every frame so newly loaded models
+            // are visible to the shader. Only touch the current frame's descriptor
+            // to avoid modifying descriptors in-flight on the GPU.
+            renderContext->updateMeshDescriptorSet(frameIndex);
             renderPipeline->execute(frameInfo);
 
             if (auto* scenePanel = uiManager->getPanel<ScenePanel>()) {

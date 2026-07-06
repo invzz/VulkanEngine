@@ -305,10 +305,9 @@ namespace engine {
 
         VkAccelerationStructureKHR tlas = accelBuilder_->rebuildTlas(instances, cmd);
 
-        // Update all descriptor sets with the new TLAS handle and current mesh buffer
+        // Update all descriptor sets with the new TLAS handle
         for (int i = 0; i < static_cast<int>(globalDescriptorSets_.size()); ++i) {
             updateTlasDescriptorSets(i);
-            updateMeshDescriptorSet(i);
         }
 
         return tlas;
