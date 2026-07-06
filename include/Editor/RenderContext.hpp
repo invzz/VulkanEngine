@@ -36,6 +36,10 @@ namespace engine {
             const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
             VkCommandBuffer cmd);
 
+        /// Update the mesh buffer descriptor for a specific frame index so newly
+        /// loaded models are visible to the shader. Call once per frame per frame index.
+        void updateMeshDescriptorSet(int frameIndex);
+
        private:
         Device&                              device_;
         MeshManager&                         meshManager_;

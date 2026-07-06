@@ -183,6 +183,19 @@ namespace engine {
         writeAccel.descriptorCount = 1;
         vkUpdateDescriptorSets(device_.device(), 1, &writeAccel, 0, nullptr);
     }
+
+    void RenderContext::updateMeshDescriptorSet(int frameIndex) {
+        VkDescriptorBufferInfo const meshInfo = meshManager_.getDescriptorInfo();
+        VkWriteDescriptorSet write{};
+        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet          = globalDescriptorSets_[frameIndex];
+        write.dstBinding      = 1;
+        write.dstArrayElement = 0;
+        write.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        write.descriptorCount = 1;
+        write.pBufferInfo     = &meshInfo;
+        vkUpdateDescriptorSets(device_.device(), 1, &write, 0, nullptr);
+    }
     void RenderContext::updateUBO(int frameIndex, const GlobalUbo& ubo, const GlobalUboCold& uboCold) {
         uboBuffers_[frameIndex]->writeToBuffer(&ubo);
         uboBuffers_[frameIndex]->flush();
@@ -292,9 +305,10 @@ namespace engine {
 
         VkAccelerationStructureKHR tlas = accelBuilder_->rebuildTlas(instances, cmd);
 
-        // Update all descriptor sets with the new TLAS handle
+        // Update all descriptor sets with the new TLAS handle and current mesh buffer
         for (int i = 0; i < static_cast<int>(globalDescriptorSets_.size()); ++i) {
             updateTlasDescriptorSets(i);
+            updateMeshDescriptorSet(i);
         }
 
         return tlas;

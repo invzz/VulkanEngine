@@ -38,6 +38,13 @@ namespace engine {
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
         stagingBuffer.map();
         stagingBuffer.writeToBuffer(meshInfos.data());
+
+        // Keep the old buffer alive so descriptor sets that still reference it
+        // don't read freed GPU memory on the next frame.
+        if (meshBuffer) {
+            staleBuffers_.push_back(std::move(meshBuffer));
+        }
+
         meshBuffer = std::make_unique<Buffer>(device,
             sizeof(MeshBuffers),
             static_cast<uint32_t>(meshInfos.size()),
