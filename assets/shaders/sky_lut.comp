@@ -5,14 +5,76 @@ layout(local_size_x = 16, local_size_y = 16) in;
 layout(set = 0, binding = 0, rgba16f) writeonly uniform image2D outSkyLUT;
 
 layout(push_constant) uniform SkyLUTPushConstants {
-    vec4 betaRayleighAndG;             // xyz = betaRayleigh, w = g
-    vec4 betaMieAndSunIntensity;       // xyz = betaMie, w = sunIntensity
+    vec4 betaRayleighAndG;             // xyz = betaRayleigh (R,G,B), w = mieG
+    vec4 betaMieAndSunIntensity;       // xyz = betaMie (R,G,B), w = sunIntensity
     vec4 sunDirectionAndGroundRadius;  // xyz = sun direction, w = ground radius
     vec4 atmosphereAndScaleHeights;    // x = atmosphere radius, y = HR, z = HM
 }
 pc;
 
 const float PI = 3.14159265;
+
+// Returns the FAR intersection distance of ray (ro, rd) with a sphere of
+// the given radius, or -1.0 if there is no forward intersection.
+float RaySphereExit(vec3 ro, vec3 rd, float radius) {
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - radius * radius;
+    float disc = b * b - c;
+    if (disc < 0.0) {
+        return -1.0;
+    }
+    disc = sqrt(disc);
+    float t1 = -b - disc;
+    float t2 = -b + disc;
+    if (t2 > 0.0) return t2;
+    if (t1 > 0.0) return t1;
+    return -1.0;
+}
+
+// Chromatic attenuation of direct sunlight travelling from pos to the
+// atmosphere top along sunDir. Returns vec3(0.0) when the sun is occluded
+// by the planet (ray hits the ground before exiting the atmosphere).
+vec3 GetSunAttenuation(vec3 pos, vec3 sunDir) {
+    float groundRadius    = pc.sunDirectionAndGroundRadius.w;
+    float atmosphereRadius = pc.atmosphereAndScaleHeights.x;
+    float HR = max(pc.atmosphereAndScaleHeights.y, 1.0);
+    float HM = max(pc.atmosphereAndScaleHeights.z, 1.0);
+    vec3  betaR = max(pc.betaRayleighAndG.xyz, vec3(0.0));
+    vec3  betaM = max(pc.betaMieAndSunIntensity.xyz, vec3(0.0));
+
+    float tTop    = RaySphereExit(pos, sunDir, atmosphereRadius);
+    float tGround = RaySphereExit(pos, sunDir, groundRadius);
+
+    // Sun is below the local horizon at this point -> no direct light.
+    if (tGround > 0.0 && (tTop < 0.0 || tGround < tTop)) {
+        return vec3(0.0);
+    }
+
+    float tMax = (tTop > 0.0) ? tTop : 1e9;
+    if (tMax < 1e-6) {
+        return vec3(1.0);
+    }
+
+    // More steps when the sun is low: the optical path through the
+    // atmosphere grows rapidly near the horizon.
+    float sunCosZenith = sunDir.y;
+    int steps = sunCosZenith > 0.1  ? 8  :
+                sunCosZenith > -0.1 ? 16 : 32;
+    float stepSize = tMax / float(steps);
+
+    float opticalDepthR = 0.0;
+    float opticalDepthM = 0.0;
+    for (int i = 0; i < steps; ++i) {
+        vec3 p = pos + sunDir * (float(i) + 0.5) * stepSize;
+        float height = length(p) - groundRadius;   // FIX: ground, not top
+        if (height > 0.0) {
+            opticalDepthR += exp(-height / HR) * stepSize;
+            opticalDepthM += exp(-height / HM) * stepSize;
+        }
+    }
+
+    return exp(-(betaR * opticalDepthR + betaM * opticalDepthM));
+}
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
@@ -31,44 +93,62 @@ void main() {
     vec3  viewDir       = vec3(sinViewZenith, cosViewZenith, 0.0);
     vec3  sunDir        = normalize(vec3(sinSunZenith, cosSunZenith, 0.0));
 
-    float r             = pc.sunDirectionAndGroundRadius.w;
-    float opticalDepthR = 0.0;
-    float opticalDepthM = 0.0;
-
-    const int numSteps   = 16;
-    float     stepLength = (pc.atmosphereAndScaleHeights.x - pc.sunDirectionAndGroundRadius.w) / float(numSteps);
-
-    for (int i = 0; i < numSteps; ++i) {
-        float h = max(r - pc.sunDirectionAndGroundRadius.w, 0.0);
-
-        float densityR = exp(-h / max(pc.atmosphereAndScaleHeights.y, 1.0));
-        float densityM = exp(-h / max(pc.atmosphereAndScaleHeights.z, 1.0));
-
-        opticalDepthR += densityR * stepLength;
-        opticalDepthM += densityM * stepLength;
-
-        r += stepLength * cosViewZenith;
-    }
-
-    vec3  betaR        = max(pc.betaRayleighAndG.xyz, vec3(0.0));
-    vec3  betaM        = max(pc.betaMieAndSunIntensity.xyz, vec3(0.0));
+    float groundRadius    = pc.sunDirectionAndGroundRadius.w;
+    float atmosphereRadius = pc.atmosphereAndScaleHeights.x;
+    float HR = max(pc.atmosphereAndScaleHeights.y, 1.0);
+    float HM = max(pc.atmosphereAndScaleHeights.z, 1.0);
+    vec3  betaR = max(pc.betaRayleighAndG.xyz, vec3(0.0));
+    vec3  betaM = max(pc.betaMieAndSunIntensity.xyz, vec3(0.0));
     float sunIntensity = max(pc.betaMieAndSunIntensity.w, 0.0);
 
-    vec3 attenuation = exp(-(betaR * opticalDepthR + betaM * opticalDepthM));
+    // Viewer sits on the ground, zenith is +Y (matches the fragment LUT UV).
+    vec3 viewerPos = vec3(0.0, groundRadius, 0.0);
 
-    float cosTheta      = clamp(dot(viewDir, sunDir), -1.0, 1.0);
-    float phaseRayleigh = (3.0 / (16.0 * PI)) * (1.0 + cosTheta * cosTheta);
+    // March only up to the atmosphere exit along the view ray.
+    float tMax = RaySphereExit(viewerPos, viewDir, atmosphereRadius);
+    if (tMax < 0.0) {
+        tMax = atmosphereRadius - groundRadius;
+    }
 
-    float g              = clamp(pc.betaRayleighAndG.w, -0.99, 0.99);
-    float mieNumerator   = 1.0 - (g * g);
-    float mieDenominator = pow(max(1.0 + (g * g) - (2.0 * g * cosTheta), 1e-4), 1.5);
-    float phaseMie       = (1.0 / (4.0 * PI)) * (mieNumerator / mieDenominator);
+    const int numSteps = 32;
+    float stepLength = tMax / float(numSteps);
 
-    vec3 scatterRayleigh = betaR * opticalDepthR * phaseRayleigh * sunIntensity;
-    vec3 scatterMie      = betaM * opticalDepthM * phaseMie * sunIntensity;
+    vec3  rayleighAccum = vec3(0.0);
+    vec3  mieAccum      = vec3(0.0);
+    vec3  viewAttenuation = vec3(1.0);
 
-    vec3  rayleighRGB = scatterRayleigh * attenuation;
-    float mieEnergy   = dot(scatterMie * attenuation, vec3(0.3333333));
+    for (int i = 0; i < numSteps; ++i) {
+        float s = (float(i) + 0.5) * stepLength;
+        vec3  P = viewerPos + viewDir * s;
+        float h = length(P) - groundRadius;     // FIX: ground reference
+        if (h < 0.0) {
+            continue;                            // numerically below ground
+        }
 
-    imageStore(outSkyLUT, texelCoord, vec4(rayleighRGB, mieEnergy));
+        float densityR = exp(-h / HR);
+        float densityM = exp(-h / HM);
+
+        // Chromatic sun attenuation reaches THIS scattering point.
+        vec3 sunAttenuation = GetSunAttenuation(P, sunDir);
+
+        // Rayleigh: chromatic in-scatter (sun attenuation gives the colour).
+        rayleighAccum += betaR * densityR * stepLength * sunAttenuation * viewAttenuation;
+
+        // Mie: achromatic in-scatter. The scalar sun-reaches-point factor
+        // (luminance of sunAttenuation) is kept here so night/occlusion
+        // correctly darkens the halo; chromaticity is applied once in the
+        // fragment shader via the direct sun colour (golden-hour correct).
+        float sunLuminance = dot(sunAttenuation, vec3(0.2126, 0.7152, 0.0722));
+        mieAccum += betaM * densityM * stepLength * sunLuminance * viewAttenuation;
+
+        // Extinction along the view path for the next step.
+        viewAttenuation *= exp(-(betaR * densityR + betaM * densityM) * stepLength);
+    }
+
+    rayleighAccum *= sunIntensity;
+    mieAccum      *= sunIntensity;
+
+    // Store: RGB = rayleigh in-scatter, A = Mie intensity (luminance scalar).
+    float mieIntensity = dot(mieAccum, vec3(0.2126, 0.7152, 0.0722));
+    imageStore(outSkyLUT, texelCoord, vec4(rayleighAccum, mieIntensity));
 }

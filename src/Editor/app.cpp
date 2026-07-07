@@ -64,6 +64,7 @@ namespace {
 #include "Editor/ui/Panels/InspectorPanel.hpp"
 #include "Editor/ui/Panels/PhysicsPanel.hpp"
 #include "Editor/ui/Panels/ProfilerPanel.hpp"
+#include "Editor/ui/Panels/AtmosphericPanel.hpp"
 #include "Editor/ui/Panels/ScenePanel.hpp"
 #include "Editor/ui/Panels/SettingsPanel.hpp"
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
@@ -303,15 +304,20 @@ namespace engine {
         registry.hidePanel("Settings");
         auto physicsPanel = std::make_unique<PhysicsPanel>(engineState);
         registry.registerPanel("Physics", std::move(physicsPanel), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 300.0f, .minSizeY = 200.0f});
+        auto atmosphericPanel = std::make_unique<AtmosphericPanel>(engineState.skySettings());
+        registry.registerPanel("Atmospheric", std::move(atmosphericPanel), DockConstraints{.preferredZone = DockZone::None, .dockable = false, .floatable = true, .minSizeX = 320.0f, .minSizeY = 300.0f});
+        registry.hidePanel("Atmospheric");
         auto toolbar = std::make_unique<ToolbarPanel>();
         toolbar->setSettingsPanel(registry.getPanel("Settings"));
         toolbar->addToggle("Scene", registry.getPanel("Scene Objects"));
         toolbar->addToggle("Inspector", registry.getPanel("Inspector"));
         toolbar->addToggle("Physics", registry.getPanel("Physics"));
+        toolbar->addToggle("Atmospheric", registry.getPanel("Atmospheric"));
         uiManager->setToolbarPanel(std::move(toolbar));
         uiManager->addToolbarToggle("Scene", registry.getPanel("Scene Objects"));
         uiManager->addToolbarToggle("Inspector", registry.getPanel("Inspector"));
         uiManager->addToolbarToggle("Physics", registry.getPanel("Physics"));
+        uiManager->addToolbarToggle("Atmospheric", registry.getPanel("Atmospheric"));
         auto vp        = std::make_unique<ViewportPanel>();
         viewportPanel_ = vp.get();
         registry.registerPanel("Viewport", std::move(vp), DockConstraints{.preferredZone = DockZone::DockCenter, .minSizeX = 400.0f, .minSizeY = 300.0f});

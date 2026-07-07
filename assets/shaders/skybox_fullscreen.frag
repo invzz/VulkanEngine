@@ -73,25 +73,41 @@ float miePhase(float cosTheta, float g) {
 }
 
 vec3 proceduralSkyFromLUT(vec3 dir, vec3 sunDir) {
+    // `dir` is the Y-flipped sampleDir from main(); to keep the LUT lookup
+    // and the disc angle consistent, flip sunDir into the same frame.
+    float sunElevationWorld = sunDir.y;   // true world elevation for day/night gating
+    sunDir = normalize(vec3(sunDir.x, -sunDir.y, sunDir.z));
+
     float viewAngle = clamp(dir.y, 0.0, 1.0);
     float sunAngle  = clamp(sunDir.y * 0.5 + 0.5, 0.0, 1.0);
     vec2  lutUV     = vec2(sunAngle, viewAngle);
 
     vec4  lutData  = texture(skyLUTSampler, lutUV);
+    // True view->sun angle in the sample frame.
     float cosTheta = clamp(dot(dir, sunDir), -1.0, 1.0);
 
     vec3  rayleighScattering = lutData.rgb;
-    float mieScattering      = lutData.a;
+    float mieInt             = lutData.a;
 
-    vec3 finalRayleigh = rayleighScattering * rayleighPhase(cosTheta);
-    vec3 finalMie      = vec3(mieScattering) * miePhase(cosTheta, 0.76);
+    // The 2D LUT is azimuth-ambiguous (front and back at equal elevation
+    // share a texel), and the symmetric Rayleigh phase would otherwise light
+    // the anti-solar horizon as brightly as the sun. Weight the Rayleigh term
+    // by the true forward angle so the second "sun" disappears; the back
+    // hemisphere fades to 0 while the front stays intact.
+    float forwardWeight = smoothstep(-0.1, 0.25, cosTheta);
+
+    vec3 sunCol = push.sunColor.rgb;
+    float peak  = max(max(sunCol.r, sunCol.g), sunCol.b);
+    vec3 mieColor = (peak > 1e-4) ? (sunCol / peak) : vec3(1.0);
+
+    vec3 finalRayleigh = rayleighScattering * rayleighPhase(cosTheta) * forwardWeight;
+    vec3 finalMie      = vec3(mieInt) * mieColor * miePhase(cosTheta, 0.76);
 
     vec3 sky = finalRayleigh + finalMie;
 
-    float disc   = sunDisc(dir, sunDir, push.sunColor.w > 0.0 ? push.sunColor.w : 0.015);
-    vec3  sunCol = sunColorFromElevation(sunDir.y);
-    sky += disc * sunCol * 2.0;
-    sky += nightStars(dir, sunDir.y);
+    float disc = sunDisc(dir, sunDir, push.sunColor.w > 0.0 ? push.sunColor.w : 0.015);
+    sky += disc * sunCol * 2.0;   // disc keeps full chromatic sun colour
+    sky += nightStars(dir, sunElevationWorld);
 
     sky *= push.skyParams.y > 0.0 ? push.skyParams.y : 1.0;
     return sky;

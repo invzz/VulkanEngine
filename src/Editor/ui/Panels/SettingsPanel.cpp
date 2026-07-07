@@ -62,29 +62,6 @@ namespace engine {
             ui::UI::CheckboxRow("Show Grid", "Display editor reference grid", &engineState_->showGrid());
             ui::UI::CheckboxRow("Show Debug Objects", "Render helpers and debug geometry", &engineState_->showDebugObjects());
             ui::UI::EndSurface();
-            ui::UI::BeginSurface("settings_sky", "Sky", "Cubemap and procedural sky controls");
-            ui::UI::CheckboxRow("Procedural Sky", "Use procedural sky instead of cubemap",
-                &engineState_->skySettings().proceduralSky);
-            if (engineState_->skySettings().proceduralSky) {
-                ui::UI::CheckboxRow("Use Sky LUT", "Use precomputed atmosphere LUT for procedural sky",
-                    &engineState_->skySettings().useSkyLUT);
-                ImGui::SetNextItemWidth(-1);
-                ImGui::SliderFloat("Time of Day##sky_time", &engineState_->skySettings().timeOfDay, 0.0f, 24.0f, "%.1f h");
-                if (ImGui::IsItemHovered())
-                    ImGui::SetTooltip("0 = midnight, 6 = sunrise, 12 = noon, 18 = sunset");
-                ImGui::Separator();
-                ImGui::Text("Sky Mode");
-                ImGui::Separator();
-                static const char* skyModeLabels[] = {"None", "Procedural", "Cubemap"};
-                static int skyModeCur = (int)engineState_->skySettings().skyMode;
-                ImGui::PushItemWidth(-1);
-                if (ImGui::Combo("##skyMode", &skyModeCur, skyModeLabels, 3)) {
-                    engineState_->skySettings().skyMode = (SkyMode)skyModeCur;
-                }
-            }
-            ui::UI::CheckboxRow("Debug Cubemap Faces", "Display cubemap face index tinting",
-                &engineState_->skySettings().debugCubemapFaces);
-            ui::UI::EndSurface();
             ui::UI::BeginSurface("settings_camera", "Camera", "Projection and movement tuning");
             cameraPanel_->render(frameInfo);
             ui::UI::EndSurface();

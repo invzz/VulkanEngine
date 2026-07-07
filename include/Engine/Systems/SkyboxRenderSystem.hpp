@@ -23,6 +23,16 @@ namespace engine {
         float timeOfDay{12.0f};       // 0-24 hours
         float skyIntensity{1.0f};
         SkyMode skyMode{SkyMode::None};
+        // Atmospheric scattering coefficients (per-channel: R, G, B)
+        glm::dvec3 betaRayleigh{5.5e-6, 13.0e-6, 22.4e-6};
+        glm::dvec3 betaMie{21.0e-6, 21.0e-6, 21.0e-6};
+        float mieG{0.76f};
+        // Scale heights (meters)
+        double atmosphereRadius{6460e3};
+        double rayleighScaleHeight{8000.0};
+        double mieScaleHeight{1200.0};
+        // Sun intensity
+        float sunIntensity{22.0f};
     };
     /**
  * @brief Render system for skybox/environment maps
