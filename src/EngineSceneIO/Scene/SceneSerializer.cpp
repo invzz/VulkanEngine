@@ -302,6 +302,7 @@ namespace engine {
             if (settingsBindings_.skySettings != nullptr) {
                 settingsJson["sky"] = nlohmann::json{{"debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces},
                                                      {"proceduralSky", settingsBindings_.skySettings->proceduralSky},
+                                                     {"useSkyLUT", settingsBindings_.skySettings->useSkyLUT},
                                                      {"timeOfDay", settingsBindings_.skySettings->timeOfDay},
                                                      {"skyIntensity", settingsBindings_.skySettings->skyIntensity},
                                                      {"skyMode", (int)settingsBindings_.skySettings->skyMode}};
@@ -642,6 +643,7 @@ namespace engine {
                 const auto& skyJson                              = settingsJson["sky"];
                 settingsBindings_.skySettings->debugCubemapFaces = skyJson.value("debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces);
                 settingsBindings_.skySettings->proceduralSky     = skyJson.value("proceduralSky", settingsBindings_.skySettings->proceduralSky);
+                settingsBindings_.skySettings->useSkyLUT         = skyJson.value("useSkyLUT", settingsBindings_.skySettings->useSkyLUT);
                 settingsBindings_.skySettings->timeOfDay         = skyJson.value("timeOfDay", settingsBindings_.skySettings->timeOfDay);
                 settingsBindings_.skySettings->skyIntensity      = skyJson.value("skyIntensity", settingsBindings_.skySettings->skyIntensity);
                 if (skyJson.contains("skyMode")) {

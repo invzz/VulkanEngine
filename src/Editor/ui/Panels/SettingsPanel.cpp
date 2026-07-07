@@ -66,6 +66,8 @@ namespace engine {
             ui::UI::CheckboxRow("Procedural Sky", "Use procedural sky instead of cubemap",
                 &engineState_->skySettings().proceduralSky);
             if (engineState_->skySettings().proceduralSky) {
+                ui::UI::CheckboxRow("Use Sky LUT", "Use precomputed atmosphere LUT for procedural sky",
+                    &engineState_->skySettings().useSkyLUT);
                 ImGui::SetNextItemWidth(-1);
                 ImGui::SliderFloat("Time of Day##sky_time", &engineState_->skySettings().timeOfDay, 0.0f, 24.0f, "%.1f h");
                 if (ImGui::IsItemHovered())

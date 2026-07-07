@@ -19,6 +19,7 @@ namespace engine {
     struct SkyboxSettings {
         bool debugCubemapFaces{false};
         bool proceduralSky{false};
+        bool useSkyLUT{true};
         float timeOfDay{12.0f};       // 0-24 hours
         float skyIntensity{1.0f};
         SkyMode skyMode{SkyMode::None};
@@ -47,12 +48,30 @@ namespace engine {
         void                                    createDescriptorSetLayout();
         void                                    createPipelineLayout();
         void                                    createPipeline(VkRenderPass renderPass);
+        void                                    createSkyLUTResources();
+        void                                    createSkyLUTComputeResources();
+        void                                    updateSkyLUTIfNeeded(const SkyboxSettings& settings, const glm::vec3& sunDirection);
         Device&                                 device_;
         std::unique_ptr<Pipeline>               pipeline_;
+        std::unique_ptr<Skybox>                 fallbackSkybox_;
         VkPipelineLayout                        pipelineLayout_      = VK_NULL_HANDLE;
         VkDescriptorSetLayout                   descriptorSetLayout_ = VK_NULL_HANDLE;
         std::unique_ptr<engine::DescriptorPool> descriptorPool_;
         std::vector<VkDescriptorSet>            descriptorSets_;
+        VkImage                                 skyLUTImage_              = VK_NULL_HANDLE;
+        VkDeviceMemory                          skyLUTMemory_             = VK_NULL_HANDLE;
+        VkImageView                             skyLUTImageView_          = VK_NULL_HANDLE;
+        VkSampler                               skyLUTSampler_            = VK_NULL_HANDLE;
+        VkPipelineLayout                        skyLUTComputeLayout_      = VK_NULL_HANDLE;
+        VkPipeline                              skyLUTComputePipeline_    = VK_NULL_HANDLE;
+        VkDescriptorSetLayout                   skyLUTComputeSetLayout_   = VK_NULL_HANDLE;
+        VkDescriptorPool                        skyLUTComputePool_        = VK_NULL_HANDLE;
+        VkDescriptorSet                         skyLUTComputeSet_         = VK_NULL_HANDLE;
+        float                                   skyLUTLastTimeOfDay_      = -1000.0f;
+        bool                                    skyLUTReady_              = false;
+        bool                                    skyLUTInGeneralLayout_    = false;
+        static constexpr uint32_t               kSkyLUTWidth              = 256;
+        static constexpr uint32_t               kSkyLUTHeight             = 128;
     };
 }  // namespace engine
 #endif

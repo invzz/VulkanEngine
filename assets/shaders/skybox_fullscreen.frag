@@ -4,10 +4,11 @@ layout(location = 0) in vec2 vNdc;
 layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform samplerCube skyboxSampler;
+layout(set = 0, binding = 1) uniform sampler2D skyLUTSampler;
 
 layout(push_constant) uniform PushConstants {
     mat4 viewProjection;
-    vec4 debugParams;      // x = debugCubemapFaces (1/0), y = proceduralSky (1/0)
+    vec4 debugParams;      // x = debugCubemapFaces, y = proceduralSky, z = useSkyLUT
     vec4 sunDirection;     // xyz = direction to sun, w = unused
     vec4 sunColor;         // rgb = sun color, w = sun angular radius (radians, default 0.015)
     vec4 skyParams;        // x = timeOfDay (0-24), y = intensity, zw = unused
@@ -43,6 +44,45 @@ vec3 faceDebugColor(int face) {
 float gridLine(float t) {
     float f = abs(fract(t * 8.0) - 0.5);
     return 1.0 - smoothstep(0.48, 0.5, f);
+}
+
+float sunDisc(vec3 dir, vec3 sunDir, float angularRadius);
+vec3 nightStars(vec3 dir, float sunElevation);
+vec3 sunColorFromElevation(float elevation);
+
+float rayleighPhase(float cosTheta) {
+    return (3.0 / (16.0 * 3.14159265)) * (1.0 + cosTheta * cosTheta);
+}
+
+float miePhase(float cosTheta, float g) {
+    float numerator = 1.0 - (g * g);
+    float denominator = pow(max(1.0 + (g * g) - (2.0 * g * cosTheta), 1e-4), 1.5);
+    return (1.0 / (4.0 * 3.14159265)) * (numerator / denominator);
+}
+
+vec3 proceduralSkyFromLUT(vec3 dir, vec3 sunDir) {
+    float viewAngle = clamp(dir.y, 0.0, 1.0);
+    float sunAngle = clamp(sunDir.y * 0.5 + 0.5, 0.0, 1.0);
+    vec2 lutUV = vec2(sunAngle, viewAngle);
+
+    vec4 lutData = texture(skyLUTSampler, lutUV);
+    float cosTheta = clamp(dot(dir, sunDir), -1.0, 1.0);
+
+    vec3 rayleighScattering = lutData.rgb;
+    float mieScattering = lutData.a;
+
+    vec3 finalRayleigh = rayleighScattering * rayleighPhase(cosTheta);
+    vec3 finalMie = vec3(mieScattering) * miePhase(cosTheta, 0.76);
+
+    vec3 sky = finalRayleigh + finalMie;
+
+    float disc = sunDisc(dir, sunDir, push.sunColor.w > 0.0 ? push.sunColor.w : 0.015);
+    vec3 sunCol = sunColorFromElevation(sunDir.y);
+    sky += disc * sunCol * 2.0;
+    sky += nightStars(dir, sunDir.y);
+
+    sky *= push.skyParams.y > 0.0 ? push.skyParams.y : 1.0;
+    return sky;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +254,13 @@ void main() {
 
     // Procedural sky mode (push.debugParams.y > 0.5)
     if (push.debugParams.y > 0.5) {
-        vec3 color = proceduralSky(sampleDir);
+        vec3 color;
+        if (push.debugParams.z > 0.5) {
+            vec3 sunDir = normalize(push.sunDirection.xyz);
+            color = proceduralSkyFromLUT(sampleDir, sunDir);
+        } else {
+            color = proceduralSky(sampleDir);
+        }
         outColor = vec4(color, 1.0);
         return;
     }
