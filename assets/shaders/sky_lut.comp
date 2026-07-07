@@ -5,17 +5,18 @@ layout(local_size_x = 16, local_size_y = 16) in;
 layout(set = 0, binding = 0, rgba16f) writeonly uniform image2D outSkyLUT;
 
 layout(push_constant) uniform SkyLUTPushConstants {
-    vec4 betaRayleighAndG;            // xyz = betaRayleigh, w = g
-    vec4 betaMieAndSunIntensity;      // xyz = betaMie, w = sunIntensity
-    vec4 sunDirectionAndGroundRadius; // xyz = sun direction, w = ground radius
-    vec4 atmosphereAndScaleHeights;   // x = atmosphere radius, y = HR, z = HM
-} pc;
+    vec4 betaRayleighAndG;             // xyz = betaRayleigh, w = g
+    vec4 betaMieAndSunIntensity;       // xyz = betaMie, w = sunIntensity
+    vec4 sunDirectionAndGroundRadius;  // xyz = sun direction, w = ground radius
+    vec4 atmosphereAndScaleHeights;    // x = atmosphere radius, y = HR, z = HM
+}
+pc;
 
 const float PI = 3.14159265;
 
 void main() {
     ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size = imageSize(outSkyLUT);
+    ivec2 size       = imageSize(outSkyLUT);
     if (texelCoord.x >= size.x || texelCoord.y >= size.y) {
         return;
     }
@@ -23,19 +24,19 @@ void main() {
     vec2 uv = vec2(texelCoord) / vec2(max(size - ivec2(1), ivec2(1)));
 
     float cosViewZenith = clamp(uv.y, 0.0, 1.0);
-    float cosSunZenith = clamp(uv.x * 2.0 - 1.0, -1.0, 1.0);
+    float cosSunZenith  = clamp(uv.x * 2.0 - 1.0, -1.0, 1.0);
 
     float sinViewZenith = sqrt(max(1.0 - cosViewZenith * cosViewZenith, 0.0));
-    float sinSunZenith = sqrt(max(1.0 - cosSunZenith * cosSunZenith, 0.0));
-    vec3 viewDir = vec3(sinViewZenith, cosViewZenith, 0.0);
-    vec3 sunDir = normalize(vec3(sinSunZenith, cosSunZenith, 0.0));
+    float sinSunZenith  = sqrt(max(1.0 - cosSunZenith * cosSunZenith, 0.0));
+    vec3  viewDir       = vec3(sinViewZenith, cosViewZenith, 0.0);
+    vec3  sunDir        = normalize(vec3(sinSunZenith, cosSunZenith, 0.0));
 
-    float r = pc.sunDirectionAndGroundRadius.w;
+    float r             = pc.sunDirectionAndGroundRadius.w;
     float opticalDepthR = 0.0;
     float opticalDepthM = 0.0;
 
-    const int numSteps = 16;
-    float stepLength = (pc.atmosphereAndScaleHeights.x - pc.sunDirectionAndGroundRadius.w) / float(numSteps);
+    const int numSteps   = 16;
+    float     stepLength = (pc.atmosphereAndScaleHeights.x - pc.sunDirectionAndGroundRadius.w) / float(numSteps);
 
     for (int i = 0; i < numSteps; ++i) {
         float h = max(r - pc.sunDirectionAndGroundRadius.w, 0.0);
@@ -49,25 +50,25 @@ void main() {
         r += stepLength * cosViewZenith;
     }
 
-    vec3 betaR = max(pc.betaRayleighAndG.xyz, vec3(0.0));
-    vec3 betaM = max(pc.betaMieAndSunIntensity.xyz, vec3(0.0));
+    vec3  betaR        = max(pc.betaRayleighAndG.xyz, vec3(0.0));
+    vec3  betaM        = max(pc.betaMieAndSunIntensity.xyz, vec3(0.0));
     float sunIntensity = max(pc.betaMieAndSunIntensity.w, 0.0);
 
     vec3 attenuation = exp(-(betaR * opticalDepthR + betaM * opticalDepthM));
 
-    float cosTheta = clamp(dot(viewDir, sunDir), -1.0, 1.0);
+    float cosTheta      = clamp(dot(viewDir, sunDir), -1.0, 1.0);
     float phaseRayleigh = (3.0 / (16.0 * PI)) * (1.0 + cosTheta * cosTheta);
 
-    float g = clamp(pc.betaRayleighAndG.w, -0.99, 0.99);
-    float mieNumerator = 1.0 - (g * g);
+    float g              = clamp(pc.betaRayleighAndG.w, -0.99, 0.99);
+    float mieNumerator   = 1.0 - (g * g);
     float mieDenominator = pow(max(1.0 + (g * g) - (2.0 * g * cosTheta), 1e-4), 1.5);
-    float phaseMie = (1.0 / (4.0 * PI)) * (mieNumerator / mieDenominator);
+    float phaseMie       = (1.0 / (4.0 * PI)) * (mieNumerator / mieDenominator);
 
     vec3 scatterRayleigh = betaR * opticalDepthR * phaseRayleigh * sunIntensity;
-    vec3 scatterMie = betaM * opticalDepthM * phaseMie * sunIntensity;
+    vec3 scatterMie      = betaM * opticalDepthM * phaseMie * sunIntensity;
 
-    vec3 rayleighRGB = scatterRayleigh * attenuation;
-    float mieEnergy = dot(scatterMie * attenuation, vec3(0.3333333));
+    vec3  rayleighRGB = scatterRayleigh * attenuation;
+    float mieEnergy   = dot(scatterMie * attenuation, vec3(0.3333333));
 
     imageStore(outSkyLUT, texelCoord, vec4(rayleighRGB, mieEnergy));
 }
