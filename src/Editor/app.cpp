@@ -4,6 +4,7 @@
 
 #include <GLFW/glfw3.h>
 #include <chrono>
+#include <cstring>
 #include <filesystem>
 #include <memory>
 #include <sstream>
@@ -320,7 +321,8 @@ namespace engine {
             // Rebuild TLAS before the render pipeline executes (deferred pass reads it)
             if (accelBuilder) {
                 tlasInstances_.clear();
-                instanceOpacityValues_.clear();
+                instanceSubmeshHeaders_.clear();
+                instanceSubmeshData_.clear();
                 auto view = engineState.scene().getRegistry().view<ModelComponent, TransformComponent>();
                 for (auto entity : view) {
                     auto [mc, tc] = view.get<ModelComponent, TransformComponent>(entity);
@@ -328,31 +330,46 @@ namespace engine {
                         VkAccelerationStructureKHR blas = accelBuilder->getBlas(*mc.model);
                         if (blas != VK_NULL_HANDLE) {
                             tlasInstances_.emplace_back(tc.modelTransform(), blas);
-                            // Compute effective shadow opacity from the model's materials
-                            float opacity = 1.0f;
+
+                            // Build per-submesh opacity data for this instance.
+                            // Submeshes are stored in primitive order (the TLAS primitiveId
+                            // maps to the submesh index within the model).
+                            const auto& subMeshes = mc.model->getSubMeshes();
                             const auto& materials = mc.model->getMaterials();
-                            for (const auto& mat : materials) {
+
+                            instanceSubmeshHeaders_.push_back(
+                                static_cast<uint32_t>(instanceSubmeshData_.size()));  // offset
+                            instanceSubmeshHeaders_.push_back(
+                                static_cast<uint32_t>(subMeshes.size()));             // count
+
+                            uint32_t runningEnd = 0;
+                            for (const auto& sm : subMeshes) {
                                 float matOpacity = 1.0f;
-                                switch (mat.pbrMaterial.alphaMode) {
-                                    case AlphaMode::Opaque:
-                                    case AlphaMode::Mask:
-                                        matOpacity = 1.0f;
-                                        break;
-                                    case AlphaMode::Blend:
-                                        matOpacity = mat.pbrMaterial.albedo.a;
-                                        break;
+                                if (sm.materialId >= 0 && sm.materialId < static_cast<int>(materials.size())) {
+                                    const auto& mat = materials[sm.materialId].pbrMaterial;
+                                    // Transmission-based transparency: light passes through glass
+                                    if (mat.transmission > 0.001f) {
+                                        matOpacity = 1.0f - mat.transmission;
+                                    }
+                                    // Alpha-blend transparency
+                                    if (mat.alphaMode == AlphaMode::Blend) {
+                                        matOpacity = std::min(matOpacity, mat.albedo.a);
+                                    }
                                 }
-                                // Use the minimum opacity (most transparent material dominates)
-                                opacity = std::min(opacity, matOpacity);
+                                // Store (cumulativeEndTriangle, opacityBits)
+                                runningEnd += sm.indexCount / 3;
+                                uint32_t opacityBits;
+                                std::memcpy(&opacityBits, &matOpacity, sizeof(float));
+                                instanceSubmeshData_.push_back(runningEnd);
+                                instanceSubmeshData_.push_back(opacityBits);
                             }
-                            instanceOpacityValues_.push_back(opacity);
                         }
                     }
                 }
                 // Skip TLAS rebuild when there are no instances — avoids 0-size buffer/VkBuffer
                 // creation that violates Vulkan spec and crashes on RADV and other drivers.
                 if (!tlasInstances_.empty()) {
-                    renderContext->rebuildTlas(tlasInstances_, instanceOpacityValues_, commandBuffer);
+                    renderContext->rebuildTlas(tlasInstances_, instanceSubmeshHeaders_, instanceSubmeshData_, commandBuffer);
                 }
             }
             // Update the mesh buffer descriptor every frame so newly loaded models

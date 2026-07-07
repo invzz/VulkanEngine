@@ -1,5 +1,6 @@
 #include "Editor/RenderContext.hpp"
 
+#include <cstring>
 #include <memory>
 #include <stdexcept>
 #include <vector>
@@ -33,7 +34,7 @@ namespace engine {
         createUBOBuffers();
         createLightBuffers(64, 16, 64);
         if (rayTracingEnabled_) {
-            createInstanceOpacityBuffers();
+            createSubmeshBuffers();
         }
         createGlobalDescriptorSets();
         for (int i = 0; i < SwapChain::maxFramesInFlight(); i++) {
@@ -47,7 +48,7 @@ namespace engine {
                         .addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 4));
         if (rayTracingEnabled_) {
             pool.addPoolSize(VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
-            pool.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight()));
+            pool.addPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(SwapChain::maxFramesInFlight() * 2));
         }
         globalPool_ = pool.build();
     }
@@ -57,7 +58,8 @@ namespace engine {
                            .addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT);
         if (rayTracingEnabled_) {
             builder.addBinding(2, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, VK_SHADER_STAGE_FRAGMENT_BIT);
-            builder.addBinding(7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+            builder.addBinding(7, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);  // per-instance submesh headers
+            builder.addBinding(8, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);  // per-submesh entries
         }
         globalSetLayout_ = builder.addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
                                .addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS)
@@ -65,16 +67,26 @@ namespace engine {
                                .addBinding(6, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT)
                                .build();
     }
-    void RenderContext::createInstanceOpacityBuffers() {
-        instanceOpacityBuffers_.resize(SwapChain::maxFramesInFlight());
+    void RenderContext::createSubmeshBuffers() {
+        instanceSubmeshHeaderBuffers_.resize(SwapChain::maxFramesInFlight());
+        instanceSubmeshDataBuffers_.resize(SwapChain::maxFramesInFlight());
         for (size_t i = 0; i < SwapChain::maxFramesInFlight(); i++) {
-            instanceOpacityBuffers_[i] = std::make_unique<Buffer>(device_,
-                sizeof(float),
-                1024,  // Max 1024 instances
+            // Binding 7: per-instance (offset, count) pairs, up to 1024 instances
+            instanceSubmeshHeaderBuffers_[i] = std::make_unique<Buffer>(device_,
+                sizeof(uint32_t) * 2,  // 2 uints per instance: offset, count
+                1024,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
                 device_.getProperties().limits.minStorageBufferOffsetAlignment);
-            instanceOpacityBuffers_[i]->map();
+            instanceSubmeshHeaderBuffers_[i]->map();
+            // Binding 8: per-submesh (endTri, opacityBits) pairs, up to 8192 submeshes total
+            instanceSubmeshDataBuffers_[i] = std::make_unique<Buffer>(device_,
+                sizeof(uint32_t) * 2,  // 2 uints per submesh: endTriangle, opacityBits
+                8192,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                device_.getProperties().limits.minStorageBufferOffsetAlignment);
+            instanceSubmeshDataBuffers_[i]->map();
         }
     }
     void RenderContext::createUBOBuffers() {
@@ -144,15 +156,21 @@ namespace engine {
                 .writeBuffer(5, &spotInfo)
                 .writeBuffer(6, &coldBufferInfo);
 
-            // Write TLAS at binding 2 if ray tracing is enabled
-            // (passes validation in DescriptorWriter::build which checks all bindings)
             if (rayTracingEnabled_) {
+                // Write TLAS at binding 2
                 VkAccelerationStructureKHR tlasHandle =
                     (accelBuilder_ != nullptr) ? accelBuilder_->getTlas() : VK_NULL_HANDLE;
                 writer.writeAccelerationStructure(2, tlasHandle);
-                if (i < instanceOpacityBuffers_.size() && instanceOpacityBuffers_[i]) {
-                    auto opacityInfo = instanceOpacityBuffers_[i]->descriptorInfo();
-                    writer.writeBuffer(7, &opacityInfo);
+
+                // Write submesh header buffer at binding 7
+                if (i < instanceSubmeshHeaderBuffers_.size() && instanceSubmeshHeaderBuffers_[i]) {
+                    auto hdrInfo = instanceSubmeshHeaderBuffers_[i]->descriptorInfo();
+                    writer.writeBuffer(7, &hdrInfo);
+                }
+                // Write submesh data buffer at binding 8
+                if (i < instanceSubmeshDataBuffers_.size() && instanceSubmeshDataBuffers_[i]) {
+                    auto dataInfo = instanceSubmeshDataBuffers_[i]->descriptorInfo();
+                    writer.writeBuffer(8, &dataInfo);
                 }
             }
 
@@ -189,6 +207,7 @@ namespace engine {
         if (tlasHandle == VK_NULL_HANDLE)
             return;
 
+        // Write TLAS at binding 2
         VkWriteDescriptorSetAccelerationStructureKHR accelWriteInfo{};
         accelWriteInfo.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
         accelWriteInfo.accelerationStructureCount = 1;
@@ -203,6 +222,34 @@ namespace engine {
         writeAccel.descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
         writeAccel.descriptorCount = 1;
         vkUpdateDescriptorSets(device_.device(), 1, &writeAccel, 0, nullptr);
+
+        // Write submesh header buffer at binding 7
+        if (frameIndex < static_cast<int>(instanceSubmeshHeaderBuffers_.size()) && instanceSubmeshHeaderBuffers_[frameIndex]) {
+            auto hdrInfo = instanceSubmeshHeaderBuffers_[frameIndex]->descriptorInfo();
+            VkWriteDescriptorSet writeHdr{};
+            writeHdr.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeHdr.dstSet          = globalDescriptorSets_[frameIndex];
+            writeHdr.dstBinding      = 7;
+            writeHdr.dstArrayElement = 0;
+            writeHdr.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writeHdr.descriptorCount = 1;
+            writeHdr.pBufferInfo     = &hdrInfo;
+            vkUpdateDescriptorSets(device_.device(), 1, &writeHdr, 0, nullptr);
+        }
+
+        // Write submesh data buffer at binding 8
+        if (frameIndex < static_cast<int>(instanceSubmeshDataBuffers_.size()) && instanceSubmeshDataBuffers_[frameIndex]) {
+            auto dataInfo = instanceSubmeshDataBuffers_[frameIndex]->descriptorInfo();
+            VkWriteDescriptorSet writeData{};
+            writeData.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            writeData.dstSet          = globalDescriptorSets_[frameIndex];
+            writeData.dstBinding      = 8;
+            writeData.dstArrayElement = 0;
+            writeData.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            writeData.descriptorCount = 1;
+            writeData.pBufferInfo     = &dataInfo;
+            vkUpdateDescriptorSets(device_.device(), 1, &writeData, 0, nullptr);
+        }
     }
 
     void RenderContext::updateMeshDescriptorSet(int frameIndex) {
@@ -320,19 +367,37 @@ namespace engine {
     }
     VkAccelerationStructureKHR RenderContext::rebuildTlas(
         const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
-        const std::vector<float>& opacityValues,
+        const std::vector<uint32_t>& instanceSubmeshHeaders,
+        const std::vector<uint32_t>& instanceSubmeshData,
         VkCommandBuffer cmd) {
         if (!accelBuilder_)
             return VK_NULL_HANDLE;
 
         VkAccelerationStructureKHR tlas = accelBuilder_->rebuildTlas(instances, cmd);
 
-        // Upload per-instance opacity data
-        if (!instanceOpacityBuffers_.empty() && instanceOpacityBuffers_[0]) {
-            size_t count = std::min(opacityValues.size(), size_t{1024});
-            for (size_t fi = 0; fi < instanceOpacityBuffers_.size(); ++fi) {
-                instanceOpacityBuffers_[fi]->writeToBuffer(opacityValues.data(), count * sizeof(float));
-                instanceOpacityBuffers_[fi]->flush();
+        // Upload per-instance submesh header data (binding 7)
+        if (!instanceSubmeshHeaderBuffers_.empty() && instanceSubmeshHeaderBuffers_[0]) {
+            size_t const headerBytes = instanceSubmeshHeaders.size() * sizeof(uint32_t);
+            size_t const maxBytes    = instanceSubmeshHeaderBuffers_[0]->getBufferSize();
+            size_t const toWrite     = std::min(headerBytes, maxBytes);
+            for (size_t fi = 0; fi < instanceSubmeshHeaderBuffers_.size(); ++fi) {
+                if (fi >= static_cast<size_t>(globalDescriptorSets_.size()))
+                    break;
+                instanceSubmeshHeaderBuffers_[fi]->writeToBuffer(instanceSubmeshHeaders.data(), toWrite);
+                instanceSubmeshHeaderBuffers_[fi]->flush();
+            }
+        }
+
+        // Upload per-submesh opacity data (binding 8)
+        if (!instanceSubmeshDataBuffers_.empty() && instanceSubmeshDataBuffers_[0]) {
+            size_t const dataBytes = instanceSubmeshData.size() * sizeof(uint32_t);
+            size_t const maxBytes  = instanceSubmeshDataBuffers_[0]->getBufferSize();
+            size_t const toWrite   = std::min(dataBytes, maxBytes);
+            for (size_t fi = 0; fi < instanceSubmeshDataBuffers_.size(); ++fi) {
+                if (fi >= static_cast<size_t>(globalDescriptorSets_.size()))
+                    break;
+                instanceSubmeshDataBuffers_[fi]->writeToBuffer(instanceSubmeshData.data(), toWrite);
+                instanceSubmeshDataBuffers_[fi]->flush();
             }
         }
 

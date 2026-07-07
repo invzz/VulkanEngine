@@ -34,7 +34,8 @@ namespace engine {
 
         VkAccelerationStructureKHR rebuildTlas(
             const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
-            const std::vector<float>& opacityValues,
+            const std::vector<uint32_t>& instanceSubmeshHeaders,
+            const std::vector<uint32_t>& instanceSubmeshData,
             VkCommandBuffer cmd);
 
         /// Update the mesh buffer descriptor for a specific frame index so newly
@@ -53,14 +54,16 @@ namespace engine {
         std::vector<std::unique_ptr<Buffer>> pointLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> directionalLightBuffers_;
         std::vector<std::unique_ptr<Buffer>> spotLightBuffers_;
-        std::vector<std::unique_ptr<Buffer>> instanceOpacityBuffers_;
+        // Ray-tracing shadow transparency buffers
+        std::vector<std::unique_ptr<Buffer>> instanceSubmeshHeaderBuffers_;  // binding 7: per-instance (offset, count)
+        std::vector<std::unique_ptr<Buffer>> instanceSubmeshDataBuffers_;    // binding 8: per-submesh (endTri, opacityBits)
         size_t                               pointLightCapacity_       = 0;
         size_t                               directionalLightCapacity_ = 0;
         size_t                               spotLightCapacity_        = 0;
         std::vector<VkDescriptorSet>         globalDescriptorSets_;
         void                                 createDescriptorPool();
         void                                 createGlobalSetLayout();
-        void                                 createInstanceOpacityBuffers();
+        void                                 createSubmeshBuffers();
         void                                 createUBOBuffers();
         void                                 createLightBuffers(size_t pointCapacity, size_t directionalCapacity, size_t spotCapacity);
         void                                 createGlobalDescriptorSets();

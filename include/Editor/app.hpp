@@ -69,8 +69,10 @@ namespace engine {
         uint32_t                        selectedObjectId = 0;
         std::unique_ptr<AccelBuilder>   accelBuilder;
         using BlasInstance = std::pair<glm::mat4, VkAccelerationStructureKHR>;
-        std::vector<BlasInstance> tlasInstances_;
-        std::vector<float>        instanceOpacityValues_;
+        std::vector<BlasInstance>               tlasInstances_;
+        // Per-instance submesh opacity data for ray-traced transparent shadows
+        std::vector<uint32_t> instanceSubmeshHeaders_;  // pairs of (offset, count) per instance, interleaved
+        std::vector<uint32_t> instanceSubmeshData_;     // pairs of (endTriangle, opacityBits) per submesh
     };
 }  // namespace engine
 #endif

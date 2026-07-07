@@ -53,9 +53,21 @@ layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 #if RAY_TRACING_ENABLED
 /* Ray tracing TLAS (global set, binding 2) */
 layout(set = 0, binding = 2) uniform accelerationStructureEXT tlas;
-/* Per-instance opacity for transparent shadow accumulation (binding 7) */
-layout(set = 0, binding = 7, std430) readonly buffer InstanceOpacityBuffer {
-    float instanceOpacity[];
+/* Per-instance submesh headers (binding 7): (offset, count) into submesh entries */
+struct InstanceSubmeshHeader {
+    uint offset;
+    uint count;
+};
+layout(set = 0, binding = 7, std430) readonly buffer InstanceSubmeshHeaders {
+    InstanceSubmeshHeader instanceHeaders[];
+};
+/* Per-submesh data (binding 8): (endTriangle, opacity) pairs sorted by endTriangle */
+struct SubmeshEntry {
+    uint   endTriangle;
+    float  opacity;
+};
+layout(set = 0, binding = 8, std430) readonly buffer InstanceSubmeshData {
+    SubmeshEntry submeshEntries[];
 };
 #endif
 
@@ -63,38 +75,55 @@ layout(set = 0, binding = 7, std430) readonly buffer InstanceOpacityBuffer {
 
 #if RAY_TRACING_ENABLED
 /*==============================================================================
-  Ray traced shadow with transparency accumulation
-  Uses the per-instance opacity buffer to let rays pass through transparent
-  geometry. Directly accumulates transmittance inside the ray query loop
-  since geometry is non-opaque (candidate intersections are NOT auto-confirmed).
+  Ray traced shadow with transparency accumulation (bounce approach)
+  Sequential ray queries with TerminateOnFirstHit: each query finds the closest
+  hit, we look up the submesh opacity for that specific primitive, accumulate
+  transmittance, then restart the ray from just past the hit point.
 ==============================================================================*/
 float computeShadowTransmittance(vec3 origin, vec3 dir, float maxDist) {
     float transmittance = 1.0;
+    float tmin          = 0.001;
+    vec3  rayDir        = normalize(dir);
 
-    rayQueryEXT q;
-    rayQueryInitializeEXT(q, tlas, gl_RayFlagsNoneEXT, 0xFF, origin, 0.0, normalize(dir), maxDist);
+    for (int bounce = 0; bounce < 8 && transmittance > 0.01; bounce++) {
+        if (maxDist <= 0.001)
+            break;
 
-    while (rayQueryProceedEXT(q)) {
-        if (rayQueryGetIntersectionTypeEXT(q, false) == gl_RayQueryCandidateIntersectionTriangleEXT) {
-            int instId = rayQueryGetIntersectionInstanceCustomIndexEXT(q, false);
-            float hitOpacity = instanceOpacity[min(instId, 1023)];
+        rayQueryEXT q;
+        rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF,
+                              origin, tmin, rayDir, tmin + maxDist);
 
-            if (hitOpacity >= 0.999) {
-                // Fully opaque — block all remaining light
-                rayQueryConfirmIntersectionEXT(q);
-                return 0.0;
-            } else {
-                // Transparent — attenuate and let the ray pass through
-                transmittance *= (1.0 - hitOpacity);
-                if (transmittance <= 0.01) {
-                    // Negligible light left, bail out early
-                    return 0.0;
+        rayQueryProceedEXT(q);
+
+        if (rayQueryGetIntersectionTypeEXT(q, true) == gl_RayQueryCommittedIntersectionNoneEXT)
+            break;
+
+        int  instId  = rayQueryGetIntersectionInstanceCustomIndexEXT(q, true);
+        uint primId  = rayQueryGetIntersectionPrimitiveIndexEXT(q, true);
+
+        // Clamp lookups to prevent GPU page faults on invalid data
+        float hitOpacity = 1.0;
+        InstanceSubmeshHeader hdr = instanceHeaders[instId];
+        if (hdr.count > 0u) {
+            uint end = hdr.offset + hdr.count;
+            for (uint i = hdr.offset; i < end; i++) {
+                if (primId < submeshEntries[i].endTriangle) {
+                    hitOpacity = submeshEntries[i].opacity;
+                    break;
                 }
             }
         }
+
+        if (hitOpacity >= 1.0 - 0.001)
+            return 0.0;
+
+        transmittance *= (1.0 - hitOpacity);
+
+        float hitT = rayQueryGetIntersectionTEXT(q, true);
+        tmin      += hitT + 0.0001;
+        maxDist   -= hitT + 0.0001;
     }
 
-    // No opaque intersection — shadow factor is the accumulated transmittance
     return transmittance;
 }
 #endif
