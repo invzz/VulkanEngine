@@ -8,7 +8,7 @@ namespace engine {
     class ShadowPass : public RenderPassBase {
        public:
         ShadowPass(ShadowSystem& shadow, IRenderContextPort& renderCtx,
-            Scene& scene, ShadowSettings& shadowSettings);
+            Scene& scene, ShadowSettings& shadowSettings, float& rtShadowSoftness);
         void execute(FrameInfo& frameInfo) override;
 
        private:
@@ -16,5 +16,6 @@ namespace engine {
         IRenderContextPort& renderCtx_;
         Scene&              scene_;
         ShadowSettings&     shadowSettings_;
+        float&              rtShadowSoftness_;
     };
 }  // namespace engine

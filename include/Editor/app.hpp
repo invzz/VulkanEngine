@@ -29,7 +29,7 @@ namespace engine {
         static int height() {
             return 600;
         }
-        App(bool fullscreen = false);
+        App(bool fullscreen = false, std::string modelPath = {});
         ~App();
         App(const App&)            = delete;
         App& operator=(const App&) = delete;
@@ -42,6 +42,12 @@ namespace engine {
         void                                  setupRenderGraph();
         void                                  update(float frameTime);
         void                                  render(float frameTime);
+        void                                  handleViewportResize();
+        void                                  applyViewportPicking(FrameInfo& frameInfo);
+        void                                  rebuildAccelerationStructures(VkCommandBuffer commandBuffer);
+        void                                  syncStateFromFrame(const FrameInfo& frameInfo);
+        FrameInfo                             buildFrameInfo(int frameIndex, float frameTime, VkCommandBuffer commandBuffer);
+        
         Window                                window;
         Device                                device{window};
         Renderer                              renderer{window, device};
@@ -50,6 +56,7 @@ namespace engine {
         bool                                  rtDirectional = true;
         bool                                  rtPoint       = true;
         bool                                  rtSpot        = true;
+        float                                 rtShadowSoftness = 0.005f;
         EngineState                           engineState;
         SceneSerializer                       sceneSerializer;
         std::unique_ptr<RenderContext>        renderContext;
@@ -71,8 +78,10 @@ namespace engine {
         using BlasInstance = std::pair<glm::mat4, VkAccelerationStructureKHR>;
         std::vector<BlasInstance>               tlasInstances_;
         // Per-instance submesh opacity data for ray-traced transparent shadows
-        std::vector<uint32_t> instanceSubmeshHeaders_;  // pairs of (offset, count) per instance, interleaved
-        std::vector<uint32_t> instanceSubmeshData_;     // pairs of (endTriangle, opacityBits) per submesh
+        std::vector<uint32_t> instanceSubmeshHeaders_;
+        std::vector<uint32_t> instanceSubmeshData_;
+        /// Optional model path to load at startup instead of scene.json.
+        std::string modelPath_;
     };
 }  // namespace engine
 #endif

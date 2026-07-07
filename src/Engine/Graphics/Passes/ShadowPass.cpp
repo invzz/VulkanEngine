@@ -12,8 +12,8 @@
 #include "glm/geometric.hpp"
 namespace engine {
     ShadowPass::ShadowPass(ShadowSystem& shadow, IRenderContextPort& renderCtx,
-        Scene& scene, ShadowSettings& shadowSettings)
-        : RenderPassBase("Shadow"), shadow_(shadow), renderCtx_(renderCtx), scene_(scene), shadowSettings_(shadowSettings) {}
+        Scene& scene, ShadowSettings& shadowSettings, float& rtShadowSoftness)
+        : RenderPassBase("Shadow"), shadow_(shadow), renderCtx_(renderCtx), scene_(scene), shadowSettings_(shadowSettings), rtShadowSoftness_(rtShadowSoftness) {}
     void ShadowPass::execute(FrameInfo& frameInfo) {
         LightSystem::updateAllTargetLockedLights(*frameInfo.scene);
         auto const lightCounts = renderCtx_.updateLightBuffers(frameInfo.frameIndex, *frameInfo.scene);
@@ -71,6 +71,7 @@ namespace engine {
         ubo.rtDirectional = frameInfo.rtDirectional ? 1 : 0;
         ubo.rtPoint       = frameInfo.rtPoint ? 1 : 0;
         ubo.rtSpot        = frameInfo.rtSpot ? 1 : 0;
+        ubo.rtShadowSoftness = rtShadowSoftness_;
         GlobalUboCold uboCold{};
         renderCtx_.updateUBO(frameInfo.frameIndex, ubo, uboCold);
     }

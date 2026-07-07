@@ -16,7 +16,10 @@
 namespace engine {
     struct SkyboxPushConstants {
         glm::mat4 viewProjection;
-        glm::vec4 debugParams;
+        glm::vec4 debugParams;      // x = debugCubemapFaces (1/0), y = proceduralSky (1/0)
+        glm::vec4 sunDirection;     // xyz = direction to sun, w = unused
+        glm::vec4 sunColor;         // rgb = sun color, w = sun angular radius (radians, default 0.015)
+        glm::vec4 skyParams;        // x = timeOfDay (0-24), y = skyIntensity, zw = unused
     };
     SkyboxRenderSystem::SkyboxRenderSystem(Device& device, VkRenderPass renderPass) : device_{device} {
         createDescriptorSetLayout();
@@ -58,7 +61,7 @@ namespace engine {
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         pushConstantRange.offset     = 0;
-        pushConstantRange.size       = sizeof(SkyboxPushConstants);
+        pushConstantRange.size       = sizeof(SkyboxPushConstants);  // 80 bytes
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         layoutInfo.setLayoutCount         = 1;
@@ -84,16 +87,48 @@ namespace engine {
         pipeline_                                    = std::make_unique<Pipeline>(device_, std::string(SHADER_PATH) + R"(skybox_fullscreen.vert.spv)", std::string(SHADER_PATH) + R"(skybox_fullscreen.frag.spv)", configInfo);
     }
     void SkyboxRenderSystem::render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings) {
-        if (skybox == nullptr) {
-            return;
-        }
+        const bool procedural = settings.proceduralSky && (skybox == nullptr);
+
+        // Build view matrix without translation so sky stays centered on camera
         glm::mat4 view = frameInfo.camera.getView();
         view[3]        = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        glm::mat4 vp   = frameInfo.camera.getProjection() * view;
+
+        // Compute sun direction from time of day
+        const float t = settings.timeOfDay;
+        const float elev = sinf((t - 6.0f) / 24.0f * 6.2831853f);
+        const float cosElev = sqrtf(fmaxf(1.0f - elev * elev, 0.0f));
+        const float azimuth = (t - 6.0f) / 24.0f * 6.2831853f;
+        const glm::vec3 sunDir(cosElev * cosf(azimuth), elev, cosElev * sinf(azimuth));
+
+        // Sun color: warm at horizon, white at zenith
+        const float elevNorm = glm::clamp(elev, 0.0f, 1.0f);
+        const glm::vec3 sunHorizon(1.0f, 0.55f, 0.2f);
+        const glm::vec3 sunZenith(1.0f, 0.98f, 0.92f);
+        const glm::vec3 sunCol = glm::mix(sunHorizon, sunZenith, glm::smoothstep(0.0f, 0.3f, elevNorm));
+
+        // Night darkening factor
+        const float nightFactor = glm::smoothstep(-0.05f, 0.15f, elev);
+        const float effectiveIntensity = settings.skyIntensity * glm::mix(0.02f, 1.0f, nightFactor);
+
         SkyboxPushConstants push{};
-        push.viewProjection                   = frameInfo.camera.getProjection() * view;
-        push.debugParams                      = glm::vec4(settings.debugCubemapFaces ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f);
-        VkDescriptorImageInfo const imageInfo = skybox->getDescriptorInfo();
-        VkWriteDescriptorSet        descriptorWrite{};
+        push.viewProjection                   = vp;
+        push.debugParams                      = glm::vec4(
+            settings.debugCubemapFaces ? 1.0f : 0.0f,   // x
+            procedural ? 1.0f : 0.0f,                     // y
+            0.0f, 0.0f);
+        push.sunDirection                     = glm::vec4(sunDir, 0.0f);
+        push.sunColor                         = glm::vec4(sunCol, 0.015f);
+        push.skyParams                        = glm::vec4(settings.timeOfDay, effectiveIntensity, 0.0f, 0.0f);
+
+        // Descriptor: always bind a sampler (shader ignores it in procedural mode)
+        VkDescriptorImageInfo imageInfo{};
+        if (!procedural && skybox != nullptr) {
+            imageInfo = skybox->getDescriptorInfo();
+        }
+        // Otherwise leave as zero — shader takes procedural path via debugParams.y > 0.5
+
+        VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.dstSet          = descriptorSets_[frameInfo.frameIndex];
         descriptorWrite.dstBinding      = 0;
@@ -102,6 +137,7 @@ namespace engine {
         descriptorWrite.descriptorCount = 1;
         descriptorWrite.pImageInfo      = &imageInfo;
         vkUpdateDescriptorSets(device_.device(), 1, &descriptorWrite, 0, nullptr);
+
         pipeline_->bind(frameInfo.commandBuffer);
         assert(descriptorSets_[frameInfo.frameIndex] != VK_NULL_HANDLE && "SkyboxRenderSystem: descriptor set is null");
         vkCmdBindDescriptorSets(frameInfo.commandBuffer,

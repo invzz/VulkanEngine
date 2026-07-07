@@ -8,9 +8,9 @@ namespace engine {
     class SceneLoader {
        public:
         static void loadScene(Device& device, Scene& scene, ResourceManager& resourceManager);
+        static void createFromFile(Device& device, Scene& scene, ResourceManager& resourceManager, const std::string& modelPath);
 
        private:
-        static void createFromFile(Device& device, Scene& scene, ResourceManager& resourceManager, const std::string& modelPath);
     };
 }  // namespace engine
 #endif

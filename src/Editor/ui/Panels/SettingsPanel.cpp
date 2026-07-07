@@ -12,13 +12,15 @@
 namespace engine {
     SettingsPanel::SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled,
         uint32_t& multithreadedRecordingThreads, int& debugMode,
-        bool& rtDirectional, bool& rtPoint, bool& rtSpot)
+        bool& rtDirectional, bool& rtPoint, bool& rtSpot,
+        float& rtShadowSoftness)
         : engineState_(engineState),
           multithreadedRecordingEnabled_(multithreadedRecordingEnabled),
           multithreadedRecordingThreads_(multithreadedRecordingThreads),
           rtDirectional_(rtDirectional),
           rtPoint_(rtPoint),
-          rtSpot_(rtSpot) {
+          rtSpot_(rtSpot),
+          rtShadowSoftness_(rtShadowSoftness) {
         cameraPanel_      = std::make_unique<CameraPanel>(*engineState_);
         iblPanel_         = std::make_unique<IBLPanel>(&engineState_->system<IBLSystem>());
         postProcessPanel_ = std::make_unique<PostProcessPanel>(engineState_->postProcess());
@@ -60,7 +62,24 @@ namespace engine {
             ui::UI::CheckboxRow("Show Grid", "Display editor reference grid", &engineState_->showGrid());
             ui::UI::CheckboxRow("Show Debug Objects", "Render helpers and debug geometry", &engineState_->showDebugObjects());
             ui::UI::EndSurface();
-            ui::UI::BeginSurface("settings_sky", "Sky", "Cubemap visualization controls");
+            ui::UI::BeginSurface("settings_sky", "Sky", "Cubemap and procedural sky controls");
+            ui::UI::CheckboxRow("Procedural Sky", "Use procedural sky instead of cubemap",
+                &engineState_->skySettings().proceduralSky);
+            if (engineState_->skySettings().proceduralSky) {
+                ImGui::SetNextItemWidth(-1);
+                ImGui::SliderFloat("Time of Day##sky_time", &engineState_->skySettings().timeOfDay, 0.0f, 24.0f, "%.1f h");
+                if (ImGui::IsItemHovered())
+                    ImGui::SetTooltip("0 = midnight, 6 = sunrise, 12 = noon, 18 = sunset");
+                ImGui::Separator();
+                ImGui::Text("Sky Mode");
+                ImGui::Separator();
+                static const char* skyModeLabels[] = {"None", "Procedural", "Cubemap"};
+                static int skyModeCur = (int)engineState_->skySettings().skyMode;
+                ImGui::PushItemWidth(-1);
+                if (ImGui::Combo("##skyMode", &skyModeCur, skyModeLabels, 3)) {
+                    engineState_->skySettings().skyMode = (SkyMode)skyModeCur;
+                }
+            }
             ui::UI::CheckboxRow("Debug Cubemap Faces", "Display cubemap face index tinting",
                 &engineState_->skySettings().debugCubemapFaces);
             ui::UI::EndSurface();
@@ -88,10 +107,16 @@ namespace engine {
                 }
             }
             ui::UI::EndSurface();
-            ui::UI::BeginSurface("settings_raytracing", "Ray Tracing", "Per-light-type RT shadow toggles");
+            ui::UI::BeginSurface("settings_raytracing", "Ray Tracing", "Per-light-type RT shadow toggles and softness");
             ui::UI::CheckboxRow("Directional", "Ray-traced shadows for directional lights", &rtDirectional_);
             ui::UI::CheckboxRow("Point", "Ray-traced shadows for point lights", &rtPoint_);
             ui::UI::CheckboxRow("Spot", "Ray-traced shadows for spot lights", &rtSpot_);
+            ImGui::Separator();
+            ImGui::Text("Shadow Softness");
+            ImGui::SetNextItemWidth(-1);
+            ImGui::SliderFloat("##shadowSoftness", &rtShadowSoftness_, 0.0f, 0.1f, "%.4f rad");
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("Angular spread for soft shadow penumbra (0=hard, ~0.01=soft sun, 0.05=very soft)");
             ui::UI::EndSurface();
         }
         ImGui::End();

@@ -53,7 +53,10 @@ layout(set = 2, binding = 1) uniform samplerCube cubeShadowMaps[4];
 #if RAY_TRACING_ENABLED
 /* Ray tracing TLAS (global set, binding 2) */
 layout(set = 0, binding = 2) uniform accelerationStructureEXT tlas;
-/* Per-instance submesh headers (binding 7): (offset, count) into submesh entries */
+/* Per-instance submesh headers (binding 7): (offset, count|allOpaqueFlag) into submesh entries.
+   - count bit 31 (0x80000000): allOpaque flag — if set, all submeshes of this
+     instance are fully opaque and the linear search can be skipped.
+   - count bits 0-30: actual submesh count */
 struct InstanceSubmeshHeader {
     uint offset;
     uint count;
@@ -61,10 +64,11 @@ struct InstanceSubmeshHeader {
 layout(set = 0, binding = 7, std430) readonly buffer InstanceSubmeshHeaders {
     InstanceSubmeshHeader instanceHeaders[];
 };
-/* Per-submesh data (binding 8): (endTriangle, opacity) pairs sorted by endTriangle */
+/* Per-submesh data (binding 8): (startTriangle, endTriangle, opacity) triples */
 struct SubmeshEntry {
-    uint   endTriangle;
-    float  opacity;
+    uint  startTriangle;
+    uint  endTriangle;
+    float opacity;
 };
 layout(set = 0, binding = 8, std430) readonly buffer InstanceSubmeshData {
     SubmeshEntry submeshEntries[];
@@ -75,12 +79,34 @@ layout(set = 0, binding = 8, std430) readonly buffer InstanceSubmeshData {
 
 #if RAY_TRACING_ENABLED
 /*==============================================================================
-  Ray traced shadow with transparency accumulation (bounce approach)
-  Sequential ray queries with TerminateOnFirstHit: each query finds the closest
-  hit, we look up the submesh opacity for that specific primitive, accumulate
-  transmittance, then restart the ray from just past the hit point.
+  Ray traced shadow with soft penumbra support.
+
+  Hard shadow (softnessAngle <= 0.0005): single ray, returns transmittance.
+  Soft shadow (softnessAngle > 0.0005): 4 jittered rays in a cone, averaged.
 ==============================================================================*/
-float computeShadowTransmittance(vec3 origin, vec3 dir, float maxDist) {
+
+// 2-sample jitter for penumbra (stratified, opposite directions)
+const vec2 kJitter2[2] = vec2[](
+    vec2(0.6, 0.2),
+    vec2(0.2, 0.7)
+);
+
+// Build an orthonormal basis from a forward direction.
+void buildBasis(vec3 forward, out vec3 u, out vec3 v) {
+    vec3 up = (abs(forward.x) > 0.1) ? vec3(0, 1, 0) : vec3(1, 0, 0);
+    u       = normalize(cross(forward, up));
+    v       = cross(u, forward);
+}
+
+// Sample a direction in a cone of half-angle theta around `dir`.
+vec3 sampleCone(vec3 dir, float theta, vec2 uv, vec3 u, vec3 v) {
+    float r = tan(theta) * sqrt(uv.x);
+    float a = 6.2831853 * uv.y;
+    return normalize(dir + r * (cos(a) * u + sin(a) * v));
+}
+
+// Single-ray hard shadow transmittance (TerminateOnFirstHit, bounce through transparency).
+float traceHardShadow(vec3 origin, vec3 dir, float maxDist) {
     float transmittance = 1.0;
     float tmin          = 0.001;
     vec3  rayDir        = normalize(dir);
@@ -92,23 +118,26 @@ float computeShadowTransmittance(vec3 origin, vec3 dir, float maxDist) {
         rayQueryEXT q;
         rayQueryInitializeEXT(q, tlas, gl_RayFlagsTerminateOnFirstHitEXT, 0xFF,
                               origin, tmin, rayDir, tmin + maxDist);
-
         rayQueryProceedEXT(q);
 
         if (rayQueryGetIntersectionTypeEXT(q, true) == gl_RayQueryCommittedIntersectionNoneEXT)
             break;
 
-        int  instId  = rayQueryGetIntersectionInstanceCustomIndexEXT(q, true);
-        uint primId  = rayQueryGetIntersectionPrimitiveIndexEXT(q, true);
+        int  instId = rayQueryGetIntersectionInstanceCustomIndexEXT(q, true);
+        uint primId = rayQueryGetIntersectionPrimitiveIndexEXT(q, true);
 
-        // Clamp lookups to prevent GPU page faults on invalid data
+        if (instId < 0 || uint(instId) >= 1024u)
+            return 0.0;
+
         float hitOpacity = 1.0;
         InstanceSubmeshHeader hdr = instanceHeaders[instId];
-        if (hdr.count > 0u) {
-            uint end = hdr.offset + hdr.count;
-            for (uint i = hdr.offset; i < end; i++) {
-                if (primId < submeshEntries[i].endTriangle) {
-                    hitOpacity = submeshEntries[i].opacity;
+        if ((hdr.count & 0x80000000u) == 0u) {
+            uint clampedCount = min(hdr.count & 0x7FFFFFFFu, 1024u);
+            for (uint i = 0; i < clampedCount; i++) {
+                uint idx = hdr.offset + i;
+                if (primId >= submeshEntries[idx].startTriangle &&
+                    primId < submeshEntries[idx].endTriangle) {
+                    hitOpacity = submeshEntries[idx].opacity;
                     break;
                 }
             }
@@ -118,13 +147,44 @@ float computeShadowTransmittance(vec3 origin, vec3 dir, float maxDist) {
             return 0.0;
 
         transmittance *= (1.0 - hitOpacity);
-
         float hitT = rayQueryGetIntersectionTEXT(q, true);
         tmin      += hitT + 0.0001;
         maxDist   -= hitT + 0.0001;
     }
-
     return transmittance;
+}
+
+// Soft shadow: center ray dominates, jittered rays only soften the penumbra.
+// Uses a contrast curve to keep shadowed areas dark while smoothing edges.
+float traceSoftShadow(vec3 origin, vec3 L, float maxDist, float softnessAngle) {
+    if (softnessAngle <= 0.0005)
+        return traceHardShadow(origin, L, maxDist);
+
+    // Center ray (hard shadow) — the dominant contribution
+    float center = traceHardShadow(origin, L, maxDist);
+
+    // Two jittered rays for penumbra softness
+    vec3 u, v;
+    buildBasis(L, u, v);
+
+    float jitterSum = 0.0;
+    for (int i = 0; i < 2; i++) {
+        vec3 jitterDir = sampleCone(L, softnessAngle, kJitter2[i], u, v);
+        jitterSum += traceHardShadow(origin, jitterDir, maxDist);
+    }
+    float jitterAvg = jitterSum * 0.5;
+
+    // Blend: center ray = 70%, jittered = 30%
+    float soft = center * 0.7 + jitterAvg * 0.3;
+
+    // Contrast curve: darken mid-tones so shadows stay defined.
+    // pow(x, 1.8) makes the penumbra transition sharper.
+    return pow(soft, 1.8);
+}
+
+// Legacy: single-ray hard shadow (kept for backward compat).
+float computeShadowTransmittance(vec3 origin, vec3 dir, float maxDist) {
+    return traceHardShadow(origin, dir, maxDist);
 }
 #endif
 
@@ -280,7 +340,7 @@ LightingResult computeIBL(Surface s) {
     vec3 irradiance = texture(irradianceMap, s.N).rgb;
     // Apply Burley-like roughness scaling to IBL diffuse for consistency with direct lighting
     float fdIBL = 1.0 + s.roughness * s.roughness * 0.5;
-    r.diffuse       = kD * irradiance * s.albedo * s.ao * fdIBL;
+    r.diffuse   = kD * irradiance * s.albedo * s.ao * fdIBL;
 
     vec3 prefiltered = textureLod(prefilterMap, R, s.roughness * MAX_REFLECTION_LOD).rgb;
 
@@ -342,11 +402,11 @@ void calculateDirectLight(vec3 N, vec3 V, vec3 albedo, float metallic, float rou
         return;
     }
 
-    vec3  H   = normalize(V + L);
+    vec3  H     = normalize(V + L);
     float NdotH = max(dot(N, H), 0.0);
-    float NDF = DistributionGGX(N, H, roughness);
-    float G   = GeometrySmith(NdotV, NdotL, roughness);
-    vec3  F   = fresnelSchlick(max(dot(H, V), 0.0), F0);
+    float NDF   = DistributionGGX(N, H, roughness);
+    float G     = GeometrySmith(NdotV, NdotL, roughness);
+    vec3  F     = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
     vec3 kS = F;
     vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
@@ -356,7 +416,7 @@ void calculateDirectLight(vec3 N, vec3 V, vec3 albedo, float metallic, float rou
     vec3  specular    = numerator / denominator;
 
     // Burley (Disney) diffuse — more realistic than Lambert for rough surfaces
-    float fd = burleyDiffuse(NdotL, NdotV, NdotH, roughness);
+    float fd    = burleyDiffuse(NdotL, NdotV, NdotH, roughness);
     outDiffuse  = (kD * albedo / PI) * radiance * NdotL * fd;
     outSpecular = specular * radiance * NdotL;
 }
@@ -386,7 +446,7 @@ vec3 handleDirectionalLights(in Surface s) {
 #if RAY_TRACING_ENABLED
         if (ubo.rtDirectional != 0) {
             vec3 origin = s.worldPos + s.N * 0.002;
-            shadow = computeShadowTransmittance(origin, L, 1000.0);
+            shadow      = traceSoftShadow(origin, L, 1000.0, ubo.rtShadowSoftness);
         } else
 #endif
         {
@@ -417,15 +477,27 @@ vec3 handlePointLights(in Surface s) {
 
         vec3  L      = normalize(Lvec);
         float shadow = 1.0;
+
+        // Skip shadow ray if light contribution is negligible even unshadowed.
+        float maxContrib = intensity * att * max(max(pointLights[i].colorIntensity.x, max(pointLights[i].colorIntensity.y, pointLights[i].colorIntensity.z)), 0.0);
+        if (maxContrib <= 0.001)
+            shadow = 1.0;
+        else {
 #if RAY_TRACING_ENABLED
-        if (ubo.rtPoint != 0) {
-            float dist = sqrt(dist2);
-            vec3  origin = s.worldPos + s.N * 0.002;
-            shadow = computeShadowTransmittance(origin, L, dist);
-        } else
+            if (ubo.rtPoint != 0) {
+                float dist          = sqrt(dist2);
+                vec3  origin        = s.worldPos + s.N * 0.002;
+                float lightRadius   = sqrt(pointLights[i].positionRadius2.w);
+                float pointSoftness = max(ubo.rtShadowSoftness, atan(lightRadius, max(dist, 0.01)));
+                // LOD: reduce softness for distant lights (fewer rays in traceSoftShadow)
+                if (dist > lightRadius * 10.0)
+                    pointSoftness *= 0.5;
+                shadow = traceSoftShadow(origin, L, dist, pointSoftness);
+            } else
 #endif
-        {
-            shadow = calculatePointLightShadow(s.worldPos, i);
+            {
+                shadow = calculatePointLightShadow(s.worldPos, i);
+            }
         }
 
         vec3 radiance = pointLights[i].colorIntensity.xyz * intensity * att * shadow;
@@ -465,15 +537,27 @@ vec3 handleSpotLights(in Surface s) {
         float cone = clamp((theta - spotLights[i].attenOuter.x) / max(spotLights[i].directionInner.w - spotLights[i].attenOuter.x, 1e-4), 0.0, 1.0);
 
         float shadow = 1.0;
+
+        float maxContrib = intensity * att * cone * max(max(spotLights[i].colorIntensity.x,
+                                                           max(spotLights[i].colorIntensity.y,
+                                                               spotLights[i].colorIntensity.z)), 0.0);
+        if (maxContrib <= 0.001)
+            shadow = 1.0;
+        else {
 #if RAY_TRACING_ENABLED
-        if (ubo.rtSpot != 0) {
-            float dist = sqrt(dist2);
-            vec3  origin = s.worldPos + s.N * 0.002;
-            shadow = computeShadowTransmittance(origin, L, dist);
-        } else
+            if (ubo.rtSpot != 0) {
+                float dist   = sqrt(dist2);
+                vec3  origin = s.worldPos + s.N * 0.002;
+                float lightRadius = sqrt(spotLights[i].positionRadius2.w);
+                float spotSoftness = max(ubo.rtShadowSoftness, atan(lightRadius, max(dist, 0.01)));
+                if (dist > lightRadius * 10.0)
+                    spotSoftness *= 0.5;
+                shadow = traceSoftShadow(origin, L, dist, spotSoftness);
+            } else
 #endif
-        {
-            shadow = calculateShadow(s.worldPos, s.N, L, shadowBase + i);
+            {
+                shadow = calculateShadow(s.worldPos, s.N, L, shadowBase + i);
+            }
         }
 
         vec3 radiance = spotLights[i].colorIntensity.xyz * intensity * att * cone * shadow;

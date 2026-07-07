@@ -24,28 +24,156 @@
 #include "Editor/ui/UI.hpp"
 #include "IconsFontAwesome6.h"
 #include "ModelLib/Resources/ResourceManager.hpp"
+
 namespace engine::ui {
     namespace {
+
+        // ---------------------------------------------------------------
+        // Small string helpers
+        // ---------------------------------------------------------------
+
         std::string toLower(std::string value) {
             std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
                 return static_cast<char>(std::tolower(c));
             });
             return value;
         }
-        bool isRootEntity(const entt::registry& registry, entt::entity entity) {
-            return !registry.all_of<ChildComponent>(entity);
+
+        /// True if `filter` is empty, or `name` contains it (case-insensitive).
+        bool matchesFilter(const std::string& name, const char* filter) {
+            if (filter == nullptr || filter[0] == '\0') {
+                return true;
+            }
+            return toLower(name).find(toLower(filter)) != std::string::npos;
         }
-        bool shouldAutoCreateStaticCollider(const std::string& path, const std::string& name) {
-            const std::string                     combined = toLower(path + " " + name);
-            static const std::vector<std::string> tokens   = {
+
+        std::string entityDisplayName(const entt::registry& registry, entt::entity entity) {
+            if (registry.all_of<NameComponent>(entity)) {
+                return registry.get<NameComponent>(entity).name;
+            }
+            return "Object " + std::to_string(static_cast<uint32_t>(entity));
+        }
+
+        // ---------------------------------------------------------------
+        // Static-collider auto-detection tokens.
+        // This is the single source of truth: both the detection logic
+        // and the UI tooltip text are derived from it, so they can't
+        // drift apart the way the hand-typed tooltip string used to.
+        // ---------------------------------------------------------------
+
+        const std::vector<std::string>& staticColliderAutoTokens() {
+            static const std::vector<std::string> tokens = {
                 "col_", "ucx_", "collision", "collider", "wall", "floor", "ground", "world", "level", "static"};
-            for (const auto& token : tokens) {
+            return tokens;
+        }
+
+        std::string staticColliderAutoTokensTooltip() {
+            std::string text = "Auto tokens: ";
+            const auto& tokens = staticColliderAutoTokens();
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                text += tokens[i];
+                if (i + 1 < tokens.size()) {
+                    text += ", ";
+                }
+            }
+            return text;
+        }
+
+        bool shouldAutoCreateStaticCollider(const std::string& path, const std::string& name) {
+            const std::string combined = toLower(path + " " + name);
+            for (const auto& token : staticColliderAutoTokens()) {
                 if (combined.find(token) != std::string::npos) {
                     return true;
                 }
             }
             return false;
         }
+
+        bool isRootEntity(const entt::registry& registry, entt::entity entity) {
+            return !registry.all_of<ChildComponent>(entity);
+        }
+
+        // ---------------------------------------------------------------
+        // Parent -> children index.
+        //
+        // Building this once per section draw (instead of re-scanning the
+        // whole ChildComponent view for every node, and again for every
+        // node's "does it have children" check) turns what was an O(n^2)
+        // hierarchy walk into O(n).
+        // ---------------------------------------------------------------
+
+        class ChildrenIndex {
+        public:
+            explicit ChildrenIndex(const entt::registry& registry) {
+                auto view = registry.view<ChildComponent>();
+                for (auto child : view) {
+                    const auto parent = registry.get<ChildComponent>(child).parent;
+                    byParent_[parent].push_back(child);
+                }
+            }
+
+            const std::vector<entt::entity>& childrenOf(entt::entity parent) const {
+                static const std::vector<entt::entity> empty;
+                auto it = byParent_.find(parent);
+                return it != byParent_.end() ? it->second : empty;
+            }
+
+            bool hasChildren(entt::entity parent) const {
+                return byParent_.find(parent) != byParent_.end();
+            }
+
+        private:
+            std::unordered_map<entt::entity, std::vector<entt::entity>> byParent_;
+        };
+
+        // ---------------------------------------------------------------
+        // Entity creation helper — collapses the repeated
+        // "Transform + Component + Name" triple used for every
+        // camera/light type into one call.
+        // ---------------------------------------------------------------
+
+        template <typename Component>
+        entt::entity createNamedEntity(engine::Scene& scene, entt::registry& registry, const char* name) {
+            auto entity = scene.createEntity();
+            registry.emplace<TransformComponent>(entity);
+            registry.emplace<Component>(entity);
+            registry.emplace<NameComponent>(entity, name);
+            return entity;
+        }
+
+        // ---------------------------------------------------------------
+        // Section header with a trailing "+" add button, right-aligned.
+        // Shared by the Cameras / Lights / Models sections, which used
+        // to duplicate this PushID/TreeNode/SameLine/SmallButton/PopID
+        // dance three times.
+        // ---------------------------------------------------------------
+
+        struct SectionHeaderResult {
+            bool open;
+            bool addClicked;
+        };
+
+        SectionHeaderResult drawSectionHeaderWithAddButton(
+            const char*        pushIdLabel,
+            const char*        icon,
+            const std::string& header,
+            const char*        addButtonId,
+            ImGuiTreeNodeFlags flags = 0) {
+            ImGui::PushID(pushIdLabel);
+            const ImGuiStyle& style = ImGui::GetStyle();
+            const float       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
+            ImGui::SetNextItemAllowOverlap();
+            const bool open = UI::TreeNode(icon, header.c_str(), flags);
+            ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
+            const bool addClicked = UI::SmallButton(addButtonId);
+            ImGui::PopID();
+            return {open, addClicked};
+        }
+
+        // ---------------------------------------------------------------
+        // Row / tree drawing
+        // ---------------------------------------------------------------
+
         void drawEntityRow(
             entt::entity               entity,
             const char*                icon,
@@ -56,45 +184,44 @@ namespace engine::ui {
             const auto id = static_cast<uint32_t>(entity);
             assert(id <= static_cast<uint32_t>(std::numeric_limits<int>::max()));
             ImGui::PushID(static_cast<int>(id));
-            std::string label = "Object " + std::to_string(id);
-            if (registry.all_of<NameComponent>(entity)) {
-                label = registry.get<NameComponent>(entity).name + " " + std::to_string(id);
-            }
-            const bool isSelected = (frameInfo.selectedEntity == entity);
+
+            const std::string label     = entityDisplayName(registry, entity) + " " + std::to_string(id);
+            const bool         isSelected = (frameInfo.selectedEntity == entity);
+
             UI::TextColored(icon, color);
             ImGui::SameLine();
+
             const ImGuiStyle& style              = ImGui::GetStyle();
             float             actionsWidth       = 0.0f;
             auto              actionWidthForText = [&](const char* text) {
                 return ImGui::CalcTextSize(text).x + (style.FramePadding.x * 2.0f);
             };
-            if (registry.all_of<CameraComponent>(entity)) {
-                if (entity == frameInfo.cameraEntity) {
-                    actionsWidth += ImGui::CalcTextSize("Active").x;
-                } else {
-                    actionsWidth += actionWidthForText("Set Active");
-                }
+            const bool isCamera      = registry.all_of<CameraComponent>(entity);
+            const bool isActiveCamera = (entity == frameInfo.cameraEntity);
+
+            if (isCamera) {
+                actionsWidth += isActiveCamera ? ImGui::CalcTextSize("Active").x : actionWidthForText("Set Active");
                 actionsWidth += style.ItemSpacing.x;
             }
-            if (entity == frameInfo.cameraEntity) {
-                actionsWidth += ImGui::CalcTextSize("Delete").x;
-            } else {
-                actionsWidth += actionWidthForText("Delete");
-            }
+            actionsWidth += isActiveCamera ? ImGui::CalcTextSize("Delete").x : actionWidthForText("Delete");
+
             const float selectableWidth = std::max(1.0f, ImGui::GetContentRegionAvail().x - actionsWidth);
+
             ImGui::PushStyleColor(ImGuiCol_Header, ImGui::GetStyleColorVec4(ImGuiCol_Header));
             ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGui::GetStyleColorVec4(ImGuiCol_HeaderHovered));
             ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
             ImGui::PushStyleColor(ImGuiCol_Text, isSelected ? ImVec4(1.0f, 1.0f, 1.0f, 1.0f) : ImGui::GetStyleColorVec4(ImGuiCol_Text));
             const bool clicked = ImGui::Selectable(label.c_str(), isSelected, ImGuiSelectableFlags_None, ImVec2(selectableWidth, 0.0f));
             ImGui::PopStyleColor(4);
+
             if (clicked) {
                 frameInfo.selectedObjectId = id;
                 frameInfo.selectedEntity   = entity;
             }
+
             ImGui::SameLine(0.0f, 0.0f);
-            if (registry.all_of<CameraComponent>(entity)) {
-                if (entity == frameInfo.cameraEntity) {
+            if (isCamera) {
+                if (isActiveCamera) {
                     UI::TextDisabled("Active");
                     ImGui::SameLine(0.0f, style.ItemSpacing.x);
                 } else {
@@ -105,7 +232,8 @@ namespace engine::ui {
                     ImGui::SameLine(0.0f, style.ItemSpacing.x);
                 }
             }
-            if (entity == frameInfo.cameraEntity) {
+
+            if (isActiveCamera) {
                 UI::TextDisabled("Delete");
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("Cannot delete the active camera");
@@ -118,76 +246,58 @@ namespace engine::ui {
             }
             ImGui::PopID();
         }
-        /// Recursively draw node children of a parent entity.
+
+        /// Recursively draw node children of a parent entity using a
+        /// pre-built children index (no per-call full-view scan).
         void drawNodeChildren(
             entt::entity               parent,
+            const ChildrenIndex&       childrenIndex,
             const entt::registry&      registry,
             FrameInfo&                 frameInfo,
             std::vector<entt::entity>& toDelete) {
-            auto view = registry.view<ChildComponent>();
-            for (auto child : view) {
-                auto& childComp = registry.get<ChildComponent>(child);
-                if (childComp.parent != parent) {
-                    continue;
-                }
-                // Only handle node entities here
+            for (auto child : childrenIndex.childrenOf(parent)) {
                 if (!registry.all_of<NodeIndexComponent>(child)) {
                     continue;
                 }
-                std::string name = "Node";
-                if (registry.all_of<NameComponent>(child)) {
-                    name = registry.get<NameComponent>(child).name;
-                }
-                const char* icon  = ICON_FA_FOLDER;
-                ImVec4      color = ImVec4(0.6f, 0.8f, 1.0f, 1.0f);
-                // Check if this node has children of its own
-                bool hasOwnChildren = false;
-                for (auto grandchild : view) {
-                    if (registry.get<ChildComponent>(grandchild).parent == child) {
-                        hasOwnChildren = true;
-                        break;
-                    }
-                }
+
+                const std::string name = entityDisplayName(registry, child);
+                const char*       icon  = ICON_FA_FOLDER;
+                const ImVec4      color = ImVec4(0.6f, 0.8f, 1.0f, 1.0f);
+                const bool        hasOwnChildren = childrenIndex.hasChildren(child);
+
                 ImGui::PushID(static_cast<int>(static_cast<uint32_t>(child)));
                 UI::TextColored(icon, color);
                 ImGui::SameLine();
+
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
                 if (!hasOwnChildren) {
                     flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
                 }
-                const bool isSelected = (frameInfo.selectedEntity == child);
-                if (isSelected) {
+                if (frameInfo.selectedEntity == child) {
                     flags |= ImGuiTreeNodeFlags_Selected;
                 }
-                bool nodeOpen = ImGui::TreeNodeEx(name.c_str(), flags);
+
+                const bool nodeOpen = ImGui::TreeNodeEx(name.c_str(), flags);
                 if (ImGui::IsItemClicked()) {
                     frameInfo.selectedObjectId = static_cast<uint32_t>(child);
                     frameInfo.selectedEntity   = child;
                 }
                 if (hasOwnChildren && nodeOpen) {
-                    drawNodeChildren(child, registry, frameInfo, toDelete);
+                    drawNodeChildren(child, childrenIndex, registry, frameInfo, toDelete);
                     ImGui::TreePop();
                 }
                 ImGui::PopID();
             }
         }
+
         /// Draw light children of a parent entity as flat selectable rows.
         void drawLightChildren(
             entt::entity               parent,
+            const ChildrenIndex&       childrenIndex,
             const entt::registry&      registry,
             FrameInfo&                 frameInfo,
             std::vector<entt::entity>& toDelete) {
-            auto view = registry.view<ChildComponent>();
-            for (auto child : view) {
-                auto& childComp = registry.get<ChildComponent>(child);
-                if (childComp.parent != parent) {
-                    continue;
-                }
-                if (!registry.all_of<PointLightComponent>(child) &&
-                    !registry.all_of<DirectionalLightComponent>(child) &&
-                    !registry.all_of<SpotLightComponent>(child)) {
-                    continue;
-                }
+            for (auto child : childrenIndex.childrenOf(parent)) {
                 const char* icon  = ICON_FA_CIRCLE;
                 ImVec4      color = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
                 if (registry.all_of<PointLightComponent>(child)) {
@@ -199,11 +309,15 @@ namespace engine::ui {
                 } else if (registry.all_of<SpotLightComponent>(child)) {
                     icon  = ICON_FA_LOCATION_ARROW;
                     color = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                } else {
+                    continue;  // not a light
                 }
                 drawEntityRow(child, icon, color, frameInfo, registry, toDelete);
             }
         }
+
     }  // namespace
+
     SceneEntityCollection UI::CollectSceneEntities(const engine::Scene& scene) {
         SceneEntityCollection result;
         auto&                 registry = scene.getRegistry();
@@ -241,6 +355,7 @@ namespace engine::ui {
         }
         return result;
     }
+
     void UI::EnforceSingleDirectionalLight(
         std::vector<entt::entity>& dirLights,
         std::vector<entt::entity>& toDelete) {
@@ -254,6 +369,7 @@ namespace engine::ui {
             dirLights.resize(1);
         }
     }
+
     void UI::DrawSceneCameraSection(
         const std::vector<entt::entity>& cameras,
         const char*                      filter,
@@ -261,29 +377,25 @@ namespace engine::ui {
         engine::Scene&                   scene,
         entt::registry&                  registry,
         std::vector<entt::entity>&       toDelete) {
-        (void) filter;
-        (void) toDelete;
         const std::string header = "Cameras (" + std::to_string(cameras.size()) + ")";
-        ImGui::PushID("cameras_header");
-        const ImGuiStyle& style = ImGui::GetStyle();
-        const float       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
-        ImGui::SetNextItemAllowOverlap();
-        const bool open = UI::TreeNode(ICON_FA_CAMERA, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-        if (UI::SmallButton("+##add_camera")) {
-            auto entity = scene.createEntity();
-            registry.emplace<TransformComponent>(entity);
-            registry.emplace<CameraComponent>(entity);
-            registry.emplace<NameComponent>(entity, "Camera");
+        const auto result = drawSectionHeaderWithAddButton(
+            "cameras_header", ICON_FA_CAMERA, header, "+##add_camera", ImGuiTreeNodeFlags_DefaultOpen);
+
+        if (result.addClicked) {
+            createNamedEntity<CameraComponent>(scene, registry, "Camera");
         }
-        ImGui::PopID();
-        if (open) {
+
+        if (result.open) {
             for (auto entity : cameras) {
+                if (!matchesFilter(entityDisplayName(registry, entity), filter)) {
+                    continue;
+                }
                 drawEntityRow(entity, "[CAM]", ImVec4(1.0f, 1.0f, 1.0f, 1.0f), frameInfo, registry, toDelete);
             }
             ImGui::TreePop();
         }
     }
+
     void UI::DrawSceneLightSection(
         const std::vector<entt::entity>& dirLights,
         const std::vector<entt::entity>& pointLights,
@@ -293,18 +405,15 @@ namespace engine::ui {
         engine::Scene&                   scene,
         entt::registry&                  registry,
         std::vector<entt::entity>&       toDelete) {
-        (void) filter;
         const size_t      lightsTotal = dirLights.size() + pointLights.size() + spotLights.size();
         const std::string header      = "Lights (" + std::to_string(lightsTotal) + ")";
-        ImGui::PushID("lights_header");
-        const ImGuiStyle& style = ImGui::GetStyle();
-        const float       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
-        ImGui::SetNextItemAllowOverlap();
-        const bool open = UI::TreeNode(ICON_FA_LIGHTBULB, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-        if (UI::SmallButton("+##add_light")) {
+        const auto result = drawSectionHeaderWithAddButton(
+            "lights_header", ICON_FA_LIGHTBULB, header, "+##add_light", ImGuiTreeNodeFlags_DefaultOpen);
+
+        if (result.addClicked) {
             ImGui::OpenPopup("AddLightPopup");
         }
+
         if (ImGui::BeginPopup("AddLightPopup")) {
             const bool canAddDirectional = dirLights.empty();
             if (!canAddDirectional) {
@@ -312,10 +421,7 @@ namespace engine::ui {
             }
             if (ImGui::Selectable("Add Directional")) {
                 if (canAddDirectional) {
-                    auto entity = scene.createEntity();
-                    registry.emplace<TransformComponent>(entity);
-                    registry.emplace<DirectionalLightComponent>(entity);
-                    registry.emplace<NameComponent>(entity, "Directional Light");
+                    createNamedEntity<DirectionalLightComponent>(scene, registry, "Directional Light");
                 }
                 ImGui::CloseCurrentPopup();
             }
@@ -326,47 +432,36 @@ namespace engine::ui {
                 ImGui::EndDisabled();
             }
             if (ImGui::Selectable("Add Point")) {
-                auto entity = scene.createEntity();
-                registry.emplace<TransformComponent>(entity);
-                registry.emplace<PointLightComponent>(entity);
-                registry.emplace<NameComponent>(entity, "Point Light");
+                createNamedEntity<PointLightComponent>(scene, registry, "Point Light");
                 ImGui::CloseCurrentPopup();
             }
             if (ImGui::Selectable("Add Spot")) {
-                auto entity = scene.createEntity();
-                registry.emplace<TransformComponent>(entity);
-                registry.emplace<SpotLightComponent>(entity);
-                registry.emplace<NameComponent>(entity, "Spot Light");
+                createNamedEntity<SpotLightComponent>(scene, registry, "Spot Light");
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
         }
-        ImGui::PopID();
-        if (open) {
-            const std::string dirHeader = "Directional (" + std::to_string(dirLights.size()) + ")";
-            if (UI::TreeNode(ICON_FA_SUN, dirHeader.c_str())) {
-                for (auto entity : dirLights) {
-                    drawEntityRow(entity, ICON_FA_SUN, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
+
+        if (result.open) {
+            auto drawGroup = [&](const char* icon, const char* label, const std::vector<entt::entity>& group) {
+                const std::string groupHeader = std::string(label) + " (" + std::to_string(group.size()) + ")";
+                if (UI::TreeNode(icon, groupHeader.c_str())) {
+                    for (auto entity : group) {
+                        if (!matchesFilter(entityDisplayName(registry, entity), filter)) {
+                            continue;
+                        }
+                        drawEntityRow(entity, icon, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
+                    }
+                    ImGui::TreePop();
                 }
-                ImGui::TreePop();
-            }
-            const std::string pntHeader = "Point (" + std::to_string(pointLights.size()) + ")";
-            if (UI::TreeNode(ICON_FA_BULLSEYE, pntHeader.c_str())) {
-                for (auto entity : pointLights) {
-                    drawEntityRow(entity, ICON_FA_BULLSEYE, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
-                }
-                ImGui::TreePop();
-            }
-            const std::string sptHeader = "Spot (" + std::to_string(spotLights.size()) + ")";
-            if (UI::TreeNode(ICON_FA_LOCATION_ARROW, sptHeader.c_str())) {
-                for (auto entity : spotLights) {
-                    drawEntityRow(entity, ICON_FA_LOCATION_ARROW, ImVec4(1.0f, 1.0f, 0.0f, 1.0f), frameInfo, registry, toDelete);
-                }
-                ImGui::TreePop();
-            }
+            };
+            drawGroup(ICON_FA_SUN, "Directional", dirLights);
+            drawGroup(ICON_FA_BULLSEYE, "Point", pointLights);
+            drawGroup(ICON_FA_LOCATION_ARROW, "Spot", spotLights);
             ImGui::TreePop();
         }
     }
+
     void UI::DrawSceneModelSection(
         const std::vector<entt::entity>&                 models,
         const char*                                      filter,
@@ -381,31 +476,30 @@ namespace engine::ui {
             const ModelInsertionOptions&,
             ModelInsertionOptions::StaticColliderImportMode)>
             enqueueModelLoad) {
-        (void) filter;
         (void) scene;
+
         const std::string header = "Models (" + std::to_string(models.size()) + ")";
-        ImGui::PushID("models_header");
-        const ImGuiStyle& style = ImGui::GetStyle();
-        const float       btnW  = ImGui::CalcTextSize("+").x + (style.FramePadding.x * 2.0f);
-        ImGui::SetNextItemAllowOverlap();
-        const bool open = UI::TreeNode(ICON_FA_CUBE, header.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
-        ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnW);
-        if (UI::SmallButton("+##add_model")) {
+        const auto result = drawSectionHeaderWithAddButton(
+            "models_header", ICON_FA_CUBE, header, "+##add_model", ImGuiTreeNodeFlags_DefaultOpen);
+
+        if (result.addClicked) {
             ImGui::OpenPopup("AddModelPopup");
         }
+
         if (ImGui::BeginPopup("AddModelPopup")) {
             static char filterModel[128] = "";
             UI::InputText("Filter", filterModel, sizeof(filterModel));
+
             int                colliderModeIndex = static_cast<int>(colliderMode);
             static const char* modeLabels[]      = {"Auto Detect", "Force On", "Force Off"};
             if (UI::Combo("Static Mesh Collider", &colliderModeIndex, modeLabels, 3)) {
                 colliderMode = static_cast<ModelInsertionOptions::StaticColliderImportMode>(colliderModeIndex);
             }
             if (colliderMode == ModelInsertionOptions::StaticColliderImportMode::AutoDetect) {
-                const std::string autoText = "Auto tokens: col_, ucx_, collision, collider, wall, floor, ground, world, level, static";
-                UI::TextDisabled(autoText.c_str());
+                UI::TextDisabled(staticColliderAutoTokensTooltip().c_str());
             }
             UI::Separator();
+
             static char customPath[512] = "";
             UI::InputText("Path (.gltf/.glb)", customPath, sizeof(customPath));
             ImGui::SameLine();
@@ -431,12 +525,12 @@ namespace engine::ui {
                     }
                 }
             }
+
             const std::string indexPath = std::string(MODEL_PATH) + "glTF/model-index.json";
             try {
                 std::ifstream f(indexPath);
                 if (!f.is_open()) {
-                    const std::string errText = "Failed to open model index: " + indexPath;
-                    UI::TextDisabled(errText.c_str());
+                    UI::TextDisabled(("Failed to open model index: " + indexPath).c_str());
                 } else {
                     nlohmann::json j;
                     f >> j;
@@ -445,36 +539,23 @@ namespace engine::ui {
                             continue;
                         }
                         const std::string name = item["name"].get<std::string>();
-                        std::string       relativePath;
+
+                        std::string relativePath;
                         if (item.contains("variants") && item["variants"].contains("glTF")) {
                             const std::string variantFile = item["variants"]["glTF"].get<std::string>();
-                            relativePath
-                            .append("glTF/")
-                            .append(name)
-                            .append("/glTF/")
-                            .append(variantFile);
+                            relativePath.append("glTF/").append(name).append("/glTF/").append(variantFile);
                         }
-                        if (filterModel[0] != '\0') {
-                            std::string lowName   = name;
-                            std::string lowFilter = filterModel;
-                            std::transform(lowName.begin(), lowName.end(), lowName.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                            std::transform(lowFilter.begin(), lowFilter.end(), lowFilter.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                            if (lowName.find(lowFilter) == std::string::npos) {
-                                continue;
-                            }
+
+                        if (!matchesFilter(name, filterModel)) {
+                            continue;
                         }
+
                         if (UI::Selectable(name.c_str(), false, ImGuiSelectableFlags_NoAutoClosePopups)) {
                             std::string fullPath;
                             if (relativePath.empty()) {
-                                fullPath.append(MODEL_PATH);
-                                fullPath.append("glTF/");
-                                fullPath.append(name);
-                                fullPath.append("/glTF/");
-                                fullPath.append(name);
-                                fullPath.append(".gltf");
+                                fullPath.append(MODEL_PATH).append("glTF/").append(name).append("/glTF/").append(name).append(".gltf");
                             } else {
-                                fullPath.append(MODEL_PATH);
-                                fullPath.append(relativePath);
+                                fullPath.append(MODEL_PATH).append(relativePath);
                             }
                             ModelInsertionOptions opts;
                             opts.enableTextures     = true;
@@ -486,24 +567,25 @@ namespace engine::ui {
                     }
                 }
             } catch (const std::exception& e) {
-                const std::string errText = "Error parsing model index: " + std::string(e.what());
-                UI::TextDisabled(errText.c_str());
+                UI::TextDisabled(("Error parsing model index: " + std::string(e.what())).c_str());
             }
             ImGui::EndPopup();
         }
-        ImGui::PopID();
-        if (open) {
+
+        if (result.open) {
+            // Built once for the whole model list instead of per-node.
+            const ChildrenIndex childrenIndex(registry);
+
             for (auto entity : models) {
+                if (!matchesFilter(entityDisplayName(registry, entity), filter)) {
+                    continue;
+                }
+
                 drawEntityRow(entity, ICON_FA_CUBE, ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
 
-                // Separate children into lights and nodes
-                auto        childView = registry.view<ChildComponent>();
-                bool        hasLights = false;
-                bool        hasNodes  = false;
-                for (auto child : childView) {
-                    if (registry.get<ChildComponent>(child).parent != entity) {
-                        continue;
-                    }
+                bool hasLights = false;
+                bool hasNodes  = false;
+                for (auto child : childrenIndex.childrenOf(entity)) {
                     if (registry.all_of<PointLightComponent>(child) ||
                         registry.all_of<DirectionalLightComponent>(child) ||
                         registry.all_of<SpotLightComponent>(child)) {
@@ -513,17 +595,15 @@ namespace engine::ui {
                     }
                 }
 
-                // Render Lights sub-tree
                 if (hasLights) {
                     if (UI::TreeNode(ICON_FA_LIGHTBULB, "Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
-                        drawLightChildren(entity, registry, frameInfo, toDelete);
+                        drawLightChildren(entity, childrenIndex, registry, frameInfo, toDelete);
                         ImGui::TreePop();
                     }
                 }
-                // Render Nodes sub-tree (recursive glTF node hierarchy)
                 if (hasNodes) {
                     if (UI::TreeNode(ICON_FA_SITEMAP, "Nodes", ImGuiTreeNodeFlags_DefaultOpen)) {
-                        drawNodeChildren(entity, registry, frameInfo, toDelete);
+                        drawNodeChildren(entity, childrenIndex, registry, frameInfo, toDelete);
                         ImGui::TreePop();
                     }
                 }
@@ -531,6 +611,7 @@ namespace engine::ui {
             ImGui::TreePop();
         }
     }
+
     void UI::DrawScenePendingLoadsSection(
         std::vector<ScenePendingModelLoad>& pendingLoads,
         ResourceManager*                    resourceManager) {
@@ -544,8 +625,7 @@ namespace engine::ui {
                 snapshotById[snapshot.id] = snapshot;
             }
         }
-        const std::string loadText = "Pending loads: " + std::to_string(pendingLoads.size());
-        UI::TextDisabled(loadText.c_str());
+        UI::TextDisabled(("Pending loads: " + std::to_string(pendingLoads.size())).c_str());
         for (size_t i = 0; i < pendingLoads.size(); ++i) {
             auto& p = pendingLoads[i];
             UI::TextDisabled(p.name.c_str());
@@ -581,6 +661,7 @@ namespace engine::ui {
         }
         UI::Separator();
     }
+
     bool UI::ShouldCreateStaticCollider(
         const std::string&                              path,
         const std::string&                              name,
@@ -595,4 +676,5 @@ namespace engine::ui {
                 return shouldAutoCreateStaticCollider(path, name);
         }
     }
+
 }  // namespace engine::ui

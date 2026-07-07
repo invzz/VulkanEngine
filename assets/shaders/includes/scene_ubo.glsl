@@ -44,7 +44,7 @@ layout(set = 0, binding = 0, std140) uniform UBO {
     int  rtSpot;
     int  rtPad;
     int  rtPad2;
-    int  _padDebug0;
+    float rtShadowSoftness;
     vec4 frustumPlanes[6];
 }
 ubo;

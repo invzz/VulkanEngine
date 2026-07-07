@@ -10,9 +10,10 @@
 #define SHADER_PATH "assets/shaders/compiled/"
 #endif
 int main(int argc, char** argv) {
-    bool fullscreen            = false;
-    bool validationOverrideSet = false;
-    bool validationEnabled     = false;
+    bool        fullscreen            = false;
+    bool        validationOverrideSet = false;
+    bool        validationEnabled     = false;
+    std::string modelPath;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--fullscreen" || arg == "-f") {
@@ -29,13 +30,19 @@ int main(int argc, char** argv) {
             validationEnabled     = false;
             continue;
         }
+        // First positional argument that doesn't start with '-' is treated as
+        // a model file path to load instead of scene.json.
+        if (!arg.empty() && arg[0] != '-' && modelPath.empty()) {
+            modelPath = arg;
+            continue;
+        }
     }
     if (validationOverrideSet) {
         engine::Device::setValidationLayersEnabledOverride(validationEnabled);
     } else {
         engine::Device::clearValidationLayersEnabledOverride();
     }
-    engine::App app(fullscreen);
+    engine::App app(fullscreen, std::move(modelPath));
     try {
         app.run();
     } catch (const std::exception& e) {

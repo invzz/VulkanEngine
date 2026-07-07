@@ -76,15 +76,15 @@ namespace engine {
                 sizeof(uint32_t) * 2,  // 2 uints per instance: offset, count
                 1024,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 device_.getProperties().limits.minStorageBufferOffsetAlignment);
             instanceSubmeshHeaderBuffers_[i]->map();
-            // Binding 8: per-submesh (endTri, opacityBits) pairs, up to 8192 submeshes total
+            // Binding 8: per-submesh (startTri, endTri, opacity) triples, up to 8192 submeshes total
             instanceSubmeshDataBuffers_[i] = std::make_unique<Buffer>(device_,
-                sizeof(uint32_t) * 2,  // 2 uints per submesh: endTriangle, opacityBits
+                sizeof(uint32_t) * 3,  // 3 uints per submesh
                 8192,
                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                 device_.getProperties().limits.minStorageBufferOffsetAlignment);
             instanceSubmeshDataBuffers_[i]->map();
         }

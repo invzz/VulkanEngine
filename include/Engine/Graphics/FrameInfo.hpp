@@ -59,13 +59,13 @@ namespace engine {
         int debugMode             = 0;
 
         // Runtime raytracing toggles (only meaningful when RAY_TRACING_ENABLED is defined)
-        int rtDirectional         = 1;
-        int rtPoint               = 1;
-        int rtSpot                = 1;
-        int rtPad                 = 0;
-        int rtPad2                = 0;
+        int rtDirectional = 1;
+        int rtPoint       = 1;
+        int rtSpot        = 1;
+        int rtPad         = 0;
+        int rtPad2        = 0;
 
-        int       _padDebug0 = 0;
+        float     rtShadowSoftness = 0.005f;  // angular spread in radians for soft shadows (~0.3°)
         glm::vec4 frustumPlanes[6];
     };
 

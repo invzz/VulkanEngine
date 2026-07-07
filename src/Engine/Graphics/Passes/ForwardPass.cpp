@@ -27,6 +27,9 @@ namespace engine {
         // Render skybox first (background)
         if (skyboxPtr_) {
             skybox_.render(frameInfo, skyboxPtr_.get(), skyboxSettings_);
+        } else if (skyboxSettings_.proceduralSky) {
+            // Procedural sky: render with null skybox pointer
+            skybox_.render(frameInfo, nullptr, skyboxSettings_);
         }
         if (editor_.showGrid) {
             grid_.render(frameInfo);

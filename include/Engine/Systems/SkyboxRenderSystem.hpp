@@ -11,8 +11,17 @@
 #include "Engine/Graphics/Pipeline.hpp"
 namespace engine {
     class Skybox;
+    enum class SkyMode : uint8_t {
+        None = 0,
+        Procedural = 1,
+        Cubemap = 2,
+    };
     struct SkyboxSettings {
         bool debugCubemapFaces{false};
+        bool proceduralSky{false};
+        float timeOfDay{12.0f};       // 0-24 hours
+        float skyIntensity{1.0f};
+        SkyMode skyMode{SkyMode::None};
     };
     /**
  * @brief Render system for skybox/environment maps
