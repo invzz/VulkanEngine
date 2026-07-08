@@ -16,6 +16,7 @@
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/SpatialSystem.hpp"
 #include "Engine/SystemRegistry.hpp"
+#include "Engine/Systems/ProceduralSkyCapture.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
@@ -196,6 +197,7 @@ namespace engine {
         void                                       initInputRelatedSystems(Window* w);
         void                                       ensureCameraExists();
         void                                       writeIBLDescriptorsToSets();
+        void                                       captureProceduralSkyToIBL();
         std::unordered_map<std::type_index, void*> systems_;
         ::engine::SystemRegistry                   initRegistry_;
         std::unique_ptr<DescriptorManager>         descriptors_;
@@ -227,11 +229,26 @@ namespace engine {
         entt::entity                               cameraEntity_        = entt::null;
         bool                                       pendingCamAfterLoad_ = false;
         std::unique_ptr<Skybox>                    skybox_;
+        std::unique_ptr<class ProceduralSkyCapture> procSkyCapture_;
         SkyboxSettings                             skySettings_{};
         ShadowSettings                             shadowSettings_{};
         PostProcessPushConstants                   postProcess_{};
         EditorState                                editor_{};
         SceneSerializer*                           serializer_    = nullptr;
         uint64_t                                   iblGeneration_ = 0;
+        // Procedural-sky IBL bake gating: hysteresis for continuous drivers
+        // (timeOfDay) plus explicit dead-bands / dirty flags for the rest.
+        float                                      procIblLat_        = 1e9f;    // last baked latitude (deg)
+        int                                        procIblDay_        = -1;        // last baked day-of-year
+        float                                      procIblPendingTime_ = 0.0f;    // accumulated |dtimeOfDay| since last bake
+        float                                      procIblSampledTime_ = -1e9f;    // anchor for per-frame time accumulation
+        double                                     procIblAtmoR_      = 0.0;       // atmosphereRadius
+        double                                     procIblRayH_       = 0.0;       // rayleighScaleHeight
+        double                                     procIblMieH_       = 0.0;       // mieScaleHeight
+        glm::dvec3                                 procIblBetaR_      = {};        // betaRayleigh
+        glm::dvec3                                 procIblBetaM_      = {};        // betaMie
+        float                                      procIblMieG_       = -1.0f;     // mieG
+        float                                      procIblSkyInt_     = -1.0f;     // skyIntensity
+        int                                        bakeDeferredFrames_ = 30;       // skip first N frames (loader burst)
     };
 }  // namespace engine

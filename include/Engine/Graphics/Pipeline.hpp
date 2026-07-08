@@ -49,6 +49,7 @@ namespace engine {
         bool                     reloadIfChanged(std::string* statusMessage = nullptr);
         bool                     forceReload(std::string* statusMessage = nullptr);
         void                     bind(VkCommandBuffer commandBuffer);
+        [[nodiscard]] VkPipeline getPipeline() const { return graphicsPipeline; }
 
        private:
         void                                             createGraphicsPipeline(const std::string& vertFilePath, const std::string& fragFilePath, const PipelineConfigInfo& configInfo);

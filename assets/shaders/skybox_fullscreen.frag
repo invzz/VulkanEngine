@@ -8,12 +8,12 @@ layout(set = 0, binding = 1) uniform sampler2D skyLUTSampler;
 
 layout(push_constant) uniform PushConstants {
     mat4 viewProjection;
-    vec4 debugParams;   // x = debugCubemapFaces, y = proceduralSky, z = useSkyLUT
+    vec4 debugParams;   // x = debugCubemapFaces, y = proceduralSky, z = useSkyLUT, w = captureToCubemap
     vec4 sunDirection;  // xyz = direction to sun, w = unused
     vec4 sunColor;      // rgb = sun color, w = sun angular radius (radians, default 0.015)
     vec4 skyParams;     // x = timeOfDay (0-24), y = intensity, zw = unused
-}
-push;
+    int  faceIndex;     // cube face when debugParams.w > 0.5 (capture mode)
+} push;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,6 +56,17 @@ vec3 faceDebugColor(int face) {
 float gridLine(float t) {
     float f = abs(fract(t * 8.0) - 0.5);
     return 1.0 - smoothstep(0.48, 0.5, f);
+}
+
+// Direction (Y-up world) for a point on cube face `face` at UV in [-1,1].
+// Mirrors the capture view math in ProceduralSkyCapture (face order +Z,-Z,+Y,-Y,+X,-X).
+vec3 cubeDir(int face, vec2 uv) {
+    if (face == 0)  return normalize(vec3( uv.x, -uv.y,  1.0));   // +Z
+    if (face == 1)  return normalize(vec3( uv.x, -uv.y, -1.0));   // -Z
+    if (face == 2)  return normalize(vec3( uv.x,  1.0,  uv.y));   // +Y
+    if (face == 3)  return normalize(vec3( uv.x, -1.0, -uv.y));   // -Y
+    if (face == 4)  return normalize(vec3( 1.0, -uv.y, -uv.x));   // +X
+    return normalize(vec3(-1.0, -uv.y,  uv.x));                 // -X
 }
 
 float sunDisc(vec3 dir, vec3 sunDir, float angularRadius);
@@ -273,6 +284,22 @@ void main() {
     dir        = normalize(dir);
 
     vec3 sampleDir = vec3(dir.x, -dir.y, dir.z);
+
+    // --- Capture to cubemap mode (debugParams.w > 0.5) ---
+    // Used to bake the procedural sky into a cubemap for IBL. The dome is
+    // authored Y-up, so we sample the cube face direction directly (no Y flip).
+    // We use the analytic proceduralSky(dir) rather than the LUT variant because
+    // the capture pipeline has no descriptor set bound (no skyLUTSampler), so
+    // sampling an unbound LUT descriptor would fault the GPU. The analytic
+    // integral is the same sky, computed directly -- correct for a one-time bake.
+    if (push.debugParams.w > 0.5) {
+        // Fullscreen triangle NDC -> [-1,1] UV.
+        vec2  uv   = vec2(vNdc.x, -vNdc.y);
+        vec3  dir   = cubeDir(push.faceIndex, uv);
+        vec3  color = proceduralSky(dir);
+        outColor = vec4(color, 1.0);
+        return;
+    }
 
     // Procedural sky mode (push.debugParams.y > 0.5)
     if (push.debugParams.y > 0.5) {

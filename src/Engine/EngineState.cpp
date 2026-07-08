@@ -14,6 +14,7 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Scene/SunLight.hpp"
 #include "Engine/Systems/IBL/VTexIO.hpp"
+#include "Engine/Systems/ProceduralSkyCapture.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
 
@@ -217,12 +218,24 @@ namespace engine {
         addCamera("Camera");
     }
     void EngineState::syncEnvironmentLighting(bool show) {
-        if (show && !skybox_) {
+        auto const& s = skySettings();
+        if (s.proceduralSky) {
+            // Procedural sky drives IBL independently of whether the sky is drawn
+            // as the visible background. Bake it to a cubemap and feed the IBL
+            // system so surfaces get diffuse (irradiance) + specular (prefiltered)
+            // ambient terms, even when "Show Skybox" is off.
+            captureProceduralSkyToIBL();
+        } else if (show && !skybox_) {
             skybox_      = Skybox::loadFromFolder(*device_, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
             auto discard = ibl_->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama");
         }
-        if (!show && skybox_) {
+        // The visible background cubemap is only needed when explicitly shown and we
+        // are not using the procedural sky.
+        if (!s.proceduralSky && !show && skybox_) {
             skybox_.reset();
+        }
+        if (!s.proceduralSky && !show) {
+            procSkyCapture_.reset();
             ibl_->resetToFallback();
         }
         ibl_->update();
@@ -230,6 +243,65 @@ namespace engine {
             writeIBLDescriptorsToSets();
             iblGeneration_ = ibl_->getGenerationCounter();
         }
+    }
+    void EngineState::captureProceduralSkyToIBL() {
+        // Defer the first bake(s) until the async model loader's initial GPU
+        // burst has settled, to avoid racing its worker-thread submissions.
+        if (bakeDeferredFrames_ > 0) {
+            --bakeDeferredFrames_;
+            return;
+        }
+        if (!procSkyCapture_) {
+            procSkyCapture_ = std::make_unique<ProceduralSkyCapture>(*device_);
+        }
+        auto const& s = skySettings();
+
+        // --- Re-bake gating (hysteresis + explicit dirty checks) ---
+        // Time-of-day accumulates per-frame so a smoothly advancing day/night
+        // cycle does not re-trigger a full irradiance+prefilter regen every
+        // frame from tiny steps. Latitude/day use a fixed dead-band. Scattering
+        // params are rare manual tweaks -> always rebake immediately on change.
+        constexpr float kTimeOfDayDelta = 0.05f;  // hours (accumulated)
+        constexpr float kLatDelta        = 0.5f;    // degrees
+        constexpr int   kDayDelta        = 1;        // day-of-year
+
+        float const timeStep =
+            (procIblSampledTime_ < -1e8f) ? (kTimeOfDayDelta + 1.0f)
+                                            : std::fabs(s.timeOfDay - procIblSampledTime_);
+        procIblSampledTime_ = s.timeOfDay;
+        procIblPendingTime_ += timeStep;
+
+        bool const timeMoved = procIblPendingTime_ > kTimeOfDayDelta;
+        bool const latMoved  = std::fabs(s.latitude - procIblLat_) > kLatDelta;
+        bool const dayMoved  = std::abs(s.dayOfYear - procIblDay_) > kDayDelta;
+        bool const scatterMoved =
+            (s.atmosphereRadius != procIblAtmoR_) ||
+            (s.rayleighScaleHeight != procIblRayH_) ||
+            (s.mieScaleHeight != procIblMieH_) ||
+            glm::any(glm::notEqual(s.betaRayleigh, procIblBetaR_, 0.0)) ||
+            glm::any(glm::notEqual(s.betaMie, procIblBetaM_, 0.0)) ||
+            (s.mieG != procIblMieG_) ||
+            (s.skyIntensity != procIblSkyInt_);
+
+        if (!(timeMoved || latMoved || dayMoved || scatterMoved)) {
+            return;
+        }
+
+        Skybox* captured = procSkyCapture_->capture(s, 256);
+        ibl_->generateFromSkybox(*captured);
+
+        // Commit anchors / dirty state.
+        procIblLat_         = s.latitude;
+        procIblDay_         = s.dayOfYear;
+        procIblPendingTime_ = 0.0f;
+        procIblSampledTime_ = s.timeOfDay;
+        procIblAtmoR_       = s.atmosphereRadius;
+        procIblRayH_        = s.rayleighScaleHeight;
+        procIblMieH_        = s.mieScaleHeight;
+        procIblBetaR_       = s.betaRayleigh;
+        procIblBetaM_       = s.betaMie;
+        procIblMieG_        = s.mieG;
+        procIblSkyInt_      = s.skyIntensity;
     }
     void EngineState::updateSunLight() {
         auto& s   = skySettings();

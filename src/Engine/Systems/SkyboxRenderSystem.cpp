@@ -25,15 +25,6 @@ namespace engine {
         glm::vec4 sunDirectionAndGroundRadius;
         glm::vec4 atmosphereAndScaleHeights;
     };
-
-    struct SkyboxPushConstants {
-        glm::mat4 viewProjection;
-        glm::vec4 debugParams;      // x = debugCubemapFaces, y = proceduralSky, z = useSkyLUT
-        glm::vec4 sunDirection;     // xyz = direction to sun, w = unused
-        glm::vec4 sunColor;         // rgb = sun color, w = sun angular radius (radians, default 0.015)
-        glm::vec4 skyParams;        // x = timeOfDay (0-24), y = skyIntensity, zw = unused
-    };
-
     SkyboxRenderSystem::SkyboxRenderSystem(Device& device, VkRenderPass renderPass) : device_{device} {
         createDescriptorSetLayout();
         createPipelineLayout();

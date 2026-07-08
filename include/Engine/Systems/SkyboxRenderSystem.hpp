@@ -18,7 +18,7 @@ namespace engine {
     };
     struct SkyboxSettings {
         bool debugCubemapFaces{false};
-        bool proceduralSky{false};
+        bool proceduralSky{true};
         bool useSkyLUT{true};
         float timeOfDay{12.0f};       // 0-24 hours
         float latitude{0.0f};          // observer latitude in degrees [-90, 90]
@@ -34,7 +34,17 @@ namespace engine {
         double rayleighScaleHeight{8000.0};
         double mieScaleHeight{1200.0};
         // Sun intensity
-        float sunIntensity{22.0f};
+        float sunIntensity{6.0f};
+    };
+    // Push-constant layout shared by skybox_fullscreen.vert/.frag and the
+    // ProceduralSkyCapture cubemap baker. Must match the GLSL `PushConstants`.
+    struct SkyboxPushConstants {
+        glm::mat4 viewProjection;
+        glm::vec4 debugParams;      // x = debugCubemapFaces, y = proceduralSky, z = useSkyLUT, w = captureToCubemap
+        glm::vec4 sunDirection;     // xyz = direction to sun, w = unused
+        glm::vec4 sunColor;         // rgb = sun color, w = sun angular radius (radians, default 0.015)
+        glm::vec4 skyParams;        // x = timeOfDay (0-24), y = intensity, zw = unused
+        int       faceIndex{0};      // cube face when debugParams.w > 0.5
     };
     /**
  * @brief Render system for skybox/environment maps
