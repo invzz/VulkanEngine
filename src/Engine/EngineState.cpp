@@ -251,10 +251,21 @@ namespace engine {
         const glm::vec3 sunDir = sunDirectionFromTimeOfDay(s.timeOfDay);
         const float elev = sunDir.y;
 
-        // Direction: the light "points from" the sun, so set its rotation so
-        // getForwardDir() == sunDir (the shader uses L = -direction).
+        // Direction: the light's stored `direction` is the light's *travel*
+        // direction (the deferred shader computes L = -direction, i.e. the
+        // vector toward the sun). The visual sun in the sky is drawn through
+        // the procedural sky shader, which samples directions with a Y flip
+        // (skybox_fullscreen.frag: `sampleDir = vec3(dir.x, -dir.y, dir.z)`,
+        // the Vulkan cubemap convention). So the sun *appears* in the world at
+        // (sunDir.x, -sunDir.y, sunDir.z). To make the lit hemisphere face the
+        // visible sun, L must equal that world direction, hence the light's
+        // travel `direction` is the opposite in X/Z but KEEPS the flipped Y:
+        //   direction = (-sunDir.x, +sunDir.y, -sunDir.z)
+        // This is the "opposite vector" for X/Z plus the consistent Y flip used
+        // by the sky, so lighting, shadows and the visible sun all agree.
         auto& transform = reg.get<TransformComponent>(sunEntity);
-        transform.lookAt(transform.translation + sunDir);
+        const glm::vec3 lightTravelDir = glm::vec3(-sunDir.x, sunDir.y, -sunDir.z);
+        transform.lookAt(transform.translation + lightTravelDir);
 
         // Colour + night dimming, matching the sky shader exactly.
         glm::vec3 sunCol = computeSunDirectColor(sunDir,
