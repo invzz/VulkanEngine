@@ -12,6 +12,9 @@ namespace engine {
         glm::vec3     targetPoint{0.0f, 0.0f, 0.0f};
         bool          bake{false};
         LightMobility lightType{LightMobility::Static};
+        // When true, the light's direction/colour/intensity are driven by the
+        // SkyboxSettings sun model (timeOfDay). Toggled in the Lights panel.
+        bool          isSun{false};
     };
 }  // namespace engine
 #endif

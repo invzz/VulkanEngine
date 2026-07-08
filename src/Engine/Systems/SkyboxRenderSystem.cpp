@@ -14,60 +14,11 @@
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Graphics/SwapChain.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Scene/SunLight.hpp"
 #include "Engine/Systems/IBL/IBLHelpers.hpp"
 
 #include "vulkan/vulkan_core.h"
 namespace engine {
-    // Mirror of GetSunAttenuation() in sky_lut.comp: chromatic transmittance of
-    // direct sunlight travelling from the ground viewer to the top of the
-    // atmosphere along sunDir. Used to tint the Mie halo and the sun disc with
-    // the physically correct (reddened-at-horizon) sun colour so it matches the
-    // LUT's extinction math at every elevation.
-    static glm::vec3 ComputeSunDirectColor(const glm::vec3& sunDir, const SkyboxSettings& s) {
-        const float groundRadius     = 6360e3f;   // must match updateSkyLUTIfNeeded
-        const float atmosphereRadius = static_cast<float>(s.atmosphereRadius);
-        const float HR = std::max(static_cast<float>(s.rayleighScaleHeight), 1.0f);
-        const float HM = std::max(static_cast<float>(s.mieScaleHeight), 1.0f);
-        const glm::vec3 betaR = glm::max(glm::vec3(s.betaRayleigh), glm::vec3(0.0f));
-        const glm::vec3 betaM = glm::max(glm::vec3(s.betaMie), glm::vec3(0.0f));
-
-        const glm::vec3 viewerPos(0.0f, groundRadius, 0.0f);
-
-        auto raySphereExit = [](const glm::vec3& ro, const glm::vec3& rd, float radius) -> float {
-            const float b   = glm::dot(ro, rd);
-            const float c   = glm::dot(ro, ro) - radius * radius;
-            float disc = b * b - c;
-            if (disc < 0.0f) return -1.0f;
-            disc = std::sqrt(disc);
-            const float t1 = -b - disc;
-            const float t2 = -b + disc;
-            if (t2 > 0.0f) return t2;
-            if (t1 > 0.0f) return t1;
-            return -1.0f;
-        };
-
-        const float tTop    = raySphereExit(viewerPos, sunDir, atmosphereRadius);
-        const float tGround = raySphereExit(viewerPos, sunDir, groundRadius);
-        if (tGround > 0.0f && (tTop < 0.0f || tGround < tTop)) {
-            return glm::vec3(0.0f);  // sun below the local horizon
-        }
-        const float tMax = (tTop > 0.0f) ? tTop : 1e9f;
-        if (tMax < 1e-6f) return glm::vec3(1.0f);
-
-        const int   steps    = sunDir.y > 0.1f ? 8 : (sunDir.y > -0.1f ? 16 : 32);
-        const float stepSize = tMax / static_cast<float>(steps);
-        float odR = 0.0f, odM = 0.0f;
-        for (int i = 0; i < steps; ++i) {
-            const glm::vec3 p = viewerPos + sunDir * ((static_cast<float>(i) + 0.5f) * stepSize);
-            const float h = glm::length(p) - groundRadius;
-            if (h > 0.0f) {
-                odR += std::exp(-h / HR) * stepSize;
-                odM += std::exp(-h / HM) * stepSize;
-            }
-        }
-        return glm::exp(-(betaR * odR + betaM * odM));
-    }
-
     struct SkyLUTComputePushConstants {
         glm::vec4 betaRayleighAndG;
         glm::vec4 betaMieAndSunIntensity;
@@ -408,11 +359,7 @@ namespace engine {
         glm::mat4 vp   = frameInfo.camera.getProjection() * view;
 
         // Compute sun direction from time of day
-        const float t = settings.timeOfDay;
-        const float elev = sinf((t - 6.0f) / 24.0f * 6.2831853f);
-        const float cosElev = sqrtf(fmaxf(1.0f - elev * elev, 0.0f));
-        const float azimuth = (t - 6.0f) / 24.0f * 6.2831853f;
-        const glm::vec3 sunDir(cosElev * cosf(azimuth), elev, cosElev * sinf(azimuth));
+        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(settings.timeOfDay);
 
         updateSkyLUTIfNeeded(settings, sunDir);
         const bool useSkyLUT = procedural && settings.useSkyLUT && skyLUTReady_;
@@ -420,13 +367,18 @@ namespace engine {
         // Physically-derived sun colour: chromatic transmittance of direct
         // sunlight through the atmosphere (reddens at the horizon, white at
         // zenith). Matches the LUT's extinction exactly.
-        glm::vec3 sunCol = ComputeSunDirectColor(sunDir, settings);
+        glm::vec3 sunCol = computeSunDirectColor(sunDir,
+            static_cast<float>(settings.atmosphereRadius),
+            glm::max(glm::vec3(settings.betaRayleigh), glm::vec3(0.0f)),
+            glm::max(glm::vec3(settings.betaMie), glm::vec3(0.0f)),
+            static_cast<float>(settings.rayleighScaleHeight),
+            static_cast<float>(settings.mieScaleHeight));
         if (glm::all(glm::equal(sunCol, glm::vec3(0.0f)))) {
             sunCol = glm::vec3(1.0f, 0.35f, 0.1f);  // deep below horizon: keep a warm ember
         }
 
         // Night darkening factor
-        const float nightFactor = glm::smoothstep(-0.05f, 0.15f, elev);
+        const float nightFactor = glm::smoothstep(-0.05f, 0.15f, sunDir.y);
         const float effectiveIntensity = settings.skyIntensity * glm::mix(0.02f, 1.0f, nightFactor);
 
         SkyboxPushConstants push{};

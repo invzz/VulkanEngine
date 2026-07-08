@@ -431,6 +431,10 @@ namespace engine {
             ScopedCpuSection sec("EnvLightSync");
             engineState.syncEnvironmentLighting(*showSkybox);
         }
+        {
+            ScopedCpuSection sec("SunLightSync");
+            engineState.updateSunLight();
+        }
     }
 
     void App::handleViewportResize() {

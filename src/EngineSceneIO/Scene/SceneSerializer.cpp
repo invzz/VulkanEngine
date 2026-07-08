@@ -395,7 +395,7 @@ namespace engine {
             }
             if (scene.getRegistry().all_of<DirectionalLightComponent>(entity)) {
                 auto& dl                    = scene.getRegistry().get<DirectionalLightComponent>(entity);
-                objJson["directionalLight"] = {{"intensity", dl.intensity}, {"color", dl.color}, {"bake", dl.bake}, {"lightType", to_string(dl.lightType)}};
+                objJson["directionalLight"] = {{"intensity", dl.intensity}, {"color", dl.color}, {"bake", dl.bake}, {"lightType", to_string(dl.lightType)}, {"isSun", dl.isSun}};
             }
             if (scene.getRegistry().all_of<SpotLightComponent>(entity)) {
                 auto& sl = scene.getRegistry().get<SpotLightComponent>(entity);
@@ -523,6 +523,7 @@ namespace engine {
                     dirLight.color     = dl.value("color", glm::vec3(1.0f));
                     dirLight.bake      = dl.value("bake", false);
                     dirLight.lightType = mobility_from_string(dl.value("lightType", std::string("static")));
+                    dirLight.isSun      = dl.value("isSun", false);
                 }
                 if (objJson.contains("spotLight")) {
                     auto& sl                   = objJson["spotLight"];
@@ -614,6 +615,7 @@ namespace engine {
                     dirLight.color     = lightJson.value("color", glm::vec3(1.0f));
                     dirLight.bake      = lightJson.value("bake", false);
                     dirLight.lightType = mobility_from_string(lightJson.value("lightType", std::string("static")));
+                    dirLight.isSun      = lightJson.value("isSun", false);
                     std::cout << "SceneSerializer: added DirectionalLightComponent id=" << id << " bake=" << dirLight.bake << "\n";
                 } else if (type == "spot") {
                     auto& spotLight            = scene.getRegistry().emplace<SpotLightComponent>(entity);

@@ -96,6 +96,10 @@ namespace engine {
         bool      loadScene(const std::string& path);
         void      reconcileSceneLoad();
         void      syncEnvironmentLighting(bool show);
+        // Drive a directional light flagged as the sun (isSun) so its
+        // direction, colour and intensity track SkyboxSettings::timeOfDay.
+        // Creates a sun light on first use if none is flagged.
+        void      updateSunLight();
         bool      loadIBL(const char* path);
         void      resetIBLToFallback();
         glm::vec3 getTranslation(entt::entity e) const;

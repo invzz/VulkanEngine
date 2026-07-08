@@ -12,6 +12,7 @@
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+#include "Engine/Scene/SunLight.hpp"
 #include "Engine/Systems/IBL/VTexIO.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
@@ -229,6 +230,49 @@ namespace engine {
             writeIBLDescriptorsToSets();
             iblGeneration_ = ibl_->getGenerationCounter();
         }
+    }
+    void EngineState::updateSunLight() {
+        auto& s   = skySettings();
+        auto& reg = scene_.getRegistry();
+
+        // Find the entity flagged as the sun light.
+        entt::entity sunEntity = entt::null;
+        auto view = reg.view<DirectionalLightComponent, TransformComponent>();
+        for (auto e : view) {
+            if (reg.get<DirectionalLightComponent>(e).isSun) {
+                sunEntity = e;
+                break;
+            }
+        }
+        if (sunEntity == entt::null) {
+            return;  // no sun light flagged; nothing to drive
+        }
+
+        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(s.timeOfDay);
+        const float elev = sunDir.y;
+
+        // Direction: the light "points from" the sun, so set its rotation so
+        // getForwardDir() == sunDir (the shader uses L = -direction).
+        auto& transform = reg.get<TransformComponent>(sunEntity);
+        transform.lookAt(transform.translation + sunDir);
+
+        // Colour + night dimming, matching the sky shader exactly.
+        glm::vec3 sunCol = computeSunDirectColor(sunDir,
+            static_cast<float>(s.atmosphereRadius),
+            glm::max(glm::vec3(s.betaRayleigh), glm::vec3(0.0f)),
+            glm::max(glm::vec3(s.betaMie), glm::vec3(0.0f)),
+            static_cast<float>(s.rayleighScaleHeight),
+            static_cast<float>(s.mieScaleHeight));
+        if (glm::all(glm::equal(sunCol, glm::vec3(0.0f)))) {
+            sunCol = glm::vec3(1.0f, 0.35f, 0.1f);  // below horizon: warm ember
+        }
+
+        const float nightFactor = glm::smoothstep(-0.05f, 0.15f, elev);
+        const float effectiveIntensity = s.sunIntensity * glm::mix(0.02f, 1.0f, nightFactor);
+
+        auto& dl = reg.get<DirectionalLightComponent>(sunEntity);
+        dl.color = sunCol;
+        dl.intensity = effectiveIntensity;
     }
     bool EngineState::loadIBL(const char* p) {
         return ibl_->loadFromDisk(std::string(p));

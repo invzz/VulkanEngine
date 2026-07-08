@@ -87,6 +87,8 @@ namespace engine {
                                          std::to_string(dir.z).substr(0, 5) + ")";
                 ui::UI::TextDisabled(dirStr.c_str());
                 ImGui::Spacing();
+                ui::UI::Checkbox("Sun Light (driven by time of day)##directional", &dirLight.isSun);
+                ImGui::Spacing();
             }
             if (registry.all_of<SpotLightComponent>(entity)) {
                 auto& spotLight = registry.get<SpotLightComponent>(entity);
