@@ -1,17 +1,47 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SCENE_SUNLIGHT_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SCENE_SUNLIGHT_HPP
 #include <glm/glm.hpp>
+#include <algorithm>
 namespace engine {
     // Physically-derived sun helpers shared between the sky renderer and the
     // directional "sun" light so the two always agree.
 
     // Sun direction (unit vector, +Y = up) for a given time of day in [0,24).
-    // Sunrise at t=6, zenith at t=12, sunset at t=18, midnight at t=0/24.
-    inline glm::vec3 sunDirectionFromTimeOfDay(float t) {
-        const float elev     = std::sinf((t - 6.0f) / 24.0f * 6.2831853f);
-        const float cosElev  = std::sqrtf(std::max(1.0f - elev * elev, 0.0f));
-        const float azimuth  = (t - 6.0f) / 24.0f * 6.2831853f;
-        return glm::vec3(cosElev * std::cosf(azimuth), elev, cosElev * std::sinf(azimuth));
+    // Uses a proper solar position model driven by observer latitude and the
+    // day of year (seasonal declination), so the sun rises/sets at the correct
+    // compass bearing and the day arc shortens in winter.
+    inline glm::vec3 sunDirectionFromTimeOfDay(float t, float latitudeDeg, float dayOfYear) {
+        constexpr float DEG2RAD = 0.017453293f;
+        constexpr float TWO_PI  = 6.2831853f;
+
+        // Declination: sun's tilt relative to equator, driven by day of year.
+        // Peaks at +23.44 deg near summer solstice (~day 172), -23.44 deg near
+        // winter solstice (~day 355).
+        const float declination = 23.44f * DEG2RAD *
+            std::sinf(DEG2RAD * 360.0f * (284.0f + dayOfYear) / 365.0f);
+
+        // Hour angle: 0 at solar noon, negative morning, positive afternoon, 15 deg/hr.
+        const float hourAngle = (t - 12.0f) * 15.0f * DEG2RAD;
+
+        const float lat = latitudeDeg * DEG2RAD;
+
+        // Elevation via spherical law of cosines.
+        const float sinElev = std::sinf(lat) * std::sinf(declination) +
+                              std::cosf(lat) * std::cosf(declination) * std::cosf(hourAngle);
+        const float elevation = std::asinf(std::clamp(sinElev, -1.0f, 1.0f));
+
+        // Azimuth (measured from north, clockwise through east).
+        float cosAz = (std::sinf(declination) - std::sinf(elevation) * std::sinf(lat)) /
+                      (std::cosf(elevation) * std::cosf(lat) + 1e-6f);
+        cosAz = std::clamp(cosAz, -1.0f, 1.0f);
+        float azimuth = std::acosf(cosAz);
+        if (hourAngle > 0.0f) azimuth = TWO_PI - azimuth;  // afternoon mirrors the morning half
+
+        // North = -Z, East = +X, up = +Y (engine world axes).
+        return glm::vec3(
+            std::sinf(azimuth) * std::cosf(elevation),
+            std::sinf(elevation),
+            -std::cosf(azimuth) * std::cosf(elevation));
     }
 
     // Chromatic transmittance of direct sunlight travelling from the ground

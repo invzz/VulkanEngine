@@ -298,7 +298,10 @@ namespace engine {
         }
 
         constexpr float updateThreshold = 0.01f;
-        bool needsUpdate = !skyLUTReady_ || (std::fabs(settings.timeOfDay - skyLUTLastTimeOfDay_) > updateThreshold);
+        bool needsUpdate = !skyLUTReady_ ||
+                          (std::fabs(settings.timeOfDay - skyLUTLastTimeOfDay_) > updateThreshold) ||
+                          (std::fabs(settings.latitude - skyLUTLastLatitude_) > 0.01f) ||
+                          (settings.dayOfYear != skyLUTLastDayOfYear_);
         if (!needsUpdate) {
             return;
         }
@@ -329,6 +332,8 @@ namespace engine {
         skyLUTInGeneralLayout_ = false;
         skyLUTReady_           = true;
         skyLUTLastTimeOfDay_   = settings.timeOfDay;
+        skyLUTLastLatitude_    = settings.latitude;
+        skyLUTLastDayOfYear_   = settings.dayOfYear;
     }
 
     void SkyboxRenderSystem::render(FrameInfo& frameInfo, Skybox* skybox, const SkyboxSettings& settings) {
@@ -359,7 +364,7 @@ namespace engine {
         glm::mat4 vp   = frameInfo.camera.getProjection() * view;
 
         // Compute sun direction from time of day
-        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(settings.timeOfDay);
+        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(settings.timeOfDay, settings.latitude, static_cast<float>(settings.dayOfYear));
 
         updateSkyLUTIfNeeded(settings, sunDir);
         const bool useSkyLUT = procedural && settings.useSkyLUT && skyLUTReady_;

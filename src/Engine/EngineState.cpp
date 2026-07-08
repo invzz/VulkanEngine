@@ -248,23 +248,20 @@ namespace engine {
             return;  // no sun light flagged; nothing to drive
         }
 
-        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(s.timeOfDay);
+        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(s.timeOfDay, s.latitude, static_cast<float>(s.dayOfYear));
         const float elev = sunDir.y;
 
         // Direction: the light's stored `direction` is the light's *travel*
         // direction (the deferred shader computes L = -direction, i.e. the
-        // vector toward the sun). The visual sun in the sky is drawn through
-        // the procedural sky shader, which samples directions with a Y flip
-        // (skybox_fullscreen.frag: `sampleDir = vec3(dir.x, -dir.y, dir.z)`,
-        // the Vulkan cubemap convention). So the sun *appears* in the world at
-        // (sunDir.x, -sunDir.y, sunDir.z). To make the lit hemisphere face the
-        // visible sun, L must equal that world direction, hence the light's
-        // travel `direction` is the opposite in X/Z but KEEPS the flipped Y:
-        //   direction = (-sunDir.x, +sunDir.y, -sunDir.z)
-        // This is the "opposite vector" for X/Z plus the consistent Y flip used
-        // by the sky, so lighting, shadows and the visible sun all agree.
+        // vector toward the sun). The procedural sky is authored in Y-up world
+        // space, so the visible sun sits at world direction `sunDir`. To light
+        // the hemisphere facing the visible sun, L must equal `sunDir`, hence
+        // the light's travel direction is simply the opposite:
+        //   direction = -sunDir
+        // (The cubemap Y-flip in skybox_fullscreen.frag applies only to real
+        // cubemap sampling, not to the procedural dome, so no flip here.)
         auto& transform = reg.get<TransformComponent>(sunEntity);
-        const glm::vec3 lightTravelDir = glm::vec3(-sunDir.x, sunDir.y, -sunDir.z);
+        const glm::vec3 lightTravelDir = sunDir;
         transform.lookAt(transform.translation + lightTravelDir);
 
         // Colour + night dimming, matching the sky shader exactly.

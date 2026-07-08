@@ -21,6 +21,8 @@ namespace engine {
         bool proceduralSky{false};
         bool useSkyLUT{true};
         float timeOfDay{12.0f};       // 0-24 hours
+        float latitude{0.0f};          // observer latitude in degrees [-90, 90]
+        int   dayOfYear{172};          // 1-365, drives seasonal declination
         float skyIntensity{1.0f};
         SkyMode skyMode{SkyMode::None};
         // Atmospheric scattering coefficients (per-channel: R, G, B)
@@ -78,6 +80,8 @@ namespace engine {
         VkDescriptorPool                        skyLUTComputePool_        = VK_NULL_HANDLE;
         VkDescriptorSet                         skyLUTComputeSet_         = VK_NULL_HANDLE;
         float                                   skyLUTLastTimeOfDay_      = -1000.0f;
+        float                                   skyLUTLastLatitude_       = 1e9f;
+        int                                     skyLUTLastDayOfYear_      = -1;
         bool                                    skyLUTReady_              = false;
         bool                                    skyLUTInGeneralLayout_    = false;
         static constexpr uint32_t               kSkyLUTWidth              = 256;

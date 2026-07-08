@@ -197,6 +197,30 @@ namespace engine {
         if (ImGui::IsItemDeactivatedAfterEdit()) {
             settings_.sunIntensity = std::max(settings_.sunIntensity, 0.0f);
         }
+
+        ImGui::Spacing();
+
+        // Latitude
+        ImGui::Text("  Latitude");
+        ImGui::SameLine();
+        ImGui::TextDisabled("(0.0 default, deg)");
+        ImGui::SliderFloat("##latitude", &settings_.latitude, -90.0f, 90.0f, "%.1f deg");
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Negative = southern hemisphere. Affects sunrise/sunset compass drift.");
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            settings_.latitude = std::clamp(settings_.latitude, -90.0f, 90.0f);
+        }
+
+        // Day of Year
+        ImGui::Text("  Day of Year");
+        ImGui::SameLine();
+        ImGui::TextDisabled("(172 default, ~Jun 21)");
+        ImGui::SliderInt("##dayOfYear", &settings_.dayOfYear, 1, 365);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Drives seasonal declination (day 172 ~ summer solstice, day 355 ~ winter solstice)");
+        if (ImGui::IsItemDeactivatedAfterEdit()) {
+            settings_.dayOfYear = std::clamp(settings_.dayOfYear, 1, 365);
+        }
     }
 
 }  // namespace engine
