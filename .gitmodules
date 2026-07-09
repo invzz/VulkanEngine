@@ -10,3 +10,6 @@
 [submodule "assets/models/glTF/sponzanew"]
 	path = assets/models/glTF/sponzanew
 	url = https://github.com/Ludicon/sponza-gltf
+[submodule "models/khronos"]
+	path = assets/models/khronos
+	url = https://github.com/KhronosGroup/glTF-Sample-Assets
