@@ -70,7 +70,7 @@ namespace engine {
                     errorCallback);
                 pendingLoads_.push_back({id, fullPath, name, opts, colliderMode});
             };
-            ui::UI::DrawSceneModelSection(collection.models, searchFilter,
+            ui::UI::DrawSceneModelSection(device_, collection.models, searchFilter,
                 frameInfo, scene, registry, toDelete_, colliderImportMode_, enqueueModelLoad);
         }
         ImGui::End();

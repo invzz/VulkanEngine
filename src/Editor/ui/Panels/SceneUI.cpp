@@ -24,6 +24,7 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "Editor/ui/UI.hpp"
+#include "Engine/Core/Logger.hpp"
 #include "IconsFontAwesome6.h"
 #include "ModelLib/Resources/ResourceManager.hpp"
 #include "ModelLib/Resources/Texture.hpp"
@@ -327,100 +328,104 @@ namespace engine::ui {
     // Shows the screenshot + readme of the hovered / last-clicked model.
     // ---------------------------------------------------------------
 
-    // Caches keyed by the model index id. The Texture (GPU image) is cached;
-    // the ImTextureID is rebuilt each frame from it (imgui's vulkan backend
-    // recycles the descriptor set internally, matching Viewport's pattern).
+    // Cached per active model id. The Texture (GPU image) AND its
+    // ImTextureID (VkDescriptorSet from ImGui_ImplVulkan_AddTexture) are cached,
+    // so we don't allocate a new descriptor set from imgui's pool every frame.
     struct ModelInfoCache {
-    std::string                          id;
-    std::shared_ptr<engine::Texture>     texture;
-    std::string                          readmeText;
-    bool                                 readmeLoaded{false};
+        std::string      id;
+        std::shared_ptr<engine::Texture> texture;
+        VkDescriptorSet  texID{VK_NULL_HANDLE};
+        std::string      readmeText;
+        bool             readmeLoaded{false};
     };
     static ModelInfoCache g_infoCache;
 
     std::shared_ptr<engine::Texture> loadScreenshot(engine::Device& device, const std::string& fullPath) {
-    try {
-        return std::make_shared<engine::Texture>(device, fullPath, /*srgb=*/true, /*flipY=*/false);
-    } catch (const std::exception& e) {
-        engine::Logger::warn(engine::LogChannel::Scene,
-            "[ModelInfo] failed to load screenshot ", fullPath, ": ", e.what());
-        return nullptr;
-    }
+        try {
+            return std::make_shared<engine::Texture>(device, fullPath, /*srgb=*/true, /*flipY=*/false);
+        } catch (const std::exception& e) {
+            engine::Logger::warn(engine::LogChannel::Scene,
+                "[ModelInfo] failed to load screenshot ", fullPath, ": ", e.what());
+            return nullptr;
+        }
     }
 
     // Lazily read + cache the readme text for a given id.
     void ensureReadmeLoaded(ModelInfoCache& cache, const std::string& readmePath) {
-    if (cache.readmeLoaded) {
-        return;
-    }
-    cache.readmeLoaded = true;  // only attempt once per cache entry
-    if (readmePath.empty()) {
-        return;
-    }
-    std::ifstream f(readmePath);
-    if (!f.is_open()) {
-        return;
-    }
-    std::stringstream ss;
-    ss << f.rdbuf();
-    cache.readmeText = ss.str();
-    }
-
-    void drawModelInfoPane(engine::Device&            device,
-                       const std::string&         id,
-                       const std::string&         label,
-                       const std::string&         screenshotRel,  // relative to MODEL_PATH
-                       const std::string&         readmeRel,       // relative to MODEL_PATH
-                       const std::vector<std::string>& screenshotList) {
-    const float paneWidth = ImGui::GetContentRegionAvail().x;
-    if (paneWidth < 1.0f) {
-        return;
+        if (cache.readmeLoaded) {
+            return;
+        }
+        cache.readmeLoaded = true;  // only attempt once per cache entry
+        if (readmePath.empty()) {
+            return;
+        }
+        std::ifstream f(readmePath);
+        if (!f.is_open()) {
+            return;
+        }
+        std::stringstream ss;
+        ss << f.rdbuf();
+        cache.readmeText = ss.str();
     }
 
-    // (Re)build cache when the active model changes.
-    const std::string shotFull = screenshotRel.empty() ? "" : std::string(MODEL_PATH) + screenshotRel;
-    if (g_infoCache.id != id) {
-        g_infoCache            = ModelInfoCache{};
-        g_infoCache.id         = id;
-        g_infoCache.texture    = shotFull.empty() ? nullptr : loadScreenshot(device, shotFull);
-        g_infoCache.readmeText.clear();
-        g_infoCache.readmeLoaded = false;
-        ensureReadmeLoaded(g_infoCache, readmeRel.empty() ? "" : std::string(MODEL_PATH) + readmeRel);
-    }
+    void drawModelInfoPane(engine::Device&                 device,
+                           const std::string&              id,
+                           const std::string&              label,
+                           const std::string&              screenshotRel,  // relative to MODEL_PATH
+                           const std::string&              readmeRel,       // relative to MODEL_PATH
+                           const std::vector<std::string>& /*screenshotList*/) {
+        const float paneWidth = ImGui::GetContentRegionAvail().x;
+        if (paneWidth < 1.0f) {
+            return;
+        }
 
-    UI::TextColored(ICON_FA_CIRCLE_INFO, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
-    ImGui::SameLine();
-    UI::TextWrapped(label.c_str());
+        // (Re)build cache when the active model changes.
+        const std::string shotFull = screenshotRel.empty() ? "" : std::string(MODEL_PATH) + screenshotRel;
+        if (g_infoCache.id != id) {
+            g_infoCache             = ModelInfoCache{};
+            g_infoCache.id          = id;
+            g_infoCache.texture     = shotFull.empty() ? nullptr : loadScreenshot(device, shotFull);
+            g_infoCache.texID       = VK_NULL_HANDLE;
+            g_infoCache.readmeText.clear();
+            g_infoCache.readmeLoaded = false;
+            if (g_infoCache.texture != nullptr) {
+                g_infoCache.texID = ImGui_ImplVulkan_AddTexture(
+                    g_infoCache.texture->getSampler(),
+                    g_infoCache.texture->getImageView(),
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            }
+            ensureReadmeLoaded(g_infoCache, readmeRel.empty() ? "" : std::string(MODEL_PATH) + readmeRel);
+        }
 
-    // Screenshot thumbnail (aspect-fit, capped width).
-    if (g_infoCache.texture != nullptr) {
-        const float maxW   = std::min(paneWidth, 256.0f);
-        const float aspect = static_cast<float>(g_infoCache.texture->getHeight()) /
-                             static_cast<float>(g_infoCache.texture->getWidth());
-        const float drawW  = maxW;
-        const float drawH  = std::max(8.0f, maxW * aspect);
-        ImTextureID tex = ImGui_ImplVulkan_AddTexture(
-            g_infoCache.texture->getSampler(),
-            g_infoCache.texture->getImageView(),
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        ImGui::Image(tex, ImVec2(drawW, drawH), ImVec2(0, 0), ImVec2(1, 1));
-    } else if (!screenshotRel.empty()) {
-        UI::TextDisabled("preview unavailable");
-    }
+        UI::TextColored(ICON_FA_CIRCLE_INFO, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+        ImGui::SameLine();
+        ImGui::TextWrapped("%s", label.c_str());
 
-    // Readme (scrollable).
-    if (!g_infoCache.readmeText.empty()) {
-        UI::Separator();
-        const ImVec2 size = ImGui::GetContentRegionAvail();
-        ImGui::BeginChild("##model_readme",
-            ImVec2(size.x, std::min(size.y - 8.0f, 220.0f)),
-            ImGuiChildFlags_Borders,
-            ImGuiWindowFlags_AlwaysVerticalScrollbar);
-        UI::TextWrapped(g_infoCache.readmeText.c_str());
-        ImGui::EndChild();
-    } else if (!readmeRel.empty()) {
-        UI::TextDisabled("no description");
-    }
+        // Screenshot thumbnail (aspect-fit, capped width).
+        if (g_infoCache.texID != VK_NULL_HANDLE && g_infoCache.texture != nullptr) {
+            const float maxW   = std::min(paneWidth, 256.0f);
+            const float aspect = static_cast<float>(g_infoCache.texture->getHeight()) /
+                                 static_cast<float>(g_infoCache.texture->getWidth());
+            const float drawW  = maxW;
+            const float drawH  = std::max(8.0f, maxW * aspect);
+            ImGui::Image(g_infoCache.texID, ImVec2(drawW, drawH), ImVec2(0, 0), ImVec2(1, 1));
+        } else if (!screenshotRel.empty()) {
+            UI::TextDisabled("preview unavailable");
+        }
+
+        // Readme (scrollable).
+        if (!g_infoCache.readmeText.empty()) {
+            UI::Separator();
+            const ImVec2 size = ImGui::GetContentRegionAvail();
+            ImGui::BeginChild("##model_readme",
+                ImVec2(size.x, std::min(size.y - 8.0f, 220.0f)),
+                ImGuiChildFlags_Borders,
+                ImGuiWindowFlags_AlwaysVerticalScrollbar);
+            ImGui::TextWrapped("%s", g_infoCache.readmeText.c_str());
+            ImGui::EndChild();
+        } else if (!readmeRel.empty()) {
+            UI::TextDisabled("no description");
+        }
     }
 
     SceneEntityCollection UI::CollectSceneEntities(const engine::Scene& scene) {
@@ -568,6 +573,7 @@ namespace engine::ui {
     }
 
     void UI::DrawSceneModelSection(
+        engine::Device&                                   device,
         const std::vector<entt::entity>&                 models,
         const char*                                      filter,
         FrameInfo&                                       frameInfo,
@@ -592,6 +598,14 @@ namespace engine::ui {
         }
 
         if (ImGui::BeginPopup("AddModelPopup")) {
+            // Active model for the info pane (persists across frames; updated
+            // on hover/click inside the list loop below). The meta holds the
+            // screenshot/readme paths of the currently active model.
+            static std::string g_activeModelId;
+            static std::string g_activeLabel;
+            static std::string g_activeScreenshot;
+            static std::string g_activeReadme;
+
             static char filterModel[128] = "";
             UI::InputText("Filter", filterModel, sizeof(filterModel));
 
@@ -645,6 +659,14 @@ namespace engine::ui {
             // Every path is stored relative to MODEL_PATH, so the loader just
             // concatenates. Legacy entries with only "variants"."glTF" are
             // still accepted and rebuilt with the old glTF/<name>/glTF/ rule.
+            // Split layout: left = model list (scrollable), right = info pane
+            // (screenshot + readme) for the hovered/last-clicked model.
+            const float popupWidth = ImGui::GetWindowWidth();
+            const float listW      = std::max(220.0f, popupWidth * 0.55f);
+            const float infoW      = std::max(200.0f, popupWidth - listW - 16.0f);
+            ImGui::BeginChild("##model_list", ImVec2(listW, 320.0f),
+                ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
+
             const std::string indexPath = std::string(MODEL_PATH) + "model-index.json";
             try {
                 std::ifstream f(indexPath);
@@ -675,6 +697,33 @@ namespace engine::ui {
                             continue;
                         }
 
+                        // Screenshot / readme (relative to MODEL_PATH).
+                        const std::string screenshotRel =
+                            item.contains("screenshot") && item["screenshot"].is_string()
+                                ? item["screenshot"].get<std::string>()
+                                : "";
+                        const std::string readmeRel =
+                            item.contains("readme") && item["readme"].is_string()
+                                ? item["readme"].get<std::string>()
+                                : "";
+                        std::vector<std::string> screenshotList;
+                        if (item.contains("screenshots") && item["screenshots"].is_array()) {
+                            for (const auto& s : item["screenshots"]) {
+                                if (s.is_string()) {
+                                    screenshotList.push_back(s.get<std::string>());
+                                }
+                            }
+                        }
+
+                        // Track the active model for the info pane: update on
+                        // hover or click so the pane follows the cursor and
+                        // persists after the mouse leaves.
+                        if (ImGui::IsItemHovered() || ImGui::IsItemClicked()) {
+                            g_activeModelId    = id;
+                            g_activeLabel      = label;
+                            g_activeScreenshot = screenshotRel;
+                            g_activeReadme     = readmeRel;
+                        }
                         // Collect (label -> relativePath) pairs for this model.
                         std::vector<std::pair<std::string, std::string>> variants;
                         if (item.contains("variants") && item["variants"].is_object()) {
@@ -730,6 +779,19 @@ namespace engine::ui {
                         }
                     }
                 }
+            ImGui::EndChild();  // ##model_list
+
+            // Right pane: info for the active model.
+            ImGui::SameLine();
+            ImGui::BeginChild("##model_info", ImVec2(infoW, 320.0f), ImGuiChildFlags_Borders);
+            if (!g_activeModelId.empty()) {
+                drawModelInfoPane(device, g_activeModelId, g_activeLabel,
+                    g_activeScreenshot, g_activeReadme, {});
+            } else {
+                UI::TextDisabled("Hover a model to preview it");
+            }
+            ImGui::EndChild();
+
             } catch (const std::exception& e) {
                 UI::TextDisabled(("Error parsing model index: " + std::string(e.what())).c_str());
             }
