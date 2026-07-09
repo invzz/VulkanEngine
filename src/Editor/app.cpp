@@ -481,6 +481,8 @@ namespace engine {
                                           : nullptr,
             .extent                 = renderer.getOffscreenExtent(),
             .viewportMode           = engineState.editor().viewportSettings.mode,
+            .viewportMousePos       = pendingViewportMousePos_,
+            .viewportMouseClicked   = pendingViewportClick_,
             .debugMode              = debugMode,
             .gizmoOperation         = engineState.editor().gizmoOperation,
             .gizmoMode              = engineState.editor().gizmoMode,
@@ -493,6 +495,8 @@ namespace engine {
     }
 
     void App::applyViewportPicking(FrameInfo& frameInfo) {
+        // Consume the pending click seeded from the previous frame's UI capture.
+        pendingViewportClick_ = false;
         if (!frameInfo.viewportMouseClicked) {
             return;
         }
@@ -538,6 +542,11 @@ namespace engine {
     void App::syncStateFromFrame(const FrameInfo& frameInfo) {
         engineState.editor().viewportSettings.mode = frameInfo.viewportMode;
         selectedObjectId                           = frameInfo.selectedObjectId;
+        // The UI (which runs last in the pipeline) may have captured a viewport
+        // click into frameInfo this frame. Carry it to the next frame so the
+        // picking pass (which runs first) can consume it.
+        pendingViewportClick_    = frameInfo.viewportMouseClicked;
+        pendingViewportMousePos_ = frameInfo.viewportMousePos;
         engineState.setSelectedEntity(frameInfo.selectedEntity);
         engineState.setCameraEntity(frameInfo.cameraEntity);
         engineState.editor().gizmoOperation         = frameInfo.gizmoOperation;

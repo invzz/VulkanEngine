@@ -74,6 +74,11 @@ namespace engine {
         uint32_t                        multithreadedRecordingThreads = 0;
         std::unique_ptr<RenderPipeline> renderPipeline;
         uint32_t                        selectedObjectId = 0;
+        // Viewport picking is captured by the UI at the END of a frame (UI renders
+        // last), but consumed at the START of the next frame's picking pass. Carry
+        // the pending click across frames so the click is not lost.
+        bool                            pendingViewportClick_ = false;
+        glm::vec2                       pendingViewportMousePos_{};
         std::unique_ptr<AccelBuilder>   accelBuilder;
         using BlasInstance = std::pair<glm::mat4, VkAccelerationStructureKHR>;
         std::vector<BlasInstance>               tlasInstances_;

@@ -46,6 +46,12 @@ namespace engine {
                 if (texID != 0u) {
                     ImVec2 imageTopLeft = ImGui::GetCursorScreenPos();
                     ImGui::Image(texID, contentAvail, ImVec2(0, 0), ImVec2(1, 1));
+                    // Capture the viewport image's rect + hover state NOW, before the
+                    // toolbar/gizmo submit their own ImGui items and overwrite the
+                    // "last item" state that IsItemHovered()/GetItemRect*() read.
+                    imageRectMin_    = ImGui::GetItemRectMin();
+                    imageRectMax_    = ImGui::GetItemRectMax();
+                    imageHovered_    = ImGui::IsItemHovered();
                     bool viewportToolbarHovered = ViewportToolbar::render(frameInfo, imageTopLeft, contentAvail);
                     ViewportViewGizmo::render(frameInfo, imageTopLeft, contentAvail);
                     ViewportObjectGizmo::render(frameInfo, imageTopLeft, contentAvail);
@@ -106,7 +112,7 @@ namespace engine {
         if (frameInfo.viewportMode != ViewportMode::Picking) {
             return;
         }
-        if (!ImGui::IsItemHovered()) {
+        if (!imageHovered_) {
             return;
         }
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
@@ -115,8 +121,8 @@ namespace engine {
         }
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             ImVec2 mouseScreen = ImGui::GetMousePos();
-            ImVec2 itemMin     = ImGui::GetItemRectMin();
-            ImVec2 itemMax     = ImGui::GetItemRectMax();
+            ImVec2 itemMin     = imageRectMin_;
+            ImVec2 itemMax     = imageRectMax_;
             ImVec2 itemSize    = ImVec2(itemMax.x - itemMin.x, itemMax.y - itemMin.y);
             ImVec2 local(mouseScreen.x - itemMin.x, mouseScreen.y - itemMin.y);
             if (itemSize.x > 0.0f && itemSize.y > 0.0f) {
