@@ -22,15 +22,23 @@ namespace engine {
     void ForwardPass::execute(FrameInfo& frameInfo) {
         if (editor_.debugMode != 0)
             return;
-        renderer_.copyOffscreenColorToSceneColor(frameInfo.commandBuffer);
+        // Draw the skybox into the offscreen color FIRST (background), so that the
+        // sceneColor snapshot used by transmissive/refractive materials includes the
+        // sky. If we copied before drawing the sky, glass would refract/reflect the
+        // opaque scene but show black where the sky should be visible through it.
         renderer_.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
-        // Render skybox first (background)
         if (skyboxPtr_) {
             skybox_.render(frameInfo, skyboxPtr_.get(), skyboxSettings_);
         } else if (skyboxSettings_.proceduralSky) {
             // Procedural sky: render with null skybox pointer
             skybox_.render(frameInfo, nullptr, skyboxSettings_);
         }
+        renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
+        // Snapshot the offscreen color (opaque lighting + sky) into sceneColor for the
+        // forward transmission/alpha-blend compositor to sample.
+        renderer_.copyOffscreenColorToSceneColor(frameInfo.commandBuffer);
+        // Re-enter the offscreen pass to draw transmissive/blended geometry and helpers.
+        renderer_.beginOffscreenRenderPassLoadColorDepth(frameInfo.commandBuffer);
         if (editor_.showGrid) {
             grid_.render(frameInfo);
         }
