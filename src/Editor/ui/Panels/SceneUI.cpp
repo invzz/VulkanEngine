@@ -5,11 +5,13 @@
 #include <cctype>
 #include <fstream>
 #include <limits>
+#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/ChildComponent.hpp"
@@ -24,6 +26,8 @@
 #include "Editor/ui/UI.hpp"
 #include "IconsFontAwesome6.h"
 #include "ModelLib/Resources/ResourceManager.hpp"
+#include "ModelLib/Resources/Texture.hpp"
+#include "imgui_impl_vulkan.h"
 
 namespace engine::ui {
     namespace {
@@ -318,6 +322,107 @@ namespace engine::ui {
 
     }  // namespace
 
+    // ---------------------------------------------------------------
+    // Model Info pane (Add-Model popup split view).
+    // Shows the screenshot + readme of the hovered / last-clicked model.
+    // ---------------------------------------------------------------
+
+    // Caches keyed by the model index id. The Texture (GPU image) is cached;
+    // the ImTextureID is rebuilt each frame from it (imgui's vulkan backend
+    // recycles the descriptor set internally, matching Viewport's pattern).
+    struct ModelInfoCache {
+    std::string                          id;
+    std::shared_ptr<engine::Texture>     texture;
+    std::string                          readmeText;
+    bool                                 readmeLoaded{false};
+    };
+    static ModelInfoCache g_infoCache;
+
+    std::shared_ptr<engine::Texture> loadScreenshot(engine::Device& device, const std::string& fullPath) {
+    try {
+        return std::make_shared<engine::Texture>(device, fullPath, /*srgb=*/true, /*flipY=*/false);
+    } catch (const std::exception& e) {
+        engine::Logger::warn(engine::LogChannel::Scene,
+            "[ModelInfo] failed to load screenshot ", fullPath, ": ", e.what());
+        return nullptr;
+    }
+    }
+
+    // Lazily read + cache the readme text for a given id.
+    void ensureReadmeLoaded(ModelInfoCache& cache, const std::string& readmePath) {
+    if (cache.readmeLoaded) {
+        return;
+    }
+    cache.readmeLoaded = true;  // only attempt once per cache entry
+    if (readmePath.empty()) {
+        return;
+    }
+    std::ifstream f(readmePath);
+    if (!f.is_open()) {
+        return;
+    }
+    std::stringstream ss;
+    ss << f.rdbuf();
+    cache.readmeText = ss.str();
+    }
+
+    void drawModelInfoPane(engine::Device&            device,
+                       const std::string&         id,
+                       const std::string&         label,
+                       const std::string&         screenshotRel,  // relative to MODEL_PATH
+                       const std::string&         readmeRel,       // relative to MODEL_PATH
+                       const std::vector<std::string>& screenshotList) {
+    const float paneWidth = ImGui::GetContentRegionAvail().x;
+    if (paneWidth < 1.0f) {
+        return;
+    }
+
+    // (Re)build cache when the active model changes.
+    const std::string shotFull = screenshotRel.empty() ? "" : std::string(MODEL_PATH) + screenshotRel;
+    if (g_infoCache.id != id) {
+        g_infoCache            = ModelInfoCache{};
+        g_infoCache.id         = id;
+        g_infoCache.texture    = shotFull.empty() ? nullptr : loadScreenshot(device, shotFull);
+        g_infoCache.readmeText.clear();
+        g_infoCache.readmeLoaded = false;
+        ensureReadmeLoaded(g_infoCache, readmeRel.empty() ? "" : std::string(MODEL_PATH) + readmeRel);
+    }
+
+    UI::TextColored(ICON_FA_CIRCLE_INFO, ImVec4(0.4f, 0.8f, 1.0f, 1.0f));
+    ImGui::SameLine();
+    UI::TextWrapped(label.c_str());
+
+    // Screenshot thumbnail (aspect-fit, capped width).
+    if (g_infoCache.texture != nullptr) {
+        const float maxW   = std::min(paneWidth, 256.0f);
+        const float aspect = static_cast<float>(g_infoCache.texture->getHeight()) /
+                             static_cast<float>(g_infoCache.texture->getWidth());
+        const float drawW  = maxW;
+        const float drawH  = std::max(8.0f, maxW * aspect);
+        ImTextureID tex = ImGui_ImplVulkan_AddTexture(
+            g_infoCache.texture->getSampler(),
+            g_infoCache.texture->getImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        ImGui::Image(tex, ImVec2(drawW, drawH), ImVec2(0, 0), ImVec2(1, 1));
+    } else if (!screenshotRel.empty()) {
+        UI::TextDisabled("preview unavailable");
+    }
+
+    // Readme (scrollable).
+    if (!g_infoCache.readmeText.empty()) {
+        UI::Separator();
+        const ImVec2 size = ImGui::GetContentRegionAvail();
+        ImGui::BeginChild("##model_readme",
+            ImVec2(size.x, std::min(size.y - 8.0f, 220.0f)),
+            ImGuiChildFlags_Borders,
+            ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        UI::TextWrapped(g_infoCache.readmeText.c_str());
+        ImGui::EndChild();
+    } else if (!readmeRel.empty()) {
+        UI::TextDisabled("no description");
+    }
+    }
+
     SceneEntityCollection UI::CollectSceneEntities(const engine::Scene& scene) {
         SceneEntityCollection result;
         auto&                 registry = scene.getRegistry();
@@ -526,7 +631,21 @@ namespace engine::ui {
                 }
             }
 
-            const std::string indexPath = std::string(MODEL_PATH) + "glTF/model-index.json";
+            // Index schema (generated by scripts/generate_model_index.py):
+            //   [
+            //     {
+            //       "name":     "DamagedHelmet",              // stable id
+            //       "display":  "Damaged Helmet",             // optional UI label
+            //       "root":     "khronos/Models",             // optional collection subpath
+            //       "file":     "khronos/Models/DamagedHelmet/glTF-Binary/DamagedHelmet.glb",
+            //       "variants": { "glTF": ".../<name>.gltf",
+            //                     "glTF-Binary": ".../<name>.glb" }   // relative to MODEL_PATH
+            //     }, ...
+            //   ]
+            // Every path is stored relative to MODEL_PATH, so the loader just
+            // concatenates. Legacy entries with only "variants"."glTF" are
+            // still accepted and rebuilt with the old glTF/<name>/glTF/ rule.
+            const std::string indexPath = std::string(MODEL_PATH) + "model-index.json";
             try {
                 std::ifstream f(indexPath);
                 if (!f.is_open()) {
@@ -534,35 +653,80 @@ namespace engine::ui {
                 } else {
                     nlohmann::json j;
                     f >> j;
+
+                    // Sort keys so "glTF" precedes variants like "glTF-Binary".
+                    static const auto variantOrder = [](const std::string& a, const std::string& b) {
+                        const bool aGltf = (a == "glTF");
+                        const bool bGltf = (b == "glTF");
+                        if (aGltf != bGltf) return aGltf;
+                        return a < b;
+                    };
+
                     for (const auto& item : j) {
                         if (!item.contains("name")) {
                             continue;
                         }
-                        const std::string name = item["name"].get<std::string>();
+                        const std::string id = item["name"].get<std::string>();
+                        const std::string label = item.contains("display")
+                                                      ? item["display"].get<std::string>()
+                                                      : id;
 
-                        std::string relativePath;
-                        if (item.contains("variants") && item["variants"].contains("glTF")) {
-                            const std::string variantFile = item["variants"]["glTF"].get<std::string>();
-                            relativePath.append("glTF/").append(name).append("/glTF/").append(variantFile);
-                        }
-
-                        if (!matchesFilter(name, filterModel)) {
+                        if (!matchesFilter(label, filterModel)) {
                             continue;
                         }
 
-                        if (UI::Selectable(name.c_str(), false, ImGuiSelectableFlags_NoAutoClosePopups)) {
-                            std::string fullPath;
-                            if (relativePath.empty()) {
-                                fullPath.append(MODEL_PATH).append("glTF/").append(name).append("/glTF/").append(name).append(".gltf");
-                            } else {
-                                fullPath.append(MODEL_PATH).append(relativePath);
+                        // Collect (label -> relativePath) pairs for this model.
+                        std::vector<std::pair<std::string, std::string>> variants;
+                        if (item.contains("variants") && item["variants"].is_object()) {
+                            for (const auto& [k, v] : item["variants"].items()) {
+                                if (v.is_string()) {
+                                    variants.emplace_back(k, v.get<std::string>());
+                                }
                             }
-                            ModelInsertionOptions opts;
-                            opts.enableTextures     = true;
-                            opts.loadMaterials      = true;
-                            opts.enableMorphTargets = true;
-                            enqueueModelLoad(fullPath, name, opts, colliderMode);
-                            ImGui::CloseCurrentPopup();
+                            std::sort(variants.begin(), variants.end(),
+                                      [&](const auto& a, const auto& b) {
+                                          return variantOrder(a.first, b.first);
+                                      });
+                        }
+                        // Legacy / minimal entries: derive from optional fields.
+                        if (variants.empty()) {
+                            if (item.contains("file") && item["file"].is_string()) {
+                                variants.emplace_back("glTF", item["file"].get<std::string>());
+                            } else if (item.contains("variants") && item["variants"].contains("glTF")) {
+                                const std::string variantFile =
+                                    item["variants"]["glTF"].get<std::string>();
+                                variants.emplace_back(
+                                    "glTF",
+                                    std::string("glTF/")
+                                        .append(id)
+                                        .append("/glTF/")
+                                        .append(variantFile));
+                            } else {
+                                variants.emplace_back(
+                                    "glTF",
+                                    std::string("glTF/")
+                                        .append(id)
+                                        .append("/glTF/")
+                                        .append(id)
+                                        .append(".gltf"));
+                            }
+                        }
+
+                        if (UI::TreeNode(label.c_str())) {
+                            for (const auto& [variantLabel, relPath] : variants) {
+                                if (UI::Selectable(variantLabel.c_str(), false,
+                                                   ImGuiSelectableFlags_NoAutoClosePopups)) {
+                                    const std::string fullPath =
+                                        std::string(MODEL_PATH).append(relPath);
+                                    ModelInsertionOptions opts;
+                                    opts.enableTextures     = true;
+                                    opts.loadMaterials      = true;
+                                    opts.enableMorphTargets = true;
+                                    enqueueModelLoad(fullPath, id, opts, colliderMode);
+                                    ImGui::CloseCurrentPopup();
+                                }
+                            }
+                            ImGui::TreePop();
                         }
                     }
                 }
