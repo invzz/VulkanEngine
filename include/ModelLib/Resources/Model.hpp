@@ -101,6 +101,7 @@ namespace engine {
             int      materialId;
             uint32_t meshletOffset = 0;
             uint32_t meshletCount  = 0;
+            int      nodeIndex = -1;  // glTF node that instantiates this sub-mesh (-1 if not node-bound)
         };
         struct AnimationSampler {
             enum Interpolation : std::uint8_t {

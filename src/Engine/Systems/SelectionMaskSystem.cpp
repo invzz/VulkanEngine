@@ -5,6 +5,7 @@
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/Scene/components/ChildComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
+#include "Engine/Scene/components/NodeIndexComponent.hpp"
 #include "ModelLib/Resources/Model.hpp"
 
 #include "vulkan/vulkan_core.h"
@@ -108,16 +109,32 @@ namespace engine {
         }
 
         // Default: whole model. If the selection is a sub-mesh entity, restrict
-        // to that sub-mesh's meshlet range.
+        // to that sub-mesh's meshlet range. If it is a node (instance) entity,
+        // restrict to the sub-mesh(es) that node instantiates — giving the
+        // instance the same outline behaviour as selecting the sub-mesh directly.
         uint32_t meshletOffset = 0;
         uint32_t meshletCount  = model->getMeshletCount();
-        if (registry.valid(frameInfo.selectedEntity) &&
-            registry.all_of<SubMeshComponent>(frameInfo.selectedEntity)) {
-            const auto& sub = registry.get<SubMeshComponent>(frameInfo.selectedEntity);
-            if (sub.subMeshIndex < model->getSubMeshes().size()) {
-                const auto& sm = model->getSubMeshes()[sub.subMeshIndex];
-                meshletOffset   = sm.meshletOffset;
-                meshletCount    = sm.meshletCount;
+        const auto& subMeshes  = model->getSubMeshes();
+        auto     sel           = frameInfo.selectedEntity;
+        if (registry.valid(sel) && registry.all_of<SubMeshComponent>(sel)) {
+            const auto& sub = registry.get<SubMeshComponent>(sel);
+            if (sub.subMeshIndex < subMeshes.size()) {
+                meshletOffset = subMeshes[sub.subMeshIndex].meshletOffset;
+                meshletCount  = subMeshes[sub.subMeshIndex].meshletCount;
+            }
+        } else if (registry.valid(sel) && registry.all_of<NodeIndexComponent>(sel)) {
+            const int nodeIdx = registry.get<NodeIndexComponent>(sel).nodeIndex;
+            uint32_t rangeStart = model->getMeshletCount();
+            uint32_t rangeEnd    = 0;
+            for (const auto& sm : subMeshes) {
+                if (sm.nodeIndex == nodeIdx) {
+                    rangeStart = std::min(rangeStart, sm.meshletOffset);
+                    rangeEnd    = std::max(rangeEnd, sm.meshletOffset + sm.meshletCount);
+                }
+            }
+            if (rangeEnd > rangeStart) {
+                meshletOffset = rangeStart;
+                meshletCount  = rangeEnd - rangeStart;
             }
         }
 

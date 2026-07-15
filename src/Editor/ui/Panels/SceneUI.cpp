@@ -253,43 +253,74 @@ namespace engine::ui {
             ImGui::PopID();
         }
 
-        /// Recursively draw node children of a parent entity using a
-        /// pre-built children index (no per-call full-view scan).
-        void drawNodeChildren(
+        /// Draw the node entity that instantiates the given sub-mesh as an
+        /// "instance" under it. A glTF node references a mesh; the mesh's
+        /// primitives become sub-meshes, so each node that references a mesh is
+        /// one instance of that sub-mesh (model -> submeshes -> instances).
+        void drawInstancesFor(
+            entt::entity               modelEntity,
+            uint32_t                   subMeshIndex,
+            const ChildrenIndex&       childrenIndex,
+            const entt::registry&      registry,
+            FrameInfo&                 frameInfo,
+            std::vector<entt::entity>& toDelete) {
+            const auto*  modelComp = registry.try_get<ModelComponent>(modelEntity);
+            const Model* model     = modelComp ? modelComp->model.get() : nullptr;
+            if (model == nullptr || subMeshIndex >= model->getSubMeshes().size()) {
+                return;
+            }
+            const int nodeIndex = model->getSubMeshes()[subMeshIndex].nodeIndex;
+            if (nodeIndex < 0) {
+                return;  // sub-mesh not bound to a glTF node
+            }
+            // Find the node entity with this node index (child of the model).
+            entt::entity instanceEntity = entt::null;
+            for (auto child : childrenIndex.childrenOf(modelEntity)) {
+                if (registry.all_of<NodeIndexComponent>(child) &&
+                    registry.get<NodeIndexComponent>(child).nodeIndex == nodeIndex) {
+                    instanceEntity = child;
+                    break;
+                }
+            }
+            if (instanceEntity == entt::null) {
+                return;  // node entity not present (e.g. skinned-only)
+            }
+            const char* icon  = ICON_FA_CLONE;
+            const ImVec4 color = ImVec4(0.6f, 0.9f, 0.7f, 1.0f);
+            drawEntityRow(instanceEntity, icon, color, frameInfo, registry, toDelete);
+        }
+        /// Draw sub-mesh (glTF primitive) children of a parent model entity. Each
+        /// sub-mesh is a tree node; under it, the node entities that instantiate
+        /// it are shown as "instances" (model -> submeshes -> instances).
+        void drawSubMeshChildren(
             entt::entity               parent,
             const ChildrenIndex&       childrenIndex,
             const entt::registry&      registry,
             FrameInfo&                 frameInfo,
             std::vector<entt::entity>& toDelete) {
             for (auto child : childrenIndex.childrenOf(parent)) {
-                if (!registry.all_of<NodeIndexComponent>(child)) {
+                if (!registry.all_of<SubMeshComponent>(child)) {
                     continue;
                 }
-
                 const std::string name = entityDisplayName(registry, child);
-                const char*       icon  = ICON_FA_FOLDER;
-                const ImVec4      color = ImVec4(0.6f, 0.8f, 1.0f, 1.0f);
-                const bool        hasOwnChildren = childrenIndex.hasChildren(child);
+                const char*       icon  = ICON_FA_SHAPES;
+                const ImVec4      color = ImVec4(0.55f, 0.85f, 1.0f, 1.0f);
+                const uint32_t    subMeshIndex = registry.get<SubMeshComponent>(child).subMeshIndex;
 
                 ImGui::PushID(static_cast<int>(static_cast<uint32_t>(child)));
                 UI::TextColored(icon, color);
                 ImGui::SameLine();
-
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen;
-                if (!hasOwnChildren) {
-                    flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                }
                 if (frameInfo.selectedEntity == child) {
                     flags |= ImGuiTreeNodeFlags_Selected;
                 }
-
-                const bool nodeOpen = ImGui::TreeNodeEx(name.c_str(), flags);
+                const bool open = ImGui::TreeNodeEx(name.c_str(), flags);
                 if (ImGui::IsItemClicked()) {
                     frameInfo.selectedObjectId = static_cast<uint32_t>(child);
                     frameInfo.selectedEntity   = child;
                 }
-                if (hasOwnChildren && nodeOpen) {
-                    drawNodeChildren(child, childrenIndex, registry, frameInfo, toDelete);
+                if (open) {
+                    drawInstancesFor(parent, subMeshIndex, childrenIndex, registry, frameInfo, toDelete);
                     ImGui::TreePop();
                 }
                 ImGui::PopID();
@@ -321,38 +352,8 @@ namespace engine::ui {
                 drawEntityRow(child, icon, color, frameInfo, registry, toDelete);
             }
         }
-        /// Draw sub-mesh (glTF primitive) children of a parent model entity as
-        /// flat selectable rows. Each carries a SubMeshComponent.
-        void drawSubMeshChildren(
-            entt::entity               parent,
-            const ChildrenIndex&       childrenIndex,
-            const entt::registry&      registry,
-            FrameInfo&                 frameInfo,
-            std::vector<entt::entity>& toDelete) {
-            for (auto child : childrenIndex.childrenOf(parent)) {
-                if (!registry.all_of<SubMeshComponent>(child)) {
-                    continue;
-                }
-                const std::string name = entityDisplayName(registry, child);
-                const char*       icon  = ICON_FA_SHAPES;
-                const ImVec4      color = ImVec4(0.55f, 0.85f, 1.0f, 1.0f);
-                ImGui::PushID(static_cast<int>(static_cast<uint32_t>(child)));
-                UI::TextColored(icon, color);
-                ImGui::SameLine();
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-                if (frameInfo.selectedEntity == child) {
-                    flags |= ImGuiTreeNodeFlags_Selected;
-                }
-                ImGui::TreeNodeEx(name.c_str(), flags);
-                if (ImGui::IsItemClicked()) {
-                    frameInfo.selectedObjectId = static_cast<uint32_t>(child);
-                    frameInfo.selectedEntity   = child;
-                }
-                ImGui::PopID();
-            }
-        }
+        }  // namespace
 
-    }  // namespace
 
     // ---------------------------------------------------------------
     // Model Info pane (Add-Model popup split view).
@@ -841,26 +842,17 @@ namespace engine::ui {
                 drawEntityRow(entity, ICON_FA_CUBE, ImVec4(0.4f, 0.8f, 1.0f, 1.0f), frameInfo, registry, toDelete);
 
                 bool hasLights = false;
-                bool hasNodes  = false;
                 for (auto child : childrenIndex.childrenOf(entity)) {
                     if (registry.all_of<PointLightComponent>(child) ||
                         registry.all_of<DirectionalLightComponent>(child) ||
                         registry.all_of<SpotLightComponent>(child)) {
                         hasLights = true;
-                    } else if (registry.all_of<NodeIndexComponent>(child)) {
-                        hasNodes = true;
                     }
                 }
 
                 if (hasLights) {
                     if (UI::TreeNode(ICON_FA_LIGHTBULB, "Lights", ImGuiTreeNodeFlags_DefaultOpen)) {
                         drawLightChildren(entity, childrenIndex, registry, frameInfo, toDelete);
-                        ImGui::TreePop();
-                    }
-                }
-                if (hasNodes) {
-                    if (UI::TreeNode(ICON_FA_SITEMAP, "Nodes", ImGuiTreeNodeFlags_DefaultOpen)) {
-                        drawNodeChildren(entity, childrenIndex, registry, frameInfo, toDelete);
                         ImGui::TreePop();
                     }
                 }

@@ -496,6 +496,7 @@ namespace engine {
             for (auto& [_,pr]:j.pr) pp.push_back(buildPrimitivePatch(model,*pr,j.x,hasAnimations,pr->material,!pr->targets.empty(),xM,yM,zM));
             return pp;}));
         std::unordered_map<int,std::vector<uint32_t>> ibm;
+        std::unordered_map<int,int> matToNode;  // material -> originating node index
         for (size_t ji=0;ji<js.size();++ji){
             auto pp=ff[ji].get(); auto& j=js[ji];
             builder.nodePrimitiveIndices[j.n].reserve(builder.nodePrimitiveIndices[j.n].size()+pp.size());
@@ -505,10 +506,11 @@ namespace engine {
                 primitiveVertexOffsets[k]=o; builder.nodePrimitiveIndices[j.n].push_back(pri);
                 builder.vertices.insert(builder.vertices.end(),p.vertices.begin(),p.vertices.end());
                 for (uint32_t i=0;i<p.indexCount;++i){uint32_t g=o+i;builder.indices.push_back(g);ibm[mat].push_back(g);}
+                if (matToNode.find(mat) == matToNode.end()) matToNode[mat] = j.n;
                 if (!p.positionIndices.empty()) for (uint32_t i=0;i<p.indexCount;++i) vertexToPositionIndex[o+i]=p.positionIndices[i];
                 primitiveVertexCounts[k]=p.indexCount;}}
         uint32_t co=0;
-        for (auto& [mi,ii]:ibm){if(!ii.empty()){Model::SubMesh sm;sm.materialId=mi;sm.indexOffset=co;sm.indexCount=(uint32_t)ii.size();builder.subMeshes.push_back(sm);co+=sm.indexCount;}}
+        for (auto& [mi,ii]:ibm){if(!ii.empty()){Model::SubMesh sm;sm.materialId=mi;sm.indexOffset=co;sm.indexCount=(uint32_t)ii.size();sm.nodeIndex = matToNode.count(mi) ? matToNode[mi] : -1;builder.subMeshes.push_back(sm);co+=sm.indexCount;}}
         std::vector<uint32_t> gi; gi.reserve(builder.indices.size());
         for (auto& sm:builder.subMeshes){auto& ii=ibm[sm.materialId];gi.insert(gi.end(),ii.begin(),ii.end());}
         builder.indices=std::move(gi); std::cout<<GREEN<<"[GLTFImporter] Meshes processed"<<RESET<<"\n";
