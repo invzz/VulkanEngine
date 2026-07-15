@@ -38,7 +38,8 @@
 #include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PickingSystem.hpp"
-#include "Engine/Systems/SelectionOutlineSystem.hpp"
+#include "Engine/Systems/SelectionMaskSystem.hpp"
+#include "Engine/Systems/SelectionCompositeSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
@@ -365,17 +366,34 @@ namespace engine {
             engineState.system<LightSystem>(),
             engineState.system<CameraSystem>(),
             engineState.system<ColliderDebugRenderSystem>(),
-            engineState.system<SelectionOutlineSystem>(),
             *engineState.systemPtr<SkyboxRenderSystem>(),
             renderer,
             engineState.editor(),
             engineState.skybox(),
             engineState.skySettings()));
+        // Selection mask: render selected geometry (depth disabled) into a 1-channel
+        // mask so the full silhouette is captured. Runs after the scene, before the
+        // screen-space composite that turns it into the Blender-style rim.
+        graph->addPass(std::make_unique<LambdaRenderPass>("SelectionMask",
+            [this](FrameInfo& frameInfo) {
+                renderer.beginSelectionMaskRenderPass(frameInfo.commandBuffer);
+                engineState.system<SelectionMaskSystem>().render(frameInfo);
+                renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
+            }));
         graph->addPass(std::make_unique<LambdaRenderPass>("TransitionToReadOnly",
             [this](FrameInfo& frameInfo) {
                 renderer.transitionColorToShaderReadOnly(frameInfo.commandBuffer);
             }));
         graph->addPass(std::make_unique<PostProcessPass>(renderer, engineState));
+        // Selection composite: full-screen edge-detect on the mask, blended on top of
+        // the tonemapped post-fx image. This is the topmost scene layer (above all
+        // geometry and post-fx) before the ImGui viewport overlay.
+        graph->addPass(std::make_unique<LambdaRenderPass>("SelectionComposite",
+            [this](FrameInfo& frameInfo) {
+                renderer.beginSelectionOutlineRenderPass(frameInfo.commandBuffer);
+                engineState.system<SelectionCompositeSystem>().render(frameInfo);
+                renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
+            }));
         graph->addPass(std::make_unique<CompositionPass>(renderer, [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) { uiManager->render(frameInfo, cmd, cursorVisible); }, window));
         renderPipeline->setRenderGraph(std::move(graph));
     }

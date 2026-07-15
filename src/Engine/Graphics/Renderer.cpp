@@ -359,6 +359,16 @@ namespace engine {
         scissor.extent = offscreenExtent_;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
     }
+    void Renderer::beginSelectionMaskRenderPass(VkCommandBuffer commandBuffer) {
+        assert(isFrameStarted && "Can't begin render pass when frame not in progress");
+        assert(commandBuffer == getCurrentCommandBuffer() && "Can't begin render pass on a command buffer from a different frame");
+        offscreenFrameBuffer->beginSelectionMaskRenderPass(commandBuffer, currentFrameIndex);
+    }
+    void Renderer::beginSelectionOutlineRenderPass(VkCommandBuffer commandBuffer) {
+        assert(isFrameStarted && "Can't begin render pass when frame not in progress");
+        assert(commandBuffer == getCurrentCommandBuffer() && "Can't begin render pass on a command buffer from a different frame");
+        offscreenFrameBuffer->beginSelectionOutlineRenderPass(commandBuffer, currentFrameIndex);
+    }
     void Renderer::endOffscreenRenderPass(VkCommandBuffer commandBuffer) const {
         assert(isFrameStarted && "Can't end render pass when frame not in progress");
         assert(commandBuffer == getCurrentCommandBuffer() && "Can't end render pass on a command buffer from a different frame");

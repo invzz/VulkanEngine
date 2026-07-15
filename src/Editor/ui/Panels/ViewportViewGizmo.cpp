@@ -9,6 +9,8 @@
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
+#include "Editor/ui/SelectionResolve.hpp"
+
 #include "Editor/ui/ViewportGizmoCoordinates.hpp"
 namespace {
     struct ViewOrbitContext {
@@ -32,17 +34,20 @@ namespace {
         const glm::vec3&         cameraPos) {
         ViewOrbitContext context{};
         context.pivot = cameraPos;
+        // A sub-mesh selection shares the parent model's transform; orbit around that.
+        const entt::entity selected = engine::resolveSelectionForTransform(
+            *frameInfo.scene, frameInfo.selectedEntity);
         const bool hasValidSelectedPivot =
-            registry.valid(frameInfo.selectedEntity) &&
-            frameInfo.selectedEntity != frameInfo.cameraEntity &&
-            registry.all_of<engine::TransformComponent, engine::ModelComponent>(frameInfo.selectedEntity);
+            registry.valid(selected) &&
+            selected != frameInfo.cameraEntity &&
+            registry.all_of<engine::TransformComponent, engine::ModelComponent>(selected);
         context.orbitAroundSelection = frameInfo.viewGizmoOrbitSelected && hasValidSelectedPivot;
         if (!context.orbitAroundSelection) {
             return context;
         }
-        const auto& selectedTransform = registry.get<engine::TransformComponent>(frameInfo.selectedEntity);
+        const auto& selectedTransform = registry.get<engine::TransformComponent>(selected);
         context.pivot                 = selectedTransform.translation;
-        const auto& modelComp         = registry.get<engine::ModelComponent>(frameInfo.selectedEntity);
+        const auto& modelComp         = registry.get<engine::ModelComponent>(selected);
         if (!modelComp.model) {
             context.orbitAroundSelection = false;
             return context;

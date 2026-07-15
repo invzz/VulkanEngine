@@ -16,6 +16,7 @@
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/SubMeshComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "glm/gtc/matrix_transform.hpp"
@@ -86,6 +87,8 @@ namespace engine {
         createLightEntities(scene, *modelPtr, entity);
         // Handle glTF node hierarchy — create entities for each node
         createNodeEntities(scene, *modelPtr, entity);
+        // Handle sub-mesh selection entities — one per primitive, regenerated (not serialized)
+        createSubMeshEntities(scene, *modelPtr, entity);
         Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Added model to scene: ", modelPath);
     }
     ModelLoadProcessor::LoadCallback ModelLoadProcessor::createAsyncCallback(
@@ -214,6 +217,41 @@ namespace engine {
             }
         }
         Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Created ", nodeCount, " node entities for model");
+    }
+    void ModelLoadProcessor::createSubMeshEntities(
+        Scene&       scene,
+        const Model& model,
+        entt::entity modelEntity) {
+        auto const& subMeshes = model.getSubMeshes();
+        if (subMeshes.empty()) {
+            return;
+        }
+        auto&       registry   = scene.getRegistry();
+        const auto& materials  = model.getMaterials();
+        // Track name usage to disambiguate duplicate material names.
+        std::unordered_map<std::string, uint32_t> nameCount;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(subMeshes.size()); ++i) {
+            const auto& subMesh = subMeshes[i];
+            std::string baseName;
+            if (subMesh.materialId >= 0 && subMesh.materialId < static_cast<int>(materials.size())) {
+                baseName = materials[static_cast<size_t>(subMesh.materialId)].name;
+            }
+            if (baseName.empty()) {
+                baseName = "Submesh";
+            }
+            std::string name = baseName;
+            auto&       cnt  = nameCount[baseName];
+            if (cnt > 0) {
+                name = baseName + "_" + std::to_string(cnt);
+            }
+            ++cnt;
+
+            auto entity = scene.createEntity();
+            registry.emplace<NameComponent>(entity, name);
+            registry.emplace<SubMeshComponent>(entity, modelEntity, i);
+            registry.emplace<ChildComponent>(entity, modelEntity);
+        }
+        Logger::info(LogChannel::Scene, "[ModelLoadProcessor] Created ", subMeshes.size(), " sub-mesh entities for model");
     }
     bool ModelLoadProcessor::shouldCreateStaticCollider(
         const std::string&                              modelPath,

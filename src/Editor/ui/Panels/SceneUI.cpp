@@ -21,6 +21,7 @@
 #include "Engine/Scene/components/NodeIndexComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/SubMeshComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "Editor/ui/UI.hpp"
@@ -318,6 +319,36 @@ namespace engine::ui {
                     continue;  // not a light
                 }
                 drawEntityRow(child, icon, color, frameInfo, registry, toDelete);
+            }
+        }
+        /// Draw sub-mesh (glTF primitive) children of a parent model entity as
+        /// flat selectable rows. Each carries a SubMeshComponent.
+        void drawSubMeshChildren(
+            entt::entity               parent,
+            const ChildrenIndex&       childrenIndex,
+            const entt::registry&      registry,
+            FrameInfo&                 frameInfo,
+            std::vector<entt::entity>& toDelete) {
+            for (auto child : childrenIndex.childrenOf(parent)) {
+                if (!registry.all_of<SubMeshComponent>(child)) {
+                    continue;
+                }
+                const std::string name = entityDisplayName(registry, child);
+                const char*       icon  = ICON_FA_SHAPES;
+                const ImVec4      color = ImVec4(0.55f, 0.85f, 1.0f, 1.0f);
+                ImGui::PushID(static_cast<int>(static_cast<uint32_t>(child)));
+                UI::TextColored(icon, color);
+                ImGui::SameLine();
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                if (frameInfo.selectedEntity == child) {
+                    flags |= ImGuiTreeNodeFlags_Selected;
+                }
+                ImGui::TreeNodeEx(name.c_str(), flags);
+                if (ImGui::IsItemClicked()) {
+                    frameInfo.selectedObjectId = static_cast<uint32_t>(child);
+                    frameInfo.selectedEntity   = child;
+                }
+                ImGui::PopID();
             }
         }
 
@@ -830,6 +861,19 @@ namespace engine::ui {
                 if (hasNodes) {
                     if (UI::TreeNode(ICON_FA_SITEMAP, "Nodes", ImGuiTreeNodeFlags_DefaultOpen)) {
                         drawNodeChildren(entity, childrenIndex, registry, frameInfo, toDelete);
+                        ImGui::TreePop();
+                    }
+                }
+                bool hasSubMeshes = false;
+                for (auto child : childrenIndex.childrenOf(entity)) {
+                    if (registry.all_of<SubMeshComponent>(child)) {
+                        hasSubMeshes = true;
+                        break;
+                    }
+                }
+                if (hasSubMeshes) {
+                    if (UI::TreeNode(ICON_FA_SHAPES, "Submeshes", ImGuiTreeNodeFlags_DefaultOpen)) {
+                        drawSubMeshChildren(entity, childrenIndex, registry, frameInfo, toDelete);
                         ImGui::TreePop();
                     }
                 }

@@ -66,10 +66,12 @@ namespace engine {
         auto sl      = renderContextPort_->getGlobalSetLayout();
         cameraSys_   = std::make_unique<CameraSystem>(d, rp, sl);
         colliderDbg_ = std::make_unique<ColliderDebugRenderSystem>(d, rp, sl);
-        selOutline_  = std::make_unique<SelectionOutlineSystem>(d, rp, sl);
+        selMask_     = std::make_unique<SelectionMaskSystem>(d, r.getSelectionMaskRenderPass(), sl);
+        selComposite_ = std::make_unique<SelectionCompositeSystem>(d, r.getSelectionOutlineRenderPass(), r);
         registerSystem(cameraSys_);
         registerSystem(colliderDbg_);
-        registerSystem(selOutline_);
+        registerSystem(selMask_);
+        registerSystem(selComposite_);
         anim_ = std::make_unique<AnimationSystem>(d);
         lod_  = std::make_unique<LODSystem>();
         registerSystem(anim_);

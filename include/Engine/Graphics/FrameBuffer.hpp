@@ -38,6 +38,12 @@ namespace engine {
         [[nodiscard]] VkRenderPass getPostFxRenderPass() const {
             return postFxRenderPass;
         }
+        [[nodiscard]] VkRenderPass getSelectionMaskRenderPass() const {
+            return selectionMaskRenderPass;
+        }
+        [[nodiscard]] VkRenderPass getSelectionOutlineRenderPass() const {
+            return selectionOutlineRenderPass;
+        }
         [[nodiscard]] uint32_t getMipLevels() const {
             return mipLevels;
         }
@@ -52,7 +58,9 @@ namespace engine {
         void                                beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
         void                                beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex, bool allowSecondaryCommandBuffers = false);
         void                                beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void                                beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                       beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                       beginSelectionMaskRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                       beginSelectionOutlineRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
         static void                         endRenderPass(VkCommandBuffer commandBuffer);
         void                                generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
         void                                generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
@@ -108,6 +116,25 @@ namespace engine {
             return postFxTargets[frameIndex].getSampler();
         }
         [[nodiscard]] VkDescriptorImageInfo getPostFxDescriptorImageInfo(int frameIndex) const;
+        /** Final composited color (post-fx + selection outline). Viewport displays this. */
+        [[nodiscard]] VkImageView getSelectionOutlineColorImageView(int frameIndex) const {
+            return selectionOutlineTargets[frameIndex].getView();
+        }
+        [[nodiscard]] VkSampler getSelectionOutlineColorSampler(int frameIndex) const {
+            return selectionOutlineTargets[frameIndex].getSampler();
+        }
+        [[nodiscard]] VkImageView getSelectionOutlineAttachmentView(int frameIndex) const {
+            return selectionOutlineTargets[frameIndex].getAttachmentView();
+        }
+        [[nodiscard]] VkDescriptorImageInfo getSelectionOutlineDescriptorImageInfo(int frameIndex) const;
+        /** Single-channel selection mask (1.0 where selected geometry covers a pixel). */
+        [[nodiscard]] VkImageView getSelectionMaskImageView(int frameIndex) const {
+            return selectionMaskTargets[frameIndex].getView();
+        }
+        [[nodiscard]] VkSampler getSelectionMaskSampler(int frameIndex) const {
+            return selectionMaskTargets[frameIndex].getSampler();
+        }
+        [[nodiscard]] VkDescriptorImageInfo getSelectionMaskDescriptorImageInfo(int frameIndex) const;
 
        private:
         void                       createRenderPass();
@@ -126,6 +153,8 @@ namespace engine {
         VkRenderPass               gbufferRenderPass{VK_NULL_HANDLE};
         VkRenderPass               deferredLightingRenderPass{VK_NULL_HANDLE};
         VkRenderPass               postFxRenderPass{VK_NULL_HANDLE};
+        VkRenderPass               selectionMaskRenderPass{VK_NULL_HANDLE};
+        VkRenderPass               selectionOutlineRenderPass{VK_NULL_HANDLE};
         std::vector<RenderTarget>  colorTargets;
         std::vector<RenderTarget>  sceneColorTargets;
         std::vector<RenderTarget>  gbufferNormalTargets;
@@ -133,6 +162,8 @@ namespace engine {
         std::vector<RenderTarget>  gbufferMaterialTargets;
         std::vector<RenderTarget>  depthTargets;
         std::vector<RenderTarget>  postFxTargets;
+        std::vector<RenderTarget>  selectionOutlineTargets;
+        std::vector<RenderTarget>  selectionMaskTargets;
         std::vector<VkFramebuffer> framebuffers;
         std::vector<VkFramebuffer> depthPrepassFramebuffers;
         std::vector<VkFramebuffer> loadDepthFramebuffers;
@@ -140,6 +171,8 @@ namespace engine {
         std::vector<VkFramebuffer> gbufferFramebuffers;
         std::vector<VkFramebuffer> deferredLightingFramebuffers;
         std::vector<VkFramebuffer> postFxFramebuffers;
+        std::vector<VkFramebuffer> selectionMaskFramebuffers;
+        std::vector<VkFramebuffer> selectionOutlineFramebuffers;
     };
 }  // namespace engine
 #endif

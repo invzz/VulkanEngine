@@ -17,6 +17,7 @@
 #include "Engine/Scene/components/PhysicsComponents.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
+#include "Engine/Scene/components/SubMeshComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/IBLSystem.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
@@ -353,6 +354,10 @@ namespace engine {
         }
         auto view = scene.getRegistry().view<entt::entity>();
         for (auto entity : view) {
+            // Sub-mesh selection entities are regenerated on load; never persist them.
+            if (scene.getRegistry().all_of<SubMeshComponent>(entity)) {
+                continue;
+            }
             nlohmann::json objJson;
             objJson["id"] = std::to_string((uint32_t) entity);
             if (scene.getRegistry().all_of<NameComponent>(entity)) {

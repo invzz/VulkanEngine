@@ -38,6 +38,8 @@ namespace engine {
         vkDestroyRenderPass(device.device(), gbufferRenderPass, nullptr);
         vkDestroyRenderPass(device.device(), deferredLightingRenderPass, nullptr);
         vkDestroyRenderPass(device.device(), postFxRenderPass, nullptr);
+        vkDestroyRenderPass(device.device(), selectionMaskRenderPass, nullptr);
+        vkDestroyRenderPass(device.device(), selectionOutlineRenderPass, nullptr);
     }
     void FrameBuffer::cleanup() {
         for (auto framebuffer : framebuffers) {
@@ -89,6 +91,14 @@ namespace engine {
             target.destroy(device);
         }
         postFxTargets.clear();
+        for (auto& target : selectionOutlineTargets) {
+            target.destroy(device);
+        }
+        selectionOutlineTargets.clear();
+        for (auto& target : selectionMaskTargets) {
+            target.destroy(device);
+        }
+        selectionMaskTargets.clear();
     }
     void FrameBuffer::resize(VkExtent2D newExtent) {
         extent = newExtent;
@@ -454,6 +464,96 @@ namespace engine {
                 throw std::runtime_error("failed to create post-fx render pass!");
             }
         }
+        // --- Selection mask render pass (color only, depth disabled) ---
+        {
+            VkAttachmentDescription maskAttachment{};
+            maskAttachment.format         = VK_FORMAT_R8_UNORM;
+            maskAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
+            maskAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            maskAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+            maskAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            maskAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            maskAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+            maskAttachment.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkAttachmentReference maskRef{};
+            maskRef.attachment = 0;
+            maskRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            VkSubpassDescription maskSubpass{};
+            maskSubpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            maskSubpass.colorAttachmentCount = 1;
+            maskSubpass.pColorAttachments    = &maskRef;
+            std::array<VkSubpassDependency, 2> maskDeps{};
+            maskDeps[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+            maskDeps[0].dstSubpass      = 0;
+            maskDeps[0].srcStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            maskDeps[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            maskDeps[0].srcAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            maskDeps[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            maskDeps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+            maskDeps[1].srcSubpass      = 0;
+            maskDeps[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+            maskDeps[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            maskDeps[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            maskDeps[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            maskDeps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            maskDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+            VkRenderPassCreateInfo maskInfo{};
+            maskInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            maskInfo.attachmentCount = 1;
+            maskInfo.pAttachments    = &maskAttachment;
+            maskInfo.subpassCount    = 1;
+            maskInfo.pSubpasses      = &maskSubpass;
+            maskInfo.dependencyCount = static_cast<uint32_t>(maskDeps.size());
+            maskInfo.pDependencies   = maskDeps.data();
+            if (vkCreateRenderPass(device.device(), &maskInfo, nullptr, &selectionMaskRenderPass) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create selection mask render pass!");
+            }
+        }
+        // --- Selection outline composite render pass (color only) ---
+        {
+            VkAttachmentDescription outlineAttachment{};
+            outlineAttachment.format         = VK_FORMAT_R8G8B8A8_UNORM;
+            outlineAttachment.samples        = VK_SAMPLE_COUNT_1_BIT;
+            outlineAttachment.loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            outlineAttachment.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+            outlineAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            outlineAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            outlineAttachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+            outlineAttachment.finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            VkAttachmentReference outlineRef{};
+            outlineRef.attachment = 0;
+            outlineRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            VkSubpassDescription outlineSubpass{};
+            outlineSubpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            outlineSubpass.colorAttachmentCount = 1;
+            outlineSubpass.pColorAttachments    = &outlineRef;
+            std::array<VkSubpassDependency, 2> outlineDeps{};
+            outlineDeps[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+            outlineDeps[0].dstSubpass      = 0;
+            outlineDeps[0].srcStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            outlineDeps[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            outlineDeps[0].srcAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            outlineDeps[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            outlineDeps[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+            outlineDeps[1].srcSubpass      = 0;
+            outlineDeps[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+            outlineDeps[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            outlineDeps[1].dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+            outlineDeps[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            outlineDeps[1].dstAccessMask   = VK_ACCESS_SHADER_READ_BIT;
+            outlineDeps[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+            VkRenderPassCreateInfo outlineInfo{};
+            outlineInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            outlineInfo.attachmentCount = 1;
+            outlineInfo.pAttachments    = &outlineAttachment;
+            outlineInfo.subpassCount    = 1;
+            outlineInfo.pSubpasses      = &outlineSubpass;
+            outlineInfo.dependencyCount = static_cast<uint32_t>(outlineDeps.size());
+            outlineInfo.pDependencies   = outlineDeps.data();
+            if (vkCreateRenderPass(device.device(), &outlineInfo, nullptr, &selectionOutlineRenderPass) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create selection outline render pass!");
+            }
+        }
     }
     void FrameBuffer::createImages() {
         if (useMipmaps) {
@@ -468,6 +568,8 @@ namespace engine {
         gbufferMaterialTargets.resize(frameCount);
         depthTargets.resize(frameCount);
         postFxTargets.resize(frameCount);
+        selectionOutlineTargets.resize(frameCount);
+        selectionMaskTargets.resize(frameCount);
         VkFormat const colorFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
         VkFormat const depthFormat =
             device.findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -560,6 +662,20 @@ namespace engine {
                 true,
                 true,
                 &linearSamplerInfo);
+            makeTarget(selectionOutlineTargets[i], VK_FORMAT_R8G8B8A8_UNORM, 1,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                false,
+                true,
+                true,
+                &linearSamplerInfo);
+            makeTarget(selectionMaskTargets[i], VK_FORMAT_R8_UNORM, 1,
+                VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                VK_IMAGE_ASPECT_COLOR_BIT,
+                false,
+                true,
+                true,
+                &linearSamplerInfo);
         }
     }
     void FrameBuffer::createFramebuffers() {
@@ -570,6 +686,8 @@ namespace engine {
         gbufferFramebuffers.resize(frameCount);
         deferredLightingFramebuffers.resize(frameCount);
         postFxFramebuffers.resize(frameCount);
+        selectionMaskFramebuffers.resize(frameCount);
+        selectionOutlineFramebuffers.resize(frameCount);
         for (size_t i = 0; i < frameCount; i++) {
             std::array<VkImageView, 2> attachments = {colorTargets[i].getAttachmentView(), depthTargets[i].getAttachmentView()};
             VkFramebufferCreateInfo    framebufferInfo{};
@@ -639,6 +757,30 @@ namespace engine {
             if (vkCreateFramebuffer(device.device(), &postFxInfo, nullptr, &postFxFramebuffers[i]) != VK_SUCCESS) {
                 throw std::runtime_error("failed to create post-fx framebuffer!");
             }
+            std::array<VkImageView, 1> maskAttachments = {selectionMaskTargets[i].getAttachmentView()};
+            VkFramebufferCreateInfo    maskInfo{};
+            maskInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            maskInfo.renderPass      = selectionMaskRenderPass;
+            maskInfo.attachmentCount = static_cast<uint32_t>(maskAttachments.size());
+            maskInfo.pAttachments    = maskAttachments.data();
+            maskInfo.width           = extent.width;
+            maskInfo.height          = extent.height;
+            maskInfo.layers          = 1;
+            if (vkCreateFramebuffer(device.device(), &maskInfo, nullptr, &selectionMaskFramebuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create selection mask framebuffer!");
+            }
+            std::array<VkImageView, 1> outlineAttachments = {selectionOutlineTargets[i].getAttachmentView()};
+            VkFramebufferCreateInfo    outlineInfo{};
+            outlineInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            outlineInfo.renderPass      = selectionOutlineRenderPass;
+            outlineInfo.attachmentCount = static_cast<uint32_t>(outlineAttachments.size());
+            outlineInfo.pAttachments    = outlineAttachments.data();
+            outlineInfo.width           = extent.width;
+            outlineInfo.height          = extent.height;
+            outlineInfo.layers          = 1;
+            if (vkCreateFramebuffer(device.device(), &outlineInfo, nullptr, &selectionOutlineFramebuffers[i]) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create selection outline framebuffer!");
+            }
         }
     }
     VkDescriptorImageInfo FrameBuffer::getDescriptorImageInfo(int index) const {
@@ -680,6 +822,20 @@ namespace engine {
         return VkDescriptorImageInfo{
             .sampler     = postFxTargets[index].getSampler(),
             .imageView   = postFxTargets[index].getView(),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+    }
+    VkDescriptorImageInfo FrameBuffer::getSelectionOutlineDescriptorImageInfo(int index) const {
+        return VkDescriptorImageInfo{
+            .sampler     = selectionOutlineTargets[index].getSampler(),
+            .imageView   = selectionOutlineTargets[index].getView(),
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+    }
+    VkDescriptorImageInfo FrameBuffer::getSelectionMaskDescriptorImageInfo(int index) const {
+        return VkDescriptorImageInfo{
+            .sampler     = selectionMaskTargets[index].getSampler(),
+            .imageView   = selectionMaskTargets[index].getView(),
             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
         };
     }
@@ -776,6 +932,34 @@ namespace engine {
         renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass        = postFxRenderPass;
         renderPassInfo.framebuffer       = postFxFramebuffers[frameIndex];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = extent;
+        renderPassInfo.clearValueCount   = static_cast<uint32_t>(std::size(clearValues));
+        renderPassInfo.pClearValues      = clearValues;
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }
+    void FrameBuffer::beginSelectionMaskRenderPass(VkCommandBuffer commandBuffer, int frameIndex) {
+        VkClearValue clearValues[] = {
+            {.color = {0.0f, 0.0f, 0.0f, 0.0f}},
+        };
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass        = selectionMaskRenderPass;
+        renderPassInfo.framebuffer       = selectionMaskFramebuffers[frameIndex];
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = extent;
+        renderPassInfo.clearValueCount   = static_cast<uint32_t>(std::size(clearValues));
+        renderPassInfo.pClearValues      = clearValues;
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    }
+    void FrameBuffer::beginSelectionOutlineRenderPass(VkCommandBuffer commandBuffer, int frameIndex) {
+        VkClearValue clearValues[] = {
+            {.color = {0.0f, 0.0f, 0.0f, 1.0f}},
+        };
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass        = selectionOutlineRenderPass;
+        renderPassInfo.framebuffer       = selectionOutlineFramebuffers[frameIndex];
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = extent;
         renderPassInfo.clearValueCount   = static_cast<uint32_t>(std::size(clearValues));

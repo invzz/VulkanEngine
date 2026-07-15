@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 #include "Engine/Graphics/FrameGraph/RenderGraph.hpp"
 namespace engine {
     class ModelRenderSystem;
@@ -7,7 +6,6 @@ namespace engine {
     class LightSystem;
     class CameraSystem;
     class ColliderDebugRenderSystem;
-    class SelectionOutlineSystem;
     class Renderer;
     class SkyboxRenderSystem;
     class Skybox;
@@ -18,7 +16,6 @@ namespace engine {
         ForwardPass(ModelRenderSystem& models, GridRenderSystem& grid,
             LightSystem& light, CameraSystem& camera,
             ColliderDebugRenderSystem& collider,
-            SelectionOutlineSystem&    outline,
             SkyboxRenderSystem&        skybox,
             Renderer& renderer, const EditorState& editor,
             std::unique_ptr<Skybox>& skyboxPtr, const SkyboxSettings& skyboxSettings);
@@ -30,7 +27,6 @@ namespace engine {
         LightSystem&               light_;
         CameraSystem&              camera_;
         ColliderDebugRenderSystem& collider_;
-        SelectionOutlineSystem&    outline_;
         SkyboxRenderSystem&        skybox_;
         Renderer&                  renderer_;
         const EditorState&         editor_;

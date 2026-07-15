@@ -6,6 +6,7 @@
 
 #include <cmath>
 
+#include "Editor/ui/SelectionResolve.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 namespace engine {
@@ -14,13 +15,15 @@ namespace engine {
             return;
         }
         auto& registry = frameInfo.scene->getRegistry();
-        if (!registry.valid(frameInfo.selectedEntity)) {
+        // A sub-mesh selection shares the parent model's transform; edit that.
+        const entt::entity target = resolveSelectionForTransform(*frameInfo.scene, frameInfo.selectedEntity);
+        if (!registry.valid(target)) {
             return;
         }
-        if (!registry.all_of<TransformComponent>(frameInfo.selectedEntity)) {
+        if (!registry.all_of<TransformComponent>(target)) {
             return;
         }
-        auto& transform = registry.get<TransformComponent>(frameInfo.selectedEntity);
+        auto& transform = registry.get<TransformComponent>(target);
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(topLeft.x, topLeft.y, size.x, size.y);
         const glm::mat4& view = frameInfo.camera.getView();

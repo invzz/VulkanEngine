@@ -14,6 +14,7 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "Editor/ui/UI.hpp"
+#include "Editor/ui/SelectionResolve.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/geometric.hpp"
 namespace engine {
@@ -42,7 +43,7 @@ namespace engine {
             }
         }
         if (frameInfo.selectedEntity != entt::null) {
-            auto  entity   = frameInfo.selectedEntity;
+            auto  entity   = resolveSelectionForTransform(scene_, frameInfo.selectedEntity);
             auto& registry = scene_.getRegistry();
             if (registry.all_of<PointLightComponent>(entity)) {
                 auto& pointLight = registry.get<PointLightComponent>(entity);

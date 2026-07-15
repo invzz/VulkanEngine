@@ -9,6 +9,7 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "Editor/ui/UI.hpp"
+#include "Editor/ui/SelectionResolve.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/trigonometric.hpp"
 namespace engine {
@@ -23,7 +24,7 @@ namespace engine {
             return;
         }
         if (frameInfo.selectedEntity != entt::null) {
-            auto  entity   = frameInfo.selectedEntity;
+            auto  entity   = resolveSelectionForTransform(scene_, frameInfo.selectedEntity);
             auto& registry = scene_.getRegistry();
             if (!registry.valid(entity) || !registry.all_of<TransformComponent>(entity)) {
                 ui::UI::TextDisabled("Selected object has no transform");

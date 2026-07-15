@@ -26,6 +26,8 @@ namespace engine {
         void                       beginGbufferRenderPass(VkCommandBuffer commandBuffer, bool allowSecondaryCommandBuffers = false);
         void                       beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer);
         void                       beginPostFxRenderPass(VkCommandBuffer commandBuffer);
+        void                       beginSelectionMaskRenderPass(VkCommandBuffer commandBuffer);
+        void                       beginSelectionOutlineRenderPass(VkCommandBuffer commandBuffer);
         void                       endOffscreenRenderPass(VkCommandBuffer commandBuffer) const;
         void                       generateOffscreenMipmaps(VkCommandBuffer commandBuffer);
         void                       copyOffscreenColorToSceneColor(VkCommandBuffer commandBuffer);
@@ -54,6 +56,12 @@ namespace engine {
         [[nodiscard]] VkRenderPass getPostFxRenderPass() const {
             return offscreenFrameBuffer->getPostFxRenderPass();
         }
+        [[nodiscard]] VkRenderPass getSelectionMaskRenderPass() const {
+            return offscreenFrameBuffer->getSelectionMaskRenderPass();
+        }
+        [[nodiscard]] VkRenderPass getSelectionOutlineRenderPass() const {
+            return offscreenFrameBuffer->getSelectionOutlineRenderPass();
+        }
         [[nodiscard]] VkDescriptorImageInfo getOffscreenImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getDepthImageInfo(int index) const;
         [[nodiscard]] VkDescriptorImageInfo getSceneColorImageInfo(int index) const;
@@ -75,8 +83,17 @@ namespace engine {
         [[nodiscard]] VkSampler getPostFxColorSampler(int index) const {
             return offscreenFrameBuffer->getPostFxSampler(index);
         }
+        [[nodiscard]] VkImageView getSelectionOutlineColorImageView(int index) const {
+            return offscreenFrameBuffer->getSelectionOutlineColorImageView(index);
+        }
+        [[nodiscard]] VkSampler getSelectionOutlineColorSampler(int index) const {
+            return offscreenFrameBuffer->getSelectionOutlineColorSampler(index);
+        }
         [[nodiscard]] VkDescriptorImageInfo getPostFxImageInfo(int index) const {
             return offscreenFrameBuffer->getPostFxDescriptorImageInfo(index);
+        }
+        [[nodiscard]] VkDescriptorImageInfo getSelectionMaskImageInfo(int index) const {
+            return offscreenFrameBuffer->getSelectionMaskDescriptorImageInfo(index);
         }
         /** Resize the offscreen framebuffer to match viewport panel size. */
         void resizeOffscreenFramebuffer(VkExtent2D extent);

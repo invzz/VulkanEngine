@@ -12,6 +12,7 @@
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 
 #include "Editor/ui/UI.hpp"
+#include "Editor/ui/SelectionResolve.hpp"
 #include "IconsFontAwesome6.h"
 namespace engine {
     PhysicsPanel::PhysicsPanel(EngineState& state)
@@ -45,7 +46,7 @@ namespace engine {
             ui::UI::TextDisabled(groundStatus.c_str());
             ui::UI::EndSurface();
             if (frameInfo.selectedEntity != entt::null) {
-                auto        entity       = frameInfo.selectedEntity;
+                auto        entity       = resolveSelectionForTransform(state_.scene(), frameInfo.selectedEntity);
                 auto&       registry     = state_.scene().getRegistry();
                 bool        hasRigidBody = registry.all_of<RigidBodyComponent>(entity);
                 bool        hasCollider  = registry.all_of<ColliderComponent>(entity);

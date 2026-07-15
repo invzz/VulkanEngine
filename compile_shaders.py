@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 # ANSI colors
@@ -20,50 +21,122 @@ def run_glslc(cmd):
     return result.returncode == 0
 
 
-def compile_shader(shader, output_file, include_args, target_arg):
-    cmd = [
-        "glslc",
-        target_arg,
-        *include_args,
-        str(shader),
-        "-o",
-        str(output_file),
-    ]
+def run_task(task):
+    cmd, ok_msg, fail_msg = task
+    return (True, ok_msg) if run_glslc(cmd) else (False, fail_msg)
 
-    if run_glslc(cmd):
-        print(
-            f"[ {GREEN}OK{NC} ] "
-            f"{shader} -> {VIOLET}{output_file}{NC}"
+
+def collect_tasks(shader_dir, output_dir, include_args,
+                  build_standard_variant):
+    tasks = []
+
+    def add(cmd, ok_msg, fail_msg):
+        tasks.append((cmd, ok_msg, fail_msg))
+
+    def base_cmd(target_arg, shader, output_file, extra_defines=()):
+        return [
+            "glslc",
+            target_arg,
+            *extra_defines,
+            *include_args,
+            str(shader),
+            "-o",
+            str(output_file),
+        ]
+
+    # Vertex shaders
+    for shader in sorted(shader_dir.glob("*.vert")):
+        output_file = output_dir / f"{shader.stem}.vert.spv"
+        cmd = base_cmd("--target-spv=spv1.5", shader, output_file)
+        add(
+            cmd,
+            f"[ {GREEN}OK{NC} ] {shader} -> {VIOLET}{output_file}{NC}",
+            f"[ {RED}Failed to compile{NC} ] {shader}",
         )
-        return True
 
-    print(f"[ {RED}Failed to compile{NC} ] {shader}")
-    return False
-
-
-def compile_standard_variant(shader, output_file, include_args):
-    cmd = [
-        "glslc",
-        "--target-spv=spv1.5",
-        "-DPBR_ENABLE_DEBUG=0",
-        "-DPBR_ENABLE_SPEC_GLOSS=0",
-        "-DPBR_ENABLE_IRIDESCENCE=0",
-        "-DPBR_ENABLE_TRANSMISSION=0",
-        "-DPBR_ENABLE_CLEARCOAT=0",
-        "-DPBR_ENABLE_ANISOTROPY=0",
-        *include_args,
-        str(shader),
-        "-o",
-        str(output_file),
-    ]
-
-    if run_glslc(cmd):
-        print(
-            f"[ {GREEN}Variant{NC} ] "
-            f"{shader} -> {VIOLET}{output_file}{NC}"
+    # Fragment shaders
+    for shader in sorted(shader_dir.glob("*.frag")):
+        output_file = output_dir / f"{shader.stem}.frag.spv"
+        cmd = base_cmd("--target-spv=spv1.5", shader, output_file)
+        add(
+            cmd,
+            f"[ {GREEN}OK{NC} ] {shader} -> {VIOLET}{output_file}{NC}",
+            f"[ {RED}Failed to compile{NC} ] {shader}",
         )
-    else:
-        print(f"[ {RED}Failed variant{NC} ] {shader}")
+
+        # Raytracing variant for deferred_lighting.frag
+        if shader.name == "deferred_lighting.frag":
+            rt_output = output_dir / "deferred_lighting_rt.frag.spv"
+            cmd = base_cmd(
+                "--target-spv=spv1.5",
+                shader,
+                rt_output,
+                extra_defines=("-DRAY_TRACING_ENABLED=1",),
+            )
+            add(
+                cmd,
+                f"[ {GREEN}RT{NC} ] {shader} -> {VIOLET}{rt_output}{NC}",
+                f"[ {RED}Failed RT{NC} ] {shader}",
+            )
+
+        if shader.name == "pbr_shader.frag":
+            if build_standard_variant != "0":
+                standard_out = output_dir / "pbr_shader_standard.frag.spv"
+                cmd = base_cmd(
+                    "--target-spv=spv1.5",
+                    shader,
+                    standard_out,
+                    extra_defines=(
+                        "-DPBR_ENABLE_DEBUG=0",
+                        "-DPBR_ENABLE_SPEC_GLOSS=0",
+                        "-DPBR_ENABLE_IRIDESCENCE=0",
+                        "-DPBR_ENABLE_TRANSMISSION=0",
+                        "-DPBR_ENABLE_CLEARCOAT=0",
+                        "-DPBR_ENABLE_ANISOTROPY=0",
+                    ),
+                )
+                add(
+                    cmd,
+                    f"[ {GREEN}Variant{NC} ] {shader} -> {VIOLET}{standard_out}{NC}",
+                    f"[ {RED}Failed variant{NC} ] {shader}",
+                )
+            else:
+                print(
+                    f"[ {YELLOW}Skip variant{NC} ] "
+                    f"{shader} (ENGINE_BUILD_STANDARD_VARIANT=0)"
+                )
+
+    # Compute shaders
+    for shader in sorted(shader_dir.glob("*.comp")):
+        output_file = output_dir / f"{shader.stem}.comp.spv"
+        cmd = base_cmd("--target-spv=spv1.5", shader, output_file)
+        add(
+            cmd,
+            f"[ {GREEN}OK{NC} ] {shader} -> {VIOLET}{output_file}{NC}",
+            f"[ {RED}Failed to compile{NC} ] {shader}",
+        )
+
+    # Task shaders
+    for shader in sorted(shader_dir.glob("*.task")):
+        output_file = output_dir / f"{shader.stem}.task.spv"
+        cmd = base_cmd("--target-env=vulkan1.3", shader, output_file)
+        add(
+            cmd,
+            f"[ {GREEN}OK{NC} ] {shader} -> {VIOLET}{output_file}{NC}",
+            f"[ {RED}Failed to compile{NC} ] {shader}",
+        )
+
+    # Mesh shaders
+    for shader in sorted(shader_dir.glob("*.mesh")):
+        output_file = output_dir / f"{shader.stem}.mesh.spv"
+        cmd = base_cmd("--target-env=vulkan1.3", shader, output_file)
+        add(
+            cmd,
+            f"[ {GREEN}OK{NC} ] {shader} -> {VIOLET}{output_file}{NC}",
+            f"[ {RED}Failed to compile{NC} ] {shader}",
+        )
+
+    return tasks
 
 
 def main():
@@ -83,6 +156,14 @@ def main():
         "--output-dir",
         default="assets/shaders/compiled",
         help="Output directory",
+    )
+
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        default=os.cpu_count() or 1,
+        help="Number of parallel glslc invocations",
     )
 
     args = parser.parse_args()
@@ -108,96 +189,21 @@ def main():
         "1",
     )
 
-    # Vertex shaders
-    for shader in sorted(shader_dir.glob("*.vert")):
-        output_file = output_dir / f"{shader.stem}.vert.spv"
-        compile_shader(
-            shader,
-            output_file,
-            include_args,
-            "--target-spv=spv1.5",
-        )
+    tasks = collect_tasks(
+        shader_dir, output_dir, include_args, build_standard_variant
+    )
 
-    # Fragment shaders
-    for shader in sorted(shader_dir.glob("*.frag")):
-        output_file = output_dir / f"{shader.stem}.frag.spv"
+    if not tasks:
+        return 0
 
-        compile_shader(
-            shader,
-            output_file,
-            include_args,
-            "--target-spv=spv1.5",
-        )
+    failed = False
+    with ProcessPoolExecutor(max_workers=args.jobs) as executor:
+        for ok, message in executor.map(run_task, tasks):
+            print(message)
+            if not ok:
+                failed = True
 
-        # Raytracing variant for deferred_lighting.frag
-        if shader.name == "deferred_lighting.frag":
-            rt_output = output_dir / "deferred_lighting_rt.frag.spv"
-            cmd = [
-                "glslc",
-                "--target-spv=spv1.5",
-                "-DRAY_TRACING_ENABLED=1",
-                *include_args,
-                str(shader),
-                "-o",
-                str(rt_output),
-            ]
-            if run_glslc(cmd):
-                print(
-                    f"[ {GREEN}RT{NC} ] "
-                    f"{shader} -> {VIOLET}{rt_output}{NC}"
-                )
-            else:
-                print(f"[ {RED}Failed RT{NC} ] {shader}")
-
-        if shader.name == "pbr_shader.frag":
-            if build_standard_variant != "0":
-                standard_out = (
-                    output_dir / "pbr_shader_standard.frag.spv"
-                )
-
-                compile_standard_variant(
-                    shader,
-                    standard_out,
-                    include_args,
-                )
-            else:
-                print(
-                    f"[ {YELLOW}Skip variant{NC} ] "
-                    f"{shader} "
-                    "(ENGINE_BUILD_STANDARD_VARIANT=0)"
-                )
-
-    # Compute shaders
-    for shader in sorted(shader_dir.glob("*.comp")):
-        output_file = output_dir / f"{shader.stem}.comp.spv"
-        compile_shader(
-            shader,
-            output_file,
-            include_args,
-            "--target-spv=spv1.5",
-        )
-
-    # Task shaders
-    for shader in sorted(shader_dir.glob("*.task")):
-        output_file = output_dir / f"{shader.stem}.task.spv"
-        compile_shader(
-            shader,
-            output_file,
-            include_args,
-            "--target-env=vulkan1.3",
-        )
-
-    # Mesh shaders
-    for shader in sorted(shader_dir.glob("*.mesh")):
-        output_file = output_dir / f"{shader.stem}.mesh.spv"
-        compile_shader(
-            shader,
-            output_file,
-            include_args,
-            "--target-env=vulkan1.3",
-        )
-
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

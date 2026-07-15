@@ -31,7 +31,8 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
-#include "Engine/Systems/SelectionOutlineSystem.hpp"
+#include "Engine/Systems/SelectionMaskSystem.hpp"
+#include "Engine/Systems/SelectionCompositeSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -205,7 +206,8 @@ namespace engine {
         std::unique_ptr<InputSystem>               input_;
         std::unique_ptr<CameraSystem>              cameraSys_;
         std::unique_ptr<ColliderDebugRenderSystem> colliderDbg_;
-        std::unique_ptr<SelectionOutlineSystem>    selOutline_;
+        std::unique_ptr<SelectionMaskSystem>       selMask_;
+        std::unique_ptr<SelectionCompositeSystem>  selComposite_;
         std::unique_ptr<AnimationSystem>           anim_;
         std::unique_ptr<LODSystem>                 lod_;
         std::unique_ptr<ModelRenderSystem>         models_;

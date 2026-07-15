@@ -88,6 +88,15 @@ namespace engine {
             const Model& model,
             entt::entity modelEntity);
         /**
+     * @brief Create one selection entity per sub-mesh (glTF primitive).
+     * These entities carry SubMeshComponent and are regenerated on every load
+     * (never serialized), enabling sub-mesh-level outline selection.
+     */
+        static void createSubMeshEntities(
+            Scene&       scene,
+            const Model& model,
+            entt::entity modelEntity);
+        /**
      * @brief Check if static collider should be auto-created
      */
         static bool shouldCreateStaticCollider(
