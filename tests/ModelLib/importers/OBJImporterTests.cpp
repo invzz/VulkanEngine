@@ -41,29 +41,19 @@ namespace engine::tests {
                 file << "vn  0.0 -1.0  0.0\n";
                 file << "vn  1.0  0.0  0.0\n";
                 file << "vn -1.0  0.0  0.0\n";
-                file << "f 1
-                    file
-                     << "f 1
-                    file
-                     << "f 5
-                    file
-                     << "f 5
-                    file
-                     << "f 4
-                    file
-                     << "f 4
-                    file
-                     << "f 1
-                    file
-                     << "f 1
-                    file
-                     << "f 2
-                    file
-                     << "f 2
-                    file
-                     << "f 1
-                    file
-                     << "f 1
+                // 6 faces x 2 triangles = 12 triangles (36 indices).
+                file << "f 1 2 3\n";
+                file << "f 1 3 4\n";  // front  (1,2,3,4)
+                file << "f 5 6 7\n";
+                file << "f 5 7 8\n";  // back   (5,6,7,8)
+                file << "f 4 3 7\n";
+                file << "f 4 7 8\n";  // top    (4,3,7,8)
+                file << "f 1 2 6\n";
+                file << "f 1 6 5\n";  // bottom (1,2,6,5)
+                file << "f 2 6 7\n";
+                file << "f 2 7 3\n";  // right  (2,6,7,3)
+                file << "f 1 5 8\n";
+                file << "f 1 8 4\n";  // left   (1,5,8,4)
             }
             materialObjPath_ = tempDir_ / "with_material.obj";
             materialMtlPath_ = tempDir_ / "with_material.mtl";
@@ -95,7 +85,7 @@ namespace engine::tests {
                 objFile << "v 0.5 1.0 0.0\n";
                 objFile << "vn 0.0 0.0 1.0\n";
                 objFile << "usemtl TestMaterial\n";
-                objFile << "f 1
+                objFile << "f 1 2 3\n";
             }
         }
         void TearDown() override {

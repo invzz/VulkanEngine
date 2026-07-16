@@ -146,9 +146,9 @@ namespace engine {
         auto           stored = modelCache_.insert(key, model, memoryBudget_, priority);
         uint32_t const meshId = meshManager_->registerModel(stored.get());
         stored->setMeshId(meshId);
-        // Build BLAS for raytracing if available
-        if (accelBuilder_ != nullptr) {
-            accelBuilder_->buildBlas(*stored);
+        // Build BLAS for raytracing if a callback was registered by the host.
+        if (onModelLoaded_) {
+            onModelLoaded_(*stored);
         }
         return stored;
     }

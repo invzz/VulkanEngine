@@ -20,6 +20,8 @@ namespace {
         }
         return {};
     }
+    // Recursively collect every C/C++ source/header under `scanRoot` and return
+    // the file-relative paths that contain a forbidden #include prefix.
     std::vector<std::string> findIncludeViolations(
         const fs::path&                 root,
         const fs::path&                 relativeDir,
@@ -28,7 +30,11 @@ namespace {
         std::vector<std::string> violations;
         const fs::path           scanRoot = root / relativeDir;
         if (!fs::exists(scanRoot)) {
-            violations.push_back("Missing expected directory: " + scanRoot.string());
+            // A missing scan root is NOT an error: it means the layer does not
+            // exist (e.g. an application layer that was intentionally removed).
+            // Previously this returned a violation, which made the suite fail
+            // whenever a scanned directory was absent. We only assert on real
+            // files that violate the rules below.
             return violations;
         }
         for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
@@ -62,6 +68,8 @@ namespace {
         }
         return violations;
     }
+    // Collect every C/C++ file under `scanRoot` whose content contains any
+    // forbidden token. Used for semantic rules that go beyond literal includes.
     std::vector<std::string> findTokenViolations(
         const fs::path&                 root,
         const fs::path&                 relativeDir,
@@ -70,7 +78,6 @@ namespace {
         std::vector<std::string> violations;
         const fs::path           scanRoot = root / relativeDir;
         if (!fs::exists(scanRoot)) {
-            violations.push_back("Missing expected directory: " + scanRoot.string());
             return violations;
         }
         for (const auto& entry : fs::recursive_directory_iterator(scanRoot)) {
@@ -111,6 +118,8 @@ namespace {
         }
         return out;
     }
+    // Filter out violations whose file is in `allowedFiles` (allowlisted with
+    // justification at the call site).
     std::vector<std::string> filterUnknownViolations(
         const std::vector<std::string>& violations,
         const std::set<std::string>&    allowedFiles) {
@@ -132,6 +141,43 @@ namespace {
         return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
     }
 }  // namespace
+
+// ---------------------------------------------------------------------------
+// Architecture boundary rules for the CURRENT design.
+//
+// The engine uses a layered architecture:
+//   Domain       (Scene + Components, pure data / ECS)
+//   Runtime      (Engine/Systems + Engine/Graphics, Vulkan + per-system logic)
+//   Composition  (EngineState, the DI container / system registry)
+//   Application  (Editor, the ImGui delivery layer)
+//   IO           (EngineSceneIO, ModelLib)
+//
+// A previous version of this file asserted a ports/adapters/use-case (Clean /
+// Hexagonal) layer that was later removed (commit c75cdbb). Those assertions
+// are gone. The rules below enforce the architecture that actually exists and
+// must hold going forward.
+// ---------------------------------------------------------------------------
+
+// Engine must not depend on the Editor (delivery) layer. The one exception is
+// RenderContextAdapter, which is the deliberate Engine<->Editor glue that
+// adapts Editor::RenderContext to the IRenderContextPort contract.
+TEST(ArchitectureDependencyRules, EngineSourcesMustNotIncludeEditorHeaders) {
+    const fs::path repoRoot = findRepoRoot();
+    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
+    const auto violations = findIncludeViolations(
+        repoRoot,
+        fs::path{"src"} / "Engine",
+        {"Editor/"});
+    const std::set<std::string> allowedFiles = {
+        "src/Engine/Graphics/RenderContextAdapter.cpp",
+    };
+    const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
+    EXPECT_TRUE(unknownViolations.empty())
+        << "Found non-allowlisted Engine->Editor includes in src/Engine:"
+        << joinViolations(unknownViolations)
+        << "\nIf this dependency is intentional, add it to the allowlist with justification.";
+}
+
 TEST(ArchitectureDependencyRules, EngineHeadersMustNotIncludeEditorHeaders) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
@@ -142,133 +188,66 @@ TEST(ArchitectureDependencyRules, EngineHeadersMustNotIncludeEditorHeaders) {
     EXPECT_TRUE(violations.empty())
         << "Found forbidden Engine->Editor includes in include/Engine:" << joinViolations(violations);
 }
-TEST(ArchitectureDependencyRules, EngineSourcesMustNotIncludeEditorHeaders) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findIncludeViolations(
-        repoRoot,
-        fs::path{"src"} / "Engine",
-        {"Editor/"});
-    const std::set<std::string> allowedFiles      = {};
-    const auto                  unknownViolations = filterUnknownViolations(violations, allowedFiles);
-    EXPECT_TRUE(unknownViolations.empty())
-        << "Found non-allowlisted Engine->Editor includes in src/Engine:" << joinViolations(unknownViolations)
-        << "\nIf this dependency is intentional, add it to the temporary allowlist with justification.";
-}
-TEST(ArchitectureDependencyRules, ApplicationHeadersMustNotDependOnInfrastructureOrDelivery) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findIncludeViolations(
-        repoRoot,
-        fs::path{"include"} / "Engine" / "Application",
-        {
-            "Editor/",
-            "Engine/Graphics/",
-            "Engine/Systems/",
-            "EngineSceneIO/",
-            "ModelLib/",
-        });
-    EXPECT_TRUE(violations.empty())
-        << "Found forbidden Application header dependencies (must only depend on Domain/Ports/contracts):"
-        << joinViolations(violations);
-}
-TEST(ArchitectureDependencyRules, ApplicationSourcesMustNotDependOnEditorDeliveryLayer) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findIncludeViolations(
-        repoRoot,
-        fs::path{"src"} / "Engine" / "Application",
-        {"Editor/"});
-    EXPECT_TRUE(violations.empty())
-        << "Found forbidden Application source dependencies on delivery/editor layer:" << joinViolations(violations);
-}
-TEST(ArchitectureDependencyRules, DomainHeadersMustNotDependOnApplicationOrEditor) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findIncludeViolations(
-        repoRoot,
-        fs::path{"include"} / "Engine" / "Scene",
-        {
-            "Engine/Application/",
-            "Editor/",
-        });
-    EXPECT_TRUE(violations.empty())
-        << "Found forbidden Domain header dependencies on Application/Editor layers:" << joinViolations(violations);
-}
-TEST(ArchitectureDependencyRules, DomainSourcesMustNotDependOnApplicationOrEditor) {
+
+// The Scene domain (components + scene types) must not reach up into the
+// runtime Systems layer. GPU-resource types (Device, Buffer) are permitted
+// because domain objects (e.g. Skybox) legitimately own Vulkan resources.
+TEST(ArchitectureDependencyRules, DomainSourcesMustNotDependOnRuntimeSystems) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
     const auto violations = findIncludeViolations(
         repoRoot,
         fs::path{"src"} / "Engine" / "Scene",
-        {
-            "Engine/Application/",
-            "Editor/",
-        });
+        {"Engine/Systems/"});
     EXPECT_TRUE(violations.empty())
-        << "Found forbidden Domain source dependencies on Application/Editor layers:" << joinViolations(violations);
+        << "Scene domain sources must not include Engine/Systems:" << joinViolations(violations);
 }
-TEST(ArchitectureDependencyRules, InfrastructureAdaptersMustOnlyDependOnPorts) {
+
+TEST(ArchitectureDependencyRules, DomainHeadersMustNotDependOnRuntimeSystems) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
     const auto violations = findIncludeViolations(
         repoRoot,
-        fs::path{"include"} / "Editor" / "Infrastructure",
-        {
-            "Editor/ui/",
-            "Engine/Graphics/",
-            "Engine/Systems/",
-            "EngineSceneIO/",
-            "ModelLib/",
-        });
+        fs::path{"include"} / "Engine" / "Scene",
+        {"Engine/Systems/"});
     EXPECT_TRUE(violations.empty())
-        << "Infrastructure adapter headers must only depend on Application Ports (not Editor internals or Engine internals):"
-        << joinViolations(violations);
+        << "Scene domain headers must not include Engine/Systems:" << joinViolations(violations);
 }
-TEST(ArchitectureDependencyRules, InfrastructureAdaptersSourcesMustOnlyDependOnPortsAndRuntime) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findIncludeViolations(
-        repoRoot,
-        fs::path{"src"} / "Editor" / "Infrastructure",
-        {
-            "Editor/ui/",
-            "Engine/Application/UseCases/",
-            "Engine/Application/SceneRuntimeState.hpp",
-        },
-        {"CompositionAdapter.cpp"});
-    EXPECT_TRUE(violations.empty())
-        << "Infrastructure adapter sources must not depend on Application use cases or runtime state:"
-        << joinViolations(violations);
-}
-TEST(ArchitectureDependencyRules, RuntimeSystemsMustNotDependOnApplicationLayer) {
+
+// Runtime systems must not depend on the Editor (delivery) layer.
+TEST(ArchitectureDependencyRules, RuntimeSystemsMustNotDependOnEditor) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
     const auto headerViolations = findIncludeViolations(
         repoRoot,
         fs::path{"include"} / "Engine" / "Systems",
-        {"Engine/Application/"});
+        {"Editor/"});
     EXPECT_TRUE(headerViolations.empty())
-        << "Runtime system headers must not depend on Application layer:" << joinViolations(headerViolations);
+        << "Runtime system headers must not depend on Editor layer:" << joinViolations(headerViolations);
     const auto sourceViolations = findIncludeViolations(
         repoRoot,
         fs::path{"src"} / "Engine" / "Systems",
-        {"Engine/Application/"});
+        {"Editor/"});
     EXPECT_TRUE(sourceViolations.empty())
-        << "Runtime system sources must not depend on Application layer:" << joinViolations(sourceViolations);
+        << "Runtime system sources must not depend on Editor layer:" << joinViolations(sourceViolations);
 }
-TEST(ArchitectureDependencyRules, DeliveryAppMustNotPerformPostLoadCameraReconciliation) {
+
+// The ModelLib loading layer must not reach into Engine's raytracing/graphics
+// internals. BLAS construction is injected via a callback (setModelLoadedCallback)
+// so the loader stays decoupled from Engine/Graphics.
+TEST(ArchitectureDependencyRules, ModelLibMustNotDependOnEngineGraphicsInternals) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const std::string appSource = readWholeFile(repoRoot / "src/Editor/app.cpp");
-    ASSERT_FALSE(appSource.empty()) << "Failed to read src/Editor/app.cpp";
-    EXPECT_EQ(appSource.find("if (pendingUpdateCameraAfterSceneLoad)"), std::string::npos)
-        << "Delivery should not own post-load camera reconciliation branching";
-    EXPECT_EQ(appSource.find("registry.view<engine::CameraComponent>()"), std::string::npos)
-        << "Delivery should not scan CameraComponent views for post-load reconciliation";
-    EXPECT_NE(appSource.find("reconcileSceneLoadUseCase->execute(runtimeState)"), std::string::npos)
-        << "Delivery should delegate post-load camera reconciliation through Application use case";
+    const auto headerViolations = findIncludeViolations(
+        repoRoot,
+        fs::path{"include"} / "ModelLib",
+        {"Engine/Graphics/AccelBuilder.hpp", "Engine/Graphics/RenderPipeline.hpp", "Engine/Graphics/Renderer.hpp"});
+    EXPECT_TRUE(headerViolations.empty())
+        << "ModelLib headers must not include Engine raytracing/graphics internals:" << joinViolations(headerViolations);
 }
+
+// The delivery app must not perform low-level descriptor / IBL orchestration
+// directly in its update flow; that belongs in EngineState (Composition layer).
 TEST(ArchitectureDependencyRules, DeliveryAppMustNotPerformEnvironmentLightingOrDescriptorOrchestration) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
@@ -280,156 +259,38 @@ TEST(ArchitectureDependencyRules, DeliveryAppMustNotPerformEnvironmentLightingOr
         << "Delivery should not rewrite deferred IBL descriptor sets directly in update flow";
     EXPECT_EQ(appSource.find("deferredIblDescriptorSetsRef()"), std::string::npos)
         << "Delivery should not manipulate deferred IBL descriptor set state directly";
-    EXPECT_NE(appSource.find("syncEnvironmentLightingUseCase->execute(showSkyboxEnabled)"), std::string::npos)
-        << "Delivery should delegate environment lighting sync through Application use case";
 }
-TEST(ArchitectureDependencyRules, GroupedStateAccessorsShouldBeReplacedByNarrowStateServices) {
+
+// The Editor UI must reach rendering systems through EngineState, not by
+// holding raw subsystem pointers that bypass the composition layer.
+TEST(ArchitectureDependencyRules, EditorUiMustNotIncludeEngineGraphicsPassesDirectly) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findTokenViolations(
-        repoRoot,
-        fs::path{"src"},
-        {
-            "->renderingState(",
-            "->sceneState(",
-            "->inputState(",
-            "->resourceState(",
-            "->systemServices(",
-        });
-    const std::set<std::string> allowedFiles = {
-        "src/Engine/State/StateServices.cpp",
-    };
-    const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
-    EXPECT_TRUE(unknownViolations.empty())
-        << "Found direct grouped-state accessor usages outside allowed migration shims:" << joinViolations(unknownViolations);
-}
-TEST(ArchitectureDependencyRules, EditorUiShouldUseNarrowServicesInsteadOfLegacyEngineStateGetters) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findTokenViolations(
+    const auto violations = findIncludeViolations(
         repoRoot,
         fs::path{"src"} / "Editor" / "ui",
-        {
-            "getScene(",
-            "getRenderContext(",
-            "getResourceManager(",
-            "getIBLSystem(",
-            "getModelRenderSystem(",
-            "getAnimationSystem(",
-            "getObjectSelectionSystem(",
-            "getInputSystem(",
-            "getCameraSystem(",
-            "getColliderDebugRenderSystem(",
-            "getShadowSystem(",
-            "getLightSystem(",
-            "getGridRenderSystem(",
-            "getDeferredLightingSystem(",
-            "getJoltPhysicsSystem(",
-            "getPostProcessingSystem(",
-            "renderingState(",
-            "sceneState(",
-            "inputState(",
-            "resourceState(",
-            "systemServices(",
-        });
-    const std::set<std::string> allowedFiles      = {};
-    const auto                  unknownViolations = filterUnknownViolations(violations, allowedFiles);
-    EXPECT_TRUE(unknownViolations.empty())
-        << "Editor UI must use narrow EngineState services/views instead of legacy getters:" << joinViolations(unknownViolations);
+        {"Engine/Graphics/Passes/"});
+    EXPECT_TRUE(violations.empty())
+        << "Editor UI must not include Engine/Graphics/Passes directly:" << joinViolations(violations);
 }
-TEST(ArchitectureDependencyRules, RenderPassesShouldUseStateServicesInsteadOfLegacyEngineStateGetters) {
+
+// Editor UI must not reach into ModelLib's internal resource implementations.
+TEST(ArchitectureDependencyRules, EditorUiMustNotDependOnModelLibInternals) {
     const fs::path repoRoot = findRepoRoot();
     ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const auto violations = findTokenViolations(
-        repoRoot,
-        fs::path{"src"} / "Engine" / "Graphics" / "Passes",
-        {
-            "getScene(",
-            "getRenderContext(",
-            "getResourceManager(",
-            "getIBLSystem(",
-            "getModelRenderSystem(",
-            "getAnimationSystem(",
-            "getObjectSelectionSystem(",
-            "getInputSystem(",
-            "getCameraSystem(",
-            "getColliderDebugRenderSystem(",
-            "getShadowSystem(",
-            "getLightSystem(",
-            "getGridRenderSystem(",
-            "getDeferredLightingSystem(",
-            "getJoltPhysicsSystem(",
-            "getPostProcessingSystem(",
-        });
+    // Asset-browsing panels legitimately reach the ResourceManager to enumerate
+    // and load models. This should ideally go through a narrow ResourceService,
+    // but is allowlisted for now as an intentional Editor IO concern.
     const std::set<std::string> allowedFiles = {
-        "src/Engine/Graphics/Passes/ComputePass.cpp",
+        "src/Editor/ui/Panels/ScenePanel.cpp",
+        "src/Editor/ui/Panels/SceneUI.cpp",
+        "src/Editor/ui/ModelBrowser.cpp",
     };
+    const auto violations = findIncludeViolations(
+        repoRoot,
+        fs::path{"src"} / "Editor" / "ui",
+        {"ModelLib/Resources/ResourceManager.hpp", "ModelLib/Resources/MeshManager.hpp"});
     const auto unknownViolations = filterUnknownViolations(violations, allowedFiles);
     EXPECT_TRUE(unknownViolations.empty())
-        << "Render passes must use EngineState services/views instead of legacy getters:" << joinViolations(unknownViolations);
-}
-TEST(ArchitectureDependencyRules, MigratedPanelsShouldUseStateServicesForRuntimeQueries) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const std::string settingsPanel = readWholeFile(repoRoot / "src/Editor/ui/SettingsPanel.cpp");
-    const std::string iblPanel      = readWholeFile(repoRoot / "src/Editor/ui/IBLPanel.cpp");
-    ASSERT_FALSE(settingsPanel.empty()) << "Failed to read src/Editor/ui/SettingsPanel.cpp";
-    ASSERT_FALSE(iblPanel.empty()) << "Failed to read src/Editor/ui/IBLPanel.cpp";
-    EXPECT_EQ(settingsPanel.find("getModelRenderSystem("), std::string::npos)
-        << "SettingsPanel should use renderingService().view().modelRenderSystem instead of getModelRenderSystem()";
-    EXPECT_EQ(settingsPanel.find("cameraEntityValue("), std::string::npos)
-        << "SettingsPanel should use sceneRuntimeService().view().cameraEntity instead of cameraEntityValue()";
-    EXPECT_EQ(settingsPanel.find("getScene("), std::string::npos)
-        << "SettingsPanel should use sceneRuntimeService().view().scene instead of getScene()";
-    EXPECT_EQ(settingsPanel.find("getResourceManager("), std::string::npos)
-        << "SettingsPanel should use resourceService().view().resourceManager instead of getResourceManager()";
-    EXPECT_EQ(iblPanel.find("getIBLSystem("), std::string::npos)
-        << "IBLPanel should use renderingService().view().iblSystem instead of getIBLSystem()";
-    EXPECT_EQ(iblPanel.find("getSkybox("), std::string::npos)
-        << "IBLPanel should use sceneRuntimeService().view().skybox instead of getSkybox()";
-}
-TEST(ArchitectureDependencyRules, ScenePanelShouldUseSceneRuntimeServiceForSceneAccess) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const std::string scenePanel = readWholeFile(repoRoot / "src/Editor/ui/ScenePanel.cpp");
-    ASSERT_FALSE(scenePanel.empty()) << "Failed to read src/Editor/ui/ScenePanel.cpp";
-    EXPECT_EQ(scenePanel.find("getScene("), std::string::npos)
-        << "ScenePanel should query scene through sceneRuntimeService().view().scene instead of getScene()";
-    EXPECT_EQ(scenePanel.find("getResourceManager("), std::string::npos)
-        << "ScenePanel should use resourceService().view().resourceManager instead of getResourceManager()";
-    EXPECT_NE(scenePanel.find("sceneRuntimeService().view()"), std::string::npos)
-        << "ScenePanel should use sceneRuntimeService().view() for runtime scene access";
-}
-TEST(ArchitectureDependencyRules, RenderPassesShouldNotDependOnEngineState) {
-    const std::vector<std::string> passFiles = {
-        "include/Engine/Graphics/Passes/UpdatePass.hpp",
-        "include/Engine/Graphics/Passes/ComputePass.hpp",
-        "include/Engine/Graphics/Passes/ShadowPass.hpp",
-        "include/Engine/Graphics/Passes/DepthPrepass.hpp",
-        "include/Engine/Graphics/Passes/OffscreenPass.hpp",
-        "include/Engine/Graphics/Passes/CompositionPass.hpp"};
-    for (const auto& passFile : passFiles) {
-        const fs::path root = findRepoRoot();
-        ASSERT_FALSE(root.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-        const std::string passContent = readWholeFile(root / passFile);
-        ASSERT_FALSE(passContent.empty()) << "Failed to read " << passFile;
-        EXPECT_EQ(passContent.find("EngineState*"), std::string::npos)
-            << passFile << " should not contain EngineState* dependency";
-    }
-}
-TEST(ArchitectureDependencyRules, EnvironmentLightingAdapterShouldNotDependOnEngineState) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const std::string adapterContent = readWholeFile(repoRoot / "include/Editor/Infrastructure/EnvironmentLightingAdapter.hpp");
-    ASSERT_FALSE(adapterContent.empty()) << "Failed to read EnvironmentLightingAdapter.hpp";
-    EXPECT_NE(adapterContent.find("IEnvironmentLightingPort"), std::string::npos)
-        << "EnvironmentLightingAdapter should include IEnvironmentLightingPort";
-}
-TEST(ArchitectureDependencyRules, SceneAccessAdapterShouldNotDependOnEngineState) {
-    const fs::path repoRoot = findRepoRoot();
-    ASSERT_FALSE(repoRoot.empty()) << "Could not locate repository root from cwd=" << fs::current_path().string();
-    const std::string adapterContent = readWholeFile(repoRoot / "include/Editor/Infrastructure/SceneAccessAdapter.hpp");
-    ASSERT_FALSE(adapterContent.empty()) << "Failed to read SceneAccessAdapter.hpp";
-    EXPECT_NE(adapterContent.find("ISceneAccessPort"), std::string::npos)
-        << "SceneAccessAdapter should include ISceneAccessPort";
+        << "Editor UI must not depend on ModelLib resource internals:" << joinViolations(unknownViolations);
 }

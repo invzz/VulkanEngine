@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Engine/Graphics/AccelBuilder.hpp"
 #include "Engine/Graphics/Device.hpp"
 
 #include "ModelLib/Resources/MeshManager.hpp"
@@ -236,15 +235,15 @@ namespace engine {
             return *meshManager_;
         }
 
-        void setAccelBuilder(AccelBuilder* builder) {
-            accelBuilder_ = builder;
+        void setModelLoadedCallback(std::function<void(Model&)> cb) {
+            onModelLoaded_ = std::move(cb);
         }
 
        private:
         Device&                                      device_;
         std::unique_ptr<TextureManager>              textureManager_;
         std::unique_ptr<MeshManager>                 meshManager_;
-        AccelBuilder*                                accelBuilder_ = nullptr;
+        std::function<void(Model&)>                  onModelLoaded_;
         ResourceLRUCache<Texture>                    textureCache_;
         ResourceLRUCache<Model>                      modelCache_;
         std::unordered_map<std::string, std::string> contentHashToKey_;

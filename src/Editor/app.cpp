@@ -240,7 +240,9 @@ namespace engine {
         // Create AccelBuilder if raytracing is supported
         if (device.rayQuerySupported()) {
             accelBuilder = std::make_unique<AccelBuilder>(device);
-            resourceManager.setAccelBuilder(accelBuilder.get());
+            // ModelLib builds the BLAS at load time via this injected callback,
+            // keeping the loading layer decoupled from Engine's raytracing layer.
+            resourceManager.setModelLoadedCallback([this](Model& m) { accelBuilder->buildBlas(m); });
             renderContext->setAccelBuilder(accelBuilder.get());
         }
         // Load model/scene before setupScene so the scene is empty when
