@@ -11,8 +11,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include "Engine/Scene/Components/AnimationController.hpp"
-#include "Engine/Scene/Components/AnimationGraph.hpp"
+#include "Engine/Scene/Animation/AnimationController.hpp"
+#include "Engine/Scene/Animation/AnimationGraph.hpp"
 namespace engine::ui {
     /**
  * @brief Node-based editor for AnimationGraph in ImGui

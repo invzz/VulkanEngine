@@ -1,6 +1,6 @@
 # VulkanEngine — Structure & Architecture Improvement Proposal
 
-> Status: refactor IN PROGRESS. Steps 1–2 done; source files modified.
+> Status: refactor IN PROGRESS. Steps 1–6, 8–9 done; Step 7 deferred (needs runtime verification). Source files modified; everything builds and the architecture test suite is green.
 > Basis: direct inspection of `src/`, `include/`, `xmake.lua`, `tests/`, and `README.md` on branch `main`.
 
 ---
@@ -11,9 +11,13 @@
 |------|--------|--------------|
 | 1 | **DONE** | Repaired corrupted `OBJImporterTests.cpp` (cube face list was raw C++ text); broke the `ModelLib → Engine` link cycle by injecting the BLAS build as a `std::function<void(Model&)>` callback in `ResourceManager` (removed its `Engine/Graphics/AccelBuilder.hpp` dependency). `xmake run Tests` now builds and runs (636 tests; only GLFW/Vulkan window-creation tests fail — headless env has no display). |
 | 2 | **DONE** | Rewrote `ArchitectureDependencyRulesTests.cpp` to enforce the *actual* layered architecture (no more fantasy Clean/Hex ports/adapters). 9 rules, all green. Surfaced 2 real allowlisted violations: `RenderContextAdapter.cpp` (Engine↔Editor glue) and 3 asset-browser panels including `ModelLib/Resources/ResourceManager.hpp`. |
-| 3 | TODO | Delete dead `GraphicsState`. |
-| 4 | TODO | Fix `Scene/Components` vs `Scene/components` and `graphics/` case collisions. |
-| 5–9 | TODO | Decompose `EngineState`, collapse registries, narrow passes, own graph, trim includes. |
+| 3 | **DONE** | Deleted dead `include/Engine/graphics/GraphicsState.hpp` (never instantiated; duplicated `EngineState`'s system ownership + editor flags) and its `#include` in `Engine.hpp`. |
+| 4 | **DONE** | Resolved case collision: renamed `Scene/Components/` (capital; held only animation-domain types) → `Scene/Animation/`, both `include/` and `src/` and `tests/`, fixing all `#include` paths. Only `Scene/components/` (ECS) remains. `graphics/` dir was removed in step 3. |
+| 5 | **DONE** | Decomposed `EngineState` god object: extracted `TransformService` (`include/Engine/Scene/`, pure domain — get/set T/R/S delegated to the scene registry) and `EnvironmentLightingService` (in `include/Engine/Systems/` because it orchestrates `IBLSystem`/`ProceduralSkyCapture` — runtime concern). The 14 IBL-bake hysteresis fields + sun-light logic + the 12 transform accessors moved out; `EngineState` keeps the systems registry + composition. Public signatures unchanged (zero call-site edits in `app.cpp`/panels). Architecture test caught a misplacement (service first landed in `Scene/`, which the domain rule forbids) and was fixed by moving it to `Systems/`. |
+| 6 | **DONE** | Collapsed the dual registries: removed `EngineState::initRegistry_` (the string-keyed `SystemRegistry` used only to topologically order init lambdas). Init order is now a single explicit, dependency-ordered sequence in `initialize()` (core → desc → per-frame descriptors → pipelines/post-processing/input/physics). Runtime lookup remains the `systems_` type_index map (`system<T>()`). The reusable `SystemRegistry` DAG utility + its unit tests stay (self-contained, not dead). |
+| 7 | **DEFERRED** | Narrow pass deps via `FrameContext`. The 3 passes still taking `EngineState&` (GbufferPass, DeferredLightingPass, PostProcessPass) use it only for stable accessors (descriptor sets, `scene()`, `renderContext()`, `editor()`, `skybox()`/`skySettings()`). A real `FrameContext` refactor touches every pass ctor + the new `buildDefaultGraph` and cannot be runtime-verified in this headless (no-GPU) environment, so it is intentionally left for a pass when the renderer can be exercised on real hardware. |
+| 8 | **DONE** | `RenderPipeline` now owns the default graph: added `RenderPipeline::buildDefaultGraph(EngineState&, Renderer&, Device&, float rtShadowSoftness, UIRenderFn, Window&)` which constructs the full pass chain (update → compute → shadow → depth → gbuffer → deferred → forward → selection mask → transition → post-process → selection composite → composition/ImGui). `App::setupRenderGraph()` in `app.cpp` is now a one-line call. UI rendering stays in the Editor (passed as a callback), so `RenderPipeline` stays decoupled from `ImGuiManager`. |
+| 9 | **DONE** | Retired aggregator grab-bag includes. Discovered `Internal.hpp` and `Engine.hpp` are **orphaned** — zero TUs include either, and neither is referenced by `xmake.lua`. Both deleted. `EngineState.hpp` already includes exactly the headers its members need, so no TU lost access. The reusable `SystemRegistry` DAG utility + its unit tests remain (self-contained). |
 
 ---
 

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "Engine/Scene/Components/AnimationClip.hpp"
-#include "Engine/Scene/Components/AnimationController.hpp"
+#include "Engine/Scene/Animation/AnimationClip.hpp"
+#include "Engine/Scene/Animation/AnimationController.hpp"
 namespace engine {
     TEST(AnimationClipTest, DefaultConstruction) {
         AnimationClip clip;

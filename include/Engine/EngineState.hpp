@@ -13,9 +13,10 @@
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Scene/Scene.hpp"
+#include "Engine/Systems/EnvironmentLightingService.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Scene/TransformService.hpp"
 #include "Engine/Scene/SpatialSystem.hpp"
-#include "Engine/SystemRegistry.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
@@ -30,7 +31,6 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
-#include "Engine/Systems/ProceduralSkyCapture.hpp"
 #include "Engine/Systems/SelectionCompositeSystem.hpp"
 #include "Engine/Systems/SelectionMaskSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
@@ -97,19 +97,19 @@ namespace engine {
         void saveScene(const std::string& path);
         bool loadScene(const std::string& path);
         void reconcileSceneLoad();
-        void syncEnvironmentLighting(bool show);
+        void syncEnvironmentLighting(bool show) { envLighting_->syncEnvironmentLighting(show); }
         // Drive a directional light flagged as the sun (isSun) so its
         // direction, colour and intensity track SkyboxSettings::timeOfDay.
         // Creates a sun light on first use if none is flagged.
-        void      updateSunLight();
-        bool      loadIBL(const char* path);
-        void      resetIBLToFallback();
-        glm::vec3 getTranslation(entt::entity e) const;
-        void      setTranslation(entt::entity e, const glm::vec3& v);
-        glm::vec3 getRotation(entt::entity e) const;
-        void      setRotation(entt::entity e, const glm::vec3& v);
-        glm::vec3 getScale(entt::entity e) const;
-        void      setScale(entt::entity e, const glm::vec3& v);
+        void      updateSunLight() { envLighting_->updateSunLight(); }
+        bool      loadIBL(const char* path) { return envLighting_->loadIBL(path); }
+        void      resetIBLToFallback() { envLighting_->resetIBLToFallback(); }
+        glm::vec3 getTranslation(entt::entity e) const { return transformSvc_->getTranslation(e); }
+        void      setTranslation(entt::entity e, const glm::vec3& v) { transformSvc_->setTranslation(e, v); }
+        glm::vec3 getRotation(entt::entity e) const { return transformSvc_->getRotation(e); }
+        void      setRotation(entt::entity e, const glm::vec3& v) { transformSvc_->setRotation(e, v); }
+        glm::vec3 getScale(entt::entity e) const { return transformSvc_->getScale(e); }
+        void      setScale(entt::entity e, const glm::vec3& v) { transformSvc_->setScale(e, v); }
         bool&     showSkybox() {
             return editor_.showSkybox;
         }
@@ -132,10 +132,10 @@ namespace engine {
             return editor_.solidGround;
         }
         SkyboxSettings& skySettings() {
-            return skySettings_;
+            return envLighting_->skySettings();
         }
         std::unique_ptr<Skybox>& skybox() {
-            return skybox_;
+            return envLighting_->skybox();
         }
         ShadowSettings& shadowSettings() {
             return shadowSettings_;
@@ -197,10 +197,7 @@ namespace engine {
         void                                        initPostProcessing(Device& d, Renderer& r);
         void                                        initInputRelatedSystems(Window* w);
         void                                        ensureCameraExists();
-        void                                        writeIBLDescriptorsToSets();
-        void                                        captureProceduralSkyToIBL();
         std::unordered_map<std::type_index, void*>  systems_;
-        ::engine::SystemRegistry                    initRegistry_;
         std::unique_ptr<DescriptorManager>          descriptors_;
         std::unique_ptr<ObjectSelectionSystem>      objSel_;
         std::unique_ptr<InputSystem>                input_;
@@ -230,27 +227,11 @@ namespace engine {
         Scene                                       scene_;
         entt::entity                                cameraEntity_        = entt::null;
         bool                                        pendingCamAfterLoad_ = false;
-        std::unique_ptr<Skybox>                     skybox_;
-        std::unique_ptr<class ProceduralSkyCapture> procSkyCapture_;
-        SkyboxSettings                              skySettings_{};
         ShadowSettings                              shadowSettings_{};
         PostProcessPushConstants                    postProcess_{};
         EditorState                                 editor_{};
         SceneSerializer*                            serializer_    = nullptr;
-        uint64_t                                    iblGeneration_ = 0;
-        // Procedural-sky IBL bake gating: hysteresis for continuous drivers
-        // (timeOfDay) plus explicit dead-bands / dirty flags for the rest.
-        float      procIblLat_         = 1e9f;   // last baked latitude (deg)
-        int        procIblDay_         = -1;     // last baked day-of-year
-        float      procIblPendingTime_ = 0.0f;   // accumulated |dtimeOfDay| since last bake
-        float      procIblSampledTime_ = -1e9f;  // anchor for per-frame time accumulation
-        double     procIblAtmoR_       = 0.0;    // atmosphereRadius
-        double     procIblRayH_        = 0.0;    // rayleighScaleHeight
-        double     procIblMieH_        = 0.0;    // mieScaleHeight
-        glm::dvec3 procIblBetaR_       = {};     // betaRayleigh
-        glm::dvec3 procIblBetaM_       = {};     // betaMie
-        float      procIblMieG_        = -1.0f;  // mieG
-        float      procIblSkyInt_      = -1.0f;  // skyIntensity
-        int        bakeDeferredFrames_ = 30;     // skip first N frames (loader burst)
+        std::unique_ptr<TransformService>           transformSvc_;
+        std::unique_ptr<EnvironmentLightingService> envLighting_;
     };
 }  // namespace engine

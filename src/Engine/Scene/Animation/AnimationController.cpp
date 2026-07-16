@@ -1,4 +1,4 @@
-#include "Engine/Scene/Components/AnimationController.hpp"
+#include "Engine/Scene/Animation/AnimationController.hpp"
 
 #include <algorithm>
 #include <limits>

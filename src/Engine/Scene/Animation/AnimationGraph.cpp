@@ -1,4 +1,4 @@
-#include "Engine/Scene/Components/AnimationGraph.hpp"
+#include "Engine/Scene/Animation/AnimationGraph.hpp"
 
 #include <algorithm>
 

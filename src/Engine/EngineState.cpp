@@ -34,23 +34,27 @@ namespace engine {
         renderContextPort_ = renderContext;
         device_            = &device;
         createInputDevices(window);
-        initRegistry_.clear();
-        std::string e;
-        initRegistry_.registerSystem("core", {}, [&](auto&) { initCoreSystems(device, renderer, mtRecording, mtThreads); return true; }, &e);
-        initRegistry_.registerSystem("desc", {"core"}, [&](auto&) { initDescriptorResources(device, renderer); return true; }, &e);
-        initRegistry_.registerSystem("pf", {"desc"}, [&](auto&) { allocatePerFrameDescriptorSets(renderer); return true; }, &e);
-        initRegistry_.registerSystem("pipe", {"core"}, [&](auto&) {
+        transformSvc_ = std::make_unique<TransformService>(scene_);
+        envLighting_  = std::make_unique<EnvironmentLightingService>(device, scene_);
+        // Initialization is a fixed, dependency-ordered sequence (no string-keyed
+        // registry): core -> desc -> per-frame descriptors -> pipelines /
+        // post-processing / input / physics. Each stage's outputs feed the next,
+        // so the order below is the only valid one.
+        initCoreSystems(device, renderer, mtRecording, mtThreads);
+        initDescriptorResources(device, renderer);
+        allocatePerFrameDescriptorSets(renderer);
         models_->createDepthPrepassPipeline(renderer.getOffscreenDepthPrepassRenderPass());
-        models_->setShadowSystem(shadow_.get()); models_->setIBLSystem(ibl_.get()); return true; }, &e);
-        initRegistry_.registerSystem("pp", {"pf", "pipe"}, [&](auto&) { initPostProcessing(device, renderer); return true; }, &e);
-        initRegistry_.registerSystem("inp", {"core"}, [&](auto&) { initInputRelatedSystems(window); return true; }, &e);
-        initRegistry_.registerSystem("phys", {"core"}, [&](auto&) {
-        phys_ = std::make_unique<PhysicsSystem>(device); jolt_ = std::make_unique<JoltPhysicsSystem>();
-        registerSystem(phys_); registerSystem(jolt_); return true; }, &e);
-        std::string ie;
-        if (!initRegistry_.initializeAll(&ie)) {
-            throw RuntimeException(ie);
-        }
+        models_->setShadowSystem(shadow_.get());
+        models_->setIBLSystem(ibl_.get());
+        initPostProcessing(device, renderer);
+        initInputRelatedSystems(window);
+        phys_ = std::make_unique<PhysicsSystem>(device);
+        jolt_ = std::make_unique<JoltPhysicsSystem>();
+        registerSystem(phys_);
+        registerSystem(jolt_);
+        // Wire the environment-lighting service to the systems it drives
+        // (created above during the init phases).
+        envLighting_->init(*ibl_, *descriptors_);
     }
     void EngineState::createInputDevices(Window* w) {
         if (w != nullptr) {
@@ -218,178 +222,6 @@ namespace engine {
             return;
         }
         addCamera("Camera");
-    }
-    void EngineState::syncEnvironmentLighting(bool show) {
-        auto const& s = skySettings();
-        if (s.proceduralSky) {
-            // Procedural sky drives IBL independently of whether the sky is drawn
-            // as the visible background. Bake it to a cubemap and feed the IBL
-            // system so surfaces get diffuse (irradiance) + specular (prefiltered)
-            // ambient terms, even when "Show Skybox" is off.
-            captureProceduralSkyToIBL();
-        } else if (show && !skybox_) {
-            skybox_      = Skybox::loadFromFolder(*device_, std::string(TEXTURE_PATH) + "/skybox/Yokohama", "jpg");
-            auto discard = ibl_->loadFromDisk(std::string(TEXTURE_PATH) + "/ibl/Yokohama");
-        }
-        // The visible background cubemap is only needed when explicitly shown and we
-        // are not using the procedural sky.
-        if (!s.proceduralSky && !show && skybox_) {
-            skybox_.reset();
-        }
-        if (!s.proceduralSky && !show) {
-            procSkyCapture_.reset();
-            ibl_->resetToFallback();
-        }
-        ibl_->update();
-        if (ibl_->getGenerationCounter() != iblGeneration_) {
-            writeIBLDescriptorsToSets();
-            iblGeneration_ = ibl_->getGenerationCounter();
-        }
-    }
-    void EngineState::captureProceduralSkyToIBL() {
-        // Defer the first bake(s) until the async model loader's initial GPU
-        // burst has settled, to avoid racing its worker-thread submissions.
-        if (bakeDeferredFrames_ > 0) {
-            --bakeDeferredFrames_;
-            return;
-        }
-        if (!procSkyCapture_) {
-            procSkyCapture_ = std::make_unique<ProceduralSkyCapture>(*device_);
-        }
-        auto const& s = skySettings();
-
-        // --- Re-bake gating (hysteresis + explicit dirty checks) ---
-        // Time-of-day accumulates per-frame so a smoothly advancing day/night
-        // cycle does not re-trigger a full irradiance+prefilter regen every
-        // frame from tiny steps. Latitude/day use a fixed dead-band. Scattering
-        // params are rare manual tweaks -> always rebake immediately on change.
-        constexpr float kTimeOfDayDelta = 0.05f;  // hours (accumulated)
-        constexpr float kLatDelta       = 0.5f;   // degrees
-        constexpr int   kDayDelta       = 1;      // day-of-year
-
-        float const timeStep =
-            (procIblSampledTime_ < -1e8f) ? (kTimeOfDayDelta + 1.0f)
-                                          : std::fabs(s.timeOfDay - procIblSampledTime_);
-        procIblSampledTime_ = s.timeOfDay;
-        procIblPendingTime_ += timeStep;
-
-        bool const timeMoved = procIblPendingTime_ > kTimeOfDayDelta;
-        bool const latMoved  = std::fabs(s.latitude - procIblLat_) > kLatDelta;
-        bool const dayMoved  = std::abs(s.dayOfYear - procIblDay_) > kDayDelta;
-        bool const scatterMoved =
-            (s.atmosphereRadius != procIblAtmoR_) ||
-            (s.rayleighScaleHeight != procIblRayH_) ||
-            (s.mieScaleHeight != procIblMieH_) ||
-            glm::any(glm::notEqual(s.betaRayleigh, procIblBetaR_, 0.0)) ||
-            glm::any(glm::notEqual(s.betaMie, procIblBetaM_, 0.0)) ||
-            (s.mieG != procIblMieG_) ||
-            (s.skyIntensity != procIblSkyInt_);
-
-        if (!(timeMoved || latMoved || dayMoved || scatterMoved)) {
-            return;
-        }
-
-        Skybox* captured = procSkyCapture_->capture(s, 256);
-        ibl_->generateFromSkybox(*captured);
-
-        // Commit anchors / dirty state.
-        procIblLat_         = s.latitude;
-        procIblDay_         = s.dayOfYear;
-        procIblPendingTime_ = 0.0f;
-        procIblSampledTime_ = s.timeOfDay;
-        procIblAtmoR_       = s.atmosphereRadius;
-        procIblRayH_        = s.rayleighScaleHeight;
-        procIblMieH_        = s.mieScaleHeight;
-        procIblBetaR_       = s.betaRayleigh;
-        procIblBetaM_       = s.betaMie;
-        procIblMieG_        = s.mieG;
-        procIblSkyInt_      = s.skyIntensity;
-    }
-    void EngineState::updateSunLight() {
-        auto& s   = skySettings();
-        auto& reg = scene_.getRegistry();
-
-        // Find the entity flagged as the sun light.
-        entt::entity sunEntity = entt::null;
-        auto         view      = reg.view<DirectionalLightComponent, TransformComponent>();
-        for (auto e : view) {
-            if (reg.get<DirectionalLightComponent>(e).isSun) {
-                sunEntity = e;
-                break;
-            }
-        }
-        if (sunEntity == entt::null) {
-            return;  // no sun light flagged; nothing to drive
-        }
-
-        const glm::vec3 sunDir = sunDirectionFromTimeOfDay(s.timeOfDay, s.latitude, static_cast<float>(s.dayOfYear));
-        const float     elev   = sunDir.y;
-
-        // Direction: the light's stored `direction` is the light's *travel*
-        // direction (the deferred shader computes L = -direction, i.e. the
-        // vector toward the sun). The procedural sky is authored in Y-up world
-        // space, so the visible sun sits at world direction `sunDir`. To light
-        // the hemisphere facing the visible sun, L must equal `sunDir`, hence
-        // the light's travel direction is simply the opposite:
-        //   direction = -sunDir
-        // (The cubemap Y-flip in skybox_fullscreen.frag applies only to real
-        // cubemap sampling, not to the procedural dome, so no flip here.)
-        auto&           transform      = reg.get<TransformComponent>(sunEntity);
-        const glm::vec3 lightTravelDir = sunDir;
-        transform.lookAt(transform.translation + lightTravelDir);
-
-        // Colour + night dimming, matching the sky shader exactly.
-        glm::vec3 sunCol = computeSunDirectColor(sunDir,
-            static_cast<float>(s.atmosphereRadius),
-            glm::max(glm::vec3(s.betaRayleigh), glm::vec3(0.0f)),
-            glm::max(glm::vec3(s.betaMie), glm::vec3(0.0f)),
-            static_cast<float>(s.rayleighScaleHeight),
-            static_cast<float>(s.mieScaleHeight));
-        if (glm::all(glm::equal(sunCol, glm::vec3(0.0f)))) {
-            sunCol = glm::vec3(1.0f, 0.35f, 0.1f);  // below horizon: warm ember
-        }
-
-        const float nightFactor        = glm::smoothstep(-0.05f, 0.15f, elev);
-        const float effectiveIntensity = s.sunIntensity * glm::mix(0.02f, 1.0f, nightFactor);
-
-        auto& dl     = reg.get<DirectionalLightComponent>(sunEntity);
-        dl.color     = sunCol;
-        dl.intensity = effectiveIntensity;
-    }
-    bool EngineState::loadIBL(const char* p) {
-        return ibl_->loadFromDisk(std::string(p));
-    }
-    void EngineState::resetIBLToFallback() {
-        ibl_->resetToFallback();
-    }
-    void EngineState::writeIBLDescriptorsToSets() {
-        auto ir = ibl_->getIrradianceDescriptorInfo();
-        auto pr = ibl_->getPrefilteredDescriptorInfo();
-        auto br = ibl_->getBRDFLUTDescriptorInfo();
-        for (auto& s : deferredIblDescriptorSetsRef()) {
-            DescriptorWriter(deferredIblSetLayout(), deferredIblPool()).writeImage(0, &ir).writeImage(1, &pr).writeImage(2, &br).overwrite(s);
-        }
-    }
-    glm::vec3 EngineState::getTranslation(entt::entity e) const {
-        auto& r = scene_.getRegistry();
-        return r.all_of<TransformComponent>(e) ? r.get<TransformComponent>(e).translation : glm::vec3{};
-    }
-    void EngineState::setTranslation(entt::entity e, const glm::vec3& v) {
-        scene_.getRegistry().get<TransformComponent>(e).translation = v;
-    }
-    glm::vec3 EngineState::getRotation(entt::entity e) const {
-        auto& r = scene_.getRegistry();
-        return r.all_of<TransformComponent>(e) ? r.get<TransformComponent>(e).rotation : glm::vec3{};
-    }
-    void EngineState::setRotation(entt::entity e, const glm::vec3& v) {
-        scene_.getRegistry().get<TransformComponent>(e).rotation = v;
-    }
-    glm::vec3 EngineState::getScale(entt::entity e) const {
-        auto& r = scene_.getRegistry();
-        return r.all_of<TransformComponent>(e) ? r.get<TransformComponent>(e).scale : glm::vec3{1};
-    }
-    void EngineState::setScale(entt::entity e, const glm::vec3& v) {
-        scene_.getRegistry().get<TransformComponent>(e).scale = v;
     }
     void EngineState::resetShadowSettings() {
         shadowSettings_ = ShadowSettings{};

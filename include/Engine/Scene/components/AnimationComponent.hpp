@@ -7,8 +7,8 @@
 #include <utility>
 #include <vector>
 
-#include "Engine/Scene/Components/AnimationController.hpp"
-#include "Engine/Scene/Components/AnimationGraph.hpp"
+#include "Engine/Scene/Animation/AnimationController.hpp"
+#include "Engine/Scene/Animation/AnimationGraph.hpp"
 
 #include "ModelLib/Resources/Model.hpp"
 namespace engine {

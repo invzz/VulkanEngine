@@ -1,4 +1,4 @@
-#include "Engine/Scene/Components/AnimationClip.hpp"
+#include "Engine/Scene/Animation/AnimationClip.hpp"
 
 #include <algorithm>
 #include <cmath>

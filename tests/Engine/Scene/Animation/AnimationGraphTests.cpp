@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "Engine/Scene/Components/AnimationGraph.hpp"
+#include "Engine/Scene/Animation/AnimationGraph.hpp"
 namespace engine {
     namespace {
         TEST(AnimationGraphTest, DefaultConstruction) {

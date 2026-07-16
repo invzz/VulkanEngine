@@ -336,68 +336,14 @@ namespace engine {
     }
 
     void App::setupRenderGraph() {
-        auto graph = std::make_unique<RenderGraph>();
-        graph->addPass(std::make_unique<UpdatePass>(
-            engineState.systemPtr<ObjectSelectionSystem>(),
-            engineState.systemPtr<InputSystem>(),
-            engineState.systemPtr<JoltPhysicsSystem>(),
-            engineState.physicsRunning(),
-            renderer));
-        graph->addPass(std::make_unique<ComputePass>(engineState.systemPtr<AnimationSystem>()));
-        graph->addPass(std::make_unique<ShadowPass>(
-            engineState.system<ShadowSystem>(),
-            engineState.renderContext(),
-            engineState.scene(),
-            engineState.shadowSettings(),
-            rtShadowSoftness));
-        graph->addPass(std::make_unique<DepthPrepass>(
-            engineState.system<ModelRenderSystem>(),
-            renderer));
-        graph->addPass(std::make_unique<GbufferPass>(
-            engineState.system<ModelRenderSystem>(),
-            engineState, renderer,
-            engineState.renderContext()));
-        graph->addPass(std::make_unique<DeferredLightingPass>(
-            engineState.system<DeferredLightingSystem>(),
-            engineState.system<ShadowSystem>(),
-            engineState, renderer, device,
-            engineState.renderContext()));
-        graph->addPass(std::make_unique<ForwardPass>(
-            engineState.system<ModelRenderSystem>(),
-            engineState.system<GridRenderSystem>(),
-            engineState.system<LightSystem>(),
-            engineState.system<CameraSystem>(),
-            engineState.system<ColliderDebugRenderSystem>(),
-            *engineState.systemPtr<SkyboxRenderSystem>(),
-            renderer,
-            engineState.editor(),
-            engineState.skybox(),
-            engineState.skySettings()));
-        // Selection mask: render selected geometry (depth disabled) into a 1-channel
-        // mask so the full silhouette is captured. Runs after the scene, before the
-        // screen-space composite that turns it into the Blender-style rim.
-        graph->addPass(std::make_unique<LambdaRenderPass>("SelectionMask",
-            [this](FrameInfo& frameInfo) {
-                renderer.beginSelectionMaskRenderPass(frameInfo.commandBuffer);
-                engineState.system<SelectionMaskSystem>().render(frameInfo);
-                renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-            }));
-        graph->addPass(std::make_unique<LambdaRenderPass>("TransitionToReadOnly",
-            [this](FrameInfo& frameInfo) {
-                renderer.transitionColorToShaderReadOnly(frameInfo.commandBuffer);
-            }));
-        graph->addPass(std::make_unique<PostProcessPass>(renderer, engineState));
-        // Selection composite: full-screen edge-detect on the mask, blended on top of
-        // the tonemapped post-fx image. This is the topmost scene layer (above all
-        // geometry and post-fx) before the ImGui viewport overlay.
-        graph->addPass(std::make_unique<LambdaRenderPass>("SelectionComposite",
-            [this](FrameInfo& frameInfo) {
-                renderer.beginSelectionOutlineRenderPass(frameInfo.commandBuffer);
-                engineState.system<SelectionCompositeSystem>().render(frameInfo);
-                renderer.endOffscreenRenderPass(frameInfo.commandBuffer);
-            }));
-        graph->addPass(std::make_unique<CompositionPass>(renderer, [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) { uiManager->render(frameInfo, cmd, cursorVisible); }, window));
-        renderPipeline->setRenderGraph(std::move(graph));
+        // The default graph (update -> compute -> shadow -> depth -> gbuffer ->
+        // deferred -> forward -> selection mask -> transition -> post-process ->
+        // selection composite -> composition/ImGui) is owned by the RenderPipeline.
+        renderPipeline->buildDefaultGraph(engineState, renderer, device, rtShadowSoftness,
+            [this](FrameInfo& frameInfo, VkCommandBuffer cmd, bool cursorVisible) {
+                uiManager->render(frameInfo, cmd, cursorVisible);
+            },
+            window);
     }
 
     void App::run() {
