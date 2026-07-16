@@ -1,6 +1,6 @@
 # VulkanEngine — Structure & Architecture Improvement Proposal
 
-> Status: refactor IN PROGRESS. Steps 1–6, 8–9 done; Step 7 deferred (needs runtime verification). Source files modified; everything builds and the architecture test suite is green.
+> Status: refactor IN PROGRESS. Steps 1–9 implemented (step 7 deferred — needs real-GPU runtime verification); README drift (LOW-2) resolved. Source files modified; everything builds and the architecture test suite is green.
 > Basis: direct inspection of `src/`, `include/`, `xmake.lua`, `tests/`, and `README.md` on branch `main`.
 
 ---
@@ -18,6 +18,7 @@
 | 7 | **DEFERRED** | Narrow pass deps via `FrameContext`. The 3 passes still taking `EngineState&` (GbufferPass, DeferredLightingPass, PostProcessPass) use it only for stable accessors (descriptor sets, `scene()`, `renderContext()`, `editor()`, `skybox()`/`skySettings()`). A real `FrameContext` refactor touches every pass ctor + the new `buildDefaultGraph` and cannot be runtime-verified in this headless (no-GPU) environment, so it is intentionally left for a pass when the renderer can be exercised on real hardware. |
 | 8 | **DONE** | `RenderPipeline` now owns the default graph: added `RenderPipeline::buildDefaultGraph(EngineState&, Renderer&, Device&, float rtShadowSoftness, UIRenderFn, Window&)` which constructs the full pass chain (update → compute → shadow → depth → gbuffer → deferred → forward → selection mask → transition → post-process → selection composite → composition/ImGui). `App::setupRenderGraph()` in `app.cpp` is now a one-line call. UI rendering stays in the Editor (passed as a callback), so `RenderPipeline` stays decoupled from `ImGuiManager`. |
 | 9 | **DONE** | Retired aggregator grab-bag includes. Discovered `Internal.hpp` and `Engine.hpp` are **orphaned** — zero TUs include either, and neither is referenced by `xmake.lua`. Both deleted. `EngineState.hpp` already includes exactly the headers its members need, so no TU lost access. The reusable `SystemRegistry` DAG utility + its unit tests remain (self-contained). |
+| 10 | **DONE** | Resolved README drift (finding [LOW-2]): `Project Structure` now lists `Scene/components/` (ECS data), `Scene/Animation/` (domain types) and `Skybox.hpp` instead of the duplicated capital `Components/` entries left from the pre-step-4 layout; the Rendering Pipeline pass list now matches the 12-pass `buildDefaultGraph` order (added Selection Mask, Post-Process, Selection Composite). Verified the listed post-fx features (tonemap / SSAO / bloom / exposure) exist in `PostProcessingSystem` before documenting them. |
 
 ---
 
@@ -131,10 +132,14 @@ procedural sequence; a typo silently changes the pipeline.
 `GraphicsState`. Catch-all includes slow incremental builds and hide real
 dependencies.
 
-### [LOW-2] README drift
+### [LOW-2] README drift — RESOLVED
 Documents Render Graph / ECS / SystemRegistry / DI accurately (good feature
-list) but does not reflect that the Clean-Architecture layer was removed, nor
-the god-object reality.
+list) but did not reflect that the Clean-Architecture layer was removed, nor
+the god-object reality. **Resolved:** `Project Structure` now shows `Scene/components/`
+(ECS data) + `Scene/Animation/` (domain types) + `Skybox.hpp` instead of the
+old duplicated capital `Components/` entries, and the Rendering Pipeline pass
+list now matches the 12-pass `buildDefaultGraph` order (added Selection Mask,
+Post-Process, Selection Composite).
 
 ---
 
