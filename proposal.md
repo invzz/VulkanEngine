@@ -136,11 +136,15 @@ the god-object reality.
 
 ## 3. Proposed Improvements (suggested order)
 
-### 1) Unblock tests — do first
+### 1) Unblock tests — do first  ✅ DONE
 Repair the corrupted face lines in `tests/ModelLib/importers/OBJImporterTests.cpp`
 (bad-merge artifact). Then `xmake run Tests` actually runs. ~30 min.
 
-### 2) Reconcile the contract test with reality
+> Done: corrupted cube face list reconstructed (12 triangles / 36 indices);
+> the `ModelLib → Engine` link cycle was also broken (see below) so the whole
+> `Tests` target links and runs.
+
+### 2) Reconcile the contract test with reality  ✅ DONE
 Delete or rewrite `tests/Engine/ArchitectureDependencyRulesTests.cpp`.
 Recommended rewrite enforces the **actual, desired** boundaries (not the
 removed one):
@@ -150,6 +154,10 @@ removed one):
 Drop every assertion referencing `Application/`, `Infrastructure/`, `State/`
 dirs, use-case ports, and `*Service().view()` APIs — they don't exist. This
 restores a *meaningful* architecture guard instead of a failing fantasy.
+
+> Done: file rewritten; 9 rules, all green. It also catches two *real*
+> allowlisted violations (Engine↔Editor glue in `RenderContextAdapter.cpp`,
+> and 3 asset-browser panels reaching `ModelLib/Resources/ResourceManager.hpp`).
 
 ### 3) Kill dead `GraphicsState`
 Delete `include/Engine/graphics/` and the `Engine.hpp` `#include`. Pick **one**

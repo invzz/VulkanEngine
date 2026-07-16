@@ -15,5 +15,4 @@
 #include "Engine/Scene/Camera.hpp"
 #include "Engine/Scene/Scene.hpp"
 #include "Engine/SystemRegistry.hpp"
-#include "Engine/graphics/GraphicsState.hpp"
 #endif
