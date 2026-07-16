@@ -430,7 +430,7 @@ namespace engine::ui {
             entt::registry&                  registry,
             std::vector<entt::entity>&       toDelete);
         static void DrawSceneModelSection(
-            engine::Device&                                 device,
+            engine::Device&                                  device,
             const std::vector<entt::entity>&                 models,
             const char*                                      filter,
             FrameInfo&                                       frameInfo,

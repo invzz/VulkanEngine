@@ -1,9 +1,9 @@
 #ifndef EDITOR_UI_SELECTION_RESOLVE_HPP
 #define EDITOR_UI_SELECTION_RESOLVE_HPP
-#include "Engine/Scene/components/SubMeshComponent.hpp"
-#include "Engine/Scene/Scene.hpp"
-
 #include <entt/entity/fwd.hpp>
+
+#include "Engine/Scene/Scene.hpp"
+#include "Engine/Scene/components/SubMeshComponent.hpp"
 namespace engine {
     /**
  * @brief Resolve the entity that transform-editing (gizmo, inspector panels)

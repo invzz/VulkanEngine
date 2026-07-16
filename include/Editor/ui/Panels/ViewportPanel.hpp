@@ -66,9 +66,9 @@ namespace engine {
         entt::entity cameraEntity_ = entt::null;
         // Viewport image rect + hover state, captured right after ImGui::Image()
         // so picking is not confused by the toolbar/gizmo "last item" state.
-        ImVec2       imageRectMin_{};
-        ImVec2       imageRectMax_{};
-        bool         imageHovered_ = false;
+        ImVec2 imageRectMin_{};
+        ImVec2 imageRectMax_{};
+        bool   imageHovered_ = false;
     };
 }  // namespace engine
 #endif

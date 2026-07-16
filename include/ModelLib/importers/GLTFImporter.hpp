@@ -24,20 +24,20 @@ namespace engine {
 
        private:
         static void                    loadMaterials(Model::Builder& builder, const tinygltf::Model& model, const std::string& baseDir, const std::string& cacheDir);
-        static void                    loadMeshes(Model::Builder&         builder,
-            const tinygltf::Model&                     model,
-            bool                                       flipX,
-            bool                                       flipY,
-            bool                                       flipZ,
-            std::unordered_map<uint64_t, uint32_t>&    primitiveVertexOffsets,
-            std::unordered_map<uint64_t, uint32_t>&    primitiveVertexCounts,
-            std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
-            bool                                       hasAnimations);
-        static void                    loadMorphTargets(Model::Builder&         builder,
-            const tinygltf::Model&                           model,
-            const std::unordered_map<uint64_t, uint32_t>&    primitiveVertexOffsets,
-            const std::unordered_map<uint64_t, uint32_t>&    primitiveVertexCounts,
-            const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex);
+        static void                    loadMeshes(Model::Builder&      builder,
+            const tinygltf::Model&                  model,
+            bool                                    flipX,
+            bool                                    flipY,
+            bool                                    flipZ,
+            std::unordered_map<uint64_t, uint32_t>& primitiveVertexOffsets,
+            std::unordered_map<uint64_t, uint32_t>& primitiveVertexCounts,
+            std::unordered_map<uint32_t, uint32_t>& vertexToPositionIndex,
+            bool                                    hasAnimations);
+        static void                    loadMorphTargets(Model::Builder&      builder,
+            const tinygltf::Model&                        model,
+            const std::unordered_map<uint64_t, uint32_t>& primitiveVertexOffsets,
+            const std::unordered_map<uint64_t, uint32_t>& primitiveVertexCounts,
+            const std::unordered_map<uint32_t, uint32_t>& vertexToPositionIndex);
         static void                    loadAnimations(Model::Builder& builder, const tinygltf::Model& model);
         static void                    loadLights(Model::Builder& builder, const tinygltf::Model& model);
         [[nodiscard]] static glm::mat4 computeNodeTransform(const tinygltf::Node& node);

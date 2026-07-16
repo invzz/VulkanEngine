@@ -1,12 +1,12 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SELECTIONMASKSYSTEM_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_SELECTIONMASKSYSTEM_HPP
+#include <memory>
+
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/components/SubMeshComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/ModelRenderSystem.hpp"
-
-#include <memory>
 namespace engine {
     /**
  * @brief Renders the selected model (or a single selected sub-mesh) into a
@@ -24,10 +24,10 @@ namespace engine {
         void render(FrameInfo& frameInfo) const;
 
        private:
-        Device&                                      device_;
-        std::unique_ptr<Pipeline>                   pipeline_;
-        VkPipelineLayout                             pipelineLayout_{VK_NULL_HANDLE};
-        VkDescriptorSetLayout                       globalSetLayout_{VK_NULL_HANDLE};
+        Device&                   device_;
+        std::unique_ptr<Pipeline> pipeline_;
+        VkPipelineLayout          pipelineLayout_{VK_NULL_HANDLE};
+        VkDescriptorSetLayout     globalSetLayout_{VK_NULL_HANDLE};
 
         /// Resolve the model entity that owns the selection (handles node
         /// selection, which maps up to the model that contains the node).

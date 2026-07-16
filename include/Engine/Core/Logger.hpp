@@ -22,8 +22,6 @@ namespace engine {
         All      = 0xFFFFFFFFu,
     };
 
-
-
     class Logger {
        public:
         static void     setMinimumLevel(LogLevel level);

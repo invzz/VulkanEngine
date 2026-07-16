@@ -174,9 +174,9 @@ namespace engine {
         Scene&       scene,
         const Model& model,
         entt::entity modelEntity) {
-        auto&            registry = scene.getRegistry();
-        auto const&      nodes    = model.getNodes();
-        const int        nodeCount = static_cast<int>(nodes.size());
+        auto&       registry  = scene.getRegistry();
+        auto const& nodes     = model.getNodes();
+        const int   nodeCount = static_cast<int>(nodes.size());
         if (nodeCount == 0) {
             return;
         }
@@ -198,7 +198,7 @@ namespace engine {
             std::string nodeName = node.name.empty() ? std::string("Node_") + std::to_string(i) : node.name;
             registry.emplace<NameComponent>(entity, nodeName);
             registry.emplace<NodeIndexComponent>(entity, i);
-            auto& transform = registry.emplace<TransformComponent>(entity);
+            auto& transform       = registry.emplace<TransformComponent>(entity);
             transform.translation = node.translation;
             transform.rotation    = glm::eulerAngles(node.rotation);
             transform.scale       = node.scale;
@@ -226,8 +226,8 @@ namespace engine {
         if (subMeshes.empty()) {
             return;
         }
-        auto&       registry   = scene.getRegistry();
-        const auto& materials  = model.getMaterials();
+        auto&       registry  = scene.getRegistry();
+        const auto& materials = model.getMaterials();
         // Track name usage to disambiguate duplicate material names.
         std::unordered_map<std::string, uint32_t> nameCount;
         for (uint32_t i = 0; i < static_cast<uint32_t>(subMeshes.size()); ++i) {

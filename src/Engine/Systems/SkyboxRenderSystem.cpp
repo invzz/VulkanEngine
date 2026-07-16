@@ -1,8 +1,8 @@
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 #include <array>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -96,9 +96,9 @@ namespace engine {
 
         const uint32_t count = static_cast<uint32_t>(SwapChain::maxFramesInFlight());
         descriptorPool_      = engine::DescriptorPool::Builder(device_)
-            .setMaxSets(count)
-            .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, count * 2)
-            .build();
+                                   .setMaxSets(count)
+                                   .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, count * 2)
+                                   .build();
         descriptorSets_.resize(count);
         for (uint32_t i = 0; i < count; ++i) {
             if (!descriptorPool_->allocateDescriptor(descriptorSetLayout_, descriptorSets_[i])) {
@@ -175,8 +175,8 @@ namespace engine {
 
         ibl_detail::transitionImageLayout(device_, skyLUTImage_, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, 1);
         {
-            VkClearColorValue clearColor{{0.0f, 0.0f, 0.0f, 1.0f}};
-            VkCommandBuffer cmd = device_.memory().beginSingleTimeCommands();
+            VkClearColorValue       clearColor{{0.0f, 0.0f, 0.0f, 1.0f}};
+            VkCommandBuffer         cmd = device_.memory().beginSingleTimeCommands();
             VkImageSubresourceRange range{};
             range.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
             range.baseMipLevel   = 0;
@@ -221,8 +221,8 @@ namespace engine {
             throw std::runtime_error("Failed to create Sky LUT compute pipeline layout");
         }
 
-        auto compCode = Pipeline::readFile(std::string(SHADER_PATH) + "sky_lut.comp.spv");
-        VkShaderModule compModule = VK_NULL_HANDLE;
+        auto                     compCode   = Pipeline::readFile(std::string(SHADER_PATH) + "sky_lut.comp.spv");
+        VkShaderModule           compModule = VK_NULL_HANDLE;
         VkShaderModuleCreateInfo shaderInfo{};
         shaderInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         shaderInfo.codeSize = compCode.size();
@@ -289,10 +289,10 @@ namespace engine {
         }
 
         constexpr float updateThreshold = 0.01f;
-        bool needsUpdate = !skyLUTReady_ ||
-                          (std::fabs(settings.timeOfDay - skyLUTLastTimeOfDay_) > updateThreshold) ||
-                          (std::fabs(settings.latitude - skyLUTLastLatitude_) > 0.01f) ||
-                          (settings.dayOfYear != skyLUTLastDayOfYear_);
+        bool            needsUpdate     = !skyLUTReady_ ||
+                                          (std::fabs(settings.timeOfDay - skyLUTLastTimeOfDay_) > updateThreshold) ||
+                                          (std::fabs(settings.latitude - skyLUTLastLatitude_) > 0.01f) ||
+                                          (settings.dayOfYear != skyLUTLastDayOfYear_);
         if (!needsUpdate) {
             return;
         }
@@ -303,8 +303,8 @@ namespace engine {
         }
 
         SkyLUTComputePushConstants push{};
-        push.betaRayleighAndG         = glm::vec4(static_cast<float>(settings.betaRayleigh.x), static_cast<float>(settings.betaRayleigh.y), static_cast<float>(settings.betaRayleigh.z), settings.mieG);
-        push.betaMieAndSunIntensity   = glm::vec4(static_cast<float>(settings.betaMie.x), static_cast<float>(settings.betaMie.y), static_cast<float>(settings.betaMie.z), static_cast<float>(settings.sunIntensity));
+        push.betaRayleighAndG            = glm::vec4(static_cast<float>(settings.betaRayleigh.x), static_cast<float>(settings.betaRayleigh.y), static_cast<float>(settings.betaRayleigh.z), settings.mieG);
+        push.betaMieAndSunIntensity      = glm::vec4(static_cast<float>(settings.betaMie.x), static_cast<float>(settings.betaMie.y), static_cast<float>(settings.betaMie.z), static_cast<float>(settings.sunIntensity));
         push.sunDirectionAndGroundRadius = glm::vec4(glm::normalize(sunDirection), 6360e3f);
         push.atmosphereAndScaleHeights   = glm::vec4(static_cast<float>(settings.atmosphereRadius), static_cast<float>(settings.rayleighScaleHeight), static_cast<float>(settings.mieScaleHeight), 0.0f);
 
@@ -314,8 +314,8 @@ namespace engine {
         vkCmdPushConstants(cmd, skyLUTComputeLayout_, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(SkyLUTComputePushConstants), &push);
 
         constexpr uint32_t kGroup = 16;
-        uint32_t groupX = (kSkyLUTWidth + (kGroup - 1)) / kGroup;
-        uint32_t groupY = (kSkyLUTHeight + (kGroup - 1)) / kGroup;
+        uint32_t           groupX = (kSkyLUTWidth + (kGroup - 1)) / kGroup;
+        uint32_t           groupY = (kSkyLUTHeight + (kGroup - 1)) / kGroup;
         vkCmdDispatch(cmd, groupX, groupY, 1);
         device_.memory().endSingleTimeCommands(cmd);
 
@@ -374,19 +374,19 @@ namespace engine {
         }
 
         // Night darkening factor
-        const float nightFactor = glm::smoothstep(-0.05f, 0.15f, sunDir.y);
+        const float nightFactor        = glm::smoothstep(-0.05f, 0.15f, sunDir.y);
         const float effectiveIntensity = settings.skyIntensity * glm::mix(0.02f, 1.0f, nightFactor);
 
         SkyboxPushConstants push{};
-        push.viewProjection                   = vp;
-        push.debugParams                      = glm::vec4(
-            settings.debugCubemapFaces ? 1.0f : 0.0f,   // x
-            procedural ? 1.0f : 0.0f,                     // y
-            useSkyLUT ? 1.0f : 0.0f,                      // z
+        push.viewProjection = vp;
+        push.debugParams    = glm::vec4(
+            settings.debugCubemapFaces ? 1.0f : 0.0f,  // x
+            procedural ? 1.0f : 0.0f,                  // y
+            useSkyLUT ? 1.0f : 0.0f,                   // z
             0.0f);
-        push.sunDirection                     = glm::vec4(sunDir, 0.0f);
-        push.sunColor                         = glm::vec4(sunCol, 0.015f);
-        push.skyParams                        = glm::vec4(settings.timeOfDay, effectiveIntensity, 0.0f, 0.0f);
+        push.sunDirection = glm::vec4(sunDir, 0.0f);
+        push.sunColor     = glm::vec4(sunCol, 0.015f);
+        push.skyParams    = glm::vec4(settings.timeOfDay, effectiveIntensity, 0.0f, 0.0f);
 
         // Descriptor 0: cubemap fallback/sampling.
         VkDescriptorImageInfo cubemapImageInfo = sampledSkybox->getDescriptorInfo();

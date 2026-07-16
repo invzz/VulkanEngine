@@ -225,7 +225,7 @@ namespace engine {
 
         // Write submesh header buffer at binding 7
         if (frameIndex < static_cast<int>(instanceSubmeshHeaderBuffers_.size()) && instanceSubmeshHeaderBuffers_[frameIndex]) {
-            auto hdrInfo = instanceSubmeshHeaderBuffers_[frameIndex]->descriptorInfo();
+            auto                 hdrInfo = instanceSubmeshHeaderBuffers_[frameIndex]->descriptorInfo();
             VkWriteDescriptorSet writeHdr{};
             writeHdr.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writeHdr.dstSet          = globalDescriptorSets_[frameIndex];
@@ -239,7 +239,7 @@ namespace engine {
 
         // Write submesh data buffer at binding 8
         if (frameIndex < static_cast<int>(instanceSubmeshDataBuffers_.size()) && instanceSubmeshDataBuffers_[frameIndex]) {
-            auto dataInfo = instanceSubmeshDataBuffers_[frameIndex]->descriptorInfo();
+            auto                 dataInfo = instanceSubmeshDataBuffers_[frameIndex]->descriptorInfo();
             VkWriteDescriptorSet writeData{};
             writeData.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             writeData.dstSet          = globalDescriptorSets_[frameIndex];
@@ -254,7 +254,7 @@ namespace engine {
 
     void RenderContext::updateMeshDescriptorSet(int frameIndex) {
         VkDescriptorBufferInfo const meshInfo = meshManager_.getDescriptorInfo();
-        VkWriteDescriptorSet write{};
+        VkWriteDescriptorSet         write{};
         write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet          = globalDescriptorSets_[frameIndex];
         write.dstBinding      = 1;
@@ -367,9 +367,9 @@ namespace engine {
     }
     VkAccelerationStructureKHR RenderContext::rebuildTlas(
         const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
-        const std::vector<uint32_t>& instanceSubmeshHeaders,
-        const std::vector<uint32_t>& instanceSubmeshData,
-        VkCommandBuffer cmd) {
+        const std::vector<uint32_t>&                                         instanceSubmeshHeaders,
+        const std::vector<uint32_t>&                                         instanceSubmeshData,
+        VkCommandBuffer                                                      cmd) {
         if (!accelBuilder_)
             return VK_NULL_HANDLE;
 

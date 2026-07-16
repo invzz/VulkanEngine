@@ -16,7 +16,6 @@
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/SpatialSystem.hpp"
 #include "Engine/SystemRegistry.hpp"
-#include "Engine/Systems/ProceduralSkyCapture.hpp"
 #include "Engine/Systems/AnimationSystem.hpp"
 #include "Engine/Systems/CameraSystem.hpp"
 #include "Engine/Systems/ColliderDebugRenderSystem.hpp"
@@ -31,8 +30,9 @@
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
 #include "Engine/Systems/PostProcessingSystem.hpp"
-#include "Engine/Systems/SelectionMaskSystem.hpp"
+#include "Engine/Systems/ProceduralSkyCapture.hpp"
 #include "Engine/Systems/SelectionCompositeSystem.hpp"
+#include "Engine/Systems/SelectionMaskSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 #include "Engine/Systems/SkyboxRenderSystem.hpp"
 
@@ -94,10 +94,10 @@ namespace engine {
         void setSerializer(class SceneSerializer* s) {
             serializer_ = s;
         }
-        void      saveScene(const std::string& path);
-        bool      loadScene(const std::string& path);
-        void      reconcileSceneLoad();
-        void      syncEnvironmentLighting(bool show);
+        void saveScene(const std::string& path);
+        bool loadScene(const std::string& path);
+        void reconcileSceneLoad();
+        void syncEnvironmentLighting(bool show);
         // Drive a directional light flagged as the sun (isSun) so its
         // direction, colour and intensity track SkyboxSettings::timeOfDay.
         // Creates a sun light on first use if none is flagged.
@@ -190,67 +190,67 @@ namespace engine {
         }
 
        private:
-        void                                       createInputDevices(Window* w);
-        void                                       initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th);
-        void                                       initDescriptorResources(Device& d, Renderer& r);
-        void                                       allocatePerFrameDescriptorSets(Renderer& r);
-        void                                       initPostProcessing(Device& d, Renderer& r);
-        void                                       initInputRelatedSystems(Window* w);
-        void                                       ensureCameraExists();
-        void                                       writeIBLDescriptorsToSets();
-        void                                       captureProceduralSkyToIBL();
-        std::unordered_map<std::type_index, void*> systems_;
-        ::engine::SystemRegistry                   initRegistry_;
-        std::unique_ptr<DescriptorManager>         descriptors_;
-        std::unique_ptr<ObjectSelectionSystem>     objSel_;
-        std::unique_ptr<InputSystem>               input_;
-        std::unique_ptr<CameraSystem>              cameraSys_;
-        std::unique_ptr<ColliderDebugRenderSystem> colliderDbg_;
-        std::unique_ptr<SelectionMaskSystem>       selMask_;
-        std::unique_ptr<SelectionCompositeSystem>  selComposite_;
-        std::unique_ptr<AnimationSystem>           anim_;
-        std::unique_ptr<LODSystem>                 lod_;
-        std::unique_ptr<ModelRenderSystem>         models_;
-        std::unique_ptr<ShadowSystem>              shadow_;
-        std::unique_ptr<LightSystem>               light_;
-        std::unique_ptr<SkyboxRenderSystem>        skyboxR_;
-        std::unique_ptr<GridRenderSystem>          grid_;
-        std::unique_ptr<DeferredLightingSystem>    deferred_;
-        std::unique_ptr<PostProcessingSystem>      postProc_;
-        std::unique_ptr<IBLSystem>                 ibl_;
-        std::unique_ptr<PhysicsSystem>             phys_;
-        std::unique_ptr<JoltPhysicsSystem>         jolt_;
-        std::unique_ptr<MorphTargetManager>        morph_;
-        std::unique_ptr<SpatialSystem>             spatial_;
-        std::unique_ptr<Keyboard>                  kbd_;
-        std::unique_ptr<Mouse>                     mouse_;
-        IRenderContextPort*                        renderContextPort_ = nullptr;
-        ResourceManager*                           resourceManager_   = nullptr;
-        Device*                                    device_            = nullptr;
-        Scene                                      scene_;
-        entt::entity                               cameraEntity_        = entt::null;
-        bool                                       pendingCamAfterLoad_ = false;
-        std::unique_ptr<Skybox>                    skybox_;
+        void                                        createInputDevices(Window* w);
+        void                                        initCoreSystems(Device& d, Renderer& r, bool mt, uint32_t th);
+        void                                        initDescriptorResources(Device& d, Renderer& r);
+        void                                        allocatePerFrameDescriptorSets(Renderer& r);
+        void                                        initPostProcessing(Device& d, Renderer& r);
+        void                                        initInputRelatedSystems(Window* w);
+        void                                        ensureCameraExists();
+        void                                        writeIBLDescriptorsToSets();
+        void                                        captureProceduralSkyToIBL();
+        std::unordered_map<std::type_index, void*>  systems_;
+        ::engine::SystemRegistry                    initRegistry_;
+        std::unique_ptr<DescriptorManager>          descriptors_;
+        std::unique_ptr<ObjectSelectionSystem>      objSel_;
+        std::unique_ptr<InputSystem>                input_;
+        std::unique_ptr<CameraSystem>               cameraSys_;
+        std::unique_ptr<ColliderDebugRenderSystem>  colliderDbg_;
+        std::unique_ptr<SelectionMaskSystem>        selMask_;
+        std::unique_ptr<SelectionCompositeSystem>   selComposite_;
+        std::unique_ptr<AnimationSystem>            anim_;
+        std::unique_ptr<LODSystem>                  lod_;
+        std::unique_ptr<ModelRenderSystem>          models_;
+        std::unique_ptr<ShadowSystem>               shadow_;
+        std::unique_ptr<LightSystem>                light_;
+        std::unique_ptr<SkyboxRenderSystem>         skyboxR_;
+        std::unique_ptr<GridRenderSystem>           grid_;
+        std::unique_ptr<DeferredLightingSystem>     deferred_;
+        std::unique_ptr<PostProcessingSystem>       postProc_;
+        std::unique_ptr<IBLSystem>                  ibl_;
+        std::unique_ptr<PhysicsSystem>              phys_;
+        std::unique_ptr<JoltPhysicsSystem>          jolt_;
+        std::unique_ptr<MorphTargetManager>         morph_;
+        std::unique_ptr<SpatialSystem>              spatial_;
+        std::unique_ptr<Keyboard>                   kbd_;
+        std::unique_ptr<Mouse>                      mouse_;
+        IRenderContextPort*                         renderContextPort_ = nullptr;
+        ResourceManager*                            resourceManager_   = nullptr;
+        Device*                                     device_            = nullptr;
+        Scene                                       scene_;
+        entt::entity                                cameraEntity_        = entt::null;
+        bool                                        pendingCamAfterLoad_ = false;
+        std::unique_ptr<Skybox>                     skybox_;
         std::unique_ptr<class ProceduralSkyCapture> procSkyCapture_;
-        SkyboxSettings                             skySettings_{};
-        ShadowSettings                             shadowSettings_{};
-        PostProcessPushConstants                   postProcess_{};
-        EditorState                                editor_{};
-        SceneSerializer*                           serializer_    = nullptr;
-        uint64_t                                   iblGeneration_ = 0;
+        SkyboxSettings                              skySettings_{};
+        ShadowSettings                              shadowSettings_{};
+        PostProcessPushConstants                    postProcess_{};
+        EditorState                                 editor_{};
+        SceneSerializer*                            serializer_    = nullptr;
+        uint64_t                                    iblGeneration_ = 0;
         // Procedural-sky IBL bake gating: hysteresis for continuous drivers
         // (timeOfDay) plus explicit dead-bands / dirty flags for the rest.
-        float                                      procIblLat_        = 1e9f;    // last baked latitude (deg)
-        int                                        procIblDay_        = -1;        // last baked day-of-year
-        float                                      procIblPendingTime_ = 0.0f;    // accumulated |dtimeOfDay| since last bake
-        float                                      procIblSampledTime_ = -1e9f;    // anchor for per-frame time accumulation
-        double                                     procIblAtmoR_      = 0.0;       // atmosphereRadius
-        double                                     procIblRayH_       = 0.0;       // rayleighScaleHeight
-        double                                     procIblMieH_       = 0.0;       // mieScaleHeight
-        glm::dvec3                                 procIblBetaR_      = {};        // betaRayleigh
-        glm::dvec3                                 procIblBetaM_      = {};        // betaMie
-        float                                      procIblMieG_       = -1.0f;     // mieG
-        float                                      procIblSkyInt_     = -1.0f;     // skyIntensity
-        int                                        bakeDeferredFrames_ = 30;       // skip first N frames (loader burst)
+        float      procIblLat_         = 1e9f;   // last baked latitude (deg)
+        int        procIblDay_         = -1;     // last baked day-of-year
+        float      procIblPendingTime_ = 0.0f;   // accumulated |dtimeOfDay| since last bake
+        float      procIblSampledTime_ = -1e9f;  // anchor for per-frame time accumulation
+        double     procIblAtmoR_       = 0.0;    // atmosphereRadius
+        double     procIblRayH_        = 0.0;    // rayleighScaleHeight
+        double     procIblMieH_        = 0.0;    // mieScaleHeight
+        glm::dvec3 procIblBetaR_       = {};     // betaRayleigh
+        glm::dvec3 procIblBetaM_       = {};     // betaMie
+        float      procIblMieG_        = -1.0f;  // mieG
+        float      procIblSkyInt_      = -1.0f;  // skyIntensity
+        int        bakeDeferredFrames_ = 30;     // skip first N frames (loader burst)
     };
 }  // namespace engine

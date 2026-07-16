@@ -302,11 +302,11 @@ namespace engine {
             }
             if (settingsBindings_.skySettings != nullptr) {
                 settingsJson["sky"] = nlohmann::json{{"debugCubemapFaces", settingsBindings_.skySettings->debugCubemapFaces},
-                                                     {"proceduralSky", settingsBindings_.skySettings->proceduralSky},
-                                                     {"useSkyLUT", settingsBindings_.skySettings->useSkyLUT},
-                                                     {"timeOfDay", settingsBindings_.skySettings->timeOfDay},
-                                                     {"skyIntensity", settingsBindings_.skySettings->skyIntensity},
-                                                     {"skyMode", (int)settingsBindings_.skySettings->skyMode}};
+                    {"proceduralSky", settingsBindings_.skySettings->proceduralSky},
+                    {"useSkyLUT", settingsBindings_.skySettings->useSkyLUT},
+                    {"timeOfDay", settingsBindings_.skySettings->timeOfDay},
+                    {"skyIntensity", settingsBindings_.skySettings->skyIntensity},
+                    {"skyMode", (int) settingsBindings_.skySettings->skyMode}};
             }
             if (settingsBindings_.debugMode != nullptr) {
                 settingsJson["debugMode"] = *settingsBindings_.debugMode;
@@ -528,7 +528,7 @@ namespace engine {
                     dirLight.color     = dl.value("color", glm::vec3(1.0f));
                     dirLight.bake      = dl.value("bake", false);
                     dirLight.lightType = mobility_from_string(dl.value("lightType", std::string("static")));
-                    dirLight.isSun      = dl.value("isSun", false);
+                    dirLight.isSun     = dl.value("isSun", false);
                 }
                 if (objJson.contains("spotLight")) {
                     auto& sl                   = objJson["spotLight"];
@@ -620,7 +620,7 @@ namespace engine {
                     dirLight.color     = lightJson.value("color", glm::vec3(1.0f));
                     dirLight.bake      = lightJson.value("bake", false);
                     dirLight.lightType = mobility_from_string(lightJson.value("lightType", std::string("static")));
-                    dirLight.isSun      = lightJson.value("isSun", false);
+                    dirLight.isSun     = lightJson.value("isSun", false);
                     std::cout << "SceneSerializer: added DirectionalLightComponent id=" << id << " bake=" << dirLight.bake << "\n";
                 } else if (type == "spot") {
                     auto& spotLight            = scene.getRegistry().emplace<SpotLightComponent>(entity);
@@ -654,7 +654,7 @@ namespace engine {
                 settingsBindings_.skySettings->timeOfDay         = skyJson.value("timeOfDay", settingsBindings_.skySettings->timeOfDay);
                 settingsBindings_.skySettings->skyIntensity      = skyJson.value("skyIntensity", settingsBindings_.skySettings->skyIntensity);
                 if (skyJson.contains("skyMode")) {
-                    settingsBindings_.skySettings->skyMode = (SkyMode)skyJson.value("skyMode", (int)settingsBindings_.skySettings->skyMode);
+                    settingsBindings_.skySettings->skyMode = (SkyMode) skyJson.value("skyMode", (int) settingsBindings_.skySettings->skyMode);
                 }
             }
             if (settingsBindings_.debugMode != nullptr) {

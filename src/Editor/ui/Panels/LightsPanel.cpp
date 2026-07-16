@@ -13,8 +13,8 @@
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
 
-#include "Editor/ui/UI.hpp"
 #include "Editor/ui/SelectionResolve.hpp"
+#include "Editor/ui/UI.hpp"
 #include "entt/entity/entity.hpp"
 #include "glm/geometric.hpp"
 namespace engine {

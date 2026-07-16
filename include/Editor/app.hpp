@@ -4,13 +4,12 @@
 
 #include "Engine/Core/Window.hpp"
 #include "Engine/EngineState.hpp"
+#include "Engine/Graphics/AccelBuilder.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/IRenderContextPort.hpp"
 #include "Engine/Graphics/RenderPipeline.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Graphics/Viewport.hpp"
-
-#include "Engine/Graphics/AccelBuilder.hpp"
 
 #include "Editor/ui/Panels/ViewportPanel.hpp"
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
@@ -36,26 +35,26 @@ namespace engine {
         void run();
 
        private:
-        void                                  init();
-        void                                  setupScene();
-        void                                  setupUI();
-        void                                  setupRenderGraph();
-        void                                  update(float frameTime);
-        void                                  render(float frameTime);
-        void                                  handleViewportResize();
-        void                                  applyViewportPicking(FrameInfo& frameInfo);
-        void                                  rebuildAccelerationStructures(VkCommandBuffer commandBuffer);
-        void                                  syncStateFromFrame(const FrameInfo& frameInfo);
-        FrameInfo                             buildFrameInfo(int frameIndex, float frameTime, VkCommandBuffer commandBuffer);
-        
+        void      init();
+        void      setupScene();
+        void      setupUI();
+        void      setupRenderGraph();
+        void      update(float frameTime);
+        void      render(float frameTime);
+        void      handleViewportResize();
+        void      applyViewportPicking(FrameInfo& frameInfo);
+        void      rebuildAccelerationStructures(VkCommandBuffer commandBuffer);
+        void      syncStateFromFrame(const FrameInfo& frameInfo);
+        FrameInfo buildFrameInfo(int frameIndex, float frameTime, VkCommandBuffer commandBuffer);
+
         Window                                window;
         Device                                device{window};
         Renderer                              renderer{window, device};
         ResourceManager                       resourceManager{device};
-        int                                   debugMode = 0;
-        bool                                  rtDirectional = true;
-        bool                                  rtPoint       = true;
-        bool                                  rtSpot        = true;
+        int                                   debugMode        = 0;
+        bool                                  rtDirectional    = true;
+        bool                                  rtPoint          = true;
+        bool                                  rtSpot           = true;
         float                                 rtShadowSoftness = 0.005f;
         EngineState                           engineState;
         SceneSerializer                       sceneSerializer;
@@ -77,11 +76,11 @@ namespace engine {
         // Viewport picking is captured by the UI at the END of a frame (UI renders
         // last), but consumed at the START of the next frame's picking pass. Carry
         // the pending click across frames so the click is not lost.
-        bool                            pendingViewportClick_ = false;
-        glm::vec2                       pendingViewportMousePos_{};
-        std::unique_ptr<AccelBuilder>   accelBuilder;
+        bool                          pendingViewportClick_ = false;
+        glm::vec2                     pendingViewportMousePos_{};
+        std::unique_ptr<AccelBuilder> accelBuilder;
         using BlasInstance = std::pair<glm::mat4, VkAccelerationStructureKHR>;
-        std::vector<BlasInstance>               tlasInstances_;
+        std::vector<BlasInstance> tlasInstances_;
         // Per-instance submesh opacity data for ray-traced transparent shadows
         std::vector<uint32_t> instanceSubmeshHeaders_;
         std::vector<uint32_t> instanceSubmeshData_;

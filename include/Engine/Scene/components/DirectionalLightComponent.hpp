@@ -14,7 +14,7 @@ namespace engine {
         LightMobility lightType{LightMobility::Static};
         // When true, the light's direction/colour/intensity are driven by the
         // SkyboxSettings sun model (timeOfDay). Toggled in the Lights panel.
-        bool          isSun{false};
+        bool isSun{false};
     };
 }  // namespace engine
 #endif

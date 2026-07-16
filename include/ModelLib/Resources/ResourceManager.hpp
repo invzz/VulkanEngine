@@ -11,9 +11,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Engine/Graphics/AccelBuilder.hpp"
 #include "Engine/Graphics/Device.hpp"
 
-#include "Engine/Graphics/AccelBuilder.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
 #include "ModelLib/Resources/ResourceLRUCache.hpp"
 namespace engine {
@@ -241,12 +241,12 @@ namespace engine {
         }
 
        private:
-        Device&                                    device_;
-        std::unique_ptr<TextureManager>            textureManager_;
-        std::unique_ptr<MeshManager>               meshManager_;
-        AccelBuilder*                              accelBuilder_ = nullptr;
-        ResourceLRUCache<Texture>                  textureCache_;
-        ResourceLRUCache<Model>                    modelCache_;
+        Device&                                      device_;
+        std::unique_ptr<TextureManager>              textureManager_;
+        std::unique_ptr<MeshManager>                 meshManager_;
+        AccelBuilder*                                accelBuilder_ = nullptr;
+        ResourceLRUCache<Texture>                    textureCache_;
+        ResourceLRUCache<Model>                      modelCache_;
         std::unordered_map<std::string, std::string> contentHashToKey_;
         size_t                                       memoryBudget_ = 0;
         static std::string                           makeTextureKey(const std::string& path, bool srgb);

@@ -38,8 +38,8 @@
 #include "Engine/Systems/ModelRenderSystem.hpp"
 #include "Engine/Systems/ObjectSelectionSystem.hpp"
 #include "Engine/Systems/PickingSystem.hpp"
-#include "Engine/Systems/SelectionMaskSystem.hpp"
 #include "Engine/Systems/SelectionCompositeSystem.hpp"
+#include "Engine/Systems/SelectionMaskSystem.hpp"
 #include "Engine/Systems/ShadowSystem.hpp"
 
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
@@ -62,10 +62,10 @@ namespace {
 
 #include "Editor/RenderContext.hpp"
 #include "Editor/SceneLoader.hpp"
+#include "Editor/ui/Panels/AtmosphericPanel.hpp"
 #include "Editor/ui/Panels/InspectorPanel.hpp"
 #include "Editor/ui/Panels/PhysicsPanel.hpp"
 #include "Editor/ui/Panels/ProfilerPanel.hpp"
-#include "Editor/ui/Panels/AtmosphericPanel.hpp"
 #include "Editor/ui/Panels/ScenePanel.hpp"
 #include "Editor/ui/Panels/SettingsPanel.hpp"
 #include "Editor/ui/Panels/ToolbarPanel.hpp"
@@ -152,7 +152,7 @@ namespace engine {
                 hdrCount |= 0x80000000u;  // High bit = all submeshes opaque
             }
             submeshHeaders.push_back(static_cast<uint32_t>(submeshData.size() / 3));  // offset in struct entries
-            submeshHeaders.push_back(hdrCount);                                        // count with allOpaque flag
+            submeshHeaders.push_back(hdrCount);                                       // count with allOpaque flag
 
             for (const auto& sm : subMeshes) {
                 const float    opacity  = computeSubmeshOpacity(sm, materials);

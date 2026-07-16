@@ -49,8 +49,7 @@ namespace engine {
             auto enqueueModelLoad = [&](const std::string& fullPath, const std::string& name,
                                         const ModelInsertionOptions& opts,
                                         StaticColliderImportMode     colliderMode) {
-                
-                                            // Create async callback using ModelLoadProcessor
+                // Create async callback using ModelLoadProcessor
                 auto callback = ModelLoadProcessor::createAsyncCallback(
                     state_.scene(), fullPath, name, colliderMode);
                 // Create error callback

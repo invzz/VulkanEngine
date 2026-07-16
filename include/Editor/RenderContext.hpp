@@ -3,12 +3,12 @@
 #include <memory>
 #include <vector>
 
+#include "Engine/Graphics/AccelBuilder.hpp"
 #include "Engine/Graphics/Buffer.hpp"
 #include "Engine/Graphics/Descriptors.hpp"
 #include "Engine/Graphics/Device.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 
-#include "Engine/Graphics/AccelBuilder.hpp"
 #include "ModelLib/Resources/MeshManager.hpp"
 namespace engine {
     class RenderContext {
@@ -34,9 +34,9 @@ namespace engine {
 
         VkAccelerationStructureKHR rebuildTlas(
             const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
-            const std::vector<uint32_t>& instanceSubmeshHeaders,
-            const std::vector<uint32_t>& instanceSubmeshData,
-            VkCommandBuffer cmd);
+            const std::vector<uint32_t>&                                         instanceSubmeshHeaders,
+            const std::vector<uint32_t>&                                         instanceSubmeshData,
+            VkCommandBuffer                                                      cmd);
 
         /// Update the mesh buffer descriptor for a specific frame index so newly
         /// loaded models are visible to the shader. Call once per frame per frame index.
@@ -45,7 +45,7 @@ namespace engine {
        private:
         Device&                              device_;
         MeshManager&                         meshManager_;
-        AccelBuilder*                        accelBuilder_     = nullptr;
+        AccelBuilder*                        accelBuilder_      = nullptr;
         bool                                 rayTracingEnabled_ = false;
         std::unique_ptr<DescriptorPool>      globalPool_;
         std::unique_ptr<DescriptorSetLayout> globalSetLayout_;

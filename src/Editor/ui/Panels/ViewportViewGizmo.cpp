@@ -10,7 +10,6 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 
 #include "Editor/ui/SelectionResolve.hpp"
-
 #include "Editor/ui/ViewportGizmoCoordinates.hpp"
 namespace {
     struct ViewOrbitContext {

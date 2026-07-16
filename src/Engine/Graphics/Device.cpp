@@ -440,9 +440,9 @@ namespace engine {
         if (presentIdSupported_) {
             rtNext = reinterpret_cast<void*>(&presentIdFeaturesEnable);
         }
-        accelFeatures.pNext = rtNext;
-        rayQueryFeatures.pNext = &accelFeatures;
-        void const* pNextChain = &rayQueryFeatures;
+        accelFeatures.pNext           = rtNext;
+        rayQueryFeatures.pNext        = &accelFeatures;
+        void const*        pNextChain = &rayQueryFeatures;
         VkDeviceCreateInfo createInfo = {
             .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext                = pNextChain,

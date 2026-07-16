@@ -49,9 +49,9 @@ namespace engine {
                     // Capture the viewport image's rect + hover state NOW, before the
                     // toolbar/gizmo submit their own ImGui items and overwrite the
                     // "last item" state that IsItemHovered()/GetItemRect*() read.
-                    imageRectMin_    = ImGui::GetItemRectMin();
-                    imageRectMax_    = ImGui::GetItemRectMax();
-                    imageHovered_    = ImGui::IsItemHovered();
+                    imageRectMin_               = ImGui::GetItemRectMin();
+                    imageRectMax_               = ImGui::GetItemRectMax();
+                    imageHovered_               = ImGui::IsItemHovered();
                     bool viewportToolbarHovered = ViewportToolbar::render(frameInfo, imageTopLeft, contentAvail);
                     ViewportViewGizmo::render(frameInfo, imageTopLeft, contentAvail);
                     ViewportObjectGizmo::render(frameInfo, imageTopLeft, contentAvail);

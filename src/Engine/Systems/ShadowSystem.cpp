@@ -329,16 +329,16 @@ namespace engine {
             float prevSplit            = (c == 0) ? nearZ : cascadeSplits[c - 1];
             float splitDist            = cascadeSplits[c];
             cascadeData_[c].splitDepth = splitDist;
-            float prevSplitRatio = (prevSplit - nearZ) / (farZ - nearZ);
-            float splitRatio     = (splitDist - nearZ) / (farZ - nearZ);
+            float prevSplitRatio       = (prevSplit - nearZ) / (farZ - nearZ);
+            float splitRatio           = (splitDist - nearZ) / (farZ - nearZ);
 
             // --- 3. Compute frustum corners for this cascade slice in world space ---
             std::array<glm::vec3, 8> corners;
             for (int i = 0; i < 4; i++) {
-                glm::vec3 prevCornerVS = glm::mix(frustumCornersNearVS[i], frustumCornersFarVS[i], prevSplitRatio);
+                glm::vec3 prevCornerVS  = glm::mix(frustumCornersNearVS[i], frustumCornersFarVS[i], prevSplitRatio);
                 glm::vec3 splitCornerVS = glm::mix(frustumCornersNearVS[i], frustumCornersFarVS[i], splitRatio);
-                corners[i]     = glm::vec3(invView * glm::vec4(prevCornerVS, 1.0f));
-                corners[i + 4] = glm::vec3(invView * glm::vec4(splitCornerVS, 1.0f));
+                corners[i]              = glm::vec3(invView * glm::vec4(prevCornerVS, 1.0f));
+                corners[i + 4]          = glm::vec3(invView * glm::vec4(splitCornerVS, 1.0f));
             }
 
             // --- 4. Transform corners to light space and compute tight bounds ---
@@ -356,8 +356,8 @@ namespace engine {
             maxBounds += glm::vec3(padX, padY, 0.0f);
             // Extend the near/far planes to capture geometry that may cast shadows
             // from outside the visible frustum slice.
-            minBounds.z               = -100.0f;  // extend far behind the frustum
-            maxBounds.z               = std::max(maxBounds.z + 50.0f, 100.0f);
+            minBounds.z = -100.0f;  // extend far behind the frustum
+            maxBounds.z = std::max(maxBounds.z + 50.0f, 100.0f);
 
             // --- 6. Texel snapping — snap ortho bounds to texel grid units to
             //    prevent shimmering when the camera rotates or translates.

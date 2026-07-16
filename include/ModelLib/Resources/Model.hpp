@@ -101,7 +101,7 @@ namespace engine {
             int      materialId;
             uint32_t meshletOffset = 0;
             uint32_t meshletCount  = 0;
-            int      nodeIndex = -1;  // glTF node that instantiates this sub-mesh (-1 if not node-bound)
+            int      nodeIndex     = -1;  // glTF node that instantiates this sub-mesh (-1 if not node-bound)
         };
         struct AnimationSampler {
             enum Interpolation : std::uint8_t {
@@ -194,8 +194,8 @@ namespace engine {
             std::vector<Animation>                    animations;
             std::vector<Node>                         nodes;
             std::unordered_map<int, std::vector<int>> nodePrimitiveIndices;
-            std::unordered_map<uint64_t, uint32_t> primitiveVertexOffsets;
-            std::unordered_map<uint64_t, uint32_t> primitiveVertexCounts;
+            std::unordered_map<uint64_t, uint32_t>    primitiveVertexOffsets;
+            std::unordered_map<uint64_t, uint32_t>    primitiveVertexCounts;
             std::vector<MorphTargetSet>               morphTargetSets;
             std::vector<LightInfo>                    lights;
             std::string                               filePath;

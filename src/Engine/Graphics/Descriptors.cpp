@@ -281,7 +281,7 @@ namespace engine {
         assert(setLayout.bindings.count(binding) == 1 && "Layout does not contain specified binding");
         const auto& bindingDescription = setLayout.bindings[binding];
         assert(bindingDescription.descriptorType == VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR &&
-            "Binding is not an acceleration structure type");
+               "Binding is not an acceleration structure type");
 
         VkWriteDescriptorSetAccelerationStructureKHR accelWrite{};
         accelWrite.sType                      = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -289,10 +289,10 @@ namespace engine {
         accelWrite.pAccelerationStructures    = &accelStructHandles_.emplace_back(accel);
 
         VkWriteDescriptorSet write{};
-        write.sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.descriptorType = bindingDescription.descriptorType;
-        write.dstBinding     = binding;
-        write.pNext          = &accelWrites.emplace_back(accelWrite);
+        write.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.descriptorType  = bindingDescription.descriptorType;
+        write.dstBinding      = binding;
+        write.pNext           = &accelWrites.emplace_back(accelWrite);
         write.descriptorCount = 1;
         writes.push_back(write);
         return *this;

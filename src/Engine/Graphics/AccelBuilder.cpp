@@ -68,8 +68,8 @@ namespace engine {
         VkAccelerationStructureDeviceAddressInfoKHR addressInfo{};
         addressInfo.sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
         addressInfo.accelerationStructure = accel;
-        VkDeviceAddress address = vkGetAccelerationStructureDeviceAddressKHR_(device_.device(), &addressInfo);
-        (void)address;
+        VkDeviceAddress address           = vkGetAccelerationStructureDeviceAddressKHR_(device_.device(), &addressInfo);
+        (void) address;
         return Buffer(device_, 1, 1, VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     }
@@ -86,7 +86,7 @@ namespace engine {
         if (blasScratch_ && blasScratchSize_ >= size)
             return;
         blasScratch_.reset();
-        blasScratch_ = std::make_unique<Buffer>(device_,
+        blasScratch_     = std::make_unique<Buffer>(device_,
             1, static_cast<uint32_t>(size),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
@@ -99,7 +99,7 @@ namespace engine {
         if (tlasScratch_ && tlasScratchSize_ >= size)
             return;
         tlasScratch_.reset();
-        tlasScratch_ = std::make_unique<Buffer>(device_,
+        tlasScratch_     = std::make_unique<Buffer>(device_,
             1, static_cast<uint32_t>(size),
             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
@@ -129,30 +129,30 @@ namespace engine {
         }
 
         VkDeviceAddress vertexAddress = model.getVertexBufferAddress();
-        bool hasIndices = (indexBuf != VK_NULL_HANDLE);
-        VkDeviceAddress indexAddress = 0;
+        bool            hasIndices    = (indexBuf != VK_NULL_HANDLE);
+        VkDeviceAddress indexAddress  = 0;
         if (hasIndices) {
             indexAddress = model.getIndexBufferAddress();
         }
 
-        uint32_t vertexCount = model.getVertexCount();
-        uint32_t indexCount  = model.getIndexCount();
+        uint32_t                           vertexCount = model.getVertexCount();
+        uint32_t                           indexCount  = model.getIndexCount();
         VkAccelerationStructureGeometryKHR geometry{};
         geometry.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
         geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
         geometry.flags        = VK_GEOMETRY_OPAQUE_BIT_KHR;
         geometry.geometry.triangles.sType =
             VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-        geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+        geometry.geometry.triangles.vertexFormat             = VK_FORMAT_R32G32B32_SFLOAT;
         geometry.geometry.triangles.vertexData.deviceAddress = vertexAddress +
-            offsetof(Model::Vertex, position);
-        geometry.geometry.triangles.vertexStride = sizeof(Model::Vertex);
-        geometry.geometry.triangles.maxVertex    = vertexCount;
+                                                               offsetof(Model::Vertex, position);
+        geometry.geometry.triangles.vertexStride             = sizeof(Model::Vertex);
+        geometry.geometry.triangles.maxVertex                = vertexCount;
         if (hasIndices) {
-            geometry.geometry.triangles.indexType      = VK_INDEX_TYPE_UINT32;
+            geometry.geometry.triangles.indexType               = VK_INDEX_TYPE_UINT32;
             geometry.geometry.triangles.indexData.deviceAddress = indexAddress;
         } else {
-            geometry.geometry.triangles.indexType      = VK_INDEX_TYPE_NONE_KHR;
+            geometry.geometry.triangles.indexType = VK_INDEX_TYPE_NONE_KHR;
         }
 
         // Build size info
@@ -164,7 +164,7 @@ namespace engine {
         buildInfo.pGeometries   = &geometry;
 
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
-        sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        sizeInfo.sType          = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
         uint32_t primitiveCount = hasIndices ? (indexCount / 3) : (vertexCount / 3);
         vkGetAccelerationStructureBuildSizesKHR_(device_.device(),
             VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
@@ -187,22 +187,22 @@ namespace engine {
         createInfo.size   = sizeInfo.accelerationStructureSize;
         createInfo.type   = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
 
-        VkAccelerationStructureKHR blas = VK_NULL_HANDLE;
-        VkResult result = vkCreateAccelerationStructureKHR_(device_.device(), &createInfo, nullptr, &blas);
+        VkAccelerationStructureKHR blas   = VK_NULL_HANDLE;
+        VkResult                   result = vkCreateAccelerationStructureKHR_(device_.device(), &createInfo, nullptr, &blas);
         if (result != VK_SUCCESS || blas == VK_NULL_HANDLE) {
             Logger::error(LogChannel::Scene, "[AccelBuilder] Failed to create BLAS");
             return;
         }
 
         // Build on device via one-time command
-        buildInfo.dstAccelerationStructure = blas;
+        buildInfo.dstAccelerationStructure  = blas;
         buildInfo.scratchData.deviceAddress = blasScratch_->getDeviceAddress();
 
         VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
-        rangeInfo.primitiveCount  = hasIndices ? (indexCount / 3) : (vertexCount / 3);
-        rangeInfo.primitiveOffset = 0;
-        rangeInfo.firstVertex     = 0;
-        rangeInfo.transformOffset = 0;
+        rangeInfo.primitiveCount                                   = hasIndices ? (indexCount / 3) : (vertexCount / 3);
+        rangeInfo.primitiveOffset                                  = 0;
+        rangeInfo.firstVertex                                      = 0;
+        rangeInfo.transformOffset                                  = 0;
         const VkAccelerationStructureBuildRangeInfoKHR* pRangeInfo = &rangeInfo;
 
         VkCommandBuffer cmd = device_.beginSingleTimeCommands();
@@ -210,7 +210,7 @@ namespace engine {
         device_.endSingleTimeCommands(cmd);
 
         // Store
-        blasMap_[&model]    = blas;
+        blasMap_[&model]     = blas;
         blasBuffers_[&model] = std::move(blasBuffer);
 
         Logger::info(LogChannel::Scene, "[AccelBuilder] Built BLAS for model \"",
@@ -219,7 +219,7 @@ namespace engine {
 
     void AccelBuilder::destroyBlas(const Model& model) {
         std::scoped_lock const lock(mutex_);
-        auto it = blasMap_.find(&model);
+        auto                   it = blasMap_.find(&model);
         if (it != blasMap_.end()) {
             if (it->second != VK_NULL_HANDLE) {
                 vkDestroyAccelerationStructureKHR_(device_.device(), it->second, nullptr);
@@ -231,8 +231,7 @@ namespace engine {
 
     VkAccelerationStructureKHR AccelBuilder::rebuildTlas(
         const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
-        VkCommandBuffer cmd) {
-
+        VkCommandBuffer                                                      cmd) {
         uint32_t instanceCount = static_cast<uint32_t>(instances.size());
 
         // No instances — nothing to build. Destroy any previous TLAS and return.
@@ -261,7 +260,7 @@ namespace engine {
             VkAccelerationStructureDeviceAddressInfoKHR addrInfo{};
             addrInfo.sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
             addrInfo.accelerationStructure = blas;
-            VkDeviceAddress blasAddr = vkGetAccelerationStructureDeviceAddressKHR_(
+            VkDeviceAddress blasAddr       = vkGetAccelerationStructureDeviceAddressKHR_(
                 device_.device(), &addrInfo);
 
             VkAccelerationStructureInstanceKHR inst{};
@@ -270,13 +269,13 @@ namespace engine {
             inst.mask                                   = 0xFF;
             inst.instanceShaderBindingTableRecordOffset = 0;
             inst.flags                                  = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-            inst.accelerationStructureReference          = blasAddr;
-            instanceData[i] = inst;
+            inst.accelerationStructureReference         = blasAddr;
+            instanceData[i]                             = inst;
         }
 
         // Upload instance data
         VkDeviceSize instanceBufferSize = sizeof(VkAccelerationStructureInstanceKHR) * instanceCount;
-        tlasInstanceBuffer_ = std::make_unique<Buffer>(device_,
+        tlasInstanceBuffer_             = std::make_unique<Buffer>(device_,
             sizeof(VkAccelerationStructureInstanceKHR), instanceCount,
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                 VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
@@ -304,7 +303,7 @@ namespace engine {
         buildInfo.pGeometries   = &geometry;
 
         VkAccelerationStructureBuildSizesInfoKHR sizeInfo{};
-        sizeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        sizeInfo.sType            = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
         uint32_t maxInstanceCount = instanceCount;
         vkGetAccelerationStructureBuildSizesKHR_(device_.device(),
             VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR,
@@ -339,14 +338,14 @@ namespace engine {
         }
 
         // Build TLAS
-        buildInfo.dstAccelerationStructure = tlas_;
+        buildInfo.dstAccelerationStructure  = tlas_;
         buildInfo.scratchData.deviceAddress = tlasScratch_->getDeviceAddress();
 
         VkAccelerationStructureBuildRangeInfoKHR rangeInfo{};
-        rangeInfo.primitiveCount  = instanceCount;
-        rangeInfo.primitiveOffset = 0;
-        rangeInfo.firstVertex     = 0;
-        rangeInfo.transformOffset = 0;
+        rangeInfo.primitiveCount                                   = instanceCount;
+        rangeInfo.primitiveOffset                                  = 0;
+        rangeInfo.firstVertex                                      = 0;
+        rangeInfo.transformOffset                                  = 0;
         const VkAccelerationStructureBuildRangeInfoKHR* pRangeInfo = &rangeInfo;
 
         vkCmdBuildAccelerationStructuresKHR_(cmd, 1, &buildInfo, &pRangeInfo);
@@ -368,7 +367,7 @@ namespace engine {
         VkAccelerationStructureDeviceAddressInfoKHR addrInfo{};
         addrInfo.sType                 = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
         addrInfo.accelerationStructure = tlas_;
-        tlasAddress_ = vkGetAccelerationStructureDeviceAddressKHR_(device_.device(), &addrInfo);
+        tlasAddress_                   = vkGetAccelerationStructureDeviceAddressKHR_(device_.device(), &addrInfo);
 
         return tlas_;
     }

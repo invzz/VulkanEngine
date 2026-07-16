@@ -114,35 +114,35 @@ namespace engine {
         PFN_vkCmdDrawMeshTasksEXT       vkCmdDrawMeshTasksEXT = nullptr;
 
        private:
-        [[nodiscard]] bool                                                         checkValidationLayerSupport() const;
-        [[nodiscard]] std::vector<const char*>                                     getRequiredExtensions() const;
-        void                                                                       createInstance();
-        void                                                                       setupDebugMessenger();
-        void                                                                       createSurface();
-        void                                                                       pickPhysicalDevice();
-        void                                                                       createLogicalDevice();
-        void                                                                       createCommandPool();
-        bool                                                                       isDeviceSuitable(VkPhysicalDevice device);
-        QueueFamilyIndices                                                         findQueueFamilies(VkPhysicalDevice device);
-        static void                                                                populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
-        static bool                                                                hasGlfwRequiredInstanceExtensions();
-        bool                                                                       checkDeviceExtensionSupport(VkPhysicalDevice device) const;
-        SwapChainSupportDetails                                                    querySwapChainSupport(VkPhysicalDevice device);
-        [[nodiscard]] static bool                                                  resolveValidationLayersEnabled();
-        VkInstance                                                                 instance = VK_NULL_HANDLE;
-        VkPhysicalDeviceProperties                                                 properties;
-        std::unique_ptr<class DebugMessenger>                                      debugMessenger;
-        std::unique_ptr<class ThreadLocalCommandPool>                              threadLocalCommandPools_;
-        VkPhysicalDevice                                                           physicalDevice         = VK_NULL_HANDLE;
-        bool                                                                       enableValidationLayers = kBuildValidationLayersEnabled;
-        Window&                                                                    window;
-        VkCommandPool                                                              commandPool      = VK_NULL_HANDLE;
-        VkDevice                                                                   device_          = VK_NULL_HANDLE;
-        VkSurfaceKHR                                                               surface_         = VK_NULL_HANDLE;
-        VkQueue                                                                    graphicsQueue_   = VK_NULL_HANDLE;
-        VkQueue                                                                    presentQueue_    = VK_NULL_HANDLE;
-        const std::vector<const char*>                                             validationLayers = {"VK_LAYER_KHRONOS_validation"};
-        const std::vector<const char*> deviceExtensions = {
+        [[nodiscard]] bool                            checkValidationLayerSupport() const;
+        [[nodiscard]] std::vector<const char*>        getRequiredExtensions() const;
+        void                                          createInstance();
+        void                                          setupDebugMessenger();
+        void                                          createSurface();
+        void                                          pickPhysicalDevice();
+        void                                          createLogicalDevice();
+        void                                          createCommandPool();
+        bool                                          isDeviceSuitable(VkPhysicalDevice device);
+        QueueFamilyIndices                            findQueueFamilies(VkPhysicalDevice device);
+        static void                                   populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
+        static bool                                   hasGlfwRequiredInstanceExtensions();
+        bool                                          checkDeviceExtensionSupport(VkPhysicalDevice device) const;
+        SwapChainSupportDetails                       querySwapChainSupport(VkPhysicalDevice device);
+        [[nodiscard]] static bool                     resolveValidationLayersEnabled();
+        VkInstance                                    instance = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties                    properties;
+        std::unique_ptr<class DebugMessenger>         debugMessenger;
+        std::unique_ptr<class ThreadLocalCommandPool> threadLocalCommandPools_;
+        VkPhysicalDevice                              physicalDevice         = VK_NULL_HANDLE;
+        bool                                          enableValidationLayers = kBuildValidationLayersEnabled;
+        Window&                                       window;
+        VkCommandPool                                 commandPool      = VK_NULL_HANDLE;
+        VkDevice                                      device_          = VK_NULL_HANDLE;
+        VkSurfaceKHR                                  surface_         = VK_NULL_HANDLE;
+        VkQueue                                       graphicsQueue_   = VK_NULL_HANDLE;
+        VkQueue                                       presentQueue_    = VK_NULL_HANDLE;
+        const std::vector<const char*>                validationLayers = {"VK_LAYER_KHRONOS_validation"};
+        const std::vector<const char*>                deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
             VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
             VK_KHR_RAY_QUERY_EXTENSION_NAME,

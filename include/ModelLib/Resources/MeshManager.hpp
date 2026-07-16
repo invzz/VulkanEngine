@@ -19,8 +19,8 @@ namespace engine {
         static VkDescriptorSetLayoutBinding  getDescriptorSetLayoutBinding();
 
        private:
-        Device&                                    device;
-        std::unique_ptr<Buffer>                    meshBuffer;
+        Device&                 device;
+        std::unique_ptr<Buffer> meshBuffer;
         /// Previous mesh buffers kept alive until all in-flight frames
         /// referencing them via descriptor sets have retired.
         std::vector<std::unique_ptr<Buffer>>       staleBuffers_;

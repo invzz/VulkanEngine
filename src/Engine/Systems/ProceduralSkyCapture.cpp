@@ -9,14 +9,13 @@
 #include "Engine/Graphics/DeviceMemory.hpp"
 #include "Engine/Graphics/Pipeline.hpp"
 #include "Engine/Scene/Skybox.hpp"
-#include "Engine/Systems/SkyboxRenderSystem.hpp"
 #include "Engine/Systems/IBL/IBLHelpers.hpp"
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 #include "glm/ext/matrix_clip_space.hpp"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/trigonometric.hpp"
-
 #include "vulkan/vulkan_core.h"
 
 namespace engine {
@@ -78,11 +77,11 @@ namespace engine {
             vkDestroySampler(device_.device(), sampler_, nullptr);
         }
         pipeline_.reset();
-        layout_ = VK_NULL_HANDLE;
+        layout_     = VK_NULL_HANDLE;
         renderPass_ = VK_NULL_HANDLE;
-        pool_ = VK_NULL_HANDLE;
-        setLayout_ = VK_NULL_HANDLE;
-        sampler_ = VK_NULL_HANDLE;
+        pool_       = VK_NULL_HANDLE;
+        setLayout_  = VK_NULL_HANDLE;
+        sampler_    = VK_NULL_HANDLE;
 
         // --- Render pass: one RGBA16F color attachment, no depth ---
         VkAttachmentDescription attachment{};
@@ -147,7 +146,7 @@ namespace engine {
             std::string(SHADER_PATH) + "skybox_fullscreen.frag.spv",
             config);
 
-        VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0};
+        VkDescriptorPoolSize       poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0};
         VkDescriptorPoolCreateInfo dpInfo{};
         dpInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         dpInfo.maxSets       = 1;
@@ -217,7 +216,7 @@ namespace engine {
                 viewInfo.subresourceRange.levelCount     = 1;
                 viewInfo.subresourceRange.baseArrayLayer = i;
                 viewInfo.subresourceRange.layerCount     = 1;
-                VkImageView faceView = VK_NULL_HANDLE;
+                VkImageView faceView                     = VK_NULL_HANDLE;
                 if (vkCreateImageView(device_.device(), &viewInfo, nullptr, &faceView) != VK_SUCCESS) {
                     throw std::runtime_error("ProceduralSkyCapture: failed to create face view");
                 }
@@ -231,7 +230,7 @@ namespace engine {
                 fbInfo.width           = faceSize;
                 fbInfo.height          = faceSize;
                 fbInfo.layers          = 1;
-                VkFramebuffer fb = VK_NULL_HANDLE;
+                VkFramebuffer fb       = VK_NULL_HANDLE;
                 if (vkCreateFramebuffer(device_.device(), &fbInfo, nullptr, &fb) != VK_SUCCESS) {
                     throw std::runtime_error("ProceduralSkyCapture: failed to create framebuffer");
                 }
@@ -256,12 +255,12 @@ namespace engine {
         if (glm::all(glm::equal(sunCol, glm::vec3(0.0f)))) {
             sunCol = glm::vec3(1.0f, 0.35f, 0.1f);
         }
-        const float nightFactor      = glm::smoothstep(-0.05f, 0.15f, sunDir.y);
+        const float nightFactor        = glm::smoothstep(-0.05f, 0.15f, sunDir.y);
         const float effectiveIntensity = settings.skyIntensity * glm::mix(0.02f, 1.0f, nightFactor);
 
         // Face order MUST match cubeDir() in skybox_fullscreen.frag:
         // 0:+Z 1:-Z 2:+Y 3:-Y 4:+X 5:-X
-        constexpr int kFaces = 6;
+        constexpr int   kFaces               = 6;
         const glm::mat4 captureViews[kFaces] = {
             glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
             glm::lookAt(glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
@@ -289,9 +288,9 @@ namespace engine {
             rpBegin.renderArea.offset = {0, 0};
             rpBegin.renderArea.extent = {faceSize, faceSize};
             VkClearValue clearValue{};
-            clearValue.color = {{0.0f, 0.0f, 0.0f, 1.0f}};
-            rpBegin.clearValueCount   = 1;
-            rpBegin.pClearValues      = &clearValue;
+            clearValue.color        = {{0.0f, 0.0f, 0.0f, 1.0f}};
+            rpBegin.clearValueCount = 1;
+            rpBegin.pClearValues    = &clearValue;
 
             vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
             VkViewport viewport{};

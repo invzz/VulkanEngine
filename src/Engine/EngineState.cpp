@@ -6,17 +6,17 @@
 #include "Engine/Core/Window.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Scene/Skybox.hpp"
+#include "Engine/Scene/SunLight.hpp"
 #include "Engine/Scene/components/CameraComponent.hpp"
 #include "Engine/Scene/components/DirectionalLightComponent.hpp"
 #include "Engine/Scene/components/NameComponent.hpp"
 #include "Engine/Scene/components/PointLightComponent.hpp"
 #include "Engine/Scene/components/SpotLightComponent.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
-#include "Engine/Scene/SunLight.hpp"
 #include "Engine/Systems/IBL/VTexIO.hpp"
-#include "Engine/Systems/ProceduralSkyCapture.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 #include "Engine/Systems/PhysicsSystem.hpp"
+#include "Engine/Systems/ProceduralSkyCapture.hpp"
 
 #include "EngineSceneIO/Scene/SceneSerializer.hpp"
 #include "ModelLib/Resources/TextureManager.hpp"
@@ -62,11 +62,11 @@ namespace engine {
         if (renderContextPort_ == nullptr) {
             throw RuntimeException("initCore: null");
         }
-        auto rp      = r.getOffscreenRenderPassLoadColorDepth();
-        auto sl      = renderContextPort_->getGlobalSetLayout();
-        cameraSys_   = std::make_unique<CameraSystem>(d, rp, sl);
-        colliderDbg_ = std::make_unique<ColliderDebugRenderSystem>(d, rp, sl);
-        selMask_     = std::make_unique<SelectionMaskSystem>(d, r.getSelectionMaskRenderPass(), sl);
+        auto rp       = r.getOffscreenRenderPassLoadColorDepth();
+        auto sl       = renderContextPort_->getGlobalSetLayout();
+        cameraSys_    = std::make_unique<CameraSystem>(d, rp, sl);
+        colliderDbg_  = std::make_unique<ColliderDebugRenderSystem>(d, rp, sl);
+        selMask_      = std::make_unique<SelectionMaskSystem>(d, r.getSelectionMaskRenderPass(), sl);
         selComposite_ = std::make_unique<SelectionCompositeSystem>(d, r.getSelectionOutlineRenderPass(), r);
         registerSystem(cameraSys_);
         registerSystem(colliderDbg_);
@@ -264,12 +264,12 @@ namespace engine {
         // frame from tiny steps. Latitude/day use a fixed dead-band. Scattering
         // params are rare manual tweaks -> always rebake immediately on change.
         constexpr float kTimeOfDayDelta = 0.05f;  // hours (accumulated)
-        constexpr float kLatDelta        = 0.5f;    // degrees
-        constexpr int   kDayDelta        = 1;        // day-of-year
+        constexpr float kLatDelta       = 0.5f;   // degrees
+        constexpr int   kDayDelta       = 1;      // day-of-year
 
         float const timeStep =
             (procIblSampledTime_ < -1e8f) ? (kTimeOfDayDelta + 1.0f)
-                                            : std::fabs(s.timeOfDay - procIblSampledTime_);
+                                          : std::fabs(s.timeOfDay - procIblSampledTime_);
         procIblSampledTime_ = s.timeOfDay;
         procIblPendingTime_ += timeStep;
 
@@ -311,7 +311,7 @@ namespace engine {
 
         // Find the entity flagged as the sun light.
         entt::entity sunEntity = entt::null;
-        auto view = reg.view<DirectionalLightComponent, TransformComponent>();
+        auto         view      = reg.view<DirectionalLightComponent, TransformComponent>();
         for (auto e : view) {
             if (reg.get<DirectionalLightComponent>(e).isSun) {
                 sunEntity = e;
@@ -323,7 +323,7 @@ namespace engine {
         }
 
         const glm::vec3 sunDir = sunDirectionFromTimeOfDay(s.timeOfDay, s.latitude, static_cast<float>(s.dayOfYear));
-        const float elev = sunDir.y;
+        const float     elev   = sunDir.y;
 
         // Direction: the light's stored `direction` is the light's *travel*
         // direction (the deferred shader computes L = -direction, i.e. the
@@ -334,7 +334,7 @@ namespace engine {
         //   direction = -sunDir
         // (The cubemap Y-flip in skybox_fullscreen.frag applies only to real
         // cubemap sampling, not to the procedural dome, so no flip here.)
-        auto& transform = reg.get<TransformComponent>(sunEntity);
+        auto&           transform      = reg.get<TransformComponent>(sunEntity);
         const glm::vec3 lightTravelDir = sunDir;
         transform.lookAt(transform.translation + lightTravelDir);
 
@@ -349,11 +349,11 @@ namespace engine {
             sunCol = glm::vec3(1.0f, 0.35f, 0.1f);  // below horizon: warm ember
         }
 
-        const float nightFactor = glm::smoothstep(-0.05f, 0.15f, elev);
+        const float nightFactor        = glm::smoothstep(-0.05f, 0.15f, elev);
         const float effectiveIntensity = s.sunIntensity * glm::mix(0.02f, 1.0f, nightFactor);
 
-        auto& dl = reg.get<DirectionalLightComponent>(sunEntity);
-        dl.color = sunCol;
+        auto& dl     = reg.get<DirectionalLightComponent>(sunEntity);
+        dl.color     = sunCol;
         dl.intensity = effectiveIntensity;
     }
     bool EngineState::loadIBL(const char* p) {

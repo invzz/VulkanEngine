@@ -79,8 +79,8 @@ namespace engine {
         if (auto cached = textureCache_.find(key, priority)) {
             return cached;
         }
-        auto        texture = std::make_shared<Texture>(device_, path, srgb, flipY);
-        auto        stored  = textureCache_.insert(key, texture, memoryBudget_, priority);
+        auto           texture     = std::make_shared<Texture>(device_, path, srgb, flipY);
+        auto           stored      = textureCache_.insert(key, texture, memoryBudget_, priority);
         uint32_t const globalIndex = textureManager_->addTexture(stored);
         stored->setGlobalIndex(globalIndex);
         return stored;
@@ -143,7 +143,7 @@ namespace engine {
                 std::cerr << "ResourceManager: failed loading material textures for " << path << ": " << e.what() << '\n';
             }
         }
-        auto stored = modelCache_.insert(key, model, memoryBudget_, priority);
+        auto           stored = modelCache_.insert(key, model, memoryBudget_, priority);
         uint32_t const meshId = meshManager_->registerModel(stored.get());
         stored->setMeshId(meshId);
         // Build BLAS for raytracing if available
@@ -169,14 +169,14 @@ namespace engine {
         cacheKey = "embedded:" + contentHash + "|" + debugName + (srgb ? "|srgb" : "|linear");
         // Check direct key (e.g. if hash-to-key mapping was lost but texture still alive)
         if (auto cached = textureCache_.find(cacheKey, priority)) {
-            contentHashToKey_[contentHash] = cacheKey; // repair the hash map
+            contentHashToKey_[contentHash] = cacheKey;  // repair the hash map
             return cached;
         }
-        std::string const tempPath = "/tmp/embedded_texture_" + contentHash + ".dat";
-        auto              texture  = std::make_shared<Texture>(device_, tempPath, srgb);
-        auto              stored   = textureCache_.insert(cacheKey, texture, memoryBudget_, priority);
+        std::string const tempPath     = "/tmp/embedded_texture_" + contentHash + ".dat";
+        auto              texture      = std::make_shared<Texture>(device_, tempPath, srgb);
+        auto              stored       = textureCache_.insert(cacheKey, texture, memoryBudget_, priority);
         contentHashToKey_[contentHash] = cacheKey;
-        uint32_t const globalIndex = textureManager_->addTexture(stored);
+        uint32_t const globalIndex     = textureManager_->addTexture(stored);
         stored->setGlobalIndex(globalIndex);
         return stored;
     }

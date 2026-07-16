@@ -1,12 +1,14 @@
 #include "Editor/ui/Panels/AtmosphericPanel.hpp"
 
 #include <imgui.h>
+
 #include <algorithm>
 #include <cstdio>
 
+#include "Engine/Systems/SkyboxRenderSystem.hpp"
+
 #include "Editor/ui/UI.hpp"
 #include "IconsFontAwesome6.h"
-#include "Engine/Systems/SkyboxRenderSystem.hpp"
 
 namespace engine {
 
@@ -55,10 +57,10 @@ namespace engine {
             ImGui::Text("Sky Mode");
             ImGui::Separator();
             static const char* skyModeLabels[] = {"None", "Procedural", "Cubemap"};
-            static int skyModeCur = (int)settings_.skyMode;
+            static int         skyModeCur      = (int) settings_.skyMode;
             ImGui::PushItemWidth(-1);
             if (ImGui::Combo("##skyMode", &skyModeCur, skyModeLabels, 3)) {
-                settings_.skyMode = (SkyMode)skyModeCur;
+                settings_.skyMode = (SkyMode) skyModeCur;
             }
         } else {
             // Show current sky mode even when procedural is off
@@ -66,10 +68,10 @@ namespace engine {
             ImGui::Text("Sky Mode");
             ImGui::Separator();
             static const char* skyModeLabels[] = {"None", "Procedural", "Cubemap"};
-            static int skyModeCur = (int)settings_.skyMode;
+            static int         skyModeCur      = (int) settings_.skyMode;
             ImGui::PushItemWidth(-1);
             if (ImGui::Combo("##skyModeGlobal", &skyModeCur, skyModeLabels, 3)) {
-                settings_.skyMode = (SkyMode)skyModeCur;
+                settings_.skyMode = (SkyMode) skyModeCur;
             }
         }
 

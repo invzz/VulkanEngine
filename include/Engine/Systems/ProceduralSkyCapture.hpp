@@ -1,7 +1,8 @@
 #ifndef VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_PROCEDURALESKYCAPTURE_HPP
 #define VULKANENGINE_INCLUDE_ENGINE_SYSTEMS_PROCEDURALESKYCAPTURE_HPP
-#include <memory>
 #include <vulkan/vulkan.h>
+
+#include <memory>
 
 #include "Engine/Scene/Skybox.hpp"
 #include "Engine/Scene/SunLight.hpp"
@@ -29,20 +30,20 @@ namespace engine {
         void ensurePipeline(uint32_t faceSize);
         void ensureRenderTargets(uint32_t faceSize);
 
-        class Device&       device_;
+        class Device&                   device_;
         std::unique_ptr<class Pipeline> pipeline_;
-        VkPipelineLayout    layout_     = VK_NULL_HANDLE;
-        VkRenderPass       renderPass_ = VK_NULL_HANDLE;
-        VkDescriptorPool   pool_       = VK_NULL_HANDLE;
-        VkDescriptorSetLayout setLayout_ = VK_NULL_HANDLE;
-        VkDescriptorSet    descSet_    = VK_NULL_HANDLE;
-        VkSampler          sampler_    = VK_NULL_HANDLE;
+        VkPipelineLayout                layout_     = VK_NULL_HANDLE;
+        VkRenderPass                    renderPass_ = VK_NULL_HANDLE;
+        VkDescriptorPool                pool_       = VK_NULL_HANDLE;
+        VkDescriptorSetLayout           setLayout_  = VK_NULL_HANDLE;
+        VkDescriptorSet                 descSet_    = VK_NULL_HANDLE;
+        VkSampler                       sampler_    = VK_NULL_HANDLE;
 
-        std::unique_ptr<Skybox> target_;
-        uint32_t                 targetSize_ = 0;
-        bool                     targetTransitioned_ = false;
+        std::unique_ptr<Skybox>    target_;
+        uint32_t                   targetSize_         = 0;
+        bool                       targetTransitioned_ = false;
         std::vector<VkFramebuffer> framebuffers_;
-        std::vector<VkImageView>  faceViews_;
+        std::vector<VkImageView>   faceViews_;
     };
 }  // namespace engine
 #endif

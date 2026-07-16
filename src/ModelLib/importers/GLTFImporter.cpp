@@ -15,12 +15,12 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <future>
 #include <iostream>
-#include <cstring>
 #include <tiny_gltf.h>
 #include <unordered_map>
 
@@ -107,49 +107,64 @@ namespace engine {
             }
             return "";
         }
-    struct PrimitivePatch {
-        std::vector<Model::Vertex> vertices;
-        std::vector<uint32_t> positionIndices;
-        uint32_t               indexCount = 0;
-    };
-    PrimitivePatch buildPrimitivePatch(const tinygltf::Model& model,
-        const tinygltf::Primitive& p, const glm::mat4& xf, bool anim,
-        int matId, bool hasMorph, float xM, float yM, float zM) {
-        PrimitivePatch pp;
-        const auto& pa = model.accessors[p.attributes.at("POSITION")];
-        const auto* ps = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[pa.bufferView].buffer].data[
-            model.bufferViews[pa.bufferView].byteOffset + pa.byteOffset]);
-        const float* ns = nullptr, *ts = nullptr;
-        if (p.attributes.contains("NORMAL")) { const auto& na = model.accessors[p.attributes.at("NORMAL")];
-            ns = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[na.bufferView].buffer].data[
-                model.bufferViews[na.bufferView].byteOffset + na.byteOffset]); }
-        if (p.attributes.contains("TEXCOORD_0")) { const auto& ta = model.accessors[p.attributes.at("TEXCOORD_0")];
-            ts = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[ta.bufferView].buffer].data[
-                model.bufferViews[ta.bufferView].byteOffset + ta.byteOffset]); }
-        const auto& ia = model.accessors[p.indices];
-        const uint8_t* id = &model.buffers[model.bufferViews[ia.bufferView].buffer].data[
-            model.bufferViews[ia.bufferView].byteOffset + ia.byteOffset];
-        pp.vertices.reserve(ia.count);
-        if (hasMorph) pp.positionIndices.reserve(ia.count);
-        glm::mat3 nm; if (!anim && ns) nm = glm::transpose(glm::inverse(glm::mat3(xf)));
-        for (size_t i = 0; i < ia.count; i++) {
-            uint32_t idx = 0;
-            if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) idx = ((const uint16_t*)id)[i];
-            else if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) idx = ((const uint32_t*)id)[i];
-            else if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) idx = id[i];
-            Model::Vertex v{}; v.materialId = matId;
-            if (anim) v.position = {xM*ps[idx*3], yM*ps[idx*3+1], zM*ps[idx*3+2]};
-            else { auto tr = xf * glm::vec4(ps[idx*3], ps[idx*3+1], ps[idx*3+2], 1); v.position = {xM*tr.x, yM*tr.y, zM*tr.z}; }
-            if (ns) { glm::vec3 wn = anim ? glm::vec3(ns[idx*3], ns[idx*3+1], ns[idx*3+2]) : glm::normalize(nm * glm::vec3(ns[idx*3], ns[idx*3+1], ns[idx*3+2]));
-                v.normal = {xM*wn.x, yM*wn.y, zM*wn.z}; } else v.normal = {0,1,0};
-            v.uv = ts ? glm::vec2(ts[idx*2], 1-ts[idx*2+1]) : glm::vec2(0);
-            v.color = {1,1,1};
-            pp.vertices.push_back(v);
-            if (hasMorph) pp.positionIndices.push_back(idx);
+        struct PrimitivePatch {
+            std::vector<Model::Vertex> vertices;
+            std::vector<uint32_t>      positionIndices;
+            uint32_t                   indexCount = 0;
+        };
+        PrimitivePatch buildPrimitivePatch(const tinygltf::Model& model,
+            const tinygltf::Primitive& p, const glm::mat4& xf, bool anim,
+            int matId, bool hasMorph, float xM, float yM, float zM) {
+            PrimitivePatch pp;
+            const auto&    pa = model.accessors[p.attributes.at("POSITION")];
+            const auto*    ps = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[pa.bufferView].buffer].data[model.bufferViews[pa.bufferView].byteOffset + pa.byteOffset]);
+            const float *  ns = nullptr, *ts = nullptr;
+            if (p.attributes.contains("NORMAL")) {
+                const auto& na = model.accessors[p.attributes.at("NORMAL")];
+                ns             = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[na.bufferView].buffer].data[model.bufferViews[na.bufferView].byteOffset + na.byteOffset]);
+            }
+            if (p.attributes.contains("TEXCOORD_0")) {
+                const auto& ta = model.accessors[p.attributes.at("TEXCOORD_0")];
+                ts             = reinterpret_cast<const float*>(&model.buffers[model.bufferViews[ta.bufferView].buffer].data[model.bufferViews[ta.bufferView].byteOffset + ta.byteOffset]);
+            }
+            const auto&    ia = model.accessors[p.indices];
+            const uint8_t* id = &model.buffers[model.bufferViews[ia.bufferView].buffer].data[model.bufferViews[ia.bufferView].byteOffset + ia.byteOffset];
+            pp.vertices.reserve(ia.count);
+            if (hasMorph)
+                pp.positionIndices.reserve(ia.count);
+            glm::mat3 nm;
+            if (!anim && ns)
+                nm = glm::transpose(glm::inverse(glm::mat3(xf)));
+            for (size_t i = 0; i < ia.count; i++) {
+                uint32_t idx = 0;
+                if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                    idx = ((const uint16_t*) id)[i];
+                else if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+                    idx = ((const uint32_t*) id)[i];
+                else if (ia.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+                    idx = id[i];
+                Model::Vertex v{};
+                v.materialId = matId;
+                if (anim)
+                    v.position = {xM * ps[idx * 3], yM * ps[idx * 3 + 1], zM * ps[idx * 3 + 2]};
+                else {
+                    auto tr    = xf * glm::vec4(ps[idx * 3], ps[idx * 3 + 1], ps[idx * 3 + 2], 1);
+                    v.position = {xM * tr.x, yM * tr.y, zM * tr.z};
+                }
+                if (ns) {
+                    glm::vec3 wn = anim ? glm::vec3(ns[idx * 3], ns[idx * 3 + 1], ns[idx * 3 + 2]) : glm::normalize(nm * glm::vec3(ns[idx * 3], ns[idx * 3 + 1], ns[idx * 3 + 2]));
+                    v.normal     = {xM * wn.x, yM * wn.y, zM * wn.z};
+                } else
+                    v.normal = {0, 1, 0};
+                v.uv    = ts ? glm::vec2(ts[idx * 2], 1 - ts[idx * 2 + 1]) : glm::vec2(0);
+                v.color = {1, 1, 1};
+                pp.vertices.push_back(v);
+                if (hasMorph)
+                    pp.positionIndices.push_back(idx);
+            }
+            pp.indexCount = (uint32_t) ia.count;
+            return pp;
         }
-        pp.indexCount = (uint32_t)ia.count;
-        return pp;
-    }
     }  // namespace
     bool GLTFImporter::load(Model::Builder& builder, const std::string& filepath, bool flipX, bool flipY, bool flipZ) {
         tinygltf::Model    gltfModel;
@@ -158,15 +173,15 @@ namespace engine {
         // This avoids stb_image decode during file load; textures are decoded
         // lazily by the texture system when first used.
         loader.SetImageLoader(
-            [](tinygltf::Image* image, const int, std::string*, std::string*, int, int,
+            [](tinygltf::Image*      image, const int, std::string*, std::string*, int, int,
                 const unsigned char* bytes, int size, void*) -> bool {
                 image->image.assign(bytes, bytes + size);
                 return true;
             },
             nullptr);
-        std::string        err;
-        std::string        warn;
-        bool               ret = false;
+        std::string err;
+        std::string warn;
+        bool        ret = false;
         if (filepath.find(".glb") != std::string::npos) {
             ret = loader.LoadBinaryFromFile(&gltfModel, &err, &warn, filepath);
         } else {
@@ -199,8 +214,8 @@ namespace engine {
         builder.subMeshes.clear();
         // Pre-calculate total vertex/index count to avoid vector reallocation during mesh loading.
         {
-            size_t totalIndices = 0;
-            std::function<void(int)> countNode = [&](int nodeIndex) {
+            size_t                   totalIndices = 0;
+            std::function<void(int)> countNode    = [&](int nodeIndex) {
                 const auto& node = gltfModel.nodes[nodeIndex];
                 if (node.mesh >= 0) {
                     const auto& mesh = gltfModel.meshes[node.mesh];
@@ -223,7 +238,7 @@ namespace engine {
         }
         std::unordered_map<uint64_t, uint32_t> primitiveVertexOffsets;
         std::unordered_map<uint64_t, uint32_t> primitiveVertexCounts;
-        std::unordered_map<uint32_t, uint32_t>    vertexToPositionIndex;
+        std::unordered_map<uint32_t, uint32_t> vertexToPositionIndex;
         loadMaterials(builder, gltfModel, baseDir, cacheDir);
         loadMeshes(builder, gltfModel, flipX, flipY, flipZ, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex, hasAnimations);
         loadMorphTargets(builder, gltfModel, primitiveVertexOffsets, primitiveVertexCounts, vertexToPositionIndex);
@@ -465,61 +480,107 @@ namespace engine {
         float                                           zMultiplier) {
         // Deprecated.
     }
-    void GLTFImporter::loadMeshes(Model::Builder&  builder,
-        const tinygltf::Model&                     model,
-        bool                                       flipX,
-        bool                                       flipY,
-        bool                                       flipZ,
-        std::unordered_map<uint64_t, uint32_t>&    primitiveVertexOffsets,
-        std::unordered_map<uint64_t, uint32_t>&    primitiveVertexCounts,
-        std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex,
-        bool                                       hasAnimations) {
-        struct NM { int n,m; glm::mat4 x; };
-        std::vector<NM> refs;
-        std::function<void(int,glm::mat4)> cl = [&](int i, glm::mat4 p){
-            const auto& nd = model.nodes[i]; glm::mat4 g = p * computeNodeTransform(nd);
-            if (nd.mesh>=0) refs.push_back({i,nd.mesh,g});
-            for (int c:nd.children) cl(c,g);
+    void GLTFImporter::loadMeshes(Model::Builder& builder,
+        const tinygltf::Model&                    model,
+        bool                                      flipX,
+        bool                                      flipY,
+        bool                                      flipZ,
+        std::unordered_map<uint64_t, uint32_t>&   primitiveVertexOffsets,
+        std::unordered_map<uint64_t, uint32_t>&   primitiveVertexCounts,
+        std::unordered_map<uint32_t, uint32_t>&   vertexToPositionIndex,
+        bool                                      hasAnimations) {
+        struct NM {
+            int       n, m;
+            glm::mat4 x;
         };
-        const auto& sn = model.scenes[model.defaultScene>=0?model.defaultScene:0];
-        for (int n:sn.nodes) cl(n,glm::mat4(1));
-        float xM=flipX?-1:1,yM=flipY?-1:1,zM=flipZ?-1:1;
-        struct J{ int n,m; glm::mat4 x; std::vector<std::pair<int,const tinygltf::Primitive*>> pr; };
-        std::vector<J> js; js.reserve(refs.size());
-        for (auto& r:refs){
-            J j; j.n=r.n; j.m=r.m; j.x=r.x;
-            for (size_t pp=0;pp<model.meshes[r.m].primitives.size();++pp) j.pr.emplace_back((int)pp,&model.meshes[r.m].primitives[pp]);
-            js.push_back(std::move(j));}
+        std::vector<NM>                     refs;
+        std::function<void(int, glm::mat4)> cl = [&](int i, glm::mat4 p) {
+            const auto& nd = model.nodes[i];
+            glm::mat4   g  = p * computeNodeTransform(nd);
+            if (nd.mesh >= 0)
+                refs.push_back({i, nd.mesh, g});
+            for (int c : nd.children)
+                cl(c, g);
+        };
+        const auto& sn = model.scenes[model.defaultScene >= 0 ? model.defaultScene : 0];
+        for (int n : sn.nodes)
+            cl(n, glm::mat4(1));
+        float xM = flipX ? -1 : 1, yM = flipY ? -1 : 1, zM = flipZ ? -1 : 1;
+        struct J {
+            int                                                     n, m;
+            glm::mat4                                               x;
+            std::vector<std::pair<int, const tinygltf::Primitive*>> pr;
+        };
+        std::vector<J> js;
+        js.reserve(refs.size());
+        for (auto& r : refs) {
+            J j;
+            j.n = r.n;
+            j.m = r.m;
+            j.x = r.x;
+            for (size_t pp = 0; pp < model.meshes[r.m].primitives.size(); ++pp)
+                j.pr.emplace_back((int) pp, &model.meshes[r.m].primitives[pp]);
+            js.push_back(std::move(j));
+        }
         std::vector<std::future<std::vector<PrimitivePatch>>> ff;
-        for (auto& j:js) ff.push_back(std::async(std::launch::async,[&model,&j,hasAnimations,xM,yM,zM](){
+        for (auto& j : js)
+            ff.push_back(std::async(std::launch::async, [&model, &j, hasAnimations, xM, yM, zM]() {
             std::vector<PrimitivePatch> pp; pp.reserve(j.pr.size());
             for (auto& [_,pr]:j.pr) pp.push_back(buildPrimitivePatch(model,*pr,j.x,hasAnimations,pr->material,!pr->targets.empty(),xM,yM,zM));
-            return pp;}));
-        std::unordered_map<int,std::vector<uint32_t>> ibm;
-        std::unordered_map<int,int> matToNode;  // material -> originating node index
-        for (size_t ji=0;ji<js.size();++ji){
-            auto pp=ff[ji].get(); auto& j=js[ji];
-            builder.nodePrimitiveIndices[j.n].reserve(builder.nodePrimitiveIndices[j.n].size()+pp.size());
-            for (size_t pi=0;pi<pp.size();++pi){
-                auto& p=pp[pi]; int pri=j.pr[pi].first,mat=j.pr[pi].second->material;
-                uint64_t k=((uint64_t)j.m<<32)|(uint32_t)pri; uint32_t o=(uint32_t)builder.vertices.size();
-                primitiveVertexOffsets[k]=o; builder.nodePrimitiveIndices[j.n].push_back(pri);
-                builder.vertices.insert(builder.vertices.end(),p.vertices.begin(),p.vertices.end());
-                for (uint32_t i=0;i<p.indexCount;++i){uint32_t g=o+i;builder.indices.push_back(g);ibm[mat].push_back(g);}
-                if (matToNode.find(mat) == matToNode.end()) matToNode[mat] = j.n;
-                if (!p.positionIndices.empty()) for (uint32_t i=0;i<p.indexCount;++i) vertexToPositionIndex[o+i]=p.positionIndices[i];
-                primitiveVertexCounts[k]=p.indexCount;}}
-        uint32_t co=0;
-        for (auto& [mi,ii]:ibm){if(!ii.empty()){Model::SubMesh sm;sm.materialId=mi;sm.indexOffset=co;sm.indexCount=(uint32_t)ii.size();sm.nodeIndex = matToNode.count(mi) ? matToNode[mi] : -1;builder.subMeshes.push_back(sm);co+=sm.indexCount;}}
-        std::vector<uint32_t> gi; gi.reserve(builder.indices.size());
-        for (auto& sm:builder.subMeshes){auto& ii=ibm[sm.materialId];gi.insert(gi.end(),ii.begin(),ii.end());}
-        builder.indices=std::move(gi); std::cout<<GREEN<<"[GLTFImporter] Meshes processed"<<RESET<<"\n";
+            return pp; }));
+        std::unordered_map<int, std::vector<uint32_t>> ibm;
+        std::unordered_map<int, int>                   matToNode;  // material -> originating node index
+        for (size_t ji = 0; ji < js.size(); ++ji) {
+            auto  pp = ff[ji].get();
+            auto& j  = js[ji];
+            builder.nodePrimitiveIndices[j.n].reserve(builder.nodePrimitiveIndices[j.n].size() + pp.size());
+            for (size_t pi = 0; pi < pp.size(); ++pi) {
+                auto&    p   = pp[pi];
+                int      pri = j.pr[pi].first, mat = j.pr[pi].second->material;
+                uint64_t k                = ((uint64_t) j.m << 32) | (uint32_t) pri;
+                uint32_t o                = (uint32_t) builder.vertices.size();
+                primitiveVertexOffsets[k] = o;
+                builder.nodePrimitiveIndices[j.n].push_back(pri);
+                builder.vertices.insert(builder.vertices.end(), p.vertices.begin(), p.vertices.end());
+                for (uint32_t i = 0; i < p.indexCount; ++i) {
+                    uint32_t g = o + i;
+                    builder.indices.push_back(g);
+                    ibm[mat].push_back(g);
+                }
+                if (matToNode.find(mat) == matToNode.end())
+                    matToNode[mat] = j.n;
+                if (!p.positionIndices.empty())
+                    for (uint32_t i = 0; i < p.indexCount; ++i)
+                        vertexToPositionIndex[o + i] = p.positionIndices[i];
+                primitiveVertexCounts[k] = p.indexCount;
+            }
+        }
+        uint32_t co = 0;
+        for (auto& [mi, ii] : ibm) {
+            if (!ii.empty()) {
+                Model::SubMesh sm;
+                sm.materialId  = mi;
+                sm.indexOffset = co;
+                sm.indexCount  = (uint32_t) ii.size();
+                sm.nodeIndex   = matToNode.count(mi) ? matToNode[mi] : -1;
+                builder.subMeshes.push_back(sm);
+                co += sm.indexCount;
+            }
+        }
+        std::vector<uint32_t> gi;
+        gi.reserve(builder.indices.size());
+        for (auto& sm : builder.subMeshes) {
+            auto& ii = ibm[sm.materialId];
+            gi.insert(gi.end(), ii.begin(), ii.end());
+        }
+        builder.indices = std::move(gi);
+        std::cout << GREEN << "[GLTFImporter] Meshes processed" << RESET << "\n";
     }
-    void GLTFImporter::loadMorphTargets(Model::Builder&  builder,
-        const tinygltf::Model&                           gltfModel,
-        const std::unordered_map<uint64_t, uint32_t>&    primitiveVertexOffsets,
-        const std::unordered_map<uint64_t, uint32_t>&    primitiveVertexCounts,
-        const std::unordered_map<uint32_t, uint32_t>&    vertexToPositionIndex) {
+    void GLTFImporter::loadMorphTargets(Model::Builder& builder,
+        const tinygltf::Model&                          gltfModel,
+        const std::unordered_map<uint64_t, uint32_t>&   primitiveVertexOffsets,
+        const std::unordered_map<uint64_t, uint32_t>&   primitiveVertexCounts,
+        const std::unordered_map<uint32_t, uint32_t>&   vertexToPositionIndex) {
         for (size_t meshIdx = 0; meshIdx < gltfModel.meshes.size(); meshIdx++) {
             const auto& gltfMesh = gltfModel.meshes[meshIdx];
             for (size_t primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++) {
@@ -527,7 +588,7 @@ namespace engine {
                 if (primitive.targets.empty())
                     continue;
                 Model::MorphTargetSet morphSet;
-                uint64_t const         key = (static_cast<uint64_t>(meshIdx) << 32) | static_cast<uint32_t>(primIdx);
+                uint64_t const        key = (static_cast<uint64_t>(meshIdx) << 32) | static_cast<uint32_t>(primIdx);
                 if (primitiveVertexOffsets.contains(key)) {
                     morphSet.vertexOffset = primitiveVertexOffsets.at(key);
                     morphSet.vertexCount  = static_cast<uint32_t>(primitiveVertexCounts.at(key));

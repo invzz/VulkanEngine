@@ -58,9 +58,9 @@ namespace engine {
         void                                beginRenderPassLoadColorDepth(VkCommandBuffer commandBuffer, int frameIndex);
         void                                beginGbufferRenderPass(VkCommandBuffer commandBuffer, int frameIndex, bool allowSecondaryCommandBuffers = false);
         void                                beginDeferredLightingRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void                       beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void                       beginSelectionMaskRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
-        void                       beginSelectionOutlineRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginPostFxRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginSelectionMaskRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
+        void                                beginSelectionOutlineRenderPass(VkCommandBuffer commandBuffer, int frameIndex);
         static void                         endRenderPass(VkCommandBuffer commandBuffer);
         void                                generateMipmaps(VkCommandBuffer commandBuffer, int frameIndex);
         void                                generateSceneColorMipmaps(VkCommandBuffer commandBuffer, int frameIndex);

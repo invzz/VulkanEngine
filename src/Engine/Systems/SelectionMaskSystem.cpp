@@ -6,8 +6,8 @@
 #include "Engine/Scene/components/ChildComponent.hpp"
 #include "Engine/Scene/components/ModelComponent.hpp"
 #include "Engine/Scene/components/NodeIndexComponent.hpp"
-#include "ModelLib/Resources/Model.hpp"
 
+#include "ModelLib/Resources/Model.hpp"
 #include "vulkan/vulkan_core.h"
 namespace engine {
     namespace {
@@ -75,10 +75,10 @@ namespace engine {
         }
         PipelineConfigInfo pipelineConfig{};
         Pipeline::defaultMeshPipelineConfigInfo(pipelineConfig);
-        pipelineConfig.renderPass                       = renderPass;
-        pipelineConfig.pipelineLayout                   = pipelineLayout_;
-        pipelineConfig.rasterizationInfo.cullMode       = VK_CULL_MODE_NONE;  // capture full silhouette
-        pipelineConfig.depthStencilInfo.depthTestEnable = VK_FALSE;           // on top of all geometry
+        pipelineConfig.renderPass                        = renderPass;
+        pipelineConfig.pipelineLayout                    = pipelineLayout_;
+        pipelineConfig.rasterizationInfo.cullMode        = VK_CULL_MODE_NONE;  // capture full silhouette
+        pipelineConfig.depthStencilInfo.depthTestEnable  = VK_FALSE;           // on top of all geometry
         pipelineConfig.depthStencilInfo.depthWriteEnable = VK_FALSE;
         // Mesh shading pipeline: task + mesh + fragment shaders.
         pipeline_ = std::make_unique<Pipeline>(
@@ -100,7 +100,7 @@ namespace engine {
         if (modelEntity == entt::null) {
             return;
         }
-        const auto& registry = frameInfo.scene->getRegistry();
+        const auto& registry  = frameInfo.scene->getRegistry();
         const auto& transform = registry.get<TransformComponent>(modelEntity);
         const auto& modelComp = registry.get<ModelComponent>(modelEntity);
         const auto* model     = modelComp.model.get();
@@ -112,10 +112,10 @@ namespace engine {
         // to that sub-mesh's meshlet range. If it is a node (instance) entity,
         // restrict to the sub-mesh(es) that node instantiates — giving the
         // instance the same outline behaviour as selecting the sub-mesh directly.
-        uint32_t meshletOffset = 0;
-        uint32_t meshletCount  = model->getMeshletCount();
-        const auto& subMeshes  = model->getSubMeshes();
-        auto     sel           = frameInfo.selectedEntity;
+        uint32_t    meshletOffset = 0;
+        uint32_t    meshletCount  = model->getMeshletCount();
+        const auto& subMeshes     = model->getSubMeshes();
+        auto        sel           = frameInfo.selectedEntity;
         if (registry.valid(sel) && registry.all_of<SubMeshComponent>(sel)) {
             const auto& sub = registry.get<SubMeshComponent>(sel);
             if (sub.subMeshIndex < subMeshes.size()) {
@@ -123,13 +123,13 @@ namespace engine {
                 meshletCount  = subMeshes[sub.subMeshIndex].meshletCount;
             }
         } else if (registry.valid(sel) && registry.all_of<NodeIndexComponent>(sel)) {
-            const int nodeIdx = registry.get<NodeIndexComponent>(sel).nodeIndex;
-            uint32_t rangeStart = model->getMeshletCount();
-            uint32_t rangeEnd    = 0;
+            const int nodeIdx    = registry.get<NodeIndexComponent>(sel).nodeIndex;
+            uint32_t  rangeStart = model->getMeshletCount();
+            uint32_t  rangeEnd   = 0;
             for (const auto& sm : subMeshes) {
                 if (sm.nodeIndex == nodeIdx) {
                     rangeStart = std::min(rangeStart, sm.meshletOffset);
-                    rangeEnd    = std::max(rangeEnd, sm.meshletOffset + sm.meshletCount);
+                    rangeEnd   = std::max(rangeEnd, sm.meshletOffset + sm.meshletCount);
                 }
             }
             if (rangeEnd > rangeStart) {

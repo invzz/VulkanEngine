@@ -96,7 +96,7 @@ namespace engine {
         // Parallel to writes: non-empty entries carry the pNext for accel writes
         std::vector<VkWriteDescriptorSetAccelerationStructureKHR> accelWrites;
         // Stable storage for accel handles pointed to by accelWrites entries
-        std::vector<VkAccelerationStructureKHR>                   accelStructHandles_;
+        std::vector<VkAccelerationStructureKHR> accelStructHandles_;
     };
 }  // namespace engine
 #endif

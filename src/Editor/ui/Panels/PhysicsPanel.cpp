@@ -11,8 +11,8 @@
 #include "Engine/Scene/components/TransformComponent.hpp"
 #include "Engine/Systems/JoltPhysicsSystem.hpp"
 
-#include "Editor/ui/UI.hpp"
 #include "Editor/ui/SelectionResolve.hpp"
+#include "Editor/ui/UI.hpp"
 #include "IconsFontAwesome6.h"
 namespace engine {
     PhysicsPanel::PhysicsPanel(EngineState& state)

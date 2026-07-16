@@ -6,9 +6,10 @@
 
 #include <cmath>
 
-#include "Editor/ui/SelectionResolve.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 #include "Engine/Scene/components/TransformComponent.hpp"
+
+#include "Editor/ui/SelectionResolve.hpp"
 namespace engine {
     void ViewportObjectGizmo::render(FrameInfo& frameInfo, const ImVec2& topLeft, const ImVec2& size) {
         if (frameInfo.selectedEntity == entt::null || !frameInfo.gizmoEnabled) {

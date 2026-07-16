@@ -12,14 +12,14 @@ namespace engine {
         DescriptorSetLayout::Builder layoutBuilder(device_);
         layoutBuilder.addBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
         layoutBuilder.addBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-        descriptorSetLayout_ = layoutBuilder.build();
+        descriptorSetLayout_            = layoutBuilder.build();
         VkDescriptorSetLayout rawLayout = descriptorSetLayout_->getDescriptorSetLayout();
 
         const uint32_t frameCount = SwapChain::maxFramesInFlight();
         descriptorPool_           = DescriptorPool::Builder(device_)
-                                   .setMaxSets(frameCount)
-                                   .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2)
-                                   .build();
+                                        .setMaxSets(frameCount)
+                                        .addPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, frameCount * 2)
+                                        .build();
         descriptorSets_.resize(frameCount);
         for (uint32_t i = 0; i < frameCount; ++i) {
             if (!descriptorPool_->allocateDescriptor(rawLayout, descriptorSets_[i])) {
@@ -29,9 +29,9 @@ namespace engine {
 
         // Explicit pipeline layout (the composite shader has no push constants).
         VkPipelineLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType           = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        layoutInfo.setLayoutCount  = 1;
-        layoutInfo.pSetLayouts     = &rawLayout;
+        layoutInfo.sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        layoutInfo.setLayoutCount = 1;
+        layoutInfo.pSetLayouts    = &rawLayout;
         if (vkCreatePipelineLayout(device_.device(), &layoutInfo, nullptr, &pipelineLayout_) != VK_SUCCESS) {
             throw std::runtime_error("failed to create selection composite pipeline layout");
         }
@@ -63,7 +63,7 @@ namespace engine {
         // (Re)write the post-fx + mask images into this frame's descriptor set.
         VkDescriptorImageInfo sceneInfo = renderer_.getPostFxImageInfo(frameIndex);
         VkDescriptorImageInfo maskInfo  = renderer_.getSelectionMaskImageInfo(frameIndex);
-        DescriptorWriter writer(*descriptorSetLayout_, *descriptorPool_);
+        DescriptorWriter      writer(*descriptorSetLayout_, *descriptorPool_);
         writer.writeImage(0, &sceneInfo);
         writer.writeImage(1, &maskInfo);
         VkDescriptorSet set = descriptorSets_[frameIndex];

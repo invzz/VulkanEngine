@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Engine/Graphics/Device.hpp"
+
 #include "ModelLib/Resources/Model.hpp"
 
 namespace engine {
@@ -39,7 +40,7 @@ namespace engine {
         /// Returns the TLAS handle for binding.
         VkAccelerationStructureKHR rebuildTlas(
             const std::vector<std::pair<glm::mat4, VkAccelerationStructureKHR>>& instances,
-            VkCommandBuffer cmd);
+            VkCommandBuffer                                                      cmd);
 
         /// Get the TLAS device address for use in shader descriptors.
         [[nodiscard]] VkDeviceAddress getTlasAddress() const {
@@ -55,7 +56,7 @@ namespace engine {
         /// Get the BLAS handle for a model (returns VK_NULL_HANDLE if not built).
         [[nodiscard]] VkAccelerationStructureKHR getBlas(const Model& model) const {
             std::scoped_lock const lock(mutex_);
-            auto it = blasMap_.find(&model);
+            auto                   it = blasMap_.find(&model);
             return (it != blasMap_.end()) ? it->second : VK_NULL_HANDLE;
         }
 
@@ -68,7 +69,7 @@ namespace engine {
         void   destroyScratch();
         Buffer createAccelBuffer(VkAccelerationStructureKHR accel);
 
-        Device& device_;
+        Device&            device_;
         mutable std::mutex mutex_;
 
         // Per-model BLAS storage
@@ -76,7 +77,7 @@ namespace engine {
         std::unordered_map<const Model*, std::unique_ptr<Buffer>>    blasBuffers_;
 
         // TLAS (single, rebuilt each frame)
-        VkAccelerationStructureKHR tlas_        = VK_NULL_HANDLE;
+        VkAccelerationStructureKHR tlas_ = VK_NULL_HANDLE;
         std::unique_ptr<Buffer>    tlasBuffer_;
         VkDeviceAddress            tlasAddress_ = 0;
 
@@ -88,12 +89,12 @@ namespace engine {
         std::unique_ptr<Buffer> tlasInstanceBuffer_;
 
         // Function pointers
-        PFN_vkCreateAccelerationStructureKHR             vkCreateAccelerationStructureKHR_             = nullptr;
-        PFN_vkDestroyAccelerationStructureKHR            vkDestroyAccelerationStructureKHR_            = nullptr;
-        PFN_vkGetAccelerationStructureBuildSizesKHR      vkGetAccelerationStructureBuildSizesKHR_      = nullptr;
-        PFN_vkCmdBuildAccelerationStructuresKHR          vkCmdBuildAccelerationStructuresKHR_          = nullptr;
-        PFN_vkGetAccelerationStructureDeviceAddressKHR   vkGetAccelerationStructureDeviceAddressKHR_   = nullptr;
-        PFN_vkBuildAccelerationStructuresKHR             vkBuildAccelerationStructuresKHR_             = nullptr;
+        PFN_vkCreateAccelerationStructureKHR           vkCreateAccelerationStructureKHR_           = nullptr;
+        PFN_vkDestroyAccelerationStructureKHR          vkDestroyAccelerationStructureKHR_          = nullptr;
+        PFN_vkGetAccelerationStructureBuildSizesKHR    vkGetAccelerationStructureBuildSizesKHR_    = nullptr;
+        PFN_vkCmdBuildAccelerationStructuresKHR        vkCmdBuildAccelerationStructuresKHR_        = nullptr;
+        PFN_vkGetAccelerationStructureDeviceAddressKHR vkGetAccelerationStructureDeviceAddressKHR_ = nullptr;
+        PFN_vkBuildAccelerationStructuresKHR           vkBuildAccelerationStructuresKHR_           = nullptr;
     };
 
 }  // namespace engine
