@@ -267,4 +267,4 @@ When the GPU exposes `VK_KHR_ray_query` (Vulkan 1.4 / RADV STRIX_HALO and recent
 
 ## License
 
-MIT -- see [LICENSE](./LICENSE). This project includes [ImGuizmo](https://github.com/CedricGuillemet/ImGuizmo) (MIT, Cedric Guillemet) as a vendored third-party dependency.
+MIT -- see [LICENSE](./LICENSE). 
