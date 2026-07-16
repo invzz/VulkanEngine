@@ -109,8 +109,9 @@ VulkanEngine/
 │   │   ├── GpuProfiler.hpp          # Query-based GPU timing
 │   │   └── ShaderMonitor.hpp        # Hot-reload file watcher
 │   ├── Scene/                       # ECS components, camera, scene
-│   │   ├── Components/              # Animation, transform, model, light
-│   │   └── Components/              # Camera, directional/point/spot lights
+│   │   ├── components/              # EnTT ECS data (transform, camera, lights, model, animation)
+│   │   ├── Animation/              # Animation clip / controller / graph domain types
+│   │   └── Skybox.hpp             # Skybox + procedural sky capture
 │   ├── Systems/                     # ECS systems
 │   │   ├── IBL/                     # IBL system implementations
 │   │   ├── AnimationSystem.hpp
@@ -197,8 +198,11 @@ The Render Graph orchestrates these passes in order:
 5. **G-Buffer** -- Normal, albedo, material, emissive (with depth prepass load)
 6. **Deferred Lighting** -- Per-pixel shading against G-buffer
 7. **Forward** -- Transmission, alpha-blend, grid, collider debug, selection outline, mipmap generation
-8. **TransitionToReadOnly** -- Offscreen color -> `SHADER_READ_ONLY_OPTIMAL` for ImGui sampling
-9. **Composition** -- ImGui overlay + swapchain presentation
+8. **Selection Mask** -- Render selected geometry into a 1-channel silhouette mask
+9. **TransitionToReadOnly** -- Offscreen color -> `SHADER_READ_ONLY_OPTIMAL` for ImGui sampling
+10. **Post-Process** -- Tonemap, SSAO, bloom, exposure
+11. **Selection Composite** -- Edge-detect on the mask, blended over the post-fx image
+12. **Composition** -- ImGui overlay + swapchain presentation
 
 ## Procedural Sky & IBL
 
