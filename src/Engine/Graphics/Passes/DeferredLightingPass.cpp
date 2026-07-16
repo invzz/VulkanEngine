@@ -20,9 +20,9 @@ namespace engine {
         updateShadowDescriptors(fi);
         deferred_.render(frameInfo,
             frameInfo.globalDescriptorSet,
-            engine_.gbufferDescriptorSet(fi),
-            engine_.deferredShadowDescriptorSet(fi),
-            engine_.deferredIblDescriptorSet(fi));
+            engine_.descriptors().gbufferDescriptorSet(fi),
+            engine_.descriptors().deferredShadowDescriptorSet(fi),
+            engine_.descriptors().deferredIblDescriptorSet(fi));
         renderer_.endOffscreenRenderPass(frameInfo.commandBuffer);
     }
     void DeferredLightingPass::updateShadowDescriptors(int fi) {
@@ -42,9 +42,9 @@ namespace engine {
         for (int i = cc; i < ShadowSystem::MAX_CUBE_SHADOW_MAPS; i++) {
             ci[i] = shadow_.getCubeShadowMapDescriptorInfo(0);
         }
-        DescriptorWriter(engine_.deferredShadowSetLayout(), engine_.deferredShadowPool())
+        DescriptorWriter(engine_.descriptors().deferredShadowSetLayout(), engine_.descriptors().deferredShadowPool())
             .writeImageArray(0, si.data(), ShadowSystem::MAX_SHADOW_MAPS)
             .writeImageArray(1, ci.data(), ShadowSystem::MAX_CUBE_SHADOW_MAPS)
-            .overwrite(engine_.deferredShadowDescriptorSetRef(fi));
+            .overwrite(engine_.descriptors().deferredShadowDescriptorSetRef(fi));
     }
 }  // namespace engine

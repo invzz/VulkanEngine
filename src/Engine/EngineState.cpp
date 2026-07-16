@@ -111,8 +111,8 @@ namespace engine {
     }
     void EngineState::allocatePerFrameDescriptorSets(Renderer& r) {
         descriptors_->allocatePerFrameDescriptors(r);
-        deferredIblDescriptorSetsRef().resize(SwapChain::maxFramesInFlight());
-        for (int i = 0; i < (int) deferredIblDescriptorSetsRef().size(); ++i) {
+        descriptors().deferredIblDescriptorSets().resize(SwapChain::maxFramesInFlight());
+        for (int i = 0; i < (int) descriptors().deferredIblDescriptorSets().size(); ++i) {
             auto irr  = ibl_->getIrradianceDescriptorInfo();
             auto pre  = ibl_->getPrefilteredDescriptorInfo();
             auto brdf = ibl_->getBRDFLUTDescriptorInfo();
@@ -120,7 +120,7 @@ namespace engine {
                 .writeImage(0, &irr)
                 .writeImage(1, &pre)
                 .writeImage(2, &brdf)
-                .buildOrThrow(deferredIblDescriptorSetsRef()[i]);
+                .buildOrThrow(descriptors().deferredIblDescriptorSets()[i]);
         }
     }
     void EngineState::initPostProcessing(Device& d, Renderer& r) {
@@ -241,56 +241,8 @@ namespace engine {
             jolt_->setGroundEnabled(e);
         }
     }
-    VkDescriptorSet EngineState::gbufferDescriptorSet(int frameIndex) const {
-        return descriptors_->gbufferDescriptorSet(frameIndex);
-    }
-    VkDescriptorSet& EngineState::gbufferDescriptorSetRef(int frameIndex) {
-        return descriptors_->gbufferDescriptorSetRef(frameIndex);
-    }
-    VkDescriptorSet EngineState::deferredShadowDescriptorSet(int frameIndex) const {
-        return descriptors_->deferredShadowDescriptorSet(frameIndex);
-    }
-    VkDescriptorSet& EngineState::deferredShadowDescriptorSetRef(int frameIndex) {
-        return descriptors_->deferredShadowDescriptorSetRef(frameIndex);
-    }
-    VkDescriptorSet EngineState::deferredIblDescriptorSet(int frameIndex) const {
-        return descriptors_->deferredIblDescriptorSet(frameIndex);
-    }
-    VkDescriptorSet EngineState::postProcessDescriptorSet(int frameIndex) const {
-        return descriptors_->postProcessDescriptorSet(frameIndex);
-    }
-    VkDescriptorSet& EngineState::postProcessDescriptorSetRef(int frameIndex) {
-        return descriptors_->postProcessDescriptorSetRef(frameIndex);
-    }
-    std::vector<VkDescriptorSet>& EngineState::deferredIblDescriptorSetsRef() {
-        return descriptors_->deferredIblDescriptorSets();
-    }
-    DescriptorSetLayout& EngineState::gbufferSetLayout() {
-        return descriptors_->gbufferSetLayout();
-    }
-    DescriptorPool& EngineState::gbufferPool() {
-        return descriptors_->gbufferPool();
-    }
-    DescriptorSetLayout& EngineState::postProcessSetLayout() {
-        return descriptors_->postProcessSetLayout();
-    }
-    DescriptorPool& EngineState::postProcessPool() {
-        return descriptors_->postProcessPool();
-    }
-    DescriptorSetLayout& EngineState::deferredIblSetLayout() {
-        return descriptors_->deferredIblSetLayout();
-    }
-    DescriptorPool& EngineState::deferredIblPool() {
-        return descriptors_->deferredIblPool();
-    }
-    DescriptorSetLayout& EngineState::deferredShadowSetLayout() {
-        return descriptors_->deferredShadowSetLayout();
-    }
-    DescriptorPool& EngineState::deferredShadowPool() {
-        return descriptors_->deferredShadowPool();
-    }
     void EngineState::recreatePostProcessingSystem(Device& d, VkRenderPass rp) {
-        postProc_ = std::make_unique<PostProcessingSystem>(d, rp, std::vector<VkDescriptorSetLayout>{postProcessSetLayout().getDescriptorSetLayout()});
+        postProc_ = std::make_unique<PostProcessingSystem>(d, rp, std::vector<VkDescriptorSetLayout>{descriptors().postProcessSetLayout().getDescriptorSetLayout()});
         registerSystem(postProc_);
     }
     void EngineState::updatePostProcessDescriptors(int frameIndex, Renderer& renderer) {

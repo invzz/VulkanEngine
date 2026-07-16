@@ -12,7 +12,7 @@ namespace engine {
         : RenderPassBase("PostProcess"), renderer_(renderer), engineState_(engineState) {}
     void PostProcessPass::execute(FrameInfo& frameInfo) {
         auto& pp            = engineState_.system<PostProcessingSystem>();
-        auto  descriptorSet = engineState_.postProcessDescriptorSet(frameInfo.frameIndex);
+        auto  descriptorSet = engineState_.descriptors().postProcessDescriptorSet(frameInfo.frameIndex);
         // Populate push constants from engine state + camera (for SSAO depth reconstruction)
         PostProcessPushConstants push = engineState_.postProcess();
         push.inverseProjection        = glm::inverse(frameInfo.camera.getProjection());

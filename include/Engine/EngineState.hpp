@@ -147,22 +147,6 @@ namespace engine {
         void                          changeShadowSettings(bool cull, float plr, float slr);
         void                          clearSceneBodies();
         void                          setGroundEnabled(bool enabled);
-        VkDescriptorSet               gbufferDescriptorSet(int frameIndex) const;
-        VkDescriptorSet&              gbufferDescriptorSetRef(int frameIndex);
-        VkDescriptorSet               deferredShadowDescriptorSet(int frameIndex) const;
-        VkDescriptorSet&              deferredShadowDescriptorSetRef(int frameIndex);
-        VkDescriptorSet               deferredIblDescriptorSet(int frameIndex) const;
-        VkDescriptorSet               postProcessDescriptorSet(int frameIndex) const;
-        VkDescriptorSet&              postProcessDescriptorSetRef(int frameIndex);
-        std::vector<VkDescriptorSet>& deferredIblDescriptorSetsRef();
-        DescriptorSetLayout&          gbufferSetLayout();
-        DescriptorPool&               gbufferPool();
-        DescriptorSetLayout&          postProcessSetLayout();
-        DescriptorPool&               postProcessPool();
-        DescriptorSetLayout&          deferredIblSetLayout();
-        DescriptorPool&               deferredIblPool();
-        DescriptorSetLayout&          deferredShadowSetLayout();
-        DescriptorPool&               deferredShadowPool();
         void                          recreatePostProcessingSystem(Device& device, VkRenderPass rp);
         /**
          * @brief Update post-processing descriptors to point to the current
@@ -170,6 +154,15 @@ namespace engine {
          * resize so descriptors don't reference destroyed image views.
          */
         void           updatePostProcessDescriptors(int frameIndex, Renderer& renderer);
+        /**
+         * @brief Direct access to the descriptor manager (pools, layouts, and
+         * per-frame descriptor sets for G-buffer / deferred IBL / deferred
+         * shadow / post-processing). Exposed so render passes reach descriptor
+         * state without EngineState forwarding every per-pass accessor.
+         */
+        DescriptorManager& descriptors() {
+            return *descriptors_;
+        }
         SpatialSystem& spatialSystem() {
             return *spatial_;
         }

@@ -26,11 +26,7 @@ namespace engine {
         auto aInfo = renderer_.getGbufferAlbedoImageInfo(frameIndex);
         auto mInfo = renderer_.getGbufferMaterialImageInfo(frameIndex);
         auto dInfo = renderer_.getDepthImageInfo(frameIndex);
-        DescriptorWriter(engine_.gbufferSetLayout(), engine_.gbufferPool())
-            .writeImage(0, &nInfo)
-            .writeImage(1, &aInfo)
-            .writeImage(2, &mInfo)
-            .writeImage(3, &dInfo)
-            .overwrite(engine_.gbufferDescriptorSetRef(frameIndex));
+        auto& dm = engine_.descriptors();
+        DescriptorWriter(dm.gbufferSetLayout(), dm.gbufferPool()).writeImage(0, &nInfo).writeImage(1, &aInfo).writeImage(2, &mInfo).writeImage(3, &dInfo).overwrite(dm.gbufferDescriptorSetRef(frameIndex));
     }
 }  // namespace engine
