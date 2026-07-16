@@ -2,6 +2,7 @@
 #define EDITOR_SETTINGSPANEL_HPP
 #include <memory>
 
+#include "Engine/Core/Logger.hpp"
 #include "Engine/Graphics/FrameInfo.hpp"
 
 #include "Editor/ui/Panels/CameraPanel.hpp"
@@ -15,6 +16,7 @@ namespace engine {
        public:
         SettingsPanel(EngineState* engineState, bool& multithreadedRecordingEnabled, uint32_t& multithreadedRecordingThreads, int& debugMode, bool& rtDirectional, bool& rtPoint, bool& rtSpot, float& rtShadowSoftness);
         void                              render(FrameInfo& frameInfo) override;
+        void                              renderLoggingSection();
         EngineState*                      engineState_ = nullptr;
         std::unique_ptr<CameraPanel>      cameraPanel_;
         std::unique_ptr<IBLPanel>         iblPanel_;

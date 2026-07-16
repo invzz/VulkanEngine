@@ -97,9 +97,35 @@ namespace engine {
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("Angular spread for soft shadow penumbra (0=hard, ~0.01=soft sun, 0.05=very soft)");
             ui::UI::EndSurface();
+            renderLoggingSection();
         }
         ImGui::End();
         wasVisibleLastFrame_ = visible_;
         ui::UI::PopThemeStyle();
+    }
+    void SettingsPanel::renderLoggingSection() {
+        ui::UI::BeginSurface("settings_logging", "Logging", "Per-channel log output filters");
+        // The Logger keeps channel state in a process-wide bitmask; the SettingsPanel
+        // holds no copy and reads/writes it live each frame. Order matches Logger's
+        // LogChannel enumeration and SceneSerializer's persisted channel keys.
+        struct ChannelRow {
+            const char* label;
+            const char* tooltip;
+            LogChannel  channel;
+        };
+        static constexpr ChannelRow kChannels[] = {
+            {"General", "App lifecycle, theme, scene-load errors", LogChannel::General},
+            {"Render", "System init + per-frame diagnostics (FPS, material bind)", LogChannel::Render},
+            {"Sync", "Swapchain / fence / presentation synchronization", LogChannel::Sync},
+            {"Scene", "Entity creation, model and light loading", LogChannel::Scene},
+            {"Resource", "Descriptor / buffer / shader resource allocation", LogChannel::Resource},
+        };
+        for (auto const& row : kChannels) {
+            bool enabled = Logger::isChannelEnabled(row.channel);
+            if (ui::UI::CheckboxRow(row.label, row.tooltip, &enabled)) {
+                Logger::enableChannel(row.channel, enabled);
+            }
+        }
+        ui::UI::EndSurface();
     }
 }  // namespace engine
